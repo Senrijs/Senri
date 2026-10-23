@@ -67,6 +67,24 @@ function compareRoutes(a: Route, b: Route): number {
     return 0;
 }
 
+// 2つの文字列が、何回の「追加・削除・置き換え」で同じになるかを数える
+function distance(a: string, b: string): number {
+    const dp: number[][] = Array.from({ length: a.length + 1 }, (_, i) =>
+        Array.from({ length: b.length + 1 }, (_, j) => (i === 0 ? j : j === 0 ? i : 0)),
+    );
+    for (let i = 1; i <= a.length; i++) {
+        for (let j = 1; j <= b.length; j++) {
+        const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+        dp[i]![j] = Math.min(
+            dp[i - 1]![j]! + 1,
+            dp[i]![j - 1]! + 1,
+            dp[i - 1]![j - 1]! + cost,
+        );
+        }
+    }
+    return dp[a.length]![b.length]!;
+}
+
 export function createApp() {
     const routes: Route[] = [];
 
@@ -90,7 +108,31 @@ export function createApp() {
                 return toResponse(result);
             }
 
-            return new Response("Not found", { status: 404 });
+            const samePath = routes.filter((r) => matchPath(r.path, path) !== null);
+            if (samePath.length > 0) {
+                const methods = samePath.map((r) => r.method).join(", ");
+                return new Response(
+                    `405 Method Not Allowed: ${req.method} ${path}\n${methods} ならあります`,
+                    { status: 405, headers: { allow: methods } },
+                );
+            }
+
+            let closest: Route | null = null;
+            let best = Infinity;
+            for (const r of routes) {
+                const d = distance(r.path, path);
+                if (d < best) {
+                    closest = r;
+                    best = d;
+                }
+            }
+
+            let message = `404 Not Found: ${req.method} ${path}`;
+            if (closest && best <= 3) {
+                message += `\nもしかして: ${closest.method} ${closest.path} ?`;
+            }
+
+            return new Response(message, { status: 404 });
         },
     };
 }
