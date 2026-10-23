@@ -1,4 +1,4 @@
-import { createApp } from "../src/index.ts";
+import { createApp } from "../../src/index.ts";
 
 const app = createApp();
 
