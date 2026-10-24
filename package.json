@@ -9,7 +9,8 @@
   },
   "private": true,
   "scripts": {
-    "typecheck": "bun check"
+    "typecheck": "bun check",
+    "dev": "bun --watch examples/bun/index.ts"
   },
   "devDependencies": {
     "@types/bun": "latest",

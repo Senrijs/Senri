@@ -6,7 +6,7 @@ type Handler<P = Record<string, string>> = (
 ) => HandlerResult | Promise<HandlerResult>;
 
 type Next = () => Promise<Response>;
-type Middleware = (
+export type Middleware = (
     c: Context,
     next: Next,
 ) => HandlerResult | void | Promise<HandlerResult | void>;
@@ -30,6 +30,7 @@ export class Context {
     req: Request;
     #status = 200;
     #headers =new Headers();
+    error: unknown = undefined;
 
     constructor(req: Request) {
         this.req = req;
@@ -173,6 +174,14 @@ export function createApp() {
         async fetch(req: Request): Promise<Response> {
             const c = new Context(req);
 
+            const fail = (err: unknown): Response => {
+                c.error = err;
+                return new Response(
+                    `500 Internal Server Error: ${err instanceof Error ? err.message : String(err)}`,
+                    { status: 500 },
+                );
+            };
+
             const hadle = async (): Promise<Response> => {
                 const path = new URL(req.url).pathname;
 
@@ -180,8 +189,12 @@ export function createApp() {
                     if (route.method !== req.method) continue;
                     const params = matchPath(route.path, path);
                     if (params === null) continue;
-                    const result = await route.handler(params, c);
-                    return c.toResponse(result);
+                    try {
+                        const result = await route.handler(params, c);
+                        return c.toResponse(result);
+                    } catch (err) {
+                        return fail(err);
+                    }
                 }
 
                 const samePath = routes.filter((r) => matchPath(r.path, path) !== null);
@@ -216,16 +229,21 @@ export function createApp() {
                 if (!mw) return hadle();
 
                 let downstream: Response | undefined;
-                const result = await mw(c, async () => {
-                    downstream = await dispatch(i + 1);
-                    return downstream!;
-                });
+                let result: HandlerResult | void;
+                try {
+                    result = await mw(c, async () => {
+                        downstream = await dispatch(i + 1);
+                        return downstream;
+                    });
+                } catch (err) {
+                    return fail(err);
+                }
 
                 if (result !== undefined) return c.toResponse(result);
                 if (downstream) return downstream;
                 return new Response(
                     "500: ミドルウェアが何も返さず、next()もよんでいません",
-                    { status: 500 }
+                    { status: 500 },
                 );
             };
 
@@ -233,3 +251,5 @@ export function createApp() {
         },
     };
 }
+
+export { logger } from "./logger.ts";

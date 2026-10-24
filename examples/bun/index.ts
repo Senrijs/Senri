@@ -1,6 +1,8 @@
-import { createApp } from "../../src/index.ts";
+import { createApp, logger } from "../../src/index.ts";
+
 
 const app = createApp();
+app.use(logger({ format: "json" }));
 
 app.get("/hello", () => "こんにちは!");
 app.get("/user", () => ({ name: "yahari" }));
@@ -20,13 +22,6 @@ app.get("/created", (_, c) => {
 app.get("/accepted", (_, c) => c.json({ hi: 1 }, 202));
 app.get("/ua", (_, c) => c.req.headers.get("user-agent") ?? "unknown");
 
-// ログ(何も返さない → 下流のレスポンスを使う)
-app.use(async (c, next) => {
-    const start = Date.now();
-    const res = await next();
-    console.log(`${c.req.method} ${new URL(c.req.url).pathname} → ${res.status} (${Date.now() - start}ms)`);
-});
-
 // 認証(ダメなら返り値で弾く)
 app.use((c, next) => {
     const path = new URL(c.req.url).pathname;
@@ -38,5 +33,9 @@ app.use((c, next) => {
 });
 
 app.get("/admin", () => "ようこそ管理者さん");
+
+app.get("/boom", () => {
+    throw new Error("わざと壊した");
+});
 
 Bun.serve({ port: 3000, fetch: app.fetch });

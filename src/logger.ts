@@ -1,0 +1,92 @@
+import type { Middleware } from "./index.ts";
+
+const C = {
+    reset: "\x1b[0m",
+    dim: "\x1b[2m",
+    bold: "\x1b[1m",
+    red: "\x1b[31m",
+    green: "\x1b[32m",
+    yellow: "\x1b[33m",
+    blue: "\x1b[34m",
+    magenta: "\x1b[35m",
+    cyan: "\x1b[36m",
+};
+
+const METHOD_COLOR: Record<string, string> = {
+    GET: C.green,
+    POST: C.cyan,
+    PUT: C.yellow,
+    DELETE: C.red,
+    PATCH: C.magenta,
+};
+
+type LoggerOptions = {
+    format?: "pretty" | "json";
+    color?: boolean;
+    slow?: number;
+};
+
+export function logger(options: LoggerOptions = {}): Middleware {
+    const format = options.format ?? "pretty";
+    const color = options.color ?? true;
+    const slow = options.slow ?? 500;
+
+    const paint = (code: string, text: string) => 
+        color ? `${code}${text}${C.reset}` : text;
+
+    function statusColor(status: number): string {
+        if (status >= 500) return C.red;
+        if (status >= 400) return C.yellow;
+        if (status >= 300) return C.cyan;
+        return C.green;
+    }
+
+    function pinoLevel(status: number): number {
+        if (status >= 500) return 50;
+        if (status >= 400) return 40;
+        return 30;
+    }
+
+    return async (c, next) => {
+        const start = Date.now();
+        const res = await next();
+        const ms = Date.now() - start;
+        const method = c.req.method;
+        const path = new URL(c.req.url).pathname;
+
+        // pino 形式のエラー(エラーがなければ undefined)
+        const err = c.error instanceof Error
+            ? { type: c.error.name, message: c.error.message, stack: c.error.stack }
+            : c.error !== undefined
+                ? { message: String(c.error) }
+                : undefined;
+
+        if (format === "json") {
+            console.log(JSON.stringify({
+                level: pinoLevel(res.status),
+                time: Date.now(),
+                req: { method, url: path },
+                res: { statusCode: res.status },
+                responseTime: ms,
+                err,
+                msg: err ? "request errored" : "request completed",
+            }));
+            return;
+        }
+
+        const time = new Date().toTimeString().slice(0, 8);
+
+        console.log([
+            paint(C.dim, time),
+            paint(METHOD_COLOR[method] ?? C.bold, method.padEnd(7)),
+            path.padEnd(24),
+            paint(statusColor(res.status), String(res.status)),
+            paint(ms > slow ? C.red : C.dim, `${ms}ms`.padStart(6)),
+        ].join(" "));
+
+        // エラーがあったら、その下に赤で詳細を出す
+        if (err) {
+            console.log(paint(C.red, `  ${err.stack ?? err.message}`));
+        }
+    };
+}
