@@ -1,15 +1,30 @@
 type HandlerResult = Response | string | object;
 
-type Handler = (
-    params: Record<string, string>,
+type Handler<P = Record<string, string>> = (
+    params: P,
     c: Context,
 ) => HandlerResult | Promise<HandlerResult>;
+
+type Next = () => Promise<Response>;
+type Middleware = (
+    c: Context,
+    next: Next,
+) => HandlerResult | void | Promise<HandlerResult | void>;
 
 type Route = {
     path: string;
     method: string;
     handler: Handler;
 };
+
+type ExtractParams<Path extends string> =
+    Path extends `${string}:${infer Param}/${infer Rest}`
+        ? { [K in Param]: string } & ExtractParams<`${Rest}`>
+        : Path extends `${string}:${infer Param}`
+            ? { [K in Param]: string }
+            : {};
+
+type Simplify<T> = { [K in keyof T]: T[K] } & {};
 
 export class Context {
     req: Request;
@@ -120,25 +135,28 @@ function distance(a: string, b: string): number {
 
 export function createApp() {
     const routes: Route[] = [];
+    const middlewares: Middleware[] = [];
 
-    function add() {
-        return (method: string, path: string, handler: Handler) => {
+    function add(method: string, path: string, handler: Handler) {
             routes.push({ path, method, handler });
             routes.sort(compareRoutes);
-        };
     }
 
     return {
-        get(path: string, handler: Handler) {
-            add()("GET", path, handler);
+        use(mw: Middleware) {
+            middlewares.push(mw);
         },
 
-        post(path: string, handler: Handler) {
-            add()("POST", path, handler);
+        get<Path extends string>(path: Path, handler: Handler<Simplify<ExtractParams<Path>>>) {
+            add("GET", path, handler as Handler);
         },
 
-        delete(path: string, handler: Handler) {
-            add()("DELETE", path, handler);
+        post<Path extends string>(path: Path, handler: Handler<Simplify<ExtractParams<Path>>>) {
+            add("POST", path, handler as Handler);
+        },
+
+        delete<Path extends string>(path: Path, handler: Handler<Simplify<ExtractParams<Path>>>) {
+            add("DELETE", path, handler as Handler);
         },
 
         routes(table: Record<string, Handler>) {
@@ -148,50 +166,70 @@ export function createApp() {
                     throw new Error(`ルートの書き方が違います: "${key}"\n例: "GET /hello"`);
                 }
 
-                add()(method.toUpperCase(), path, handler);
+                add(method.toUpperCase(), path, handler);
             }
         },
 
         async fetch(req: Request): Promise<Response> {
-            const url = new URL(req.url);
-            const path = url.pathname;
+            const c = new Context(req);
 
-            for (const route of routes) {
-                if (route.method !== req.method) continue;
+            const hadle = async (): Promise<Response> => {
+                const path = new URL(req.url).pathname;
 
-                const params = matchPath(route.path, path);
-                if (params === null) continue;
-
-                const c = new Context(req);
-                const result = await route.handler(params, c);
-                return c.toResponse(result);
-            }
-
-            const samePath = routes.filter((r) => matchPath(r.path, path) !== null);
-            if (samePath.length > 0) {
-                const methods = samePath.map((r) => r.method).join(", ");
-                return new Response(
-                    `405 Method Not Allowed: ${req.method} ${path}\n${methods} ならあります`,
-                    { status: 405, headers: { allow: methods } },
-                );
-            }
-
-            let closest: Route | null = null;
-            let best = Infinity;
-            for (const r of routes) {
-                const d = distance(r.path, path);
-                if (d < best) {
-                    closest = r;
-                    best = d;
+                for (const route of routes) {
+                    if (route.method !== req.method) continue;
+                    const params = matchPath(route.path, path);
+                    if (params === null) continue;
+                    const result = await route.handler(params, c);
+                    return c.toResponse(result);
                 }
-            }
 
-            let message = `404 Not Found: ${req.method} ${path}`;
-            if (closest && best <= 3) {
-                message += `\nもしかして: ${closest.method} ${closest.path} ?`;
-            }
+                const samePath = routes.filter((r) => matchPath(r.path, path) !== null);
+                if (samePath.length > 0) {
+                    const methods = samePath.map((r) => r.method).join(", ");
+                    return new Response(
+                        `405 Method Not Allowed: ${req.method} ${path}\n${methods} ならあります`,
+                        { status: 405, headers: { allow: methods } },
+                    );
+                }
 
-            return new Response(message, { status: 404 });
+                let closest: Route | null = null;
+                let best = Infinity;
+                for (const r of routes) {
+                    const d = distance(r.path, path);
+                    if (d < best) {
+                        closest = r;
+                        best = d;
+                    }
+                }
+
+                let message = `404 Not Found: ${req.method} ${path}`;
+                if (closest && best <= 3) {
+                    message += `\nもしかして: ${closest.method} ${closest.path} ?`;
+                }
+
+                return new Response(message, { status: 404 });
+            };
+
+            const dispatch = async (i: number): Promise<Response> => {
+                const mw = middlewares[i];
+                if (!mw) return hadle();
+
+                let downstream: Response | undefined;
+                const result = await mw(c, async () => {
+                    downstream = await dispatch(i + 1);
+                    return downstream!;
+                });
+
+                if (result !== undefined) return c.toResponse(result);
+                if (downstream) return downstream;
+                return new Response(
+                    "500: ミドルウェアが何も返さず、next()もよんでいません",
+                    { status: 500 }
+                );
+            };
+
+            return dispatch(0);
         },
     };
 }
