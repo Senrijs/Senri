@@ -13,5 +13,11 @@ app.routes({
   "GET /ping": () => "pong",
   "POST /users": () => ({ ok: true }),
 });
+app.get("/created", (_, c) => {
+    c.status(201).header("x-senri", "hello");
+    return { ok: true };
+});
+app.get("/accepted", (_, c) => c.json({ hi: 1 }, 202));
+app.get("/ua", (_, c) => c.req.headers.get("user-agent") ?? "unknown");
 
 Bun.serve({ port: 3000, fetch: app.fetch });

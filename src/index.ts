@@ -2,7 +2,7 @@ type HandlerResult = Response | string | object;
 
 type Handler = (
     params: Record<string, string>,
-     req: Request
+    c: Context,
 ) => HandlerResult | Promise<HandlerResult>;
 
 type Route = {
@@ -11,16 +11,49 @@ type Route = {
     handler: Handler;
 };
 
-function toResponse(value: HandlerResult): Response {
-    if (value instanceof Response) {
-        return value;
+export class Context {
+    req: Request;
+    #status = 200;
+    #headers =new Headers();
+
+    constructor(req: Request) {
+        this.req = req;
     }
-    if (typeof value === "string") {
-        return new Response(value);
+
+    status(code: number) {
+        this.#status = code;
+        return this;
     }
-    return new Response(JSON.stringify(value), {
-        headers: { "content-type": "application/json" },
-    });
+
+    header(name: string, value: string) {
+        this.#headers.set(name, value);
+        return this;
+    }
+
+    json(data: unknown, status?:number): Response {
+        this.#headers.set("Content-Type", "application/json");
+        return new Response(JSON.stringify(data), {
+            status: status ?? this.#status,
+            headers: this.#headers,
+        });
+    }
+
+    text(body: string, status?: number): Response {
+        return new Response(body, {
+            status: status ?? this.#status,
+            headers: this.#headers,
+        });
+    }
+
+    toResponse(value: HandlerResult): Response {
+        if (value instanceof Response) {
+            return value;
+        } 
+        if (typeof value === "string") {
+            return this.text(value);
+        }
+        return this.json(value);
+    }
 }
 
 function matchPath(pattern: string, path: string): Record<string, string> | null {
@@ -129,8 +162,9 @@ export function createApp() {
                 const params = matchPath(route.path, path);
                 if (params === null) continue;
 
-                const result = await route.handler(params, req);
-                return toResponse(result);
+                const c = new Context(req);
+                const result = await route.handler(params, c);
+                return c.toResponse(result);
             }
 
             const samePath = routes.filter((r) => matchPath(r.path, path) !== null);
