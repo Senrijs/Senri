@@ -1,5 +1,3 @@
-import { createApp } from "../../src/index.ts";
+import { app } from "../shared/app.ts";
 
-const app = createApp();
-
-Deno.serve({port: 3000}, app.fetch)
+Deno.serve({ port: 3000 }, app.fetch);
