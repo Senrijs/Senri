@@ -88,10 +88,35 @@ function distance(a: string, b: string): number {
 export function createApp() {
     const routes: Route[] = [];
 
+    function add() {
+        return (method: string, path: string, handler: Handler) => {
+            routes.push({ path, method, handler });
+            routes.sort(compareRoutes);
+        };
+    }
+
     return {
         get(path: string, handler: Handler) {
-            routes.push({ path, method: "GET", handler });
-            routes.sort(compareRoutes);
+            add()("GET", path, handler);
+        },
+
+        post(path: string, handler: Handler) {
+            add()("POST", path, handler);
+        },
+
+        delete(path: string, handler: Handler) {
+            add()("DELETE", path, handler);
+        },
+
+        routes(table: Record<string, Handler>) {
+            for (const [key, handler] of Object.entries(table)) {
+                const [method, path] = key.split(" ");
+                if (!method || !path) {
+                    throw new Error(`ルートの書き方が違います: "${key}"\n例: "GET /hello"`);
+                }
+
+                add()(method.toUpperCase(), path, handler);
+            }
         },
 
         async fetch(req: Request): Promise<Response> {
