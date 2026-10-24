@@ -90,3 +90,37 @@ export function logger(options: LoggerOptions = {}): Middleware {
         }
     };
 }
+
+type RouteInfo = { method: string; path: string };
+
+const ACCENT = "\x1b[38;2;227;65;43m";
+
+export function showRoutes(
+    app: { routeList(): RouteInfo[] },
+    url: string,
+    options: { color?: boolean } = {},
+) {
+    const color = options.color ?? true;
+    const paint = (code: string, text: string) =>
+        color ? `${code}${text}${C.reset}` : text;
+
+    // パスのアルファベット順 → 同じパスならメソッド順
+    const list = [...app.routeList()].sort(
+        (a, b) => a.path.localeCompare(b.path) || a.method.localeCompare(b.method),
+    );
+
+    // ":id" みたいなパラメーター部分だけ色を付ける
+    const highlight = (path: string) =>
+        path
+            .split("/")
+            .map((seg) => (seg.startsWith(":") ? paint(C.cyan, seg) : seg))
+            .join("/");
+
+    console.log("");
+    console.log(`  ${paint(C.bold, "senr")}${paint(ACCENT, "/")}  ${paint(C.green, "ready")}  ${url}`);
+    console.log("");
+    for (const r of list) {
+        console.log(`    ${paint(METHOD_COLOR[r.method] ?? C.bold, r.method.padEnd(7))} ${highlight(r.path)}`);
+    }
+    console.log("");
+}

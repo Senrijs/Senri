@@ -160,7 +160,7 @@ export function createApp() {
             add("DELETE", path, handler as Handler);
         },
 
-        routes(table: Record<string, Handler>) {
+        routes(table: Record<string, Handler>){
             for (const [key, handler] of Object.entries(table)) {
                 const [method, path] = key.split(" ");
                 if (!method || !path) {
@@ -169,6 +169,10 @@ export function createApp() {
 
                 add(method.toUpperCase(), path, handler);
             }
+        },
+
+        routeList() {
+            return routes.map((r) => ({ method: r.method, path: r.path }));
         },
 
         async fetch(req: Request): Promise<Response> {
@@ -252,4 +256,4 @@ export function createApp() {
     };
 }
 
-export { logger } from "./logger.ts";
+export { logger, showRoutes } from "./logger.ts";

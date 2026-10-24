@@ -1,4 +1,4 @@
-import { createApp, logger } from "../../src/index.ts";
+import { createApp, logger, showRoutes } from "../../src/index.ts";
 
 
 const app = createApp();
@@ -39,3 +39,4 @@ app.get("/boom", () => {
 });
 
 Bun.serve({ port: 3000, fetch: app.fetch });
+showRoutes(app, "http://localhost:3000");
