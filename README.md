@@ -15,24 +15,45 @@ app.post("/users", async (_, c) => c.json(await c.req.json(), 201));
 
 ## 起動のしかた
 
+`senri/serve` の `serve()` を使うと、Bun / Deno / Node のどれでも同じ書き方で起動できます(ランタイムは自動で判別します)。
+
 ```ts
-// Bun
-Bun.serve({ port: 3000, fetch: app.fetch });
+import { serve } from "senri/serve";
 
-// Deno
-Deno.serve({ port: 3000 }, app.fetch);
-
-// Node
-import { serve } from "senri/node";
-serve(app, { port: 3000 });
+const server = await serve(app);   // 起動すると、URL と登録されているルートの一覧を表示する
+server.url;                        // 例: "http://localhost:3927"
+await server.stop();               // 止める
 ```
 
-`examples/` に3つのランタイムで同じアプリを動かす例があります。
+### ポートの決まり方
+
+次の順に、最初に見つかったものを使います。
+
+1. `serve(app, { port: 8080 })` で明示したポート(`0` なら空いているポートを自動で選ぶ)
+2. 環境変数 `PORT`(デプロイ先のサービスが決めることが多い)
+3. デフォルトの `3927`
+
+- 起動時の表示に、どこから決めたかが出ます(例: `ready  http://localhost:3927  (デフォルト。環境変数 PORT で変えられます)`)
+- `PORT` が数字でない、範囲外(0〜65535 以外)などのときは、黙って別のポートで待ち受けずにエラーにします
+- Deno では、環境変数を読む許可(`--allow-env=PORT` など)があるときだけ `PORT` を読みます。許可がなければ、許可を求めるプロンプトを出さずにデフォルトを使います
+
+ランタイムの API を直接使うこともできます。
+
+```ts
+Bun.serve({ port: 3927, fetch: app.fetch });   // Bun
+Deno.serve({ port: 3927 }, app.fetch);          // Deno
+
+import { serve } from "senri/node";             // Node
+serve(app, { port: 3927 });
+```
+
+`examples/` に3つのランタイムで同じアプリを動かす例があります(開いたら http://localhost:3927 )。
 
 ```bash
-bun run dev                                   # Bun(ファイルを保存すると再起動)
-deno run --allow-net examples/deno/index.ts   # Deno
-node examples/node/index.ts                   # Node
+bun run dev                                    # Bun(ファイルを保存すると再起動)
+cd examples/deno && deno task start            # Deno(--allow-env=PORT 付き)
+node examples/node/index.ts                    # Node
+PORT=8080 node examples/node/index.ts          # ポートを変える
 ```
 
 ## ルート
