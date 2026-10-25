@@ -271,6 +271,23 @@ describe("ミドルウェアが next() のあとで変えたものを引き継�
         expect((await pageData(res)).status).toBe(503);
     });
 
+    test("ボディを圧縮するミドルウェアがあっても、圧縮していない HTML に content-encoding を残さない", async () => {
+        const app = boomApp();
+        app.use(async (_c, next) => {
+            const res = await next();
+            const headers = new Headers(res.headers);
+            headers.set("content-encoding", "gzip");
+            headers.set("etag", '"abc"');
+            return new Response(res.body!.pipeThrough(new CompressionStream("gzip")), { status: res.status, headers });
+        });
+
+        const res = await app.fetch(req("/boom", { headers: html }));
+
+        expect(res.headers.get("content-encoding")).toBeNull();
+        expect(res.headers.get("etag")).toBeNull();
+        expect((await pageData(res)).error.message).toBe("わざと壊した");
+    });
+
     test("ミドルウェアが自分のレスポンスに差し替えたら、そちらを返す", async () => {
         const app = boomApp();
         app.use(async (_c, next) => {

@@ -64,7 +64,11 @@ export async function finishErrorPage(c: Context, res: Response): Promise<Respon
         const data = await buildErrorPageData(job.err, c, res);
         await res.body?.cancel();
         headers.set("content-type", "text/html; charset=utf-8");
-        headers.delete("content-length");
+        // ボディを丸ごと差し替えるので、元のボディについてのヘッダーは消す
+        // (圧縮ミドルウェアの content-encoding: gzip が残ると、ブラウザが展開に失敗して何も出ない)
+        for (const name of ["content-length", "content-encoding", "etag", "last-modified", "content-range"]) {
+            headers.delete(name);
+        }
         const body = c.req.method === "HEAD" ? null : renderPage(PAGE_HTML, data, errorFallback(data));
         return new Response(body, { status: res.status, statusText: res.statusText, headers });
     } catch {
