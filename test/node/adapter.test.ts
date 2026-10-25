@@ -10,6 +10,12 @@ const app = createApp();
 app.get("/hello", () => "hi");
 app.get("/url", (_, c) => c.req.url);
 app.post("/echo", async (_, c) => `body=${await c.req.text()}`);
+app.get("/cookies", () => {
+    const headers = new Headers();
+    headers.append("set-cookie", "a=1");
+    headers.append("set-cookie", "b=2");
+    return new Response("ok", { headers });
+});
 
 let server: Server;
 let port: number;
@@ -71,6 +77,12 @@ describe("Node アダプター", () => {
         const res = await fetch(`${base}/echo`, { method: "POST", body: "こんにちは" });
 
         assert.equal(await res.text(), "body=こんにちは");
+    });
+
+    test("Set-Cookie が複数あっても全部届く", async () => {
+        const res = await fetch(`${base}/cookies`);
+
+        assert.deepEqual(res.headers.getSetCookie(), ["a=1", "b=2"]);
     });
 
     test("アプリが reject しても 500 を返して落ちない", async () => {

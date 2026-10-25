@@ -40,7 +40,12 @@ function toRequest(req: IncomingMessage): Request {
 
 async function writeResponse(res: ServerResponse, response: Response) {
     res.statusCode = response.status;
-    response.headers.forEach((value, key) => res.setHeader(key, value));
+    response.headers.forEach((value, key) => {
+        // set-cookie は1つずつ来るので、setHeader で上書きしないよう下でまとめて入れる
+        if (key !== "set-cookie") res.setHeader(key, value);
+    });
+    const cookies = response.headers.getSetCookie();
+    if (cookies.length > 0) res.setHeader("set-cookie", cookies);
     res.end(Buffer.from(await response.arrayBuffer()));
 }
 
