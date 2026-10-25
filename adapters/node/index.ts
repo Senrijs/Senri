@@ -11,9 +11,20 @@ function toUrl(req: IncomingMessage): URL {
     const protocol = (req.socket as TLSSocket).encrypted ? "https" : "http";
     // HTTP/1.0 などで Host がないこともある
     const host = req.headers.host ?? "localhost";
-    // req.url が "/path" でも "http://host/path"(absolute-form)でも組み立てられる
+    const target = req.url ?? "/";
+    // absolute-form("GET http://host/path HTTP/1.1")ならそのまま使う
+    if (/^https?:\/\//i.test(target)) {
+        return new URL(target);
+    }
+    // "/" で始まらないもの("@evil.com/x" や "*")は、つなぐとホスト名などに化けるので受け付けない
+    // (Node の HTTP パーサーがたいてい先に 400 にするが、念のため)
+    if (!target.startsWith("/")) {
+        throw new TypeError(`不正なリクエストターゲットです: ${target}`);
+    }
+    // new URL(target, base) にすると "//admin" が「プロトコル相対 URL」として
+    // ホスト名 admin と解釈されてしまうので、文字列でつないでから URL にする
     // Host が "a b" のように不正だとここで TypeError になる
-    return new URL(req.url ?? "/", `${protocol}://${host}`);
+    return new URL(`${protocol}://${host}${target}`);
 }
 
 function toRequest(req: IncomingMessage, signal: AbortSignal): Request {

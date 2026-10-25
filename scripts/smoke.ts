@@ -23,6 +23,13 @@ const CHECKS: Check[] = [
     { name: "テキスト", path: "/hello", status: 200, body: "こんにちは!" },
     { name: "パスパラメーター", path: "/users/42", status: 200, body: "user 42" },
     { name: "POST", path: "/users", init: { method: "POST" }, status: 200 },
+    { name: "日本語パラメーター", path: "/users/山田", status: 200, body: "user 山田" },
+    { name: "HEAD", path: "/hello", init: { method: "HEAD" }, status: 200, body: "" },
+    { name: "OPTIONS", path: "/hello", init: { method: "OPTIONS" }, status: 204 },
+    { name: "認証", path: "/admin", status: 401 },
+    { name: "認証(//admin)", path: "//admin", status: 401 },
+    { name: "認証OK", path: "/admin", init: { headers: { authorization: "secret" } }, status: 200 },
+    { name: "400", path: "/users/%E0%A4%A", status: 400 },
     { name: "404", path: "/nope", status: 404 },
     { name: "500", path: "/boom", status: 500 },
 ];

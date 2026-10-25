@@ -93,6 +93,19 @@ describe("Node アダプター", () => {
         assert.match(res.split("\r\n\r\n")[1]!, /\bhi\b/);
     });
 
+    test("// で始まるパスが、ホスト名として解釈されない", async () => {
+        const res = await raw(`GET //url HTTP/1.1\r\nHost: localhost:${port}\r\nConnection: close\r\n\r\n`);
+
+        assert.match(res, /^HTTP\/1\.1 200/);
+        assert.match(res.split("\r\n\r\n")[1]!, new RegExp(`http://localhost:${port}//url`));
+    });
+
+    test("/ で始まらないリクエストターゲットは 400", async () => {
+        const res = await raw(`GET @evil.example/url HTTP/1.1\r\nHost: localhost:${port}\r\nConnection: close\r\n\r\n`);
+
+        assert.match(res, /^HTTP\/1\.1 400/);
+    });
+
     test("POST のボディがアプリに届く", async () => {
         const res = await fetch(`${base}/echo`, { method: "POST", body: "こんにちは" });
 
