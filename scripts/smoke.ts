@@ -24,6 +24,8 @@ type Check = {
     cookies?: string[];
     // 開発モードの HTML ページ。埋め込まれた JSON を確かめて、だめなら理由を返す
     page?: (data: any, runtime: string) => string | null;
+    // JSON のレスポンス。中身を確かめて、だめなら理由を返す
+    json?: (data: any) => string | null;
 };
 
 const browser = { accept: "text/html,application/xhtml+xml,*/*;q=0.8" };
@@ -68,6 +70,24 @@ const CHECKS: Check[] = [
             return null;
         },
     },
+    // ダッシュボード(開発モード・localhost から)。smoke は同じ PC から叩くので開ける
+    {
+        name: "ダッシュボード(HTML)",
+        path: "/_senri",
+        status: 200,
+        page: (d) => (d.kind === "dashboard" && d.routes?.length > 0 ? null : "ダッシュボードのデータが違う"),
+    },
+    {
+        name: "ダッシュボードの API(記録)",
+        path: "/_senri/api/requests",
+        status: 200,
+        json: (list) =>
+            !list.some((r: any) => r.path === "/hello")
+                ? "/hello が記録されていない"
+                : list.some((r: any) => r.path.startsWith("/_senri"))
+                  ? "/_senri 自体が記録されている"
+                  : null,
+    },
 ];
 
 function readPageData(body: string): unknown {
@@ -85,7 +105,43 @@ const RAW_CHECKS: RawCheck[] = [
         request: "GET /hello HTTP/1.1\r\nHost: x/admin#\r\nConnection: close\r\n\r\n",
         status: 400,
     },
+    // DNS リバインディング: 接続元は localhost でも、Host が外のドメインならダッシュボードは開けない(普通の 404)
+    {
+        name: "ダッシュボード(Host の偽装)",
+        request: "GET /_senri/api/requests HTTP/1.1\r\nHost: evil.example\r\nConnection: close\r\n\r\n",
+        status: 404,
+    },
 ];
+
+// ダッシュボードの SSE: つないだあとにリクエストすると、そのイベントが届くか
+async function checkEvents(base: string): Promise<string | null> {
+    const ac = new AbortController();
+    const timer = setTimeout(() => ac.abort(), 5000);
+    try {
+        const res = await fetch(`${base}/_senri/api/events`, { signal: ac.signal });
+        if (res.headers.get("content-type") !== "text/event-stream; charset=utf-8") return "text/event-stream ではない";
+        const reader = res.body!.getReader();
+        const decoder = new TextDecoder();
+        let text = "";
+        let requested = false;
+        while (!/event: request\ndata: .*"path":"\/ping"/.test(text)) {
+            const chunk = await reader.read();
+            if (chunk.done) return "途中で切れた";
+            text += decoder.decode(chunk.value, { stream: true });
+            // つながった(retry が届いた)ら、リクエストを1つ送る
+            if (!requested && text.includes("retry:")) {
+                requested = true;
+                await (await fetch(`${base}/ping`)).text();
+            }
+        }
+        return null;
+    } catch {
+        return "イベントが届かなかった";
+    } finally {
+        clearTimeout(timer);
+        ac.abort();
+    }
+}
 
 function sendRaw(port: number, request: string): Promise<number> {
     return new Promise((resolve, reject) => {
@@ -162,15 +218,25 @@ async function smoke(runtime: string): Promise<boolean> {
                         ? "内部ヘッダーが出ている"
                         : check.page(data, runtime);
             }
+            if (check.json) {
+                try {
+                    reason = check.json(JSON.parse(body));
+                } catch {
+                    reason = "JSON ではない";
+                }
+            }
             const pass =
                 res.status === check.status &&
                 reason === null &&
                 (check.body === undefined || body === check.body) &&
                 (check.cookies === undefined || JSON.stringify(cookies) === JSON.stringify(check.cookies));
             if (!pass) ok = false;
-            const shown = check.page ? (reason ?? "HTML ページ") : JSON.stringify(body.slice(0, 60));
+            const shown = check.page || check.json ? (reason ?? (check.page ? "HTML ページ" : "JSON")) : JSON.stringify(body.slice(0, 60));
             console.log(`  ${pass ? "ok  " : "FAIL"} ${check.name}: ${res.status} ${shown}`);
         }
+        const sse = await checkEvents(base);
+        if (sse) ok = false;
+        console.log(`  ${sse ? "FAIL" : "ok  "} ダッシュボードの SSE: ${sse ?? "イベントが届いた"}`);
         for (const check of RAW_CHECKS) {
             const status = await sendRaw(port, check.request);
             const pass = status === check.status;
