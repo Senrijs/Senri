@@ -65,10 +65,10 @@ export class Context {
     }
 
     text(body: string, status?: number): Response {
-        const contentType = this.#headers.get("content-type");
+        // 明示しないと、Bun は Headers に Content-Type を入れない(Node / Deno は入れる)のでランタイムで差が出る
         return new Response(body, {
             status: status ?? this.#status,
-            headers: contentType ? { "content-type": contentType } : undefined,
+            headers: { "content-type": this.#headers.get("content-type") ?? "text/plain; charset=utf-8" },
         });
     }
 

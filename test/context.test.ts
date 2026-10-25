@@ -115,6 +115,27 @@ describe("マージのルール", () => {
 });
 
 describe("c.json() と c.text()", () => {
+    test("文字列を返すと text/plain; charset=utf-8 になる(どのランタイムでも同じ)", async () => {
+        const app = createApp();
+        app.get("/t", () => "こんにちは");
+
+        const res = await app.fetch(req("/t"));
+
+        expect(res.headers.get("content-type")).toBe("text/plain; charset=utf-8");
+    });
+
+    test("c.header() で Content-Type を決めていれば、そちらが使われる", async () => {
+        const app = createApp();
+        app.get("/h", (_, c) => {
+            c.header("content-type", "text/html; charset=utf-8");
+            return "<p>hi</p>";
+        });
+
+        const res = await app.fetch(req("/h"));
+
+        expect(res.headers.get("content-type")).toBe("text/html; charset=utf-8");
+    });
+
     test("c.json() のあとに c.text() しても Content-Type が混ざらない", async () => {
         const app = createApp();
         app.use(async (c, next) => {
