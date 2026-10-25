@@ -1,4 +1,5 @@
 import { splitPath } from "./router.ts";
+import type { Timing } from "./compose.ts";
 
 // そのままレスポンスのボディにできるもの(JSON にはしない)
 // TypedArray は SharedArrayBuffer のもの以外(Response のボディにできないので)
@@ -52,6 +53,9 @@ export class Context {
     route: string | undefined = undefined;
     // パスパラメーター。ハンドラーでは第1引数でも受け取れる
     params: Record<string, string> = {};
+    // 開発モードのときだけ、ミドルウェアとハンドラーの通過時間が入る(外側から順)
+    // 自分より内側の層は、next() が終わったあとに読める
+    timings: Timing[] = [];
 
     constructor(req: Request) {
         this.req = req;

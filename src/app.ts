@@ -12,7 +12,7 @@ import {
     type Route,
     type Simplify,
 } from "./router.ts";
-import { compose } from "./compose.ts";
+import { compose, type Layer } from "./compose.ts";
 import {
     defaultNotFound,
     defaultOnError,
@@ -91,7 +91,7 @@ export function createApp(options: AppOptions = {}) {
         return method === "OPTIONS" ? { kind: "options", allow } : { kind: "methodNotAllowed", allow };
     }
 
-    function applicableMiddlewares(c: Context): Middleware[] {
+    function applicableMiddlewares(c: Context): Layer[] {
         let segments: readonly string[] | null;
         try {
             segments = c.segments;
@@ -101,7 +101,7 @@ export function createApp(options: AppOptions = {}) {
         }
         return middlewares
             .filter(({ prefix }) => prefix === null || (segments !== null && startsWithSegments(segments, prefix)))
-            .map(({ mw }) => mw);
+            .map(({ name, mw }) => ({ name, mw }));
     }
 
     return {
@@ -214,7 +214,8 @@ export function createApp(options: AppOptions = {}) {
                 }
             };
 
-            const res = await compose(applicableMiddlewares(c), c, handle, fail);
+            // 開発モードのときだけ計測する(本番では performance.now() の分も払わない)
+            const res = await compose(applicableMiddlewares(c), c, handle, fail, dev ? c.timings : undefined);
             return c.finalize(res);
         },
     };

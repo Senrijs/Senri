@@ -70,6 +70,52 @@ describe("開発モード createApp({ dev: true })", () => {
     });
 });
 
+describe("計測(c.timings)", () => {
+    const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+    function measuredApp(options: { dev?: boolean }) {
+        const app = createApp(options);
+        let timings: unknown[] = [];
+        // いちばん外側で、内側の計測結果を読む
+        app.use(async function probe(c, next) {
+            await next();
+            timings = [...c.timings];
+        });
+        app.use(async function slow(_c, next) {
+            await sleep(10);
+            await next();
+        });
+        app.get("/x", async () => {
+            await sleep(60);
+            return "x";
+        });
+        return { app, read: () => timings as { name: string; total: number; self: number }[] };
+    }
+
+    test("開発モードでは、ミドルウェアとハンドラーの self / total が記録される", async () => {
+        const { app, read } = measuredApp({ dev: true });
+
+        await app.fetch(req("/x"));
+        const [, slow, handler] = read();
+
+        expect(slow!.name).toBe("slow");
+        expect(handler!.name).toBe("handler");
+        // ハンドラーの時間は slow の self には入らない
+        expect(handler!.self).toBeGreaterThanOrEqual(50);
+        expect(slow!.self).toBeLessThan(40);
+        // total = 自分の時間 + 下流の total
+        expect(Math.abs(slow!.total - (slow!.self + handler!.total))).toBeLessThan(5);
+    });
+
+    test("本番では計測しない", async () => {
+        const { app, read } = measuredApp({});
+
+        await app.fetch(req("/x"));
+
+        expect(read()).toEqual([]);
+    });
+});
+
 describe("「もしかして」の計算が重くならない", () => {
     test("8KB のパス × 50 ルートでもすぐ終わる", () => {
         const routes = Array.from({ length: 50 }, (_, i) => ({ path: `/api/v1/resource${i}/:id/detail` }));
