@@ -107,7 +107,7 @@ describe("計測(c.timings)", () => {
             await sleep(60);
             return "x";
         });
-        return { app, read: () => timings as { name: string; total: number; self: number }[] };
+        return { app, read: () => timings as { name: string; total: number; self: number; start: number }[] };
     }
 
     test("開発モードでは、ミドルウェアとハンドラーの self / total が記録される", async () => {
@@ -163,6 +163,76 @@ describe("計測(c.timings)", () => {
         expect(timings[1]).toMatchObject({ name: "auth", failed: true });
         // ハンドラーまでは届いていない
         expect(timings[2]).toBeUndefined();
+    });
+
+    test("各層の開始時刻(リクエストの開始から)が入り、内側の層ほど後に始まる", async () => {
+        const { app, read } = measuredApp({ dev: true });
+
+        await app.fetch(req("/x"));
+        const [, slow, handler] = read();
+
+        expect(slow!.start).toBeGreaterThanOrEqual(0);
+        // slow は next() の前に 10ms 待つので、handler はその後に始まる
+        expect(handler!.start).toBeGreaterThanOrEqual(slow!.start + 5);
+    });
+
+    test("next() を呼ばずに値を返して終わった層に stopped が付く", async () => {
+        const app = createApp({ dev: true });
+        let timings: { name: string; stopped: boolean }[] = [];
+        app.use(async function outer(c, next) {
+            await next();
+            timings = [...c.timings];
+        });
+        app.use(function auth(c) {
+            c.status(401);
+            return "ログインしてね";
+        });
+        app.get("/x", () => "x");
+
+        await app.fetch(req("/x"));
+
+        expect(timings[1]).toMatchObject({ name: "auth", stopped: true });
+        expect(timings[2]).toBeUndefined();
+    });
+
+    test("next() のあとに値を返した層は stopped ではない", async () => {
+        const app = createApp({ dev: true });
+        let timings: { name: string; stopped: boolean }[] = [];
+        app.use(async function outer(c, next) {
+            await next();
+            timings = [...c.timings];
+        });
+        app.use(async function wrap(_c, next) {
+            await next();
+            return "上書き";
+        });
+        app.get("/x", () => "x");
+
+        await app.fetch(req("/x"));
+
+        expect(timings[1]).toMatchObject({ name: "wrap", stopped: false });
+    });
+
+    test("いちばん内側の層の名前は、何が動いたかで変わる(handler / notFound / 405 / options / 400)", async () => {
+        const app = createApp({ dev: true });
+        let last = "";
+        app.use(async function outer(c, next) {
+            await next();
+            last = c.timings.at(-1)!.name;
+        });
+        app.get("/x", () => "x");
+
+        const cases: [string, RequestInit, string][] = [
+            ["/x", {}, "handler"],
+            ["/nope", {}, "notFound"],
+            ["/x", { method: "DELETE" }, "405"],
+            ["/x", { method: "OPTIONS" }, "options"],
+            ["/%E0%A4%A", {}, "400"],
+        ];
+        for (const [path, init, name] of cases) {
+            await app.fetch(req(path, init));
+            expect(last).toBe(name);
+        }
     });
 
     test("本番では計測しない", async () => {

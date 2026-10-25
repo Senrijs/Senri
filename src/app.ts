@@ -30,6 +30,15 @@ type Resolved =
     | { kind: "notFound" }
     | { kind: "badRequest"; error: unknown };
 
+// 計測で、いちばん内側の層に付ける名前(ダッシュボードの玉ねぎタイムラインに出る)
+const INNER_NAME: Record<Resolved["kind"], string> = {
+    route: "handler",
+    notFound: "notFound",
+    methodNotAllowed: "405",
+    options: "options",
+    badRequest: "400",
+};
+
 export type AppOptions = {
     // 開発モード。エラーの詳細や「もしかして」を返す。本番では絶対にオンにしない
     // 環境変数からは読まない(Deno では --allow-env がないと読めない、などランタイム差があるため)
@@ -182,6 +191,8 @@ export function createApp<V extends object = Record<string, unknown>>(options: A
         // info: ランタイムが渡す2つ目の引数(Bun の server、Deno の info など)。接続元のアドレスを取るのに使う
         // (形で見分けるので、Cloudflare Workers の env のような別のものが来ても壊れない。src/dev/dashboard/access.ts)
         async fetch(req: Request, info?: unknown): Promise<Response> {
+            // 開発モードのときだけ、計測の基準になるリクエストの開始時刻を取る
+            const origin = dev ? performance.now() : 0;
             const c = new Context<V>(req);
             const fail = (err: unknown) => handleError(err, c, onError);
 
@@ -220,7 +231,8 @@ export function createApp<V extends object = Record<string, unknown>>(options: A
 
             // ハンドラー・notFound・toResponse のどこで投げても、compose が onError に集める
             // 開発モードのときだけ計測する(本番では performance.now() の分も払わない)
-            const res = await compose(applicableMiddlewares(c), c, run, fail, dev ? c.timings : undefined);
+            const measure = dev ? { timings: c.timings, origin, innerName: INNER_NAME[resolved.kind] } : undefined;
+            const res = await compose(applicableMiddlewares(c), c, run, fail, measure);
             // ミドルウェアを全部通ったあとなので、ここなら「通った順番」が揃っている
             const page = devPages ? await (await devPages).finishErrorPage(c, res) : res;
             return c.finalize(page);
