@@ -16,16 +16,24 @@ export function distance(a: string, b: string): number {
     return dp[a.length]![b.length]!;
 }
 
+const MAX_DISTANCE = 3;
+// これより長いパスはタイプミスではないと見なして計算しない(長いほど計算が重くなるので)
+const MAX_PATH_LENGTH = 200;
+
 // いちばん近いルートを探す(距離が3より大きければ null)
 export function suggest<R extends { path: string }>(routes: R[], path: string): R | null {
+    if (path.length > MAX_PATH_LENGTH) return null;
+
     let closest: R | null = null;
     let best = Infinity;
     for (const r of routes) {
+        // 長さの差がそのまま距離の下限になるので、差が大きければ計算するまでもない
+        if (Math.abs(r.path.length - path.length) > MAX_DISTANCE) continue;
         const d = distance(r.path, path);
         if (d < best) {
             closest = r;
             best = d;
         }
     }
-    return closest && best <= 3 ? closest : null;
+    return closest && best <= MAX_DISTANCE ? closest : null;
 }

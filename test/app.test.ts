@@ -47,8 +47,8 @@ describe("ルーティング", () => {
         expect(await res.text()).toBe("それは自分です");
     });
 
-    test("見つからないと404で「もしかして」が出る", async () => {
-        const app = createApp();
+    test("見つからないと404で「もしかして」が出る(開発モード)", async () => {
+        const app = createApp({ dev: true });
         app.get("/hello", () => "hi");
 
         const res = await app.fetch(req("/helo"));

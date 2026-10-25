@@ -1,0 +1,89 @@
+import { describe, expect, test } from "bun:test";
+import { createApp } from "../src/index.ts";
+import { suggest } from "../src/dev/suggest.ts";
+
+const req = (path: string, init?: RequestInit) =>
+    new Request(`http://localhost${path}`, init);
+
+function appWithRoutes(options?: { dev?: boolean }) {
+    const app = createApp(options);
+    app.get("/hello", () => "hi");
+    app.get("/boom", () => {
+        throw new Error("db password=hunter2");
+    });
+    return app;
+}
+
+describe("本番(既定)では固定の文言だけ返す", () => {
+    test("500 にエラーメッセージを出さない", async () => {
+        const res = await appWithRoutes().fetch(req("/boom"));
+
+        expect(res.status).toBe(500);
+        expect(await res.text()).toBe("500 Internal Server Error");
+    });
+
+    test("404 にパスも「もしかして」も出さない", async () => {
+        const res = await appWithRoutes().fetch(req("/helo"));
+
+        expect(res.status).toBe(404);
+        expect(await res.text()).toBe("404 Not Found");
+    });
+
+    test("405 は固定文言 + Allow ヘッダー", async () => {
+        const res = await appWithRoutes().fetch(req("/hello", { method: "POST" }));
+
+        expect(res.status).toBe(405);
+        expect(res.headers.get("allow")).toBe("GET");
+        expect(await res.text()).toBe("405 Method Not Allowed");
+    });
+
+    test("環境変数(NODE_ENV)では開発モードにならない", async () => {
+        const before = process.env.NODE_ENV;
+        process.env.NODE_ENV = "development";
+        try {
+            const res = await appWithRoutes().fetch(req("/boom"));
+            expect(await res.text()).toBe("500 Internal Server Error");
+        } finally {
+            process.env.NODE_ENV = before;
+        }
+    });
+});
+
+describe("開発モード createApp({ dev: true })", () => {
+    test("500 にエラーメッセージが出る", async () => {
+        const res = await appWithRoutes({ dev: true }).fetch(req("/boom"));
+
+        expect(res.status).toBe(500);
+        expect(await res.text()).toContain("db password=hunter2");
+    });
+
+    test("404 に「もしかして」が出る", async () => {
+        const res = await appWithRoutes({ dev: true }).fetch(req("/helo"));
+
+        expect(await res.text()).toContain("もしかして: GET /hello");
+    });
+
+    test("405 にどのメソッドならあるかが出る", async () => {
+        const res = await appWithRoutes({ dev: true }).fetch(req("/hello", { method: "POST" }));
+
+        expect(await res.text()).toContain("GET ならあります");
+    });
+});
+
+describe("「もしかして」の計算が重くならない", () => {
+    test("8KB のパス × 50 ルートでもすぐ終わる", () => {
+        const routes = Array.from({ length: 50 }, (_, i) => ({ path: `/api/v1/resource${i}/:id/detail` }));
+        const long = "/" + "a".repeat(8000);
+
+        const start = performance.now();
+        const result = suggest(routes, long);
+        const ms = performance.now() - start;
+
+        expect(result).toBeNull();
+        expect(ms).toBeLessThan(5);
+    });
+
+    test("近いものはちゃんと見つかる", () => {
+        expect(suggest([{ path: "/hello" }, { path: "/users" }], "/helo")).toEqual({ path: "/hello" });
+    });
+});

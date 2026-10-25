@@ -10,11 +10,18 @@ import {
     type NotFoundHandler,
 } from "./errors.ts";
 
-export function createApp() {
+export type AppOptions = {
+    // 開発モード。エラーの詳細や「もしかして」を返す。本番では絶対にオンにしない
+    // 環境変数からは読まない(Deno では --allow-env がないと読めない、などランタイム差があるため)
+    dev?: boolean;
+};
+
+export function createApp(options: AppOptions = {}) {
+    const dev = options.dev ?? false;
     const routes: Route[] = [];
     const middlewares: Middleware[] = [];
-    let onError: ErrorHandler = defaultOnError;
-    let notFound: NotFoundHandler = defaultNotFound(routes);
+    let onError: ErrorHandler = defaultOnError(dev);
+    let notFound: NotFoundHandler = defaultNotFound(routes, dev);
 
     function add(method: string, path: string, handler: Handler) {
         routes.push({ path, method, handler });
@@ -77,7 +84,7 @@ export function createApp() {
 
                 const samePath = routes.filter((r) => matchPath(r.path, path) !== null);
                 if (samePath.length > 0) {
-                    throw methodNotAllowed(c, path, samePath.map((r) => r.method).join(", "));
+                    throw methodNotAllowed(c, path, samePath.map((r) => r.method).join(", "), dev);
                 }
 
                 c.status(404);

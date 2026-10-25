@@ -40,23 +40,33 @@ export async function handleError(err: unknown, c: Context, onError: ErrorHandle
     }
 }
 
-export const defaultOnError: ErrorHandler = (err, c) => {
-    if (err instanceof HttpError) {
-        return c.text(err.message);
-    }
-    return c.text(`500 Internal Server Error: ${err instanceof Error ? err.message : String(err)}`);
-};
+// 本番では、エラーの中身(DB のパスワードなど)や、ルートの一覧がもれないよう固定の文言だけ返す
+// dev: true のときだけ、開発者向けの詳しい情報を足す
 
-export function methodNotAllowed(c: Context, path: string, methods: string): HttpError {
-    return new HttpError(
-        405,
-        `405 Method Not Allowed: ${c.req.method} ${path}\n${methods} ならあります`,
-        { headers: { allow: methods } },
-    );
+export function defaultOnError(dev: boolean): ErrorHandler {
+    return (err, c) => {
+        if (err instanceof HttpError) {
+            return c.text(err.message);
+        }
+        if (!dev) {
+            return c.text("500 Internal Server Error");
+        }
+        return c.text(`500 Internal Server Error: ${err instanceof Error ? err.message : String(err)}`);
+    };
 }
 
-export function defaultNotFound(routes: Route[]): NotFoundHandler {
+export function methodNotAllowed(c: Context, path: string, methods: string, dev: boolean): HttpError {
+    const message = dev
+        ? `405 Method Not Allowed: ${c.req.method} ${path}\n${methods} ならあります`
+        : "405 Method Not Allowed";
+    return new HttpError(405, message, { headers: { allow: methods } });
+}
+
+export function defaultNotFound(routes: Route[], dev: boolean): NotFoundHandler {
     return (c) => {
+        if (!dev) {
+            return c.text("404 Not Found");
+        }
         const path = new URL(c.req.url).pathname;
         let message = `404 Not Found: ${c.req.method} ${path}`;
         const closest = suggest(routes, path);

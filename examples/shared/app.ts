@@ -1,6 +1,7 @@
 import { createApp, logger } from "../../src/index.ts";
 
-export const app = createApp();
+// examples は手元で動かすものなので開発モード
+export const app = createApp({ dev: true });
 
 app.use(logger({ format: "json" }));
 
