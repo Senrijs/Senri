@@ -1,11 +1,20 @@
 import { Context, type Handler, type Middleware } from "./context.ts";
 import { compareRoutes, matchPath, type ExtractParams, type Route, type Simplify } from "./router.ts";
 import { compose } from "./compose.ts";
-import { internalError, methodNotAllowed, notFound } from "./errors.ts";
+import {
+    defaultNotFound,
+    defaultOnError,
+    handleError,
+    methodNotAllowed,
+    type ErrorHandler,
+    type NotFoundHandler,
+} from "./errors.ts";
 
 export function createApp() {
     const routes: Route[] = [];
     const middlewares: Middleware[] = [];
+    let onError: ErrorHandler = defaultOnError;
+    let notFound: NotFoundHandler = defaultNotFound(routes);
 
     function add(method: string, path: string, handler: Handler) {
         routes.push({ path, method, handler });
@@ -15,6 +24,14 @@ export function createApp() {
     return {
         use(mw: Middleware) {
             middlewares.push(mw);
+        },
+
+        onError(handler: ErrorHandler) {
+            onError = handler;
+        },
+
+        notFound(handler: NotFoundHandler) {
+            notFound = handler;
         },
 
         get<Path extends string>(path: Path, handler: Handler<Simplify<ExtractParams<Path>>>) {
@@ -46,6 +63,7 @@ export function createApp() {
 
         async fetch(req: Request): Promise<Response> {
             const c = new Context(req);
+            const fail = (err: unknown) => handleError(err, c, onError);
 
             const handle = async (): Promise<Response> => {
                 const path = new URL(req.url).pathname;
@@ -58,19 +76,20 @@ export function createApp() {
                         const result = await route.handler(params, c);
                         return c.toResponse(result);
                     } catch (err) {
-                        return internalError(c, err);
+                        return fail(err);
                     }
                 }
 
                 const samePath = routes.filter((r) => matchPath(r.path, path) !== null);
                 if (samePath.length > 0) {
-                    return methodNotAllowed(c, path, samePath.map((r) => r.method).join(", "));
+                    return fail(methodNotAllowed(c, path, samePath.map((r) => r.method).join(", ")));
                 }
 
-                return notFound(c, path, routes);
+                c.status(404);
+                return c.toResponse(await notFound(c));
             };
 
-            return compose(middlewares, c, handle);
+            return compose(middlewares, c, handle, fail);
         },
     };
 }
