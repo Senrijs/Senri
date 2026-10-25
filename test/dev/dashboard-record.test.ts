@@ -72,6 +72,19 @@ describe("リクエストの記録(開発モード)", () => {
         expect(admin.layers.map((l) => l.depth)).toEqual([0, 1, 2]);
     });
 
+    test("タイムラインの時刻: いちばん外側の層が 0 から始まり、どの層も全体の時間の中に収まる", async () => {
+        const a = app();
+
+        await a.fetch(req("/users/1"));
+        const r = await lastRecord(a);
+
+        expect(r.layers[0]!.start).toBe(0);
+        for (const l of r.layers) {
+            expect(l.start).toBeGreaterThanOrEqual(0);
+            expect(l.start + l.total).toBeLessThanOrEqual(r.durationMs + 0.001);
+        }
+    });
+
     test("例外が起きた層と、エラーページと同じ中身(Accept が */* でも記録する)", async () => {
         const a = app();
 

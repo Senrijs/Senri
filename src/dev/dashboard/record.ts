@@ -66,12 +66,16 @@ export async function buildRecord(input: {
 }): Promise<DashboardRecord> {
     const { id, time, c, res, layerNames } = input;
 
+    // タイムラインの 0 は、いちばん外側の層に入った時刻にする
+    // (c.timings の start は app.fetch の開始が基準で、ルートのマッチなど、層に入る前の準備の分だけずれている。
+    //  全体の時間 durationMs はいちばん外側の層の total なので、基準をそろえないと棒がはみ出す)
+    const base = c.timings[0]?.start ?? 0;
     const layers: RecordLayer[] = layerNames.map((name, depth) => {
         const t = c.timings[depth];
         // 計測がない = そこまで届かなかった
         if (!t) return { name, depth, start: 0, total: 0, self: 0, state: "skipped" };
         const state: LayerState = t.failed ? "failed" : t.stopped ? "stopped" : "ok";
-        return { name, depth, start: t.start, total: t.total, self: t.self, state };
+        return { name, depth, start: t.start - base, total: t.total, self: t.self, state };
     });
 
     // 5xx で、例外が残っていれば(意図した 4xx の HttpError は c.error に入らない)、エラーページと同じ中身を取っておく
