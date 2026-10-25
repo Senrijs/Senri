@@ -15,17 +15,13 @@ import type { Context } from "../context.ts";
 import type { ErrorHandler } from "../errors.ts";
 import { buildErrorPageData } from "./error-page.ts";
 import { PAGE_HTML } from "./page.generated.ts";
-import { renderPage } from "./render.ts";
+import { renderPage, wantsHtml } from "./render.ts";
 
 const MARK = "x-senri-dev-page";
 
 // Context ごとの「エラーページにする予定」(リクエストが終われば一緒に消える)
 const pending = new WeakMap<Context, { token: string; err: unknown }>();
 
-// ブラウザで開いたとき(Accept に text/html がある)だけ HTML にする。curl や fetch の */* は対象外
-export function wantsHtml(req: Request): boolean {
-    return /\btext\/html\b/.test(req.headers.get("accept") ?? "");
-}
 
 // 既定の onError を包む。開発モードで、ブラウザから開いた 5xx のときだけ「あとでエラーページにする」
 // (利用者が app.onError で自分のものに替えたら、これは使われない)

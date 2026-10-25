@@ -1,6 +1,8 @@
 import type { Context, HandlerResult } from "./context.ts";
 import type { Route } from "./router.ts";
 import { suggest } from "./dev/suggest.ts";
+import { notFoundPage } from "./dev/not-found-page.ts";
+import { wantsHtml } from "./dev/render.ts";
 
 // status 付きで投げられるエラー。message はそのままクライアントに見せる前提のもの
 export class HttpError extends Error {
@@ -66,6 +68,10 @@ export function defaultNotFound(routes: Route[], dev: boolean): NotFoundHandler 
     return (c) => {
         if (!dev) {
             return c.text("404 Not Found");
+        }
+        // ブラウザで開いたときは、ルートの一覧付きの404ページ(HTML)にする
+        if (wantsHtml(c.req)) {
+            return notFoundPage(c, routes);
         }
         // ルートと同じく、デコード・正規化したパスで比べる(notFound に来るのはデコードできたリクエストだけ)
         const path = c.path;

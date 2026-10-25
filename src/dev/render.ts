@@ -22,6 +22,11 @@ export function embedJson(data: unknown): string {
     return JSON.stringify(data).replace(UNSAFE_PATTERN, escapeChar);
 }
 
+// ブラウザで開いたとき(Accept に text/html がある)だけ HTML にする。curl や fetch の */* は対象外
+export function wantsHtml(req: Request): boolean {
+    return /\btext\/html\b/.test(req.headers.get("accept") ?? "");
+}
+
 export function renderPage(template: string, data: unknown): string {
     if (!template.includes(DATA_PLACEHOLDER)) {
         throw new Error(`ページのテンプレートに ${DATA_PLACEHOLDER} がありません`);
