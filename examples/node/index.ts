@@ -1,4 +1,4 @@
 import { app } from "../shared/app.ts";
-import { serve } from "../../adapters/node/index.ts";
+import { serve } from "../../adapters/serve/index.ts";
 
-serve(app, { port: 3000 });
+serve(app);

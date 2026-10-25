@@ -1,5 +1,4 @@
-import { showRoutes } from "../../src/index.ts";
 import { app } from "../shared/app.ts";
+import { serve } from "../../adapters/serve/index.ts";
 
-Bun.serve({ port: 3000, fetch: app.fetch });
-showRoutes(app, "http://localhost:3000");
+serve(app);

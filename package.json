@@ -10,6 +10,10 @@
     "./node": {
       "types": "./dist/adapters/node/index.d.ts",
       "import": "./dist/adapters/node/index.js"
+    },
+    "./serve": {
+    "types": "./dist/adapters/serve/index.d.ts",
+    "import": "./dist/adapters/serve/index.js"
     }
   },
   "files": [
@@ -17,7 +21,7 @@
   ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
-    "typecheck": "bun run build && bun check && bun check -p test && bun check -p test/node && bun check -p adapters/node && bun check -p examples/bun && bun check -p examples/node && bun check -p scripts && deno check examples/deno/index.ts",
+    "typecheck": "bun run build && bun check && bun check -p test && bun check -p test/node && bun check -p adapters/node && bun check -p examples/bun && bun check -p examples/node && bun check -p scripts && deno check examples/deno/index.ts && bun check -p adapters/serve",
     "dev": "bun --watch examples/bun/index.ts",
     "test": "bun test",
     "test:node": "bun run build && node --test --test-timeout=5000 \"test/node/**/*.test.ts\"",

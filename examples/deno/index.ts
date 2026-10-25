@@ -1,3 +1,4 @@
 import { app } from "../shared/app.ts";
+import { serve } from "../../adapters/serve/index.ts";
 
-Deno.serve({ port: 3000 }, app.fetch);
+serve(app);
