@@ -60,7 +60,7 @@ export function sample(page: string | null): PageData {
             label: "ここで throw",
         },
         hint: {
-            text: "ハンドラーで投げたエラーが、どこでもキャッチされませんでした。意図したエラーなら `HttpError` でステータスコードを指定できます。",
+            text: "ハンドラーやミドルウェアで投げたエラーが、どこでもキャッチされませんでした。意図したエラーなら `HttpError` でステータスコードを指定できます。",
             code: 'throw new HttpError(400, "id が数字ではありません")',
         },
         frames: [

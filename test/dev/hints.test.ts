@@ -13,6 +13,28 @@ describe("hintFor", () => {
         expect(hint!.code).toBe('throw new HttpError(400, "id が数字ではありません")');
     });
 
+    test("案内の文は、ハンドラーにもミドルウェアにも当てはまる言い方にする", () => {
+        expect(hintFor(new Error("x"))!.text).toContain("ハンドラーやミドルウェア");
+    });
+
+    test("ライブラリ(node_modules)が投げた普通の Error には、HttpError の案内を出さない", () => {
+        const frames = [
+            { fn: "query", file: "/app/node_modules/db/index.js", line: 1, col: 1, kind: "node_modules" as const },
+            { fn: "handler", file: "/app/src/index.ts", line: 3, col: 9, kind: "user" as const },
+        ];
+
+        expect(hintFor(new Error("connection refused"), frames)).toBeNull();
+    });
+
+    test("ランタイム内部のフレームは飛ばして、その次が利用者のコードなら案内する", () => {
+        const frames = [
+            { fn: "x", file: "node:internal/x", line: 1, col: 1, kind: "runtime" as const },
+            { fn: "handler", file: "/app/src/index.ts", line: 3, col: 9, kind: "user" as const },
+        ];
+
+        expect(hintFor(new Error("x"), frames)!.text).toContain("HttpError");
+    });
+
     test("HttpError や、Error を継承した独自のエラーには HttpError の案内を出さない", () => {
         class MyError extends Error {}
 

@@ -1,5 +1,7 @@
 // よくあるエラーに、直し方のヒントを付ける(ルールベース。当てはまらなければ何も出さない)
 // エラーメッセージの書き方はランタイムで違う(Bun と、V8 の Node / Deno)ので、両方を見る
+import type { StackFrame } from "./stack.ts";
+
 export type Hint = {
     // `...` で囲んだところはコードとして表示する
     text: string;
@@ -7,7 +9,14 @@ export type Hint = {
     code?: string;
 };
 
-type Rule = (err: Error) => Hint | null;
+type Rule = (err: Error, frames: StackFrame[] | undefined) => Hint | null;
+
+// 利用者のコードが投げたエラーか(ランタイム内部のフレームは飛ばして、いちばん上を見る)
+// スタックが分からなければ、利用者のものとして扱う
+function thrownByUser(frames: StackFrame[] | undefined): boolean {
+    const top = frames?.find((f) => f.kind !== "runtime");
+    return top === undefined || top.kind === "user";
+}
 
 // プロパティ名を取り出す
 // V8:  Cannot read properties of undefined (reading 'name')
@@ -75,20 +84,21 @@ const rules: Rule[] = [
             : null,
 
     // 普通の Error を投げた(意図したエラーなら HttpError でステータスを決められる)
-    // HttpError や、継承した独自のエラーは、利用者が意図して作ったものなので案内しない
-    (err) =>
-        Object.getPrototypeOf(err) === Error.prototype
+    // - HttpError や、継承した独自のエラーは、利用者が意図して作ったものなので案内しない
+    // - ライブラリ(node_modules)が投げたものも案内しない(DB のエラーを 400 にするのは、たいてい間違い)
+    (err, frames) =>
+        Object.getPrototypeOf(err) === Error.prototype && thrownByUser(frames)
             ? {
-                  text: "ハンドラーで投げたエラーが、どこでもキャッチされませんでした。意図したエラーなら `HttpError` でステータスコードを指定できます。",
+                  text: "ハンドラーやミドルウェアで投げたエラーが、どこでもキャッチされませんでした。意図したエラーなら `HttpError` でステータスコードを指定できます。",
                   code: `throw new HttpError(400, ${JSON.stringify(err.message)})`,
               }
             : null,
 ];
 
-export function hintFor(err: unknown): Hint | null {
+export function hintFor(err: unknown, frames?: StackFrame[]): Hint | null {
     if (!(err instanceof Error)) return null;
     for (const rule of rules) {
-        const hint = rule(err);
+        const hint = rule(err, frames);
         if (hint) return hint;
     }
     return null;

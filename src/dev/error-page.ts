@@ -59,7 +59,7 @@ export async function buildErrorPageData(err: unknown, c: Context, res: Response
         origin,
         location: first ? toPageFrame(first, root) : null,
         code: first ? await readCodeFrame(first, { root }) : null,
-        hint: hintFor(err),
+        hint: hintFor(err, stack),
         frames,
         request: {
             method: c.req.method,
