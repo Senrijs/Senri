@@ -3,13 +3,16 @@
 import { spawn } from "node:child_process";
 import net from "node:net";
 
-const PORT = 3000;
-const BASE = `http://localhost:${PORT}`;
+// 子プロセスには環境変数 PORT=3928 を渡す。serve() は「明示 → PORT → 3927」の順にポートを決めるので、
+// - Bun / Node は PORT を読んで 3928 で待ち受ける
+// - Deno は --allow-env なしで動かすので PORT を読めず、デフォルトの 3927 で待ち受ける(聞き返しもしない)
+const ENV_PORT = 3928;
+const DEFAULT_PORT = 3927;
 
-const COMMANDS: Record<string, string[]> = {
-    bun: ["bun", "run", "examples/bun/index.ts"],
-    deno: ["deno", "run", "--allow-net", "examples/deno/index.ts"],
-    node: ["node", "examples/node/index.ts"],
+const RUNTIMES: Record<string, { command: string[]; port: number; note: string }> = {
+    bun: { command: ["bun", "run", "examples/bun/index.ts"], port: ENV_PORT, note: "環境変数 PORT" },
+    deno: { command: ["deno", "run", "--allow-net", "examples/deno/index.ts"], port: DEFAULT_PORT, note: "デフォルト" },
+    node: { command: ["node", "examples/node/index.ts"], port: ENV_PORT, note: "環境変数 PORT" },
 };
 
 type Check = {
@@ -84,9 +87,9 @@ const RAW_CHECKS: RawCheck[] = [
     },
 ];
 
-function sendRaw(request: string): Promise<number> {
+function sendRaw(port: number, request: string): Promise<number> {
     return new Promise((resolve, reject) => {
-        const sock = net.connect(PORT, "localhost", () => sock.write(request));
+        const sock = net.connect(port, "localhost", () => sock.write(request));
         let data = "";
         sock.on("data", (d) => (data += d));
         sock.on("end", () => resolve(Number(data.split(" ")[1])));
@@ -94,12 +97,12 @@ function sendRaw(request: string): Promise<number> {
     });
 }
 
-async function waitForServer(exited: () => boolean): Promise<void> {
+async function waitForServer(base: string, exited: () => boolean): Promise<void> {
     for (let i = 0; i < 50; i++) {
         // 起動しないまま終わったなら、待っても無駄なのですぐに失敗にする
         if (exited()) throw new Error("サーバーが起動前に終了しました");
         try {
-            await fetch(`${BASE}/hello`);
+            await fetch(`${base}/hello`);
             return;
         } catch {
             await new Promise((r) => setTimeout(r, 200));
@@ -109,9 +112,16 @@ async function waitForServer(exited: () => boolean): Promise<void> {
 }
 
 async function smoke(runtime: string): Promise<boolean> {
-    const [cmd, ...args] = COMMANDS[runtime]!;
-    const child = spawn(cmd!, args, { stdio: ["ignore", "ignore", "pipe"] });
+    const { command, port, note } = RUNTIMES[runtime]!;
+    const [cmd, ...args] = command;
+    const base = `http://localhost:${port}`;
+    const child = spawn(cmd!, args, {
+        stdio: ["ignore", "pipe", "pipe"],
+        env: { ...process.env, PORT: String(ENV_PORT) },
+    });
+    let stdout = "";
     let stderr = "";
+    child.stdout.on("data", (d) => (stdout += d));
     child.stderr.on("data", (d) => (stderr += d));
 
     let ok = true;
@@ -132,9 +142,13 @@ async function smoke(runtime: string): Promise<boolean> {
         });
     });
     try {
-        await waitForServer(() => exited);
+        await waitForServer(base, () => exited);
+        // バナーに、待ち受けている URL と、ポートをどこから決めたかが出ているか
+        const banner = stdout.includes(`${base}`) && stdout.includes(note);
+        if (!banner) ok = false;
+        console.log(`  ${banner ? "ok  " : "FAIL"} ポート: ${port}(${note})`);
         for (const check of CHECKS) {
-            const res = await fetch(`${BASE}${check.path}`, check.init);
+            const res = await fetch(`${base}${check.path}`, check.init);
             const body = await res.text();
             const cookies = res.headers.getSetCookie();
             let reason: string | null = null;
@@ -158,7 +172,7 @@ async function smoke(runtime: string): Promise<boolean> {
             console.log(`  ${pass ? "ok  " : "FAIL"} ${check.name}: ${res.status} ${shown}`);
         }
         for (const check of RAW_CHECKS) {
-            const status = await sendRaw(check.request);
+            const status = await sendRaw(port, check.request);
             const pass = status === check.status;
             if (!pass) ok = false;
             console.log(`  ${pass ? "ok  " : "FAIL"} ${check.name}: ${status}`);
@@ -175,11 +189,11 @@ async function smoke(runtime: string): Promise<boolean> {
 }
 
 const targets = process.argv.slice(2);
-const runtimes = targets.length > 0 ? targets : Object.keys(COMMANDS);
+const runtimes = targets.length > 0 ? targets : Object.keys(RUNTIMES);
 
 let allOk = true;
 for (const runtime of runtimes) {
-    if (!COMMANDS[runtime]) throw new Error(`知らないランタイムです: ${runtime}`);
+    if (!RUNTIMES[runtime]) throw new Error(`知らないランタイムです: ${runtime}`);
     console.log(`[${runtime}]`);
     if (!(await smoke(runtime))) allOk = false;
 }
