@@ -23,10 +23,10 @@ app.get("/created", (_, c) => {
 app.get("/accepted", (_, c) => c.json({ hi: 1 }, 202));
 app.get("/ua", (_, c) => c.req.headers.get("user-agent") ?? "unknown");
 
-// 認証(ダメなら返り値で弾く)
-app.use((c, next) => {
-    const path = new URL(c.req.url).pathname;
-    if (path.startsWith("/admin") && c.req.headers.get("authorization") !== "secret") {
+// 認証(ダメなら返り値で弾く)。/admin とその下だけで動く
+// パスは req.url ではなく、正規化済みの c.path を基準に判定されるので //admin でも素通りできない
+app.use("/admin", (c, next) => {
+    if (c.req.headers.get("authorization") !== "secret") {
         c.status(401);
         return "ログインしてね";
     }

@@ -48,7 +48,7 @@ export function splitPath(pathname: string): string[] {
     return segments;
 }
 
-export function matchPath(pattern: string[], path: string[]): Record<string, string> | null {
+export function matchPath(pattern: readonly string[], path: readonly string[]): Record<string, string> | null {
     // 個数が違ったら一致しない
     if (pattern.length !== path.length) {
         return null;
@@ -69,6 +69,12 @@ export function matchPath(pattern: string[], path: string[]): Record<string, str
     }
 
     return params;
+}
+
+// path の先頭が prefix と一致するか。セグメント単位で比べるので "/admin" は "/administrator" にはマッチしない
+export function startsWithSegments(path: readonly string[], prefix: readonly string[]): boolean {
+    if (path.length < prefix.length) return false;
+    return prefix.every((p, i) => p === path[i]);
 }
 
 // sort 用の比較関数。どの2つを比べても答えが矛盾しない(=並び順が一意に決まる)ようにする

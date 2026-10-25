@@ -2,8 +2,8 @@ import { Context, type Handler, type Middleware } from "./context.ts";
 import {
     compareRoutes,
     matchPath,
-    splitPath,
     splitPattern,
+    startsWithSegments,
     type ExtractParams,
     type Route,
     type Simplify,
@@ -27,7 +27,8 @@ export type AppOptions = {
 export function createApp(options: AppOptions = {}) {
     const dev = options.dev ?? false;
     const routes: Route[] = [];
-    const middlewares: Middleware[] = [];
+    // prefix が null なら全部のリクエストで動く。["admin"] なら /admin とその下だけ
+    const middlewares: { prefix: string[] | null; mw: Middleware }[] = [];
     let onError: ErrorHandler = defaultOnError(dev);
     let notFound: NotFoundHandler = defaultNotFound(routes, dev);
 
@@ -36,9 +37,27 @@ export function createApp(options: AppOptions = {}) {
         routes.sort(compareRoutes);
     }
 
+    function applicableMiddlewares(c: Context): Middleware[] {
+        let segments: readonly string[] | null;
+        try {
+            segments = c.segments;
+        } catch {
+            // パスが不正なら、パス指定のミドルウェアは動かさない(どのみちルーターが 400 にする)
+            segments = null;
+        }
+        return middlewares
+            .filter(({ prefix }) => prefix === null || (segments !== null && startsWithSegments(segments, prefix)))
+            .map(({ mw }) => mw);
+    }
+
     return {
-        use(mw: Middleware) {
-            middlewares.push(mw);
+        use(pathOrMw: string | Middleware, mw?: Middleware) {
+            if (typeof pathOrMw === "string") {
+                if (!mw) throw new Error(`app.use("${pathOrMw}", ...) にミドルウェアがありません`);
+                middlewares.push({ prefix: splitPattern(pathOrMw), mw });
+            } else {
+                middlewares.push({ prefix: null, mw: pathOrMw });
+            }
         },
 
         onError(handler: ErrorHandler) {
@@ -83,7 +102,7 @@ export function createApp(options: AppOptions = {}) {
             const run = async (): Promise<Response> => {
                 const path = new URL(req.url).pathname;
                 // デコードに失敗したら HttpError(400) が投げられる
-                const segments = splitPath(path);
+                const segments = c.segments;
 
                 for (const route of routes) {
                     if (route.method !== req.method) continue;
@@ -110,7 +129,7 @@ export function createApp(options: AppOptions = {}) {
                 }
             };
 
-            return compose(middlewares, c, handle, fail);
+            return compose(applicableMiddlewares(c), c, handle, fail);
         },
     };
 }

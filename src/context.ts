@@ -1,3 +1,5 @@
+import { splitPath } from "./router.ts";
+
 export type HandlerResult = Response | string | object;
 
 export type Handler<P = Record<string, string>> = (
@@ -16,10 +18,24 @@ export class Context {
     req: Request;
     #status = 200;
     #headers = new Headers();
+    #segments: string[] | undefined;
     error: unknown = undefined;
 
     constructor(req: Request) {
         this.req = req;
+    }
+
+    // パスをデコードして "/" で分けたもの。ルーターもミドルウェアもこれを見る
+    // 初めて読んだときに1回だけ作る。エンコードが不正なら HttpError(400) を投げる
+    get segments(): readonly string[] {
+        this.#segments ??= splitPath(new URL(this.req.url).pathname);
+        return this.#segments;
+    }
+
+    // 正規化・デコード済みのパス("//admin/" → "/admin"、"/%61dmin" → "/admin")
+    // パスで判定するミドルウェアは、req.url ではなくこちらを使うこと
+    get path(): string {
+        return "/" + this.segments.join("/");
     }
 
     status(code: number) {
