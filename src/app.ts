@@ -1,5 +1,13 @@
 import { Context, type Handler, type Middleware } from "./context.ts";
-import { compareRoutes, matchPath, type ExtractParams, type Route, type Simplify } from "./router.ts";
+import {
+    compareRoutes,
+    matchPath,
+    splitPath,
+    splitPattern,
+    type ExtractParams,
+    type Route,
+    type Simplify,
+} from "./router.ts";
 import { compose } from "./compose.ts";
 import {
     defaultNotFound,
@@ -24,7 +32,7 @@ export function createApp(options: AppOptions = {}) {
     let notFound: NotFoundHandler = defaultNotFound(routes, dev);
 
     function add(method: string, path: string, handler: Handler) {
-        routes.push({ path, method, handler });
+        routes.push({ path, segments: splitPattern(path), method, handler });
         routes.sort(compareRoutes);
     }
 
@@ -74,15 +82,17 @@ export function createApp(options: AppOptions = {}) {
 
             const run = async (): Promise<Response> => {
                 const path = new URL(req.url).pathname;
+                // デコードに失敗したら HttpError(400) が投げられる
+                const segments = splitPath(path);
 
                 for (const route of routes) {
                     if (route.method !== req.method) continue;
-                    const params = matchPath(route.path, path);
+                    const params = matchPath(route.segments, segments);
                     if (params === null) continue;
                     return c.toResponse(await route.handler(params, c));
                 }
 
-                const samePath = routes.filter((r) => matchPath(r.path, path) !== null);
+                const samePath = routes.filter((r) => matchPath(r.segments, segments) !== null);
                 if (samePath.length > 0) {
                     throw methodNotAllowed(c, path, samePath.map((r) => r.method).join(", "), dev);
                 }
