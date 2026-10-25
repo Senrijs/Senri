@@ -47,6 +47,11 @@ export class Context {
     #headers = new Headers();
     #segments: string[] | undefined;
     error: unknown = undefined;
+    // マッチしたルートのパターン("/users/:id")。見つからなければ undefined
+    // ミドルウェアより先にマッチするので、next() の前から読める(ログやダッシュボードの集計用)
+    route: string | undefined = undefined;
+    // パスパラメーター。ハンドラーでは第1引数でも受け取れる
+    params: Record<string, string> = {};
 
     constructor(req: Request) {
         this.req = req;

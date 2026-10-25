@@ -51,6 +51,66 @@ describe("c.path", () => {
     });
 });
 
+describe("c.route と c.params", () => {
+    test("ミドルウェアの中で、next() の前からマッチしたパターンとパラメーターが読める", async () => {
+        const app = createApp();
+        let seen: unknown;
+        app.use((c, next) => {
+            seen = { route: c.route, params: c.params };
+            return next();
+        });
+        app.get("/users/:id", ({ id }) => id);
+
+        await app.fetch(req("/users/42"));
+
+        expect(seen).toEqual({ route: "/users/:id", params: { id: "42" } });
+    });
+
+    test("見つからないときは route が undefined、params が空", async () => {
+        const app = createApp();
+        let seen: unknown;
+        app.use((c, next) => {
+            seen = { route: c.route, params: c.params };
+            return next();
+        });
+
+        const res = await app.fetch(req("/nope"));
+
+        expect(res.status).toBe(404);
+        expect(seen).toEqual({ route: undefined, params: {} });
+    });
+
+    test("HEAD で GET にフォールバックしたときは GET のパターン", async () => {
+        const app = createApp();
+        let route: string | undefined;
+        app.use((c, next) => {
+            route = c.route;
+            return next();
+        });
+        app.get("/hello", () => "hi");
+
+        await app.fetch(req("/hello", { method: "HEAD" }));
+
+        expect(route).toBe("/hello");
+    });
+
+    test("エンコードが不正でもミドルウェアは動き、結果は 400", async () => {
+        const app = createApp();
+        let ran = false;
+        app.use((c, next) => {
+            ran = true;
+            expect(c.route).toBeUndefined();
+            return next();
+        });
+        app.get("/u/:id", ({ id }) => id);
+
+        const res = await app.fetch(req("/u/%E0%A4%A"));
+
+        expect(ran).toBe(true);
+        expect(res.status).toBe(400);
+    });
+});
+
 describe("app.use(path, mw)", () => {
     test("そのパスと、その下のパスだけで動く", async () => {
         const app = createApp();
