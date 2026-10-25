@@ -1,7 +1,7 @@
 // 画面の計算・判断だけを集めたもの(DOM も Vue も使わないので、bun test でそのまま試せる)
 import { EDITORS, type EditorId } from "../../src/dev/editor-url.ts";
 import type { EditorGuess } from "../../src/dev/editor.ts";
-import type { ErrorPageData, PageFrame } from "../../src/dev/page-data.ts";
+import type { ErrorPageData, NotFoundPageData, PageFrame } from "../../src/dev/page-data.ts";
 
 // ヒントの文の `...` をコードとして表示するために分ける
 export function inlineCode(text: string): { text: string; code: boolean }[] {
@@ -31,6 +31,30 @@ export function visibleFrames(frames: PageFrame[], showInternal: boolean) {
     if (showInternal) return { shown: frames, hidden: 0 };
     const shown = frames.filter((f) => f.kind !== "senri");
     return { shown, hidden: frames.length - shown.length };
+}
+
+// --- 404ページのルート一覧 ---
+
+type RouteItem = NotFoundPageData["routes"][number];
+
+// パスかメソッドに含まれるものだけ(大文字小文字は区別しない)
+export function filterRoutes(routes: RouteItem[], query: string): RouteItem[] {
+    const q = query.trim().toLowerCase();
+    if (q === "") return routes;
+    return routes.filter((r) => r.path.toLowerCase().includes(q) || r.method.toLowerCase().includes(q));
+}
+
+// 絞り込んでいないときは先頭の limit 件だけ出し、「ほか n 件」と残りを数える
+export function visibleRoutes(routes: RouteItem[], query: string, limit: number) {
+    const matched = filterRoutes(routes, query);
+    if (query.trim() !== "") return { shown: matched, rest: 0 };
+    return { shown: matched.slice(0, limit), rest: Math.max(matched.length - limit, 0) };
+}
+
+const METHOD_COLORS = new Set(["GET", "POST", "PUT", "PATCH", "DELETE"]);
+
+export function methodColor(method: string): string {
+    return METHOD_COLORS.has(method) ? `var(--${method.toLowerCase()})` : "var(--text)";
 }
 
 // --- エディタの選択(ブラウザの localStorage に保存する) ---

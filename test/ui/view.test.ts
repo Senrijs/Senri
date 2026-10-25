@@ -1,6 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import {
     editorOptions,
+    filterRoutes,
+    methodColor,
+    visibleRoutes,
     formatMs,
     inlineCode,
     layerBars,
@@ -130,6 +133,38 @@ describe("エディタの選択", () => {
         expect(openLabel("vscode")).toBe("VS Code で開く");
         expect(openLabel("webstorm")).toBe("WebStorm で開く(実験的)");
         expect(openLabel("copy")).toBeNull();
+    });
+});
+
+describe("404ページのルート一覧", () => {
+    const routes = [
+        { method: "GET", path: "/hello", link: true },
+        { method: "POST", path: "/users", link: false },
+        { method: "GET", path: "/users/:id", link: false },
+        { method: "DELETE", path: "/users/:id", link: false },
+    ];
+
+    test("絞り込みは、パスかメソッドに含まれるもの(大文字小文字を区別しない)", () => {
+        expect(filterRoutes(routes, "/USERS").map((r) => `${r.method} ${r.path}`)).toEqual([
+            "POST /users",
+            "GET /users/:id",
+            "DELETE /users/:id",
+        ]);
+        expect(filterRoutes(routes, "delete")).toHaveLength(1);
+        expect(filterRoutes(routes, "  ")).toHaveLength(4);
+    });
+
+    test("絞り込んでいないときは先頭だけ出して、残りの件数を返す", () => {
+        expect(visibleRoutes(routes, "", 2)).toEqual({ shown: routes.slice(0, 2), rest: 2 });
+    });
+
+    test("絞り込んでいるときは全部出す", () => {
+        expect(visibleRoutes(routes, "users", 2)).toEqual({ shown: routes.slice(1), rest: 0 });
+    });
+
+    test("メソッドの色は CSS 変数で、知らないメソッドは文字色", () => {
+        expect(methodColor("GET")).toBe("var(--get)");
+        expect(methodColor("ALL")).toBe("var(--text)");
     });
 });
 
