@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { createApp } from "../src/index.ts";
-import { suggest } from "../src/dev/suggest.ts";
+import { explainDifference, suggest } from "../src/dev/suggest.ts";
 
 const req = (path: string, init?: RequestInit) =>
     new Request(`http://localhost${path}`, init);
@@ -131,6 +131,48 @@ describe("計測(c.timings)", () => {
         await app.fetch(req("/x"));
 
         expect(read()).toEqual([]);
+    });
+});
+
+describe("「もしかして」のどこが違うか(explainDifference)", () => {
+    test("1文字足りない: 足りない文字に印を付ける", () => {
+        expect(explainDifference("/helo", "/hello")).toEqual({
+            parts: [
+                { text: "/hel", mark: false },
+                { text: "l", mark: true },
+                { text: "o", mark: false },
+            ],
+            note: '"l" が1文字足りません',
+        });
+    });
+
+    test("続けて何文字か足りない", () => {
+        expect(explainDifference("/usr", "/users").note).toBe('"es" が2文字足りません');
+    });
+
+    test("1文字多い: 候補のほうには印を付けない", () => {
+        expect(explainDifference("/helllo", "/hello")).toEqual({
+            parts: [{ text: "/hello", mark: false }],
+            note: '"l" が1文字多いです',
+        });
+    });
+
+    test("1文字違う", () => {
+        expect(explainDifference("/userz", "/users")).toEqual({
+            parts: [
+                { text: "/user", mark: false },
+                { text: "s", mark: true },
+            ],
+            note: '"s" のところが "z" になっています',
+        });
+    });
+
+    test("大文字と小文字の違いも分かる", () => {
+        expect(explainDifference("/Hello", "/hello").note).toBe('"h" のところが "H" になっています');
+    });
+
+    test("いろいろ違うときは、か所の数だけ", () => {
+        expect(explainDifference("/hxlo", "/hello").note).toBe("2か所違います");
     });
 });
 
