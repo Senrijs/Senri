@@ -30,6 +30,15 @@ type Resolved =
     | { kind: "notFound" }
     | { kind: "badRequest"; error: unknown };
 
+// パスが /_senri か /_senri/... なら、"_senri" より後ろのセグメント。そうでなければ null
+function underDashboard(c: Context): readonly string[] | null {
+    try {
+        return c.segments[0] === "_senri" ? c.segments.slice(1) : null;
+    } catch {
+        return null;
+    }
+}
+
 // 計測で、いちばん内側の層に付ける名前(ダッシュボードの玉ねぎタイムラインに出る)
 const INNER_NAME: Record<Resolved["kind"], string> = {
     route: "handler",
@@ -64,6 +73,10 @@ export function createApp<V extends object = Record<string, unknown>>(options: A
     function add(method: string, path: string, handler: Handler) {
         const segments = splitPattern(path);
         checkParamNames(path, segments);
+        // 開発モードでは /_senri 以下はダッシュボードが使うので、登録しても呼ばれない。気づけるようにエラーにする
+        if (dev && segments[0] === "_senri") {
+            throw new Error(`${method} ${path}: /_senri 以下は、開発モードではダッシュボード用に予約されています`);
+        }
 
         // 同じメソッド + 同じ形のパスがあったら、あとから登録したほうは絶対に呼ばれないのでエラーにする
         const shape = routeShape(segments);
@@ -197,7 +210,13 @@ export function createApp<V extends object = Record<string, unknown>>(options: A
             const time = dev ? Date.now() : 0;
             const c = new Context<V>(req);
             const dashboard = dashboardPromise ? await dashboardPromise : null;
-            dashboard?.begin(c);
+            // /_senri 以下はダッシュボード。localhost から開いたときだけ、ミドルウェアを通さずに処理する
+            // (開けないときは普通の処理に回すので、/_senri はないものとして 404 になる)。どちらも記録はしない
+            const dashboardPath = dashboard ? underDashboard(c) : null;
+            if (dashboard && dashboardPath && dashboard.canOpen(req, info)) {
+                return dashboard.handle(req, dashboardPath);
+            }
+            if (!dashboardPath) dashboard?.begin(c);
             const fail = (err: unknown) => handleError(err, c, onError);
 
             // ミドルウェアより先にマッチして、c.route / c.params を見られるようにしておく

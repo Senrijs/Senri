@@ -1,7 +1,9 @@
 // 開発ダッシュボード(/_senri)の本体。アプリごとに1つ作る(開発モードのときだけ)
 import type { Context } from "../../context.ts";
+import { canOpenDashboard } from "./access.ts";
 import { RequestLog } from "./log.ts";
 import { buildRecord, type DashboardRecord } from "./record.ts";
+import { handleDashboard } from "./routes.ts";
 
 // ルートとミドルウェアのタブに出すもの(アプリから受け取る)
 export type DashboardSource = {
@@ -11,15 +13,27 @@ export type DashboardSource = {
 
 export function createDashboard(source: DashboardSource) {
     const log = new RequestLog<DashboardRecord>();
+    // SSE(/_senri/api/events)。次の項目で作る
+    const events = () => new Response(JSON.stringify({ error: "not found" }), { status: 404 });
     // リクエストごとの id。エラーページの「/_senri で詳しく見る」から、そのリクエストを開くのに使う
     const ids = new WeakMap<Context, string>();
     let nextId = 1;
 
-    return {
+    const dashboard = {
         log,
         source,
 
-        // リクエストの最初に呼ぶ。id を振って、受け付けた時刻を覚える
+        // localhost から開いたときだけ(src/dev/dashboard/access.ts)
+        canOpen(req: Request, info: unknown): boolean {
+            return canOpenDashboard(req, info);
+        },
+
+        // segments: パスの "_senri" より後ろ
+        handle(req: Request, segments: readonly string[]): Promise<Response> {
+            return handleDashboard(dashboard, req, segments, events);
+        },
+
+        // リクエストの最初に呼ぶ。id を振る(/_senri へのリクエストには呼ばないので、記録されない)
         begin(c: Context): string {
             const id = String(nextId++);
             ids.set(c, id);
@@ -41,6 +55,7 @@ export function createDashboard(source: DashboardSource) {
             }
         },
     };
+    return dashboard;
 }
 
 export type Dashboard = ReturnType<typeof createDashboard>;
