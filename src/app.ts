@@ -21,7 +21,6 @@ import {
     type ErrorHandler,
     type NotFoundHandler,
 } from "./errors.ts";
-import { finishErrorPage, withErrorPage } from "./dev/pages.ts";
 
 // リクエストをどう処理するかの結論。ミドルウェアより前に1回だけ決める
 type Resolved =
@@ -44,7 +43,12 @@ export function createApp<V extends object = Record<string, unknown>>(options: A
     // prefix が null なら全部のリクエストで動く。["admin"] なら /admin とその下だけ
     const middlewares: { name: string; path: string | null; prefix: string[] | null; mw: Middleware<V> }[] = [];
     // 開発モードでは、ブラウザから開いた 5xx を HTML のエラーページにする(src/dev/pages.ts)
-    let onError: ErrorHandler<V> = withErrorPage(defaultOnError(dev), dev);
+    // 開発用のページ(ビルド済みの HTML など、約90KB)は、本番では読み込まないよう dev のときだけ import() する
+    const devPages = dev ? import("./dev/pages.ts") : null;
+    const baseOnError = defaultOnError(dev);
+    let onError: ErrorHandler<V> = devPages
+        ? async (err, c) => (await devPages).withErrorPage(baseOnError, true)(err, c)
+        : baseOnError;
     let notFound: NotFoundHandler<V> = defaultNotFound(routes, dev);
 
     function add(method: string, path: string, handler: Handler) {
@@ -216,7 +220,7 @@ export function createApp<V extends object = Record<string, unknown>>(options: A
             // 開発モードのときだけ計測する(本番では performance.now() の分も払わない)
             const res = await compose(applicableMiddlewares(c), c, run, fail, dev ? c.timings : undefined);
             // ミドルウェアを全部通ったあとなので、ここなら「通った順番」が揃っている
-            const page = dev ? await finishErrorPage(c, res) : res;
+            const page = devPages ? await (await devPages).finishErrorPage(c, res) : res;
             return c.finalize(page);
         },
     };

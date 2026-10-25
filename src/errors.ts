@@ -1,7 +1,6 @@
 import type { Context, HandlerResult } from "./context.ts";
 import type { Route } from "./router.ts";
 import { suggest } from "./dev/suggest.ts";
-import { notFoundPage } from "./dev/not-found-page.ts";
 import { wantsHtml } from "./dev/render.ts";
 
 // status 付きで投げられるエラー。message はそのままクライアントに見せる前提のもの
@@ -83,12 +82,14 @@ export function methodNotAllowed(c: Context, path: string, methods: string, dev:
 }
 
 export function defaultNotFound(routes: Route[], dev: boolean): NotFoundHandler {
-    return (c) => {
+    return async (c) => {
         if (!dev) {
             return c.text("404 Not Found");
         }
         // ブラウザで開いたときは、ルートの一覧付きの404ページ(HTML)にする
+        // ページの HTML は大きいので、本番では読み込まないよう、ここで初めて import() する
         if (wantsHtml(c.req)) {
+            const { notFoundPage } = await import("./dev/not-found-page.ts");
             return notFoundPage(c, routes);
         }
         // ルートと同じく、デコード・正規化したパスで比べる(notFound に来るのはデコードできたリクエストだけ)
