@@ -179,7 +179,9 @@ export function createApp<V extends object = Record<string, unknown>>(options: A
             return routes.map((r) => ({ method: r.method, path: r.path }));
         },
 
-        async fetch(req: Request): Promise<Response> {
+        // info: ランタイムが渡す2つ目の引数(Bun の server、Deno の info など)。接続元のアドレスを取るのに使う
+        // (形で見分けるので、Cloudflare Workers の env のような別のものが来ても壊れない。src/dev/dashboard/access.ts)
+        async fetch(req: Request, info?: unknown): Promise<Response> {
             const c = new Context<V>(req);
             const fail = (err: unknown) => handleError(err, c, onError);
 
