@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>Senri ダッシュボード</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&amp;family=Noto+Sans+JP:wght@400;500;700&amp;display=swap">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="min-height: 1040px; background: {{t.bg}}; color: {{t.text}}; font-family: 'Noto Sans JP', system-ui, sans-serif; font-size: 15px; line-height: 1.6">
+
+  <!-- header -->
+  <header style="border-bottom: 1px solid {{t.border}}">
+    <div style="padding: 0 32px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 24px; font-family: 'JetBrains Mono', monospace">
+      <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px 28px">
+        <div style="display: flex; align-items: baseline; gap: 14px; padding: 14px 0">
+          <span style="font-size: 22px; font-weight: 800; letter-spacing: -0.03em; line-height: 1; display: inline-flex; align-items: flex-end">senr<svg width="13" height="21" viewBox="4 0 34 54" role="img" aria-label="i" style="margin-left: -1px"><polygon points="5,54 15,54 30,19 20,19" fill="{{accent}}"></polygon><polygon points="22.6,13 32.6,13 36.5,4 26.5,4" fill="{{accent}}"></polygon></svg></span>
+          <span style="font-size: 13px; color: {{t.muted}}">dev</span>
+        </div>
+        <nav aria-label="ダッシュボードのメニュー" style="display: flex; gap: 4px; font-size: 14px">
+          <a href="#requests" aria-current="page" style="display: inline-flex; align-items: center; min-height: 48px; padding: 0 12px; color: {{t.text}}; font-weight: 700; text-decoration: none; box-shadow: inset 0 -2px 0 {{accent}}">リクエスト</a>
+          <a href="#routes" style="display: inline-flex; align-items: center; min-height: 48px; padding: 0 12px; color: {{t.muted}}; text-decoration: none">ルート <span style="margin-left: 6px">16</span></a>
+          <a href="#middleware" style="display: inline-flex; align-items: center; min-height: 48px; padding: 0 12px; color: {{t.muted}}; text-decoration: none">ミドルウェア <span style="margin-left: 6px">2</span></a>
+        </nav>
+      </div>
+      <div style="display: flex; align-items: center; gap: 16px; font-size: 13px; color: {{t.muted}}">
+        <span style="display: inline-flex; align-items: center; gap: 8px"><span aria-hidden="true" style="width: 8px; height: 8px; border-radius: 50%; background: {{t.live}}; display: inline-block"></span>live</span>
+        <span>localhost:3927</span>
+        <button type="button" style="font-family: inherit; font-size: 13px; min-height: 36px; padding: 0 10px; border-radius: 6px; border: 1px solid {{t.border}}; background: transparent; color: {{t.text}}; cursor: pointer">クリア</button>
+      </div>
+    </div>
+  </header>
+
+  <main style="padding: 24px 32px 48px; display: flex; flex-wrap: wrap; gap: 32px">
+
+    <!-- request list -->
+    <section aria-label="リクエスト一覧" style="flex: 1 1 640px; min-width: 0; display: flex; flex-direction: column; gap: 12px">
+      <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; font-family: 'JetBrains Mono', monospace; font-size: 13px">
+        <div style="display: flex; align-items: center; gap: 10px">
+          <label for="q" style="color: {{t.muted}}">filter</label>
+          <input id="q" type="search" placeholder="/users" style="font-family: inherit; font-size: 13px; min-height: 36px; width: 220px; max-width: 100%; box-sizing: border-box; padding: 0 10px; border-radius: 6px; border: 1px solid {{t.border}}; background: {{t.bg}}; color: {{t.text}}">
+        </div>
+        <div role="group" aria-label="ステータスで絞り込む" style="display: flex; gap: 2px">
+          <sc-for list="{{statusFilters}}" as="s" hint-placeholder-count="4">
+            <button type="button" aria-pressed="{{s.pressed}}" onClick="{{s.pick}}" style="font-family: inherit; font-size: 13px; min-height: 36px; padding: 0 10px; border: none; border-radius: 6px; background: {{s.bg}}; color: {{s.color}}; font-weight: {{s.weight}}; cursor: pointer">{{s.label}}</button>
+          </sc-for>
+        </div>
+      </div>
+
+      <div style="font-family: 'JetBrains Mono', monospace; font-size: 14px">
+        <div style="display: grid; grid-template-columns: 92px 72px minmax(0, 1fr) 56px 72px; gap: 12px; padding: 6px 12px; font-size: 12px; color: {{t.muted}}">
+          <span>// 時刻</span><span>method</span><span>path</span><span>status</span><span style="text-align: right">time</span>
+        </div>
+        <sc-for list="{{rows}}" as="r" hint-placeholder-count="8">
+          <button type="button" onClick="{{r.pick}}" aria-pressed="{{r.selected}}" style="display: grid; grid-template-columns: 92px 72px minmax(0, 1fr) 56px 72px; gap: 12px; width: 100%; padding: 10px 12px; border: none; border-top: 1px solid {{t.border}}; background: {{r.bg}}; color: {{t.text}}; font-family: inherit; font-size: 14px; text-align: left; cursor: pointer">
+            <span style="color: {{t.muted}}">{{r.time}}</span>
+            <span style="font-weight: 700; color: {{r.methodColor}}">{{r.method}}</span>
+            <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap">{{r.path}}</span>
+            <span style="font-weight: 700; color: {{r.statusColor}}">{{r.status}}</span>
+            <span style="text-align: right; color: {{r.msColor}}">{{r.ms}}</span>
+          </button>
+        </sc-for>
+      </div>
+      <div style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: {{t.muted}}">直近 200 件まで保持 · 再起動で消えます</div>
+    </section>
+
+    <!-- detail -->
+    <section aria-label="リクエストの詳細" style="flex: 1 1 520px; min-width: 0; display: flex; flex-direction: column; gap: 28px">
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <h1 style="margin: 0; font-family: 'JetBrains Mono', monospace; font-size: 24px; font-weight: 800; letter-spacing: -0.01em; overflow-wrap: anywhere"><span style="color: {{d.methodColor}}">{{d.method}}</span> {{d.path}}</h1>
+        <div style="font-family: 'JetBrains Mono', monospace; font-size: 14px; color: {{t.muted}}"><span style="font-weight: 700; color: {{d.statusColor}}">{{d.status}}</span> · {{d.ms}} · {{d.time}}</div>
+      </div>
+
+      <dl style="margin: 0; display: grid; grid-template-columns: max-content 1fr; gap: 6px 24px; font-family: 'JetBrains Mono', monospace; font-size: 14px">
+        <dt style="color: {{t.muted}}">route</dt><dd style="margin: 0">{{d.route}}</dd>
+        <dt style="color: {{t.muted}}">params</dt><dd style="margin: 0">{{d.params}}</dd>
+      </dl>
+
+      <sc-if value="{{d.hasError}}" hint-placeholder-val="{{ false }}">
+        <div style="display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 16px; font-family: 'JetBrains Mono', monospace; font-size: 14px">
+          <span style="font-weight: 800; color: {{t.accentText}}">Error:</span>
+          <span style="font-family: 'Noto Sans JP', system-ui, sans-serif">{{d.error}}</span>
+          <a href="#error" style="color: {{t.accentText}}; font-size: 13px">エラーページで見る →</a>
+        </div>
+      </sc-if>
+
+      <!-- onion timeline -->
+      <div style="display: flex; flex-direction: column; gap: 12px">
+        <div style="display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px; font-family: 'JetBrains Mono', monospace">
+          <h2 style="margin: 0; font-size: 14px; font-weight: 700; color: {{t.muted}}">// 玉ねぎタイムライン</h2>
+          <span style="display: flex; gap: 16px; font-size: 12px; color: {{t.muted}}">
+            <span style="display: inline-flex; align-items: center; gap: 6px"><span aria-hidden="true" style="width: 14px; height: 8px; background: {{t.selfBg}}; display: inline-block"></span>自分の時間</span>
+            <span style="display: inline-flex; align-items: center; gap: 6px"><span aria-hidden="true" style="width: 14px; height: 8px; background: {{t.totalBg}}; display: inline-block"></span>下流の待ち時間</span>
+          </span>
+        </div>
+        <div style="font-family: 'JetBrains Mono', monospace; font-size: 13px; display: flex; flex-direction: column; gap: 10px">
+          <div style="display: grid; grid-template-columns: 140px minmax(0, 1fr) 132px; gap: 12px; font-size: 11px; color: {{t.muted}}">
+            <span></span>
+            <span style="display: flex; justify-content: space-between"><span>0ms</span><span>{{d.ms}}</span></span>
+            <span></span>
+          </div>
+          <sc-for list="{{d.layers}}" as="l" hint-placeholder-count="3">
+            <div style="display: grid; grid-template-columns: 140px minmax(0, 1fr) 132px; gap: 12px; align-items: center">
+              <span style="padding-left: {{l.indent}}; font-weight: 700; color: {{l.nameColor}}; white-space: nowrap">{{l.name}}</span>
+              <span style="position: relative; height: 18px; display: block; background: {{t.track}}">
+                <span style="position: absolute; top: 0; bottom: 0; left: {{l.left}}; width: {{l.width}}; background: {{l.barBg}}; outline: {{l.outline}}; outline-offset: -1px; display: block">
+                  <span style="display: block; height: 100%; width: {{l.selfW}}; background: {{l.selfBg}}"></span>
+                </span>
+              </span>
+              <span style="text-align: right; color: {{l.labelColor}}; white-space: nowrap">{{l.label}}</span>
+            </div>
+          </sc-for>
+        </div>
+        <p style="margin: 0; font-size: 14px; color: {{t.muted}}">{{d.note}}</p>
+      </div>
+
+      <!-- headers -->
+      <div style="display: flex; flex-direction: column; gap: 10px; font-family: 'JetBrains Mono', monospace; font-size: 13px">
+        <h2 style="margin: 0; font-size: 14px; font-weight: 700; color: {{t.muted}}">// リクエストヘッダー</h2>
+        <dl style="margin: 0; display: grid; grid-template-columns: max-content 1fr; gap: 4px 24px">
+          <dt style="color: {{t.muted}}">accept</dt><dd style="margin: 0; overflow-wrap: anywhere">text/html,application/xhtml+xml</dd>
+          <dt style="color: {{t.muted}}">authorization</dt><dd style="margin: 0; color: {{t.muted}}">*** (伏せています)</dd>
+          <dt style="color: {{t.muted}}">cookie</dt><dd style="margin: 0; color: {{t.muted}}">*** (伏せています)</dd>
+          <dt style="color: {{t.muted}}">user-agent</dt><dd style="margin: 0; overflow-wrap: anywhere">Mozilla/5.0 (Windows NT 10.0)</dd>
+        </dl>
+      </div>
+    </section>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"accent":{"editor":"color","default":"#E3412B","options":["#E3412B","#2F6BFF","#0E9F6E"]},"$preview":{"width":1440,"height":1040}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { sel: 1, filter: 'all' };
+  }
+  renderVals() {
+    const dark = this.props.dark ?? false;
+    const accent = this.props.accent ?? (dark ? '#FF6A52' : '#E3412B');
+    const t = dark
+      ? { bg: '#0E1013', border: '#262A31', text: '#EEF0F2', muted: '#A3A9B2', code: '#16191E', rowSel: '#1D2128', track: '#16191E', totalBg: '#3A404A', selfBg: '#C9CED6', accentText: '#FF8A75', ok: '#5FD39A', warn: '#F2C14E', redirect: '#5CC8DD', live: '#5FD39A' }
+      : { bg: '#FFFFFF', border: '#E4E5E8', text: '#111418', muted: '#5B616A', code: '#F5F6F8', rowSel: '#F1F2F5', track: '#F5F6F8', totalBg: '#D5D8DE', selfBg: '#3A3F47', accentText: '#B42A17', ok: '#0B6B43', warn: '#8A5A00', redirect: '#0B5E70', live: '#0E9F6E' };
+    const mColor = dark
+      ? { GET: '#5FD39A', POST: '#5CC8DD', DELETE: '#FF8A75', PUT: '#F2C14E', PATCH: '#D79BE6' }
+      : { GET: '#0B6B43', POST: '#0B5E70', DELETE: '#B42A17', PUT: '#7A4F00', PATCH: '#7A2E8A' };
+    const sColor = (s) => (s >= 500 ? t.accentText : s >= 400 ? t.warn : s >= 300 ? t.redirect : t.ok);
+
+    // start / total / self are in ms. state: ok | stopped | failed | skipped
+    const L = (name, depth, start, total, self, state) => ({ name, depth, start, total, self, state: state || 'ok' });
+    const reqs = [
+      { time: '20:04:12.481', method: 'GET', path: '/users/42', status: 200, ms: 12.4, route: '/users/:id', params: '{ id: "42" }',
+        layers: [L('logger', 0, 0, 12.4, 0.3), L('auth', 1, 0.2, 12.0, 0.2), L('handler', 2, 0.4, 11.6, 11.6)],
+        note: 'ほとんどの時間はハンドラー(getUser の DB 呼び出し)で使われています。' },
+      { time: '20:04:11.902', method: 'GET', path: '/admin', status: 401, ms: 0.6, route: '/admin', params: '{}',
+        layers: [L('logger', 0, 0, 0.6, 0.2), L('auth', 1, 0.15, 0.4, 0.4, 'stopped'), L('handler', 2, 0, 0, 0, 'skipped')],
+        note: 'auth が next() を呼ばずに 401 を返したので、handler には届いていません。' },
+      { time: '20:04:09.355', method: 'GET', path: '/boom', status: 500, ms: 2.1, route: '/boom', params: '{}', error: 'わざと壊した',
+        layers: [L('logger', 0, 0, 2.1, 0.2), L('auth', 1, 0.1, 1.9, 0.1), L('handler', 2, 0.2, 1.6, 1.6, 'failed')],
+        note: 'handler で例外が起きて、onError が 500 を返しました。' },
+      { time: '20:04:05.017', method: 'POST', path: '/users', status: 201, ms: 4.8, route: '/users', params: '{}',
+        layers: [L('logger', 0, 0, 4.8, 0.3), L('auth', 1, 0.2, 4.5, 0.2), L('handler', 2, 0.4, 4.2, 4.2)],
+        note: 'リクエストのボディを読んで、201 を返しました。' },
+      { time: '20:04:02.640', method: 'GET', path: '/helo', status: 404, ms: 0.4, route: '(一致なし)', params: '—',
+        layers: [L('logger', 0, 0, 0.4, 0.1), L('auth', 1, 0.05, 0.3, 0.1), L('notFound', 2, 0.1, 0.2, 0.2)],
+        note: '一致するルートがないので notFound が動きました。もしかして: GET /hello' },
+      { time: '20:03:58.113', method: 'GET', path: '/hello', status: 200, ms: 0.9, route: '/hello', params: '{}',
+        layers: [L('logger', 0, 0, 0.9, 0.2), L('auth', 1, 0.1, 0.7, 0.1), L('handler', 2, 0.2, 0.6, 0.6)], note: '' },
+      { time: '20:03:51.770', method: 'GET', path: '/users/me', status: 200, ms: 1.2, route: '/users/me', params: '{}',
+        layers: [L('logger', 0, 0, 1.2, 0.2), L('auth', 1, 0.1, 1.0, 0.1), L('handler', 2, 0.2, 0.9, 0.9)], note: '' },
+      { time: '20:03:44.208', method: 'DELETE', path: '/users/7', status: 200, ms: 3.3, route: '/users/:id', params: '{ id: "7" }',
+        layers: [L('logger', 0, 0, 3.3, 0.2), L('auth', 1, 0.1, 3.1, 0.2), L('handler', 2, 0.3, 2.8, 2.8)], note: '' },
+    ];
+
+    const filters = [
+      { id: 'all', label: '全部' },
+      { id: '2', label: '2xx' },
+      { id: '4', label: '4xx' },
+      { id: '5', label: '5xx' },
+    ];
+    const f = this.state.filter;
+    const visible = reqs
+      .map((r, i) => ({ r, i }))
+      .filter(({ r }) => f === 'all' || String(r.status)[0] === f);
+
+    const statusFilters = filters.map((x) => ({
+      ...x,
+      pressed: String(f === x.id),
+      bg: f === x.id ? t.rowSel : 'transparent',
+      color: f === x.id ? t.text : t.muted,
+      weight: f === x.id ? '700' : '400',
+      pick: () => this.setState({ filter: x.id }),
+    }));
+
+    const rows = visible.map(({ r, i }) => ({
+      time: r.time.slice(0, 8),
+      method: r.method,
+      path: r.path,
+      status: r.status,
+      ms: r.ms + 'ms',
+      methodColor: mColor[r.method],
+      statusColor: sColor(r.status),
+      msColor: r.ms >= 10 ? t.warn : t.muted,
+      selected: String(i === this.state.sel),
+      bg: i === this.state.sel ? t.rowSel : 'transparent',
+      pick: () => this.setState({ sel: i }),
+    }));
+
+    const cur = reqs[this.state.sel] || reqs[0];
+    const pct = (v) => (v / cur.ms) * 100 + '%';
+    const layers = cur.layers.map((l) => {
+      const skipped = l.state === 'skipped';
+      const failed = l.state === 'failed';
+      const stopped = l.state === 'stopped';
+      return {
+        name: l.name,
+        indent: l.depth * 14 + 'px',
+        left: skipped ? '0%' : pct(l.start),
+        width: skipped ? '100%' : pct(l.total),
+        selfW: l.total ? (l.self / l.total) * 100 + '%' : '0%',
+        barBg: skipped ? 'transparent' : failed ? accent : t.totalBg,
+        selfBg: failed ? accent : stopped ? t.warn : t.selfBg,
+        outline: skipped ? '1px dashed ' + t.border : 'none',
+        nameColor: skipped ? t.muted : failed ? t.accentText : t.text,
+        labelColor: failed ? t.accentText : stopped ? t.warn : t.muted,
+        label: skipped ? '未到達' : failed ? l.self + 'ms ✕ 例外' : stopped ? l.self + 'ms ← ここで終了' : 'self ' + l.self + ' / ' + l.total + 'ms',
+      };
+    });
+
+    const d = {
+      method: cur.method,
+      path: cur.path,
+      status: cur.status,
+      ms: cur.ms + 'ms',
+      time: cur.time,
+      route: cur.route,
+      params: cur.params,
+      methodColor: mColor[cur.method],
+      statusColor: sColor(cur.status),
+      hasError: Boolean(cur.error),
+      error: cur.error || '',
+      layers,
+      note: cur.note,
+    };
+
+    return { t, accent, rows, statusFilters, d };
+  }
+}
+</script>
+</body>
+</html>
