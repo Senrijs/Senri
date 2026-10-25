@@ -1,0 +1,95 @@
+/* docs/design の renderVals() にある色をそのまま使う。OS の設定(prefers-color-scheme)で切り替える */
+:root {
+    --bg: #ffffff;
+    --border: #e4e5e8;
+    --text: #111418;
+    --muted: #5b616a;
+    --code: #f5f6f8;
+    --hit-bg: #fdecea;
+    --accent: #e3412b;
+    --accent-text: #b42a17;
+    --help-text: #1f55d6;
+    --warn-text: #8a5a00;
+    --num: #8a9099;
+
+    --get: #0b6b43;
+    --post: #0b5e70;
+    --delete: #b42a17;
+    --put: #7a4f00;
+    --patch: #7a2e8a;
+
+    --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --sans: "Noto Sans JP", system-ui, sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --bg: #0e1013;
+        --border: #262a31;
+        --text: #eef0f2;
+        --muted: #a3a9b2;
+        --code: #16191e;
+        --hit-bg: #2a1714;
+        --accent: #ff6a52;
+        --accent-text: #ff8a75;
+        --help-text: #7fb2ff;
+        --warn-text: #f2c14e;
+        --num: #5e646d;
+
+        --get: #5fd39a;
+        --post: #5cc8dd;
+        --delete: #ff8a75;
+        --put: #f2c14e;
+        --patch: #d79be6;
+    }
+}
+
+body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.6;
+}
+
+code,
+.mono {
+    font-family: var(--mono);
+}
+
+a {
+    color: inherit;
+}
+
+button,
+select,
+input {
+    font: inherit;
+    color: inherit;
+}
+
+main {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 56px 32px 72px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    gap: 40px;
+}
+
+h2.section {
+    margin: 0;
+    font-family: var(--mono);
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--muted);
+}
+
+.page-footer {
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+    font-size: 13px;
+    color: var(--muted);
+}

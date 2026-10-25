@@ -15,6 +15,11 @@ jobs:
         with:
           node-version: 24
       - run: bun install
+      # ui/ を変えたのに src/dev/page.generated.ts を作り直し忘れていないか
+      - name: Check generated pages are up to date
+        run: |
+          bun run build:pages
+          git diff --exit-code src/dev/page.generated.ts
       - run: bun run typecheck
       - run: bun test
       - run: bun run test:node
