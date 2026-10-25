@@ -19,11 +19,12 @@ export function compose(
                 downstream = await dispatch(i + 1);
                 return downstream;
             });
+            // toResponse も JSON.stringify で投げることがあるので try の中で
+            if (result !== undefined) return c.toResponse(result);
         } catch (err) {
             return onError(err);
         }
 
-        if (result !== undefined) return c.toResponse(result);
         if (downstream) return downstream;
         return onError(new Error("ミドルウェアが何も返さず、next()もよんでいません"));
     };

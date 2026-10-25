@@ -65,28 +65,32 @@ export function createApp() {
             const c = new Context(req);
             const fail = (err: unknown) => handleError(err, c, onError);
 
-            const handle = async (): Promise<Response> => {
+            const run = async (): Promise<Response> => {
                 const path = new URL(req.url).pathname;
 
                 for (const route of routes) {
                     if (route.method !== req.method) continue;
                     const params = matchPath(route.path, path);
                     if (params === null) continue;
-                    try {
-                        const result = await route.handler(params, c);
-                        return c.toResponse(result);
-                    } catch (err) {
-                        return fail(err);
-                    }
+                    return c.toResponse(await route.handler(params, c));
                 }
 
                 const samePath = routes.filter((r) => matchPath(r.path, path) !== null);
                 if (samePath.length > 0) {
-                    return fail(methodNotAllowed(c, path, samePath.map((r) => r.method).join(", ")));
+                    throw methodNotAllowed(c, path, samePath.map((r) => r.method).join(", "));
                 }
 
                 c.status(404);
                 return c.toResponse(await notFound(c));
+            };
+
+            // ハンドラー・notFound・toResponse のどこで投げても onError に集める
+            const handle = async (): Promise<Response> => {
+                try {
+                    return await run();
+                } catch (err) {
+                    return fail(err);
+                }
             };
 
             return compose(middlewares, c, handle, fail);

@@ -31,7 +31,13 @@ export async function handleError(err: unknown, c: Context, onError: ErrorHandle
     if (!(err instanceof HttpError) || err.status >= 500) {
         c.error = err;
     }
-    return c.toResponse(await onError(err, c));
+    try {
+        return c.toResponse(await onError(err, c));
+    } catch (onErrorFailed) {
+        // onError 自体が壊れていたら、もう頼れるものがないので固定の 500 を返す
+        c.error = onErrorFailed;
+        return new Response("500 Internal Server Error", { status: 500 });
+    }
 }
 
 export const defaultOnError: ErrorHandler = (err, c) => {

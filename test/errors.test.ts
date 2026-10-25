@@ -89,6 +89,45 @@ describe("app.onError", () => {
     });
 });
 
+describe("どこで失敗しても app.fetch は reject しない", () => {
+    test("ミドルウェアが JSON にできない値を返しても 500 になる", async () => {
+        const app = createApp();
+        app.use(() => ({ n: 1n }));
+
+        const res = await app.fetch(req("/"));
+
+        expect(res.status).toBe(500);
+    });
+
+    test("onError 自体が投げても、固定文言の 500 になる", async () => {
+        const app = createApp();
+        app.onError(() => {
+            throw new Error("onError も壊れた");
+        });
+        app.get("/boom", () => {
+            throw new Error("壊れた");
+        });
+
+        const res = await app.fetch(req("/boom"));
+
+        expect(res.status).toBe(500);
+        expect(await res.text()).toBe("500 Internal Server Error");
+    });
+
+    test("notFound が投げると onError に届く", async () => {
+        const app = createApp();
+        app.notFound(() => {
+            throw new Error("notFound が壊れた");
+        });
+        app.onError((err) => `onError: ${(err as Error).message}`);
+
+        const res = await app.fetch(req("/nope"));
+
+        expect(res.status).toBe(500);
+        expect(await res.text()).toBe("onError: notFound が壊れた");
+    });
+});
+
 describe("app.notFound", () => {
     test("見つからないときのレスポンスを変えられる(status は 404 のまま)", async () => {
         const app = createApp();
