@@ -5,9 +5,20 @@ import { defineConfig } from "vite";
 import vue from "@vitejs/plugin-vue";
 import { viteSingleFile } from "vite-plugin-singlefile";
 
+// Vite が index.html を処理する前に、改行を LF にそろえる
+// (CRLF のままだと、Vite が <script src> の行を取り除いたあとに空行が1つ残り、
+//  ビルド結果が「どの改行コードでチェックアウトしたか」で変わってしまう)
+const normalizeLineEndings = {
+    name: "senri:normalize-line-endings",
+    transformIndexHtml: {
+        order: "pre" as const,
+        handler: (html: string) => html.replace(/\r\n?/g, "\n"),
+    },
+};
+
 export default defineConfig({
     root: import.meta.dirname,
-    plugins: [vue(), viteSingleFile()],
+    plugins: [normalizeLineEndings, vue(), viteSingleFile()],
     build: {
         outDir: "dist",
         emptyOutDir: true,
