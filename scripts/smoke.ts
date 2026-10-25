@@ -17,12 +17,15 @@ type Check = {
     init?: RequestInit;
     status: number;
     body?: string;
+    cookies?: string[];
 };
 
 const CHECKS: Check[] = [
     { name: "テキスト", path: "/hello", status: 200, body: "こんにちは!" },
     { name: "パスパラメーター", path: "/users/42", status: 200, body: "user 42" },
     { name: "POST", path: "/users", init: { method: "POST" }, status: 200 },
+    { name: "POST のボディ", path: "/echo", init: { method: "POST", body: "こんにちは" }, status: 200, body: "body=こんにちは" },
+    { name: "Set-Cookie 2つ", path: "/cookies", status: 200, cookies: ["a=1", "b=2"] },
     { name: "日本語パラメーター", path: "/users/山田", status: 200, body: "user 山田" },
     { name: "HEAD", path: "/hello", init: { method: "HEAD" }, status: 200, body: "" },
     { name: "OPTIONS", path: "/hello", init: { method: "OPTIONS" }, status: 204 },
@@ -58,7 +61,11 @@ async function smoke(runtime: string): Promise<boolean> {
         for (const check of CHECKS) {
             const res = await fetch(`${BASE}${check.path}`, check.init);
             const body = await res.text();
-            const pass = res.status === check.status && (check.body === undefined || body === check.body);
+            const cookies = res.headers.getSetCookie();
+            const pass =
+                res.status === check.status &&
+                (check.body === undefined || body === check.body) &&
+                (check.cookies === undefined || JSON.stringify(cookies) === JSON.stringify(check.cookies));
             if (!pass) ok = false;
             console.log(`  ${pass ? "ok  " : "FAIL"} ${check.name}: ${res.status} ${JSON.stringify(body.slice(0, 60))}`);
         }
