@@ -49,7 +49,7 @@ function toRequest(req: IncomingMessage, signal: AbortSignal): Request {
     return new Request(toUrl(req), {
         method: req.method,
         headers,
-        body: hasBody ? (Readable.toWeb(req) as ReadableStream<Uint8Array>) : undefined,
+        body: hasBody ? (Readable.toWeb(req) as unknown as ReadableStream<Uint8Array>) : undefined,
         // ストリームをボディにするときに必要(読みながら送る「半二重」の指定)
         duplex: "half",
         signal,
@@ -71,7 +71,7 @@ async function writeResponse(res: ServerResponse, response: Response) {
     }
     // 全部ためてから送るのではなく、届いたチャンクから順に流す
     // pipeline は書き込みが詰まったら読むのを待ってくれる(バックプレッシャー)
-    await pipeline(Readable.fromWeb(response.body as import("node:stream/web").ReadableStream), res);
+    await pipeline(Readable.fromWeb(response.body as unknown as import("node:stream/web").ReadableStream), res);
 }
 
 export function serve(app: App, options: { port: number }) {
