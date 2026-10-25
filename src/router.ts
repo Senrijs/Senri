@@ -42,12 +42,19 @@ export function matchPath(pattern: string, path: string): Record<string, string>
     return params;
 }
 
+// sort 用の比較関数。どの2つを比べても答えが矛盾しない(=並び順が一意に決まる)ようにする
 export function compareRoutes(a: Route, b: Route): number {
     const aParts = a.path.split("/").filter(Boolean);
     const bParts = b.path.split("/").filter(Boolean);
-    const len = Math.min(aParts.length, bParts.length);
 
-    for (let i = 0; i < len; i++) {
+    // まずセグメント数で分ける。数が違うルート同士はそもそも同じパスにマッチしないので、
+    // ここで順番を決めてしまっても優先順位には影響しない
+    // (以前はここで 0 = 「同じ」と答えていたため、sort の結果が登録順に左右されていた)
+    if (aParts.length !== bParts.length) {
+        return aParts.length - bParts.length;
+    }
+
+    for (let i = 0; i < aParts.length; i++) {
         const aIsParam = aParts[i]!.startsWith(":");
         const bIsParam = bParts[i]!.startsWith(":");
 
