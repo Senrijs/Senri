@@ -12,20 +12,26 @@ export function compose(
         const mw = middlewares[i];
         if (!mw) return handle();
 
-        let downstream: Response | undefined;
+        // next() が返す Promise。呼ばれていなければ undefined
+        let downstream: Promise<Response> | undefined;
         let result: HandlerResult | void;
         try {
-            result = await mw(c, async () => {
-                downstream = await dispatch(i + 1);
+            result = await mw(c, () => {
+                if (downstream) {
+                    // 2回目を許すと、ハンドラーや後ろのミドルウェアが2回動いてしまう
+                    throw new Error("next() が2回呼ばれました。1つのミドルウェアで呼べるのは1回だけです");
+                }
+                downstream = dispatch(i + 1);
                 return downstream;
             });
             // toResponse も JSON.stringify で投げることがあるので try の中で
             if (result !== undefined) return c.toResponse(result);
+            // 何も返さず next() 済みなら、下流を使う(await し忘れていても、ここで待つ)
+            if (downstream) return await downstream;
         } catch (err) {
             return onError(err);
         }
 
-        if (downstream) return downstream;
         return onError(new Error("ミドルウェアが何も返さず、next()もよんでいません"));
     };
 
