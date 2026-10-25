@@ -17,6 +17,25 @@ app.get("/cookies", () => {
     return new Response("ok", { headers });
 });
 
+// 1チャンク目を送ったあと、テストが release() を呼ぶまで止まるストリーム
+let release = () => {};
+app.get("/stream", () => {
+    const body = new ReadableStream({
+        start(controller) {
+            controller.enqueue(new TextEncoder().encode("first"));
+            release = () => controller.close();
+        },
+    });
+    return new Response(body);
+});
+
+// クライアントが切断したら c.req.signal が abort されるか
+let sawAbort: Promise<void> = Promise.resolve();
+app.get("/wait", (_, c) => {
+    sawAbort = new Promise((resolve) => c.req.signal.addEventListener("abort", () => resolve()));
+    return sawAbort.then(() => "aborted");
+});
+
 let server: Server;
 let port: number;
 let base: string;
@@ -70,7 +89,8 @@ describe("Node アダプター", () => {
         const res = await raw(`GET http://localhost:${port}/hello HTTP/1.1\r\nHost: localhost:${port}\r\nConnection: close\r\n\r\n`);
 
         assert.match(res, /^HTTP\/1\.1 200/);
-        assert.match(res, /hi$/);
+        // 本文は chunked で来ることもあるので、ヘッダーのあとに含まれていればよい
+        assert.match(res.split("\r\n\r\n")[1]!, /\bhi\b/);
     });
 
     test("POST のボディがアプリに届く", async () => {
@@ -83,6 +103,28 @@ describe("Node アダプター", () => {
         const res = await fetch(`${base}/cookies`);
 
         assert.deepEqual(res.headers.getSetCookie(), ["a=1", "b=2"]);
+    });
+
+    test("レスポンスを最後まで待たずに流す(ストリーミング)", async () => {
+        const res = await fetch(`${base}/stream`);
+        const reader = res.body!.getReader();
+
+        const { value } = await reader.read();
+        assert.equal(new TextDecoder().decode(value), "first");
+
+        release();
+        assert.equal((await reader.read()).done, true);
+    });
+
+    test("クライアントが切断すると c.req.signal が abort される", async () => {
+        const controller = new AbortController();
+        const pending = fetch(`${base}/wait`, { signal: controller.signal }).catch(() => {});
+        await new Promise((r) => setTimeout(r, 100));
+
+        controller.abort();
+        await pending;
+
+        await sawAbort;
     });
 
     test("アプリが reject しても 500 を返して落ちない", async () => {

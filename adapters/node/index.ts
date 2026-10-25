@@ -1,6 +1,7 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import type { TLSSocket } from "node:tls";
 import { Readable } from "node:stream";
+import { pipeline } from "node:stream/promises";
 
 type App = {
     fetch: (req: Request) => Response | Promise<Response>;
@@ -15,7 +16,7 @@ function toUrl(req: IncomingMessage): URL {
     return new URL(req.url ?? "/", `${protocol}://${host}`);
 }
 
-function toRequest(req: IncomingMessage): Request {
+function toRequest(req: IncomingMessage, signal: AbortSignal): Request {
     const headers = new Headers();
     for (const [key, value] of Object.entries(req.headers)) {
         if (value === undefined) continue;
@@ -35,6 +36,7 @@ function toRequest(req: IncomingMessage): Request {
         body: hasBody ? (Readable.toWeb(req) as ReadableStream<Uint8Array>) : undefined,
         // ストリームをボディにするときに必要(読みながら送る「半二重」の指定)
         duplex: "half",
+        signal,
     } as RequestInit);
 }
 
@@ -46,14 +48,27 @@ async function writeResponse(res: ServerResponse, response: Response) {
     });
     const cookies = response.headers.getSetCookie();
     if (cookies.length > 0) res.setHeader("set-cookie", cookies);
-    res.end(Buffer.from(await response.arrayBuffer()));
+
+    if (!response.body) {
+        res.end();
+        return;
+    }
+    // 全部ためてから送るのではなく、届いたチャンクから順に流す
+    // pipeline は書き込みが詰まったら読むのを待ってくれる(バックプレッシャー)
+    await pipeline(Readable.fromWeb(response.body as import("node:stream/web").ReadableStream), res);
 }
 
 export function serve(app: App, options: { port: number }) {
     const server = createServer(async (req, res) => {
+        // レスポンスを送り終える前に接続が切れたら、アプリに c.req.signal で知らせる
+        const controller = new AbortController();
+        res.once("close", () => {
+            if (!res.writableFinished) controller.abort();
+        });
+
         let request: Request;
         try {
-            request = toRequest(req);
+            request = toRequest(req, controller.signal);
         } catch {
             res.statusCode = 400;
             res.end("400 Bad Request");
@@ -63,6 +78,8 @@ export function serve(app: App, options: { port: number }) {
         try {
             await writeResponse(res, await app.fetch(request));
         } catch (err) {
+            // クライアントが途中で切っただけならエラーではない
+            if (controller.signal.aborted) return;
             // ここで投げ直すと unhandled rejection でプロセスごと落ちるので、必ず握る
             console.error(err);
             if (res.headersSent) {
