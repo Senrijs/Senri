@@ -60,8 +60,10 @@ function sendRaw(request: string): Promise<number> {
     });
 }
 
-async function waitForServer(): Promise<void> {
+async function waitForServer(exited: () => boolean): Promise<void> {
     for (let i = 0; i < 50; i++) {
+        // 起動しないまま終わったなら、待っても無駄なのですぐに失敗にする
+        if (exited()) throw new Error("サーバーが起動前に終了しました");
         try {
             await fetch(`${BASE}/hello`);
             return;
@@ -79,8 +81,24 @@ async function smoke(runtime: string): Promise<boolean> {
     child.stderr.on("data", (d) => (stderr += d));
 
     let ok = true;
+    let exited = false;
+    // 終了の待ち合わせは spawn の直後に用意する
+    // あとで once("exit") を付けると、先に終わっていた(起動直後に落ちた)ときに永遠に待ってしまう
+    // コマンドが見つからないときは exit ではなく error が来る
+    const finished = new Promise<void>((resolve) => {
+        child.once("exit", () => {
+            exited = true;
+            resolve();
+        });
+        child.once("error", (err) => {
+            exited = true;
+            ok = false;
+            console.log(`  FAIL 起動できませんでした: ${err.message}`);
+            resolve();
+        });
+    });
     try {
-        await waitForServer();
+        await waitForServer(() => exited);
         for (const check of CHECKS) {
             const res = await fetch(`${BASE}${check.path}`, check.init);
             const body = await res.text();
@@ -104,7 +122,7 @@ async function smoke(runtime: string): Promise<boolean> {
         if (stderr) console.log(stderr);
     } finally {
         child.kill();
-        await new Promise((r) => child.once("exit", r));
+        await finished;
     }
     return ok;
 }
@@ -118,4 +136,6 @@ for (const runtime of runtimes) {
     console.log(`[${runtime}]`);
     if (!(await smoke(runtime))) allOk = false;
 }
-process.exit(allOk ? 0 : 1);
+// process.exit() で強制終了すると、Windows では子プロセスの後片付け中に libuv が落ちることがあるので、
+// 終了コードだけ決めて自然に終わらせる
+process.exitCode = allOk ? 0 : 1;
