@@ -29,7 +29,9 @@ function denoAllows(desc: { name: string; path?: string; variable?: string }): b
 export function cwd(): string | null {
     try {
         // Deno 2 には process もあるが、権限の確認をしたいので Deno を先に見る
-        if (g.Deno) return denoAllows({ name: "read" }) ? g.Deno.cwd().replaceAll("\\", "/") : null;
+        // 全体({ name: "read" })で聞くと、--allow-read=. のように範囲を絞ったときに "prompt" になってしまう。
+        // カレントディレクトリが読めればよいので、"." で聞く
+        if (g.Deno) return denoAllows({ name: "read", path: "." }) ? g.Deno.cwd().replaceAll("\\", "/") : null;
         if (g.process) return g.process.cwd().replaceAll("\\", "/");
     } catch {
         // 読めなければあきらめる
