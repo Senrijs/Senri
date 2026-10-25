@@ -1,0 +1,3 @@
+[test]
+# test/node/ は Node 本体で動かすテスト(node --test)なので bun test では実行しない
+pathIgnorePatterns = ["test/node/**"]

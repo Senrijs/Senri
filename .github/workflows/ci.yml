@@ -10,9 +10,14 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: oven-sh/setup-bun@v2
+      - uses: denoland/setup-deno@v2
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
       - run: bun install
       - run: bun run typecheck
       - run: bun test
+      - run: bun run test:node
 
   smoke:
     runs-on: ubuntu-latest
@@ -23,23 +28,13 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
+      # smoke スクリプト自体は Node で動かすので、どのランタイムでも Node は入れる
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
       - if: matrix.runtime == 'bun'
         uses: oven-sh/setup-bun@v2
       - if: matrix.runtime == 'deno'
         uses: denoland/setup-deno@v2
-      - if: matrix.runtime == 'node'
-        uses: actions/setup-node@v6
-        with:
-          node-version: 24
 
-      - name: Start server
-        run: |
-          case "${{ matrix.runtime }}" in
-            bun)  bun run examples/bun/index.ts & ;;
-            deno) deno run --allow-net examples/deno/index.ts & ;;
-            node) node examples/node/index.ts & ;;
-          esac
-
-      - name: Request
-        run: |
-          curl --fail --retry 10 --retry-connrefused --retry-delay 1 http://localhost:3000/hello
+      - run: node scripts/smoke.ts ${{ matrix.runtime }}

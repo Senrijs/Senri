@@ -9,9 +9,11 @@
   },
   "private": true,
   "scripts": {
-    "typecheck": "bun check",
+    "typecheck": "bun check && bun check -p test && bun check -p test/node && bun check -p adapters/node && bun check -p examples/bun && bun check -p examples/node && bun check -p scripts && deno check examples/deno/index.ts",
     "dev": "bun --watch examples/bun/index.ts",
-    "test": "bun test"
+    "test": "bun test",
+    "test:node": "node --test \"test/node/**/*.test.ts\"",
+    "smoke": "node scripts/smoke.ts"
   },
   "devDependencies": {
     "@types/bun": "latest",
