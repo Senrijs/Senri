@@ -23,8 +23,15 @@ export function embedJson(data: unknown): string {
 }
 
 // ブラウザで開いたとき(Accept に text/html がある)だけ HTML にする。curl や fetch の */* は対象外
+// "text/html;q=0" は「HTML は要らない」という意味なので除く
 export function wantsHtml(req: Request): boolean {
-    return /\btext\/html\b/.test(req.headers.get("accept") ?? "");
+    const accept = req.headers.get("accept") ?? "";
+    return accept.split(",").some((entry) => {
+        const [type, ...params] = entry.split(";").map((s) => s.trim().toLowerCase());
+        if (type !== "text/html") return false;
+        const q = params.find((p) => p.startsWith("q="));
+        return q === undefined || Number(q.slice(2)) > 0;
+    });
 }
 
 // <div id="app"> の中の置き場所。スクリプトが動かないときに見える簡易表示(エスケープ済みの HTML)を入れる

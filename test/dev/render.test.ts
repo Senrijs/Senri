@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { DATA_PLACEHOLDER, embedJson, renderPage } from "../../src/dev/render.ts";
+import { DATA_PLACEHOLDER, embedJson, renderPage, wantsHtml } from "../../src/dev/render.ts";
 
 const template = `<!doctype html><html><head><title>Senri</title></head><body><div id="app"></div><script type="application/json" id="senri-data">${DATA_PLACEHOLDER}</script></body></html>`;
 
@@ -55,6 +55,18 @@ describe("renderPage: エラー情報を安全に埋め込む", () => {
         const json = embedJson({ s: "<>&" + String.fromCharCode(0x2028, 0x2029) });
 
         expect(json).toBe('{"s":"\\u003c\\u003e\\u0026\\u2028\\u2029"}');
+    });
+
+    test("wantsHtml: Accept に text/html があるときだけ。q=0(要らない)は除く", () => {
+        const accepts = (accept: string) => wantsHtml(new Request("http://l/", { headers: { accept } }));
+
+        expect(accepts("text/html,application/xhtml+xml,*/*;q=0.8")).toBe(true);
+        expect(accepts("text/html;q=0.5")).toBe(true);
+        expect(accepts("*/*")).toBe(false);
+        expect(accepts("application/json")).toBe(false);
+        expect(accepts("text/html;q=0")).toBe(false);
+        expect(accepts("text/html; q=0.0, */*")).toBe(false);
+        expect(accepts("TEXT/HTML")).toBe(true);
     });
 
     test("テンプレートに置き場所がなければエラー(作り間違いに気づけるように)", () => {
