@@ -1,5 +1,6 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import type { TLSSocket } from "node:tls";
+import { Readable } from "node:stream";
 
 type App = {
     fetch: (req: Request) => Response | Promise<Response>;
@@ -25,10 +26,16 @@ function toRequest(req: IncomingMessage): Request {
         }
     }
 
+    // GET / HEAD はボディを持てない(渡すと Request が TypeError を投げる)
+    const hasBody = req.method !== "GET" && req.method !== "HEAD";
+
     return new Request(toUrl(req), {
         method: req.method,
         headers,
-    });
+        body: hasBody ? (Readable.toWeb(req) as ReadableStream<Uint8Array>) : undefined,
+        // ストリームをボディにするときに必要(読みながら送る「半二重」の指定)
+        duplex: "half",
+    } as RequestInit);
 }
 
 async function writeResponse(res: ServerResponse, response: Response) {

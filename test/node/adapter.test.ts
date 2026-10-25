@@ -9,6 +9,7 @@ import { serve } from "../../adapters/node/index.ts";
 const app = createApp();
 app.get("/hello", () => "hi");
 app.get("/url", (_, c) => c.req.url);
+app.post("/echo", async (_, c) => `body=${await c.req.text()}`);
 
 let server: Server;
 let port: number;
@@ -64,6 +65,12 @@ describe("Node アダプター", () => {
 
         assert.match(res, /^HTTP\/1\.1 200/);
         assert.match(res, /hi$/);
+    });
+
+    test("POST のボディがアプリに届く", async () => {
+        const res = await fetch(`${base}/echo`, { method: "POST", body: "こんにちは" });
+
+        assert.equal(await res.text(), "body=こんにちは");
     });
 
     test("アプリが reject しても 500 を返して落ちない", async () => {
