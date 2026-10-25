@@ -137,6 +137,40 @@ describe("ページの中身", () => {
     });
 });
 
+describe("スクリプトが動かなくても読める(CSP など)", () => {
+    // <div id="app"> の中身(Vue が動けば置き換わる部分)
+    // (簡易表示の中では div を使っていないので、最初の </div> までが中身)
+    const appContent = (body: string) => /<div id="app">([\s\S]*?)<\/div>/.exec(body)?.[1] ?? "";
+
+    test("エラーページ: エラー名・メッセージ・場所が HTML として最初から入っている", async () => {
+        const app = boomApp();
+        app.use(async (c, next) => {
+            c.header("content-security-policy", "default-src 'self'");
+            return next();
+        });
+
+        const res = await app.fetch(req("/boom", { headers: html }));
+        const content = appContent(await res.text());
+
+        expect(res.headers.get("content-security-policy")).toBe("default-src 'self'");
+        expect(content).toContain("Error: わざと壊した");
+        expect(content).toContain("test/dev/error-page.test.ts:");
+        expect(content).toContain("スクリプト");
+    });
+
+    test("最初から入れる HTML もエスケープする(XSS)", async () => {
+        const app = createApp({ dev: true });
+        app.get("/xss", () => {
+            throw new Error("<img src=x onerror=alert(1)>");
+        });
+
+        const content = appContent(await (await app.fetch(req("/xss", { headers: html }))).text());
+
+        expect(content).toContain("&lt;img src=x onerror=alert(1)&gt;");
+        expect(content).not.toContain("<img");
+    });
+});
+
 describe("返した値をレスポンスにできなかったとき", () => {
     test("ハンドラーが返した値: ミドルウェアの行ではなく、どのハンドラーが返したかを出す", async () => {
         const app = boomApp();

@@ -27,12 +27,16 @@ export function wantsHtml(req: Request): boolean {
     return /\btext\/html\b/.test(req.headers.get("accept") ?? "");
 }
 
-export function renderPage(template: string, data: unknown): string {
+// <div id="app"> の中の置き場所。スクリプトが動かないときに見える簡易表示(エスケープ済みの HTML)を入れる
+export const FALLBACK_PLACEHOLDER = "<!--senri:fallback-->";
+
+export function renderPage(template: string, data: unknown, fallbackHtml = ""): string {
     if (!template.includes(DATA_PLACEHOLDER)) {
         throw new Error(`ページのテンプレートに ${DATA_PLACEHOLDER} がありません`);
     }
     // 置き換え後の文字列を関数で返すのは、"$&" や "$1" が replace の特殊なパターンとして
     // 解釈されないようにするため(エラーメッセージに $ が入っていても、そのまま出る)
+    // JSON の "<" も簡易表示の "<" もエスケープ済みなので、片方の中にもう片方の置き場所ができることはない
     const json = embedJson(data);
-    return template.replace(DATA_PLACEHOLDER, () => json);
+    return template.replace(DATA_PLACEHOLDER, () => json).replace(FALLBACK_PLACEHOLDER, () => fallbackHtml);
 }

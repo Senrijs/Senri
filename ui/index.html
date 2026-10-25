@@ -14,7 +14,8 @@
         />
     </head>
     <body>
-        <div id="app"></div>
+        <!-- サーバーがここに簡易表示を入れる。Vue が動けば置き換わる(src/dev/fallback.ts) -->
+        <div id="app"><!--senri:fallback--></div>
         <!-- サーバーがここにエラー情報の JSON を入れる(src/dev/render.ts) -->
         <script type="application/json" id="senri-data"><!--senri:data--></script>
         <script type="module" src="./src/main.ts"></script>

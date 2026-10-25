@@ -100,6 +100,14 @@ describe("404ページ", () => {
         expect(body.split("<script").length).toBe(PAGE_HTML.split("<script").length);
     });
 
+    test("スクリプトが動かなくても、パスと「もしかして」が HTML として入っている", async () => {
+        const body = await (await app().fetch(req("/helo", { headers: html }))).text();
+        const content = /<div id="app">([\s\S]*?)<\/div>/.exec(body)?.[1] ?? "";
+
+        expect(content).toContain("GET /helo");
+        expect(content).toContain("GET /hello");
+    });
+
     test("HEAD ではボディを返さない", async () => {
         const res = await app().fetch(req("/helo", { method: "HEAD", headers: html }));
 

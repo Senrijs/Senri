@@ -14,6 +14,7 @@
 import type { Context } from "../context.ts";
 import type { ErrorHandler } from "../errors.ts";
 import { buildErrorPageData } from "./error-page.ts";
+import { errorFallback } from "./fallback.ts";
 import { PAGE_HTML } from "./page.generated.ts";
 import { renderPage, wantsHtml } from "./render.ts";
 
@@ -64,7 +65,7 @@ export async function finishErrorPage(c: Context, res: Response): Promise<Respon
         await res.body?.cancel();
         headers.set("content-type", "text/html; charset=utf-8");
         headers.delete("content-length");
-        const body = c.req.method === "HEAD" ? null : renderPage(PAGE_HTML, data);
+        const body = c.req.method === "HEAD" ? null : renderPage(PAGE_HTML, data, errorFallback(data));
         return new Response(body, { status: res.status, statusText: res.statusText, headers });
     } catch {
         // ページを作れなくても、いつものテキストのレスポンスは返す
