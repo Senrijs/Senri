@@ -1,4 +1,4 @@
-import type { Middleware } from "./index.ts";
+import type { Middleware } from "./context.ts";
 
 const C = {
     reset: "\x1b[0m",
