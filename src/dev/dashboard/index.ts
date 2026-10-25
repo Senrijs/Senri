@@ -4,6 +4,7 @@ import { canOpenDashboard } from "./access.ts";
 import { RequestLog } from "./log.ts";
 import { buildRecord, type DashboardRecord } from "./record.ts";
 import { handleDashboard } from "./routes.ts";
+import { eventStream } from "./sse.ts";
 
 // ルートとミドルウェアのタブに出すもの(アプリから受け取る)
 export type DashboardSource = {
@@ -13,8 +14,8 @@ export type DashboardSource = {
 
 export function createDashboard(source: DashboardSource) {
     const log = new RequestLog<DashboardRecord>();
-    // SSE(/_senri/api/events)。次の項目で作る
-    const events = () => new Response(JSON.stringify({ error: "not found" }), { status: 404 });
+    // SSE(/_senri/api/events)。記録が増えるたびに、開いているダッシュボードへ知らせる
+    const events = (req: Request) => eventStream(log, req);
     // リクエストごとの id。エラーページの「/_senri で詳しく見る」から、そのリクエストを開くのに使う
     const ids = new WeakMap<Context, string>();
     let nextId = 1;
