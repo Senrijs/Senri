@@ -199,7 +199,7 @@ export function createApp<V extends object = Record<string, unknown>>(options: A
                     case "options":
                         return new Response(null, { status: 204, headers: { allow: resolved.allow } });
                     case "methodNotAllowed":
-                        throw methodNotAllowed(c, new URL(req.url).pathname, resolved.allow, dev);
+                        throw methodNotAllowed(c, c.path, resolved.allow, dev);
                     case "notFound":
                         c.status(404);
                         return c.toResponse(await notFound(c));

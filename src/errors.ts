@@ -67,7 +67,8 @@ export function defaultNotFound(routes: Route[], dev: boolean): NotFoundHandler 
         if (!dev) {
             return c.text("404 Not Found");
         }
-        const path = new URL(c.req.url).pathname;
+        // ルートと同じく、デコード・正規化したパスで比べる(notFound に来るのはデコードできたリクエストだけ)
+        const path = c.path;
         let message = `404 Not Found: ${c.req.method} ${path}`;
         const closest = suggest(routes, path);
         if (closest) {

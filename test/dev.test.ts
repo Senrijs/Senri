@@ -63,6 +63,24 @@ describe("開発モード createApp({ dev: true })", () => {
         expect(await res.text()).toContain("もしかして: GET /hello");
     });
 
+    test("「もしかして」はデコード・正規化したパスで探す", async () => {
+        const app = createApp({ dev: true });
+        app.get("/こんにちは", () => "ok");
+        app.get("/hello", () => "ok");
+
+        const jp = await (await app.fetch(req("/こんにちわ"))).text();
+        const slashes = await (await app.fetch(req("//helo/"))).text();
+
+        expect(jp).toBe("404 Not Found: GET /こんにちわ\nもしかして: GET /こんにちは ?");
+        expect(slashes).toBe("404 Not Found: GET /helo\nもしかして: GET /hello ?");
+    });
+
+    test("405 のメッセージも正規化したパスを出す", async () => {
+        const res = await appWithRoutes({ dev: true }).fetch(req("//hello/", { method: "POST" }));
+
+        expect(await res.text()).toStartWith("405 Method Not Allowed: POST /hello\n");
+    });
+
     test("405 にどのメソッドならあるかが出る", async () => {
         const res = await appWithRoutes({ dev: true }).fetch(req("/hello", { method: "POST" }));
 
