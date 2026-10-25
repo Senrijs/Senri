@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { createApp } from "../src/index.ts";
+import { createApp, logger, type Middleware } from "../src/index.ts";
 
 const req = (path: string, init?: RequestInit) =>
     new Request(`http://localhost${path}`, init);
@@ -48,6 +48,22 @@ describe("c.path", () => {
         const res = await app.fetch(req("/%E0%A4%A"));
 
         expect(res.status).toBe(400);
+    });
+});
+
+describe("ミドルウェアの名前", () => {
+    test("関数の名前が使われ、無名なら anonymous#番号 になる", () => {
+        const app = createApp();
+        const auth: Middleware = (_c, next) => next();
+        app.use(logger({ color: false }));
+        app.use(auth);
+        app.use("/admin", (_c, next) => next());
+
+        expect(app.middlewareList()).toEqual([
+            { name: "logger", path: null },
+            { name: "auth", path: null },
+            { name: "anonymous#3", path: "/admin" },
+        ]);
     });
 });
 

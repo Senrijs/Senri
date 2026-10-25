@@ -47,7 +47,8 @@ export function logger(options: LoggerOptions = {}): Middleware {
         return 30;
     }
 
-    return async (c, next) => {
+    // 名前付きの関数にしておくと、ダッシュボードなどで "logger" と表示できる
+    return async function logger(c, next) {
         const start = Date.now();
         const res = await next();
         const ms = Date.now() - start;

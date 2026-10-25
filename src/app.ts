@@ -40,7 +40,7 @@ export function createApp(options: AppOptions = {}) {
     const dev = options.dev ?? false;
     const routes: Route[] = [];
     // prefix が null なら全部のリクエストで動く。["admin"] なら /admin とその下だけ
-    const middlewares: { prefix: string[] | null; mw: Middleware }[] = [];
+    const middlewares: { name: string; path: string | null; prefix: string[] | null; mw: Middleware }[] = [];
     let onError: ErrorHandler = defaultOnError(dev);
     let notFound: NotFoundHandler = defaultNotFound(routes, dev);
 
@@ -106,12 +106,17 @@ export function createApp(options: AppOptions = {}) {
 
     return {
         use(pathOrMw: string | Middleware, mw?: Middleware) {
-            if (typeof pathOrMw === "string") {
-                if (!mw) throw new Error(`app.use("${pathOrMw}", ...) にミドルウェアがありません`);
-                middlewares.push({ prefix: splitPattern(pathOrMw), mw });
-            } else {
-                middlewares.push({ prefix: null, mw: pathOrMw });
-            }
+            const path = typeof pathOrMw === "string" ? pathOrMw : null;
+            const fn = typeof pathOrMw === "string" ? mw : pathOrMw;
+            if (!fn) throw new Error(`app.use("${path}", ...) にミドルウェアがありません`);
+
+            middlewares.push({
+                // 関数の名前を使う。無名の関数(その場で書いたアロー関数など)は登録順の番号で呼ぶ
+                name: fn.name || `anonymous#${middlewares.length + 1}`,
+                path,
+                prefix: path === null ? null : splitPattern(path),
+                mw: fn,
+            });
         },
 
         onError(handler: ErrorHandler) {
@@ -157,6 +162,10 @@ export function createApp(options: AppOptions = {}) {
 
                 add(method.toUpperCase(), path, handler);
             }
+        },
+
+        middlewareList() {
+            return middlewares.map((m) => ({ name: m.name, path: m.path }));
         },
 
         routeList() {
