@@ -38,6 +38,72 @@ describe("ルートの優先順位", () => {
     });
 });
 
+describe("HEAD と OPTIONS", () => {
+    test("HEAD は GET ルートで処理して、ボディを捨てる", async () => {
+        const app = createApp();
+        app.get("/hello", () => ({ hi: 1 }));
+
+        const res = await app.fetch(req("/hello", { method: "HEAD" }));
+
+        expect(res.status).toBe(200);
+        expect(res.headers.get("content-type")).toBe("application/json");
+        expect(await res.text()).toBe("");
+    });
+
+    test("HEAD のルートを自分で書いたら、そちらが使われる", async () => {
+        const app = createApp();
+        app.get("/x", () => "GET");
+        app.routes({ "HEAD /x": (_, c) => c.header("x-head", "1").text("") });
+
+        const res = await app.fetch(req("/x", { method: "HEAD" }));
+
+        expect(res.headers.get("x-head")).toBe("1");
+    });
+
+    test("OPTIONS は 204 と Allow ヘッダーを返す", async () => {
+        const app = createApp();
+        app.get("/hello", () => "hi");
+        app.post("/hello", () => "posted");
+
+        const res = await app.fetch(req("/hello", { method: "OPTIONS" }));
+
+        expect(res.status).toBe(204);
+        expect(res.headers.get("allow")).toBe("GET, HEAD, POST, OPTIONS");
+    });
+
+    test("ルートがないパスへの OPTIONS は 404", async () => {
+        const app = createApp();
+        app.get("/hello", () => "hi");
+
+        const res = await app.fetch(req("/nope", { method: "OPTIONS" }));
+
+        expect(res.status).toBe(404);
+    });
+
+    test("OPTIONS はミドルウェア(CORS など)で先に返せる", async () => {
+        const app = createApp();
+        app.use((c, next) => {
+            if (c.req.method === "OPTIONS") return c.header("access-control-allow-origin", "*").text("", 204);
+            return next();
+        });
+        app.get("/hello", () => "hi");
+
+        const res = await app.fetch(req("/hello", { method: "OPTIONS" }));
+
+        expect(res.headers.get("access-control-allow-origin")).toBe("*");
+    });
+
+    test("405 の Allow にも HEAD と OPTIONS が入る", async () => {
+        const app = createApp();
+        app.get("/hello", () => "hi");
+
+        const res = await app.fetch(req("/hello", { method: "DELETE" }));
+
+        expect(res.status).toBe(405);
+        expect(res.headers.get("allow")).toBe("GET, HEAD, OPTIONS");
+    });
+});
+
 describe("パーセントエンコード", () => {
     test("日本語の静的ルートにマッチする", async () => {
         const app = createApp();

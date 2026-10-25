@@ -64,7 +64,7 @@ describe("ルーティング", () => {
         const res = await app.fetch(req("/hello", { method: "POST" }));
 
         expect(res.status).toBe(405);
-        expect(res.headers.get("allow")).toBe("GET");
+        expect(res.headers.get("allow")).toBe("GET, HEAD, OPTIONS");
     });
 
     test("c.status(201) で返すと201になる", async () => {

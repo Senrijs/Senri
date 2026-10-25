@@ -71,6 +71,18 @@ export function matchPath(pattern: readonly string[], path: readonly string[]): 
     return params;
 }
 
+// Allow ヘッダーに入れるメソッドの一覧("GET, HEAD, POST, OPTIONS")
+// GET があれば HEAD も使える(GET にフォールバックするので)。OPTIONS はいつでも使える
+export function allowedMethods(routes: readonly Route[]): string {
+    const methods: string[] = [];
+    for (const r of routes) {
+        if (!methods.includes(r.method)) methods.push(r.method);
+        if (r.method === "GET" && !methods.includes("HEAD")) methods.push("HEAD");
+    }
+    if (!methods.includes("OPTIONS")) methods.push("OPTIONS");
+    return methods.join(", ");
+}
+
 // path の先頭が prefix と一致するか。セグメント単位で比べるので "/admin" は "/administrator" にはマッチしない
 export function startsWithSegments(path: readonly string[], prefix: readonly string[]): boolean {
     if (path.length < prefix.length) return false;

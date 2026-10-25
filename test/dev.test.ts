@@ -33,7 +33,7 @@ describe("本番(既定)では固定の文言だけ返す", () => {
         const res = await appWithRoutes().fetch(req("/hello", { method: "POST" }));
 
         expect(res.status).toBe(405);
-        expect(res.headers.get("allow")).toBe("GET");
+        expect(res.headers.get("allow")).toBe("GET, HEAD, OPTIONS");
         expect(await res.text()).toBe("405 Method Not Allowed");
     });
 
@@ -66,7 +66,7 @@ describe("開発モード createApp({ dev: true })", () => {
     test("405 にどのメソッドならあるかが出る", async () => {
         const res = await appWithRoutes({ dev: true }).fetch(req("/hello", { method: "POST" }));
 
-        expect(await res.text()).toContain("GET ならあります");
+        expect(await res.text()).toContain("GET, HEAD, OPTIONS ならあります");
     });
 });
 

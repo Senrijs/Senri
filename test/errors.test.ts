@@ -84,7 +84,7 @@ describe("app.onError", () => {
 
         expect(received).toBeInstanceOf(HttpError);
         expect(res.status).toBe(405);
-        expect(res.headers.get("allow")).toBe("GET");
+        expect(res.headers.get("allow")).toBe("GET, HEAD, OPTIONS");
         expect(await res.text()).toBe("405です");
     });
 });

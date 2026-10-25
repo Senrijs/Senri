@@ -2,6 +2,7 @@ import { Context, type Handler, type Middleware } from "./context.ts";
 import {
     compareRoutes,
     matchPath,
+    allowedMethods,
     splitPattern,
     startsWithSegments,
     type ExtractParams,
@@ -104,16 +105,33 @@ export function createApp(options: AppOptions = {}) {
                 // デコードに失敗したら HttpError(400) が投げられる
                 const segments = c.segments;
 
+                // パスが合うルートを、優先順位の順に集める(メソッドはまだ見ない)
+                const matched: { route: Route; params: Record<string, string> }[] = [];
                 for (const route of routes) {
-                    if (route.method !== req.method) continue;
                     const params = matchPath(route.segments, segments);
-                    if (params === null) continue;
-                    return c.toResponse(await route.handler(params, c));
+                    if (params !== null) matched.push({ route, params });
+                }
+                const find = (method: string) => matched.find((m) => m.route.method === method);
+
+                const exact = find(req.method);
+                if (exact) {
+                    return c.toResponse(await exact.route.handler(exact.params, c));
                 }
 
-                const samePath = routes.filter((r) => matchPath(r.segments, segments) !== null);
-                if (samePath.length > 0) {
-                    throw methodNotAllowed(c, path, samePath.map((r) => r.method).join(", "), dev);
+                // HEAD は GET と同じ処理をして、ヘッダーと status だけ返す
+                const get = req.method === "HEAD" ? find("GET") : undefined;
+                if (get) {
+                    const res = c.toResponse(await get.route.handler(get.params, c));
+                    await res.body?.cancel();
+                    return new Response(null, { status: res.status, statusText: res.statusText, headers: res.headers });
+                }
+
+                if (matched.length > 0) {
+                    const allow = allowedMethods(matched.map((m) => m.route));
+                    if (req.method === "OPTIONS") {
+                        return new Response(null, { status: 204, headers: { allow } });
+                    }
+                    throw methodNotAllowed(c, path, allow, dev);
                 }
 
                 c.status(404);
