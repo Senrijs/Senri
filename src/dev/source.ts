@@ -115,12 +115,16 @@ export async function readCodeFrame(frame: StackFrame, options: ReadOptions = {}
     }
 
     const hitLine = all[frame.line - 1]!;
+    // エラーの位置の直前が "throw" か "throw new" なら、その throw で投げたエラー
+    // (V8 は "new" の位置、Bun は "Error" の位置を指すので、どちらでも当たるようにする)
+    // 行のどこかに throw があるだけでは決めない(同じ行の別の場所で起きたエラーもあるので)
+    const thrownHere = /\bthrow\s+(?:new\s+)?$/.test(hitLine.slice(0, Math.max(frame.col - 1, 0)));
     return {
         file: frame.file,
         line: frame.line,
         col: frame.col,
         lines,
         caret: makeCaret(hitLine, frame.col),
-        label: /\bthrow\b/.test(hitLine) ? "ここで throw" : "ここでエラー",
+        label: thrownHere ? "ここで throw" : "ここでエラー",
     };
 }

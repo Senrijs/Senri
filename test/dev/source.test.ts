@@ -39,10 +39,23 @@ describe("readCodeFrame", () => {
 
     test("ファイルの先頭や末尾では、ある分だけ返す", async () => {
         const top = await readCodeFrame(frame({ line: 1, col: 1 }), { root });
-        const bottom = await readCodeFrame(frame({ line: 11, col: 1 }), { root });
+        const bottom = await readCodeFrame(frame({ line: 12, col: 1 }), { root });
 
         expect(top!.lines.map((l) => l.num)).toEqual([1, 2, 3, 4]);
-        expect(bottom!.lines.map((l) => l.num)).toEqual([8, 9, 10, 11]);
+        expect(bottom!.lines.map((l) => l.num)).toEqual([9, 10, 11, 12]);
+    });
+
+    test("「ここで throw」は、エラーの位置の直前が throw のときだけ(V8 と Bun の列の違いも)", async () => {
+        // V8 は "new" の位置(11列目)、Bun は "Error" の位置(15列目)を指す
+        expect((await readCodeFrame(frame({ line: 6, col: 11 }), { root }))!.label).toBe("ここで throw");
+        expect((await readCodeFrame(frame({ line: 6, col: 15 }), { root }))!.label).toBe("ここで throw");
+    });
+
+    test("同じ行に throw があっても、エラーが別の場所なら「ここでエラー」", async () => {
+        const line = 'export const pick = (x: { a?: { b: number } }) => { if (!x) throw new Error("no"); return x.a!.b; };';
+        const col = line.indexOf("x.a!.b") + 1;
+
+        expect((await readCodeFrame(frame({ line: 12, col }), { root }))!.label).toBe("ここでエラー");
     });
 
     describe("読まないもの(null を返す)", () => {

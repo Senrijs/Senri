@@ -9,3 +9,4 @@ app.get("/boom", () => {
 app.get("/ok", () => "ok");
 
 export default app;
+export const pick = (x: { a?: { b: number } }) => { if (!x) throw new Error("no"); return x.a!.b; };
