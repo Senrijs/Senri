@@ -71,6 +71,28 @@ export function matchPath(pattern: readonly string[], path: readonly string[]): 
     return params;
 }
 
+// パターンの「形」。パラメーター名は区別しない("/users/:id" と "/users/:name" は同じ "users/:")
+export function routeShape(segments: readonly string[]): string {
+    return segments.map((s) => (s.startsWith(":") ? ":" : s)).join("/");
+}
+
+// パラメーター名が空だったり、1つのパターンで2回使われていたりしたらエラー
+// (2回目の値で1回目が黙って上書きされてしまうので)
+export function checkParamNames(path: string, segments: readonly string[]) {
+    const seen = new Set<string>();
+    for (const s of segments) {
+        if (!s.startsWith(":")) continue;
+        const name = s.slice(1);
+        if (name === "") {
+            throw new Error(`パラメーター名が空です: "${path}"`);
+        }
+        if (seen.has(name)) {
+            throw new Error(`パラメーター名 "${name}" が2回使われています: "${path}"`);
+        }
+        seen.add(name);
+    }
+}
+
 // Allow ヘッダーに入れるメソッドの一覧("GET, HEAD, POST, OPTIONS")
 // GET があれば HEAD も使える(GET にフォールバックするので)。OPTIONS はいつでも使える
 export function allowedMethods(routes: readonly Route[]): string {

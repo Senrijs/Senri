@@ -3,6 +3,8 @@ import {
     compareRoutes,
     matchPath,
     allowedMethods,
+    checkParamNames,
+    routeShape,
     splitPattern,
     startsWithSegments,
     type ExtractParams,
@@ -34,7 +36,22 @@ export function createApp(options: AppOptions = {}) {
     let notFound: NotFoundHandler = defaultNotFound(routes, dev);
 
     function add(method: string, path: string, handler: Handler) {
-        routes.push({ path, segments: splitPattern(path), method, handler });
+        const segments = splitPattern(path);
+        checkParamNames(path, segments);
+
+        // 同じメソッド + 同じ形のパスがあったら、あとから登録したほうは絶対に呼ばれないのでエラーにする
+        const shape = routeShape(segments);
+        const dup = routes.find((r) => r.method === method && routeShape(r.segments) === shape);
+        if (dup) {
+            const samePath = dup.segments.join("/") === segments.join("/");
+            throw new Error(
+                samePath
+                    ? `${method} ${path} はすでに登録されています`
+                    : `${method} ${path} は、登録済みの ${dup.method} ${dup.path} と同じパスです(パラメーター名が違うだけです)`,
+            );
+        }
+
+        routes.push({ path, segments, method, handler });
         routes.sort(compareRoutes);
     }
 
@@ -77,8 +94,21 @@ export function createApp(options: AppOptions = {}) {
             add("POST", path, handler as Handler);
         },
 
+        put<Path extends string>(path: Path, handler: Handler<Simplify<ExtractParams<Path>>>) {
+            add("PUT", path, handler as Handler);
+        },
+
+        patch<Path extends string>(path: Path, handler: Handler<Simplify<ExtractParams<Path>>>) {
+            add("PATCH", path, handler as Handler);
+        },
+
         delete<Path extends string>(path: Path, handler: Handler<Simplify<ExtractParams<Path>>>) {
             add("DELETE", path, handler as Handler);
+        },
+
+        // どのメソッドでも動く。ただし、メソッドが合うルートがあればそちらが優先
+        all<Path extends string>(path: Path, handler: Handler<Simplify<ExtractParams<Path>>>) {
+            add("ALL", path, handler as Handler);
         },
 
         routes(table: Record<string, Handler>) {
@@ -113,15 +143,15 @@ export function createApp(options: AppOptions = {}) {
                 }
                 const find = (method: string) => matched.find((m) => m.route.method === method);
 
-                const exact = find(req.method);
-                if (exact) {
-                    return c.toResponse(await exact.route.handler(exact.params, c));
-                }
-
-                // HEAD は GET と同じ処理をして、ヘッダーと status だけ返す
-                const get = req.method === "HEAD" ? find("GET") : undefined;
-                if (get) {
-                    const res = c.toResponse(await get.route.handler(get.params, c));
+                // 1. メソッドが合うもの → 2. HEAD なら GET → 3. all の順に探す
+                const hit =
+                    find(req.method) ??
+                    (req.method === "HEAD" ? find("GET") : undefined) ??
+                    find("ALL");
+                if (hit) {
+                    const res = c.toResponse(await hit.route.handler(hit.params, c));
+                    if (req.method !== "HEAD") return res;
+                    // HEAD はヘッダーと status だけ返す(ボディは捨てる)
                     await res.body?.cancel();
                     return new Response(null, { status: res.status, statusText: res.statusText, headers: res.headers });
                 }

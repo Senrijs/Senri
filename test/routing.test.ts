@@ -38,6 +38,73 @@ describe("ルートの優先順位", () => {
     });
 });
 
+describe("登録のチェック", () => {
+    test("同じメソッド + パスを2回登録するとエラー", () => {
+        const app = createApp();
+        app.get("/users", () => "1");
+
+        expect(() => app.get("/users", () => "2")).toThrow("GET /users はすでに登録されています");
+    });
+
+    test("末尾スラッシュだけ違うものも同じパス", () => {
+        const app = createApp();
+        app.get("/users", () => "1");
+
+        expect(() => app.get("/users/", () => "2")).toThrow("すでに登録されています");
+    });
+
+    test("パラメーター名だけ違うものも同じパス", () => {
+        const app = createApp();
+        app.get("/users/:id", () => "1");
+
+        expect(() => app.get("/users/:name", () => "2")).toThrow(
+            "GET /users/:name は、登録済みの GET /users/:id と同じパスです",
+        );
+    });
+
+    test("メソッドが違えば同じパスでも登録できる", () => {
+        const app = createApp();
+        app.get("/users", () => "1");
+
+        expect(() => app.post("/users", () => "2")).not.toThrow();
+    });
+
+    test("1つのパターンで同じパラメーター名を2回使うとエラー", () => {
+        const app = createApp();
+
+        expect(() => app.get("/a/:id/b/:id", () => "x")).toThrow('パラメーター名 "id" が2回使われています');
+    });
+});
+
+describe("put / patch / all", () => {
+    test("put と patch で登録できる", async () => {
+        const app = createApp();
+        app.put("/x/:id", ({ id }) => `put ${id}`);
+        app.patch("/x/:id", ({ id }) => `patch ${id}`);
+
+        expect(await (await app.fetch(req("/x/1", { method: "PUT" }))).text()).toBe("put 1");
+        expect(await (await app.fetch(req("/x/1", { method: "PATCH" }))).text()).toBe("patch 1");
+    });
+
+    test("all はどのメソッドでも動く", async () => {
+        const app = createApp();
+        app.all("/any", (_, c) => c.req.method);
+
+        for (const method of ["GET", "POST", "DELETE", "PUT"]) {
+            expect(await (await app.fetch(req("/any", { method }))).text()).toBe(method);
+        }
+    });
+
+    test("メソッドが合うルートがあれば、all より優先", async () => {
+        const app = createApp();
+        app.all("/x", () => "all");
+        app.get("/x", () => "get");
+
+        expect(await (await app.fetch(req("/x"))).text()).toBe("get");
+        expect(await (await app.fetch(req("/x", { method: "POST" }))).text()).toBe("all");
+    });
+});
+
 describe("HEAD と OPTIONS", () => {
     test("HEAD は GET ルートで処理して、ボディを捨てる", async () => {
         const app = createApp();
