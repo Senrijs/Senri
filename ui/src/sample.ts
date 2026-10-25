@@ -31,6 +31,7 @@ export function sample(page: string | null): PageData {
                 ["DELETE", "/users/:id"],
                 ["GET", "/users/:id/posts/:postId"],
             ].map(([method, path]) => ({ method: method!, path: path!, link: method === "GET" && !path!.includes(":") })),
+            dashboardUrl: "/_senri#requests/1",
         };
     }
 
@@ -90,5 +91,6 @@ export function sample(page: string | null): PageData {
         editor: { id: "vscode", detected: true },
         root,
         production: "500 Internal Server Error",
+        dashboardUrl: "/_senri#requests/1",
     };
 }

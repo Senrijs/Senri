@@ -5,6 +5,7 @@ import { guessEditor } from "./editor.ts";
 import { hintFor } from "./hints.ts";
 import type { ErrorPageData, PageFrame } from "./page-data.ts";
 import * as runtime from "../runtime.ts";
+import { dashboardLinkOf } from "./dashboard/links.ts";
 import { readCodeFrame } from "./source.ts";
 import { parseStack, type StackFrame } from "./stack.ts";
 
@@ -72,5 +73,6 @@ export async function buildErrorPageData(err: unknown, c: Context, res: Response
         editor: guessEditor(),
         root,
         production: productionText(err),
+        dashboardUrl: dashboardLinkOf(c),
     };
 }

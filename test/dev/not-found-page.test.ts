@@ -118,6 +118,14 @@ describe("404ページ", () => {
         expect(content).toContain("GET /hello");
     });
 
+    test("localhost から開いたときだけ、ダッシュボードへのリンクが付く", async () => {
+        const local = { requestIP: () => ({ address: "127.0.0.1" }) };
+        const r = () => new Request("http://localhost:3927/helo", { headers: { ...html, host: "localhost:3927" } });
+
+        expect((await pageData(await app().fetch(r(), local))).dashboardUrl).toMatch(/^\/_senri#requests\/\d+$/);
+        expect((await pageData(await app().fetch(r()))).dashboardUrl).toBeNull();
+    });
+
     test("HEAD ではボディを返さない", async () => {
         const res = await app().fetch(req("/helo", { method: "HEAD", headers: html }));
 

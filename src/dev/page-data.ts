@@ -45,6 +45,8 @@ export type ErrorPageData = {
     root: string | null;
     // 本番(dev: false)で、このエラーのときに返る本文
     production: string;
+    // ダッシュボードのこのリクエストへのリンク(localhost から開いたときだけ。開けなければ null)
+    dashboardUrl: string | null;
 };
 
 export type NotFoundPageData = {
@@ -53,6 +55,8 @@ export type NotFoundPageData = {
     path: string;
     suggestion: (Difference & { method: string; path: string; link: boolean }) | null;
     routes: { method: string; path: string; link: boolean }[];
+    // ダッシュボードへのリンク(localhost から開いたときだけ)
+    dashboardUrl: string | null;
 };
 
 // --- ダッシュボード(/_senri) ---

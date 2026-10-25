@@ -1,6 +1,7 @@
 // 開発ダッシュボード(/_senri)の本体。アプリごとに1つ作る(開発モードのときだけ)
 import type { Context } from "../../context.ts";
 import { canOpenDashboard } from "./access.ts";
+import { setDashboardLink } from "./links.ts";
 import { RequestLog } from "./log.ts";
 import { buildRecord, type DashboardRecord } from "./record.ts";
 import { handleDashboard } from "./routes.ts";
@@ -35,9 +36,11 @@ export function createDashboard(source: DashboardSource) {
         },
 
         // リクエストの最初に呼ぶ。id を振る(/_senri へのリクエストには呼ばないので、記録されない)
-        begin(c: Context): string {
+        // info: app.fetch の2つ目の引数。localhost からのリクエストなら、エラーページなどにリンクを出す
+        begin(c: Context, info: unknown): string {
             const id = String(nextId++);
             ids.set(c, id);
+            if (canOpenDashboard(c.req, info)) setDashboardLink(c, `/_senri#requests/${id}`);
             return id;
         },
 

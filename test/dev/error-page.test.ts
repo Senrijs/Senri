@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { createApp, HttpError } from "../../src/index.ts";
 import { PAGE_HTML } from "../../src/dev/page.generated.ts";
 import type { ErrorPageData } from "../../src/dev/page-data.ts";
+import { dashboardOf } from "../../src/dev/index.ts";
 
 const html = { accept: "text/html,application/xhtml+xml,*/*;q=0.8" };
 const req = (path: string, init: RequestInit = {}) => new Request(`http://localhost${path}`, init);
@@ -134,6 +135,28 @@ describe("ページの中身", () => {
 
         expect(body.split("<script").length).toBe(PAGE_HTML.split("<script").length);
         expect(body).not.toContain("<script>alert(1)");
+    });
+});
+
+describe("「/_senri で詳しく見る」のリンク", () => {
+    const local = { requestIP: () => ({ address: "127.0.0.1" }) };
+    const remote = { requestIP: () => ({ address: "192.168.1.10" }) };
+    const fromHost = (path: string) => new Request(`http://localhost:3927${path}`, { headers: { ...html, host: "localhost:3927" } });
+
+    test("localhost から開いたときは、ダッシュボードのそのリクエストへのリンクが付く", async () => {
+        const app = boomApp();
+
+        const data = await pageData(await app.fetch(fromHost("/boom"), local));
+        const [record] = (await dashboardOf(app))!.log.list();
+
+        expect(data.dashboardUrl).toBe(`/_senri#requests/${record!.id}`);
+    });
+
+    test("ダッシュボードを開けないとき(localhost 以外、接続元不明)はリンクを出さない", async () => {
+        const app = boomApp();
+
+        expect((await pageData(await app.fetch(fromHost("/boom"), remote))).dashboardUrl).toBeNull();
+        expect((await pageData(await app.fetch(fromHost("/boom")))).dashboardUrl).toBeNull();
     });
 });
 

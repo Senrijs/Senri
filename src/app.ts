@@ -216,7 +216,7 @@ export function createApp<V extends object = Record<string, unknown>>(options: A
             if (dashboard && dashboardPath && dashboard.canOpen(req, info)) {
                 return dashboard.handle(req, dashboardPath);
             }
-            if (!dashboardPath) dashboard?.begin(c);
+            if (!dashboardPath) dashboard?.begin(c, info);
             const fail = (err: unknown) => handleError(err, c, onError);
 
             // ミドルウェアより先にマッチして、c.route / c.params を見られるようにしておく
