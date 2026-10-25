@@ -74,6 +74,16 @@ describe("404ページ", () => {
         ]);
     });
 
+    test("all で登録したパラメーターのないルートも、GET で開けるのでリンクにする", async () => {
+        const a = app();
+        a.all("/health", () => "ok");
+
+        const data = await pageData(await a.fetch(req("/healt", { headers: html })));
+
+        expect(data.suggestion).toMatchObject({ method: "ALL", path: "/health", link: true });
+        expect(data.routes.find((r) => r.path === "/health")!.link).toBe(true);
+    });
+
     test("Accept が */* なら、今までどおりテキスト", async () => {
         const res = await app().fetch(req("/helo", { headers: { accept: "*/*" } }));
 
