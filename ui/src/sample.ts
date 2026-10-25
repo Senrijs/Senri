@@ -88,5 +88,6 @@ export function sample(page: string | null): PageData {
         ],
         editor: { id: "vscode", detected: true },
         root,
+        production: "500 Internal Server Error",
     };
 }

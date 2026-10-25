@@ -40,6 +40,8 @@ export type ErrorPageData = {
     editor: EditorGuess;
     // プロジェクトのルート(WebStorm で相対パスにするのに使う)
     root: string | null;
+    // 本番(dev: false)で、このエラーのときに返る本文
+    production: string;
 };
 
 export type NotFoundPageData = {

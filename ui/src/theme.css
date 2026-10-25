@@ -56,6 +56,8 @@ body {
 code,
 .mono {
     font-family: var(--mono);
+    /* JetBrains Mono は "=>" を "⇒" のような1文字にまとめる(合字)。コードは書いたとおりに見せたいので切る */
+    font-variant-ligatures: none;
 }
 
 a {
