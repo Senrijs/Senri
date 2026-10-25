@@ -63,6 +63,25 @@ export function splitPath(pathname: string): string[] {
     return segments;
 }
 
+// URL の区切り文字や空白を含む Host は、ふつうのクライアントは送らない
+const BAD_HOST = /[\s/?#@\\]/;
+
+// リクエストの pathname を取り出す。おかしなリクエストは HttpError(400) にする
+// - ランタイムが Host ヘッダーをつないで URL を作ることがある(Deno)。
+//   "Host: x/admin#" だと http://x/admin#/public になり、パスが /admin にすり替わるので弾く
+// - Bun は Host が不正だと req.url を "/public" のような相対 URL にするので、new URL() が失敗する
+export function requestPathname(req: Request): string {
+    const host = req.headers.get("host");
+    if (host !== null && BAD_HOST.test(host)) {
+        throw new HttpError(400, "400 Bad Request");
+    }
+    try {
+        return new URL(req.url).pathname;
+    } catch {
+        throw new HttpError(400, "400 Bad Request");
+    }
+}
+
 export function matchPath(pattern: readonly string[], path: readonly string[]): Record<string, string> | null {
     // 個数が違ったら一致しない
     if (pattern.length !== path.length) {

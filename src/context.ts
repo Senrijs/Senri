@@ -1,4 +1,4 @@
-import { splitPath } from "./router.ts";
+import { requestPathname, splitPath } from "./router.ts";
 import type { Timing } from "./compose.ts";
 
 // そのままレスポンスのボディにできるもの(JSON にはしない)
@@ -67,7 +67,7 @@ export class Context<V extends object = any> {
     // パスをデコードして "/" で分けたもの。ルーターもミドルウェアもこれを見る
     // 初めて読んだときに1回だけ作る。エンコードが不正なら HttpError(400) を投げる
     get segments(): readonly string[] {
-        this.#segments ??= splitPath(new URL(this.req.url).pathname);
+        this.#segments ??= splitPath(requestPathname(this.req));
         return this.#segments;
     }
 

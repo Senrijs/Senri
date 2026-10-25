@@ -1,6 +1,7 @@
 // examples を Bun / Deno / Node で順に起動して、実際に HTTP で叩いて確かめる
 // 使い方: node scripts/smoke.ts [bun] [deno] [node]   (省略すると全部)
 import { spawn } from "node:child_process";
+import net from "node:net";
 
 const PORT = 3000;
 const BASE = `http://localhost:${PORT}`;
@@ -37,6 +38,28 @@ const CHECKS: Check[] = [
     { name: "500", path: "/boom", status: 500 },
 ];
 
+// fetch では送れない、生の HTTP リクエストで確かめるもの
+type RawCheck = { name: string; request: string; status: number };
+
+const RAW_CHECKS: RawCheck[] = [
+    // Host をつないで URL を作ると http://x/admin#/hello になり、パスが /admin に化ける
+    {
+        name: "不正な Host(パスのすり替え)",
+        request: "GET /hello HTTP/1.1\r\nHost: x/admin#\r\nConnection: close\r\n\r\n",
+        status: 400,
+    },
+];
+
+function sendRaw(request: string): Promise<number> {
+    return new Promise((resolve, reject) => {
+        const sock = net.connect(PORT, "localhost", () => sock.write(request));
+        let data = "";
+        sock.on("data", (d) => (data += d));
+        sock.on("end", () => resolve(Number(data.split(" ")[1])));
+        sock.on("error", reject);
+    });
+}
+
 async function waitForServer(): Promise<void> {
     for (let i = 0; i < 50; i++) {
         try {
@@ -68,6 +91,12 @@ async function smoke(runtime: string): Promise<boolean> {
                 (check.cookies === undefined || JSON.stringify(cookies) === JSON.stringify(check.cookies));
             if (!pass) ok = false;
             console.log(`  ${pass ? "ok  " : "FAIL"} ${check.name}: ${res.status} ${JSON.stringify(body.slice(0, 60))}`);
+        }
+        for (const check of RAW_CHECKS) {
+            const status = await sendRaw(check.request);
+            const pass = status === check.status;
+            if (!pass) ok = false;
+            console.log(`  ${pass ? "ok  " : "FAIL"} ${check.name}: ${status}`);
         }
     } catch (err) {
         ok = false;

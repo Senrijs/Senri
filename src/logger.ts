@@ -26,6 +26,16 @@ type LoggerOptions = {
     slow?: number;
 };
 
+// ログには、届いたままのパスを出す(c.path はデコード済みで、不正なリクエストだと 400 を投げるため)
+// Bun は不正な Host のとき req.url を相対 URL にするので、URL として読めなければそのまま出す
+function rawPath(req: Request): string {
+    try {
+        return new URL(req.url).pathname;
+    } catch {
+        return req.url;
+    }
+}
+
 export function logger(options: LoggerOptions = {}): Middleware {
     const format = options.format ?? "pretty";
     const color = options.color ?? true;
@@ -53,7 +63,7 @@ export function logger(options: LoggerOptions = {}): Middleware {
         const res = await next();
         const ms = Date.now() - start;
         const method = c.req.method;
-        const path = new URL(c.req.url).pathname;
+        const path = rawPath(c.req);
 
         // pino 形式のエラー(エラーがなければ undefined)
         const err = c.error instanceof Error

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { createApp, HttpError } from "../src/index.ts";
+import { createApp, HttpError, logger } from "../src/index.ts";
 import { splitPath } from "../src/router.ts";
 
 const req = (path: string, init?: RequestInit) =>
@@ -168,6 +168,49 @@ describe("HEAD と OPTIONS", () => {
 
         expect(res.status).toBe(405);
         expect(res.headers.get("allow")).toBe("GET, HEAD, OPTIONS");
+    });
+});
+
+describe("不正な Host ヘッダー", () => {
+    function appWithAdmin() {
+        const app = createApp();
+        let adminCalled = false;
+        app.use(logger({ color: false, format: "json" }));
+        app.get("/public", () => "public");
+        app.get("/admin", () => {
+            adminCalled = true;
+            return "admin";
+        });
+        return { app, adminCalled: () => adminCalled };
+    }
+
+    test("Deno のように Host がつながった URL でも、パスがすり替わらない(400)", async () => {
+        // Deno は "GET /public" + "Host: x/admin#" を http://x/admin#/public にする
+        const { app, adminCalled } = appWithAdmin();
+
+        const res = await app.fetch(new Request("http://x/admin#/public", { headers: { host: "x/admin#" } }));
+
+        expect(res.status).toBe(400);
+        expect(adminCalled()).toBe(false);
+    });
+
+    test("Bun のように req.url が相対 URL になっても、500 ではなく 400", async () => {
+        // Bun は Host が不正だと req.url を "/public" にする(new URL() できない)
+        const { app } = appWithAdmin();
+        const bunLike = { url: "/public", method: "GET", headers: new Headers({ host: "x/admin#" }) } as Request;
+
+        const res = await app.fetch(bunLike);
+
+        expect(res.status).toBe(400);
+    });
+
+    test("ポート付きや IPv6 のふつうの Host は通る", async () => {
+        const { app } = appWithAdmin();
+
+        for (const host of ["localhost:3000", "[::1]:3000", "example.com"]) {
+            const res = await app.fetch(new Request(`http://${host}/public`, { headers: { host } }));
+            expect(res.status).toBe(200);
+        }
     });
 });
 
