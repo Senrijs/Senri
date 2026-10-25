@@ -8,6 +8,7 @@ import {
     splitPattern,
     startsWithSegments,
     type ExtractParams,
+    type RouteTable,
     type Route,
     type Simplify,
 } from "./router.ts";
@@ -111,8 +112,9 @@ export function createApp(options: AppOptions = {}) {
             add("ALL", path, handler as Handler);
         },
 
-        routes(table: Record<string, Handler>) {
-            for (const [key, handler] of Object.entries(table)) {
+        // K はテーブルのキーから推論される。各キーのパスからパラメーターの型が決まる
+        routes<K extends string>(table: RouteTable<K>) {
+            for (const [key, handler] of Object.entries(table) as [string, Handler][]) {
                 const [method, path] = key.split(" ");
                 if (!method || !path) {
                     throw new Error(`ルートの書き方が違います: "${key}"\n例: "GET /hello"`);

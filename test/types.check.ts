@@ -23,3 +23,22 @@ app.get("/stream", () => new ReadableStream());
 app.get("/form", () => new FormData());
 app.get("/search", () => new URLSearchParams({ q: "x" }));
 app.get("/async-json", async () => ({ a: 1 }));
+
+// --- app.routes() のテーブル形式(項目14) ---
+
+app.routes({
+    // キーのパスから、パラメーターが推論される
+    "GET /u/:id": ({ id }) => id,
+    "POST /u/:id/posts/:postId": ({ id, postId }) => `${id} ${postId}`,
+    "GET /plain": () => "ok",
+});
+
+app.routes({
+    // @ts-expect-error パスにないパラメーターは使えない
+    "GET /v/:id": ({ nope }) => nope,
+});
+
+app.routes({
+    // @ts-expect-error メソッドとパスの間にスペースがない
+    "GET/hello": () => "x",
+});

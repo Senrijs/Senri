@@ -18,6 +18,14 @@ export type ExtractParams<Path extends string> =
 
 export type Simplify<T> = { [K in keyof T]: T[K] } & {};
 
+// app.routes() のキー("GET /users/:id")ごとのハンドラーの型
+// 書き方が違うキーには、説明の文字列型を入れておく(ハンドラーを書くと、その文字列と一緒に型エラーになる)
+export type RouteTable<K extends string> = {
+    [Key in K]: Key extends `${string} ${infer Path}`
+        ? Handler<Simplify<ExtractParams<Path>>>
+        : 'ルートの書き方が違います。"GET /hello" のように、メソッドとパスの間にスペースを入れてください';
+};
+
 // ルートのパターン("/users/:id")を分割する。末尾スラッシュや連続スラッシュは無視
 export function splitPattern(pattern: string): string[] {
     return pattern.split("/").filter(Boolean);
