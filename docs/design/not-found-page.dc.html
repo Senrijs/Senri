@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>Senri 404ページ</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&amp;family=Noto+Sans+JP:wght@400;500;700&amp;display=swap">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="min-height: 1180px; background: {{t.bg}}; color: {{t.text}}; font-family: 'Noto Sans JP', system-ui, sans-serif; font-size: 15px; line-height: 1.6">
+
+  <!-- header -->
+  <header style="border-bottom: 1px solid {{t.border}}">
+    <div style="max-width: 1080px; margin: 0 auto; padding: 14px 32px; box-sizing: border-box; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px">
+      <div style="display: flex; align-items: baseline; gap: 14px; font-family: 'JetBrains Mono', monospace">
+        <span style="font-size: 22px; font-weight: 800; letter-spacing: -0.03em; line-height: 1; display: inline-flex; align-items: flex-end">senr<svg width="13" height="21" viewBox="4 0 34 54" role="img" aria-label="i" style="margin-left: -1px"><polygon points="5,54 15,54 30,19 20,19" fill="{{accent}}"></polygon><polygon points="22.6,13 32.6,13 36.5,4 26.5,4" fill="{{accent}}"></polygon></svg></span>
+        <span style="font-size: 13px; color: {{t.muted}}">dev</span>
+      </div>
+      <a href="#dashboard" style="font-family: 'JetBrains Mono', monospace; font-size: 13px; color: {{t.muted}}">/_senri</a>
+    </div>
+  </header>
+
+  <main style="max-width: 1080px; margin: 0 auto; padding: 56px 32px 72px; box-sizing: border-box; display: flex; flex-direction: column; gap: 40px">
+
+    <!-- head -->
+    <section style="display: flex; flex-direction: column; gap: 10px">
+      <div style="font-family: 'JetBrains Mono', monospace; font-size: 14px; color: {{t.muted}}">404 Not Found</div>
+      <h1 style="margin: 0; font-size: 34px; line-height: 1.3; font-weight: 700; letter-spacing: -0.01em"><code style="font-family: 'JetBrains Mono', monospace; font-weight: 800; color: {{t.warnText}}">GET /helo</code> は見つかりませんでした</h1>
+    </section>
+
+    <!-- suggestion (compiler style) -->
+    <section style="font-family: 'JetBrains Mono', monospace; font-size: 14px; display: grid; grid-template-columns: max-content 1fr; gap: 10px 12px; align-items: center">
+      <span style="color: {{t.helpText}}; font-weight: 700">= もしかして:</span>
+      <span></span>
+      <span></span>
+      <a href="#hello" style="display: inline-flex; align-items: center; gap: 14px; justify-self: start; min-height: 48px; padding: 0 16px; border-radius: 8px; background: {{t.code}}; color: {{t.text}}; text-decoration: none; font-size: 20px">
+        <span style="font-weight: 700; color: {{getColor}}">GET</span>
+        <span style="font-weight: 700">/hel<span style="color: {{accent}}; text-decoration: underline; text-underline-offset: 4px">l</span>o</span>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color: {{t.muted}}"><path d="M5 12h14"></path><path d="M13 6l6 6-6 6"></path></svg>
+      </a>
+      <span></span>
+      <span style="color: {{t.muted}}; font-size: 13px">"l" が1文字足りません</span>
+    </section>
+
+    <!-- routes -->
+    <section style="display: flex; flex-direction: column; gap: 12px">
+      <div style="display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px; font-family: 'JetBrains Mono', monospace">
+        <h2 style="margin: 0; font-size: 14px; font-weight: 700; color: {{t.muted}}">// 登録されているルート(16)</h2>
+        <div style="display: flex; align-items: center; gap: 10px">
+          <label for="filter" style="font-size: 13px; color: {{t.muted}}">filter</label>
+          <input id="filter" type="search" placeholder="/users" style="font-family: inherit; font-size: 13px; min-height: 36px; width: 220px; max-width: 100%; box-sizing: border-box; padding: 0 10px; border-radius: 6px; border: 1px solid {{t.border}}; background: {{t.bg}}; color: {{t.text}}">
+        </div>
+      </div>
+      <ul style="list-style: none; margin: 0; padding: 0; font-family: 'JetBrains Mono', monospace; font-size: 14px">
+        <sc-for list="{{routes}}" as="r" hint-placeholder-count="8">
+          <li style="display: flex; align-items: center; gap: 16px; padding: 9px 0; border-top: 1px solid {{t.border}}">
+            <span style="width: 64px; flex-shrink: 0; font-weight: 700; color: {{r.fg}}">{{r.method}}</span>
+            <sc-if value="{{r.link}}" hint-placeholder-val="{{ true }}">
+              <a href="#route" style="color: {{t.text}}">{{r.path}}</a>
+            </sc-if>
+            <sc-if value="{{r.noLink}}" hint-placeholder-val="{{ false }}">
+              <span>{{r.path}}</span>
+            </sc-if>
+          </li>
+        </sc-for>
+        <li style="padding: 9px 0 9px 80px; border-top: 1px solid {{t.border}}; color: {{t.muted}}; font-size: 13px">… ほか 8 件</li>
+      </ul>
+    </section>
+
+    <footer style="padding-top: 20px; border-top: 1px solid {{t.border}}; font-size: 13px; color: {{t.muted}}">
+      このページは開発モード(<code style="font-family: 'JetBrains Mono', monospace">createApp({ dev: true })</code>)でのみ表示されます。本番では「404 Not Found」だけが返り、ルートの一覧は出ません。
+    </footer>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"accent":{"editor":"color","default":"#E3412B","options":["#E3412B","#2F6BFF","#0E9F6E"]},"$preview":{"width":1280,"height":1180}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const dark = this.props.dark ?? false;
+    const accent = this.props.accent ?? (dark ? '#FF6A52' : '#E3412B');
+    const t = dark
+      ? { bg: '#0E1013', border: '#262A31', text: '#EEF0F2', muted: '#A3A9B2', code: '#16191E', warnText: '#F2C14E', helpText: '#7FB2FF' }
+      : { bg: '#FFFFFF', border: '#E4E5E8', text: '#111418', muted: '#5B616A', code: '#F5F6F8', warnText: '#8A5A00', helpText: '#1F55D6' };
+    const colors = dark
+      ? { GET: '#5FD39A', POST: '#5CC8DD', DELETE: '#FF8A75', PUT: '#F2C14E', PATCH: '#D79BE6' }
+      : { GET: '#0B6B43', POST: '#0B5E70', DELETE: '#B42A17', PUT: '#7A4F00', PATCH: '#7A2E8A' };
+    const list = [
+      ['GET', '/hello'],
+      ['GET', '/ping'],
+      ['GET', '/user'],
+      ['POST', '/users'],
+      ['GET', '/users/me'],
+      ['GET', '/users/:id'],
+      ['DELETE', '/users/:id'],
+      ['GET', '/users/:id/posts/:postId'],
+    ];
+    const routes = list.map(([method, path]) => {
+      const link = method === 'GET' && !path.includes(':');
+      return { method, path, fg: colors[method], link, noLink: !link };
+    });
+    return { t, accent, routes, getColor: colors.GET };
+  }
+}
+</script>
+</body>
+</html>

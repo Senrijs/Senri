@@ -1,6 +1,7 @@
 import type { Context, HandlerResult } from "./context.ts";
 import type { Route } from "./router.ts";
 import { suggest } from "./dev/suggest.ts";
+import { wantsHtml } from "./dev/render.ts";
 
 // status 付きで投げられるエラー。message はそのままクライアントに見せる前提のもの
 export class HttpError extends Error {
@@ -13,6 +14,24 @@ export class HttpError extends Error {
         this.status = status;
         this.headers = new Headers(options.headers);
     }
+}
+
+// ハンドラーやミドルウェアが返した値を、Senri がレスポンスに変換する途中で失敗したときの印
+// (例: { n: 1n } を返すと、JSON にするところで失敗する)
+// このときのスタックには、返した側の行はもう残っていない(関数は返し終わっている)。
+// 代わりに外側のミドルウェアの `await next()` の行が出てきて紛らわしいので、どこが返した値かを覚えておく
+// エラーを包み直すと onError に届くエラーが変わってしまうので、エラーをキーにして横に置いておく
+export type ConversionOrigin = { kind: "handler" | "middleware"; name: string };
+
+const conversionOrigins = new WeakMap<object, ConversionOrigin>();
+
+export function markConversionError(err: unknown, origin: ConversionOrigin): unknown {
+    if (typeof err === "object" && err !== null) conversionOrigins.set(err, origin);
+    return err;
+}
+
+export function conversionOriginOf(err: unknown): ConversionOrigin | null {
+    return typeof err === "object" && err !== null ? (conversionOrigins.get(err) ?? null) : null;
 }
 
 export type ErrorHandler<V extends object = any> = (err: unknown, c: Context<V>) => HandlerResult | Promise<HandlerResult>;
@@ -63,9 +82,15 @@ export function methodNotAllowed(c: Context, path: string, methods: string, dev:
 }
 
 export function defaultNotFound(routes: Route[], dev: boolean): NotFoundHandler {
-    return (c) => {
+    return async (c) => {
         if (!dev) {
             return c.text("404 Not Found");
+        }
+        // ブラウザで開いたときは、ルートの一覧付きの404ページ(HTML)にする
+        // ページの HTML は大きいので、本番では読み込まないよう、ここで初めて import() する
+        if (wantsHtml(c.req)) {
+            const { notFoundPage } = await import("./dev/not-found-page.ts");
+            return notFoundPage(c, routes);
         }
         // ルートと同じく、デコード・正規化したパスで比べる(notFound に来るのはデコードできたリクエストだけ)
         const path = c.path;

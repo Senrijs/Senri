@@ -12,7 +12,7 @@ import {
     type Route,
     type Simplify,
 } from "./router.ts";
-import { compose, type Layer } from "./compose.ts";
+import { compose, toResponseOf, type Layer } from "./compose.ts";
 import {
     defaultNotFound,
     defaultOnError,
@@ -42,7 +42,13 @@ export function createApp<V extends object = Record<string, unknown>>(options: A
     const routes: Route[] = [];
     // prefix が null なら全部のリクエストで動く。["admin"] なら /admin とその下だけ
     const middlewares: { name: string; path: string | null; prefix: string[] | null; mw: Middleware<V> }[] = [];
-    let onError: ErrorHandler<V> = defaultOnError(dev);
+    // 開発モードでは、ブラウザから開いた 5xx を HTML のエラーページにする(src/dev/pages.ts)
+    // 開発用のページ(ビルド済みの HTML など、約90KB)は、本番では読み込まないよう dev のときだけ import() する
+    const devPages = dev ? import("./dev/pages.ts") : null;
+    const baseOnError = defaultOnError(dev);
+    let onError: ErrorHandler<V> = devPages
+        ? async (err, c) => (await devPages).withErrorPage(baseOnError, true)(err, c)
+        : baseOnError;
     let notFound: NotFoundHandler<V> = defaultNotFound(routes, dev);
 
     function add(method: string, path: string, handler: Handler) {
@@ -190,7 +196,11 @@ export function createApp<V extends object = Record<string, unknown>>(options: A
                     case "badRequest":
                         throw resolved.error;
                     case "route": {
-                        const res = c.toResponse(await resolved.route.handler(c.params, c));
+                        const result = await resolved.route.handler(c.params, c);
+                        const res = toResponseOf(c, result, {
+                            kind: "handler",
+                            name: `${resolved.route.method} ${resolved.route.path}`,
+                        });
                         if (req.method !== "HEAD") return res;
                         // HEAD はヘッダーと status だけ返す(ボディは捨てる)
                         await res.body?.cancel();
@@ -206,18 +216,12 @@ export function createApp<V extends object = Record<string, unknown>>(options: A
                 }
             };
 
-            // ハンドラー・notFound・toResponse のどこで投げても onError に集める
-            const handle = async (): Promise<Response> => {
-                try {
-                    return await run();
-                } catch (err) {
-                    return fail(err);
-                }
-            };
-
+            // ハンドラー・notFound・toResponse のどこで投げても、compose が onError に集める
             // 開発モードのときだけ計測する(本番では performance.now() の分も払わない)
-            const res = await compose(applicableMiddlewares(c), c, handle, fail, dev ? c.timings : undefined);
-            return c.finalize(res);
+            const res = await compose(applicableMiddlewares(c), c, run, fail, dev ? c.timings : undefined);
+            // ミドルウェアを全部通ったあとなので、ここなら「通った順番」が揃っている
+            const page = devPages ? await (await devPages).finishErrorPage(c, res) : res;
+            return c.finalize(page);
         },
     };
 }

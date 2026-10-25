@@ -123,9 +123,31 @@ const app = createApp({ dev: true });
 - 404 に「もしかして: GET /hello ?」
 - 405 に、どのメソッドならあるか
 
-ミドルウェアとハンドラーの通過時間も、開発モードのときだけ `c.timings` に記録されます(`self` は `next()` の中の時間を除いたもの)。
+ミドルウェアとハンドラーの通過時間も、開発モードのときだけ `c.timings` に記録されます(`self` は `next()` の中の時間を除いたもの、`failed` はその層で例外が起きたか)。
 
-環境変数(`NODE_ENV` など)は読みません。ランタイムによって読み方や権限が違うためです。本番では `dev: true` にしないでください。
+開発モードを決めるのに環境変数(`NODE_ENV` など)は読みません。ランタイムによって読み方や権限が違うためです。本番では `dev: true` にしないでください。
+
+### エラーページと404ページ
+
+開発モードで、ブラウザから開いたとき(`Accept` に `text/html` があるとき)だけ、HTML のページを返します。curl や `fetch` の既定(`*/*`)では、今までどおりテキストです。
+
+- **エラーページ**(5xx): エラーが起きた行の前後のコード、ヒント、スタックトレース(Senri 内部は折りたたみ)、リクエスト、ミドルウェアを通った順番と時間。意図して投げた 4xx の `HttpError` は今までどおりテキストです
+- **404ページ**: 「もしかして」(どこが違うかの印付き)と、登録されているルートの一覧(絞り込みつき)
+- `app.onError` / `app.notFound` を自分で書いた場合は、そちらが使われます
+- ミドルウェアが `next()` のあとで付けたヘッダーや Set-Cookie、作り直したレスポンスのステータスは、そのまま引き継がれます
+
+エラーの場所は、ページ上で選んだエディタで開けます(選択はブラウザに保存されます)。
+
+| エディタ | 開き方 | 自動判別(エディタの中のターミナルから起動したとき) |
+| --- | --- | --- |
+| VS Code | `vscode://file/…` | `TERM_PROGRAM=vscode` |
+| Cursor | `cursor://file/…` | `CURSOR_TRACE_ID` |
+| WebStorm(実験的) | `jetbrains://web-storm/…`(JetBrains Toolbox が必要) | `TERMINAL_EMULATOR=JetBrains-JediTerm` |
+| Zed | `zed://file/…` | `TERM_PROGRAM=zed` |
+
+分からなければ VS Code になります。該当コードは、プロジェクト(カレントディレクトリ)の中の、利用者のコードだけを読みます(`node_modules` やランタイム内部は読みません)。Deno で `--allow-read` / `--allow-env` がないときは、該当コードやエディタの判別なしでページを出します(許可を求めるプロンプトは出しません)。
+
+ページは `ui/` に Vue + Vite で書かれていて、`bun run build:pages` で1枚の HTML(`src/dev/page.generated.ts`)にして同梱しています。Vue も Vite も、利用者の依存には入りません。見た目を確かめるときは `npx vite --config ui/vite.config.ts` で開けます(`?page=notFound` で404ページ)。
 
 ## logger
 
@@ -146,4 +168,5 @@ bun run test:node     # Node アダプターとパッケージのテスト(Node)
 bun run typecheck     # 型チェック(src / test / adapters / examples / Deno)
 bun run smoke         # examples を Bun / Deno / Node で起動して確かめる
 bun run build         # dist/ に .js と .d.ts を出す
+bun run build:pages   # ui/ を変えたら、開発用ページ(src/dev/page.generated.ts)を作り直す
 ```

@@ -19,7 +19,11 @@ type Check = {
     status: number;
     body?: string;
     cookies?: string[];
+    // 開発モードの HTML ページ。埋め込まれた JSON を確かめて、だめなら理由を返す
+    page?: (data: any, runtime: string) => string | null;
 };
+
+const browser = { accept: "text/html,application/xhtml+xml,*/*;q=0.8" };
 
 const CHECKS: Check[] = [
     { name: "テキスト", path: "/hello", status: 200, body: "こんにちは!" },
@@ -36,7 +40,37 @@ const CHECKS: Check[] = [
     { name: "400", path: "/users/%E0%A4%A", status: 400 },
     { name: "404", path: "/nope", status: 404 },
     { name: "500", path: "/boom", status: 500 },
+    {
+        name: "エラーページ(HTML)",
+        path: "/boom",
+        init: { headers: browser },
+        status: 500,
+        page: (d, runtime) => {
+            if (d.error?.message !== "わざと壊した") return "error.message が違う";
+            if (!d.location?.file.endsWith("examples/shared/app.ts")) return "location が利用者のコードを指していない";
+            // Deno は --allow-read なしで動かしているので、該当コードは読めない(それでもページは出る)
+            if (runtime === "deno" ? d.code !== null : !d.code?.lines.some((l: any) => l.hit)) return "該当コードの扱いが違う";
+            if (!d.layers?.some((l: any) => l.name === "handler" && l.failed)) return "通った順番に handler の失敗がない";
+            return null;
+        },
+    },
+    {
+        name: "404ページ(HTML)",
+        path: "/helo",
+        init: { headers: browser },
+        status: 404,
+        page: (d) => {
+            if (d.suggestion?.path !== "/hello" || !d.suggestion.link) return "もしかして が違う";
+            if (!d.routes?.some((r: any) => r.path === "/users/:id" && !r.link)) return "ルート一覧が違う";
+            return null;
+        },
+    },
 ];
+
+function readPageData(body: string): unknown {
+    const m = /<script type="application\/json" id="senri-data">([\s\S]*?)<\/script>/.exec(body);
+    return m ? JSON.parse(m[1]!) : null;
+}
 
 // fetch では送れない、生の HTTP リクエストで確かめるもの
 type RawCheck = { name: string; request: string; status: number };
@@ -103,12 +137,25 @@ async function smoke(runtime: string): Promise<boolean> {
             const res = await fetch(`${BASE}${check.path}`, check.init);
             const body = await res.text();
             const cookies = res.headers.getSetCookie();
+            let reason: string | null = null;
+            if (check.page) {
+                const data = readPageData(body);
+                reason = !res.headers.get("content-type")?.startsWith("text/html")
+                    ? "HTML ではない"
+                    : data === null
+                      ? "データが埋め込まれていない"
+                      : [...res.headers.keys()].some((k) => k.startsWith("x-senri"))
+                        ? "内部ヘッダーが出ている"
+                        : check.page(data, runtime);
+            }
             const pass =
                 res.status === check.status &&
+                reason === null &&
                 (check.body === undefined || body === check.body) &&
                 (check.cookies === undefined || JSON.stringify(cookies) === JSON.stringify(check.cookies));
             if (!pass) ok = false;
-            console.log(`  ${pass ? "ok  " : "FAIL"} ${check.name}: ${res.status} ${JSON.stringify(body.slice(0, 60))}`);
+            const shown = check.page ? (reason ?? "HTML ページ") : JSON.stringify(body.slice(0, 60));
+            console.log(`  ${pass ? "ok  " : "FAIL"} ${check.name}: ${res.status} ${shown}`);
         }
         for (const check of RAW_CHECKS) {
             const status = await sendRaw(check.request);

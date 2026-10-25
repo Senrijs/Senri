@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { createApp } from "../src/index.ts";
-import { suggest } from "../src/dev/suggest.ts";
+import { explainDifference, suggest } from "../src/dev/suggest.ts";
 
 const req = (path: string, init?: RequestInit) =>
     new Request(`http://localhost${path}`, init);
@@ -125,12 +125,94 @@ describe("計測(c.timings)", () => {
         expect(Math.abs(slow!.total - (slow!.self + handler!.total))).toBeLessThan(5);
     });
 
+    test("例外が起きた層に failed が付く(ハンドラー)", async () => {
+        const app = createApp({ dev: true });
+        let timings: { name: string; failed: boolean }[] = [];
+        app.use(async function outer(c, next) {
+            await next();
+            timings = [...c.timings];
+        });
+        app.use(async function inner(_c, next) {
+            await next();
+        });
+        app.get("/x", () => {
+            throw new Error("boom");
+        });
+
+        await app.fetch(req("/x"));
+
+        // timings[0] は outer 自身(読んだ時点ではまだ終わっていないので入っていない)
+        expect(timings[1]).toMatchObject({ name: "inner", failed: false });
+        expect(timings[2]).toMatchObject({ name: "handler", failed: true });
+    });
+
+    test("例外が起きた層に failed が付く(ミドルウェア)", async () => {
+        const app = createApp({ dev: true });
+        let timings: { name: string; failed: boolean }[] = [];
+        app.use(async function outer(c, next) {
+            await next();
+            timings = [...c.timings];
+        });
+        app.use(function auth() {
+            throw new Error("auth failed");
+        });
+        app.get("/x", () => "x");
+
+        await app.fetch(req("/x"));
+
+        expect(timings[1]).toMatchObject({ name: "auth", failed: true });
+        // ハンドラーまでは届いていない
+        expect(timings[2]).toBeUndefined();
+    });
+
     test("本番では計測しない", async () => {
         const { app, read } = measuredApp({});
 
         await app.fetch(req("/x"));
 
         expect(read()).toEqual([]);
+    });
+});
+
+describe("「もしかして」のどこが違うか(explainDifference)", () => {
+    test("1文字足りない: 足りない文字に印を付ける", () => {
+        expect(explainDifference("/helo", "/hello")).toEqual({
+            parts: [
+                { text: "/hel", mark: false },
+                { text: "l", mark: true },
+                { text: "o", mark: false },
+            ],
+            note: '"l" が1文字足りません',
+        });
+    });
+
+    test("続けて何文字か足りない", () => {
+        expect(explainDifference("/usr", "/users").note).toBe('"es" が2文字足りません');
+    });
+
+    test("1文字多い: 候補のほうには印を付けない", () => {
+        expect(explainDifference("/helllo", "/hello")).toEqual({
+            parts: [{ text: "/hello", mark: false }],
+            note: '"l" が1文字多いです',
+        });
+    });
+
+    test("1文字違う", () => {
+        expect(explainDifference("/userz", "/users")).toEqual({
+            parts: [
+                { text: "/user", mark: false },
+                { text: "s", mark: true },
+            ],
+            note: '"s" のところが "z" になっています',
+        });
+    });
+
+    test("大文字と小文字の違いも分かる", () => {
+        expect(explainDifference("/Hello", "/hello").note).toBe('"h" のところが "H" になっています');
+    });
+
+    test("いろいろ違うときは、か所の数だけ", () => {
+        expect(explainDifference("/hxlo", "/hello").note).toBe("2か所違います");
     });
 });
 

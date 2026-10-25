@@ -1,0 +1,9 @@
+{
+    // 画面の .ts を型チェックする(.vue の中身は見ない。vue-tsc は TypeScript 7 で動かないため)
+    "extends": "../tsconfig.json",
+    "compilerOptions": {
+        "lib": ["ESNext", "DOM", "DOM.Iterable"],
+        "types": ["node"]
+    },
+    "include": ["src", "vite.config.ts"]
+}
