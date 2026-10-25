@@ -42,3 +42,22 @@ app.routes({
     // @ts-expect-error メソッドとパスの間にスペースがない
     "GET/hello": () => "x",
 });
+
+// --- パスパラメーターの推論(項目15) ---
+
+// 静的セグメントの途中にある ":" はパラメーターではない(実行時と同じ)
+app.get("/time/12:00", (p) => {
+    // @ts-expect-error "00" というパラメーターはない
+    p["00"];
+    return "ok";
+});
+
+// パスが string 型(リテラルでない)なら、どんな名前でも string として読める
+const dynamicPath: string = "/dyn/:id";
+app.get(dynamicPath, (p) => {
+    const id: string | undefined = p.id;
+    return id ?? "none";
+});
+
+// 末尾スラッシュがあっても推論できる
+app.get("/trailing/:id/", ({ id }) => id);

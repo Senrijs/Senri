@@ -9,12 +9,19 @@ export type Route = {
     handler: Handler;
 };
 
+// "/users/:id/posts" → "" | "users" | ":id" | "posts"
+type Segment<Path extends string> =
+    Path extends `${infer Head}/${infer Rest}` ? Head | Segment<Rest> : Path;
+
+// セグメントが ":" で始まるときだけパラメーター(実行時の matchPath と同じ判定)
+// "12:00" のように途中に ":" があるだけのものはパラメーターではない
+type ParamName<S extends string> = S extends `:${infer Name}` ? Name : never;
+
 export type ExtractParams<Path extends string> =
-    Path extends `${string}:${infer Param}/${infer Rest}`
-        ? { [K in Param]: string } & ExtractParams<`${Rest}`>
-        : Path extends `${string}:${infer Param}`
-            ? { [K in Param]: string }
-            : {};
+    // パスが string 型(リテラルでない)だと名前が分からないので、どんな名前でも読めるようにする
+    string extends Path
+        ? Record<string, string>
+        : { [K in ParamName<Segment<Path>>]: string };
 
 export type Simplify<T> = { [K in keyof T]: T[K] } & {};
 
