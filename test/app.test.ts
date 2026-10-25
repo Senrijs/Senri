@@ -47,8 +47,8 @@ describe("ルーティング", () => {
         expect(await res.text()).toBe("それは自分です");
     });
 
-    test("見つからないと404で「もしかして」が出る", async () => {
-        const app = createApp();
+    test("見つからないと404で「もしかして」が出る(開発モード)", async () => {
+        const app = createApp({ dev: true });
         app.get("/hello", () => "hi");
 
         const res = await app.fetch(req("/helo"));
@@ -64,7 +64,7 @@ describe("ルーティング", () => {
         const res = await app.fetch(req("/hello", { method: "POST" }));
 
         expect(res.status).toBe(405);
-        expect(res.headers.get("allow")).toBe("GET");
+        expect(res.headers.get("allow")).toBe("GET, HEAD, OPTIONS");
     });
 
     test("c.status(201) で返すと201になる", async () => {

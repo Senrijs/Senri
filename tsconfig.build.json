@@ -1,0 +1,17 @@
+{
+    // パッケージとして配る dist/ を作る設定(bun run build)
+    // ふだんの型チェックは tsconfig.json(noEmit)のほう
+    "extends": "./tsconfig.json",
+    "compilerOptions": {
+        "noEmit": false,
+        "declaration": true,
+        "outDir": "dist",
+        "rootDir": ".",
+        // import "./router.ts" を、出力では "./router.js" に書き換える
+        "rewriteRelativeImportExtensions": true,
+        "allowJs": false,
+        // adapters/node が node:http などを使うため
+        "types": ["node"]
+    },
+    "include": ["src", "adapters/node"]
+}
