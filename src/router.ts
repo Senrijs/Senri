@@ -27,9 +27,9 @@ export type Simplify<T> = { [K in keyof T]: T[K] } & {};
 
 // app.routes() のキー("GET /users/:id")ごとのハンドラーの型
 // 書き方が違うキーには、説明の文字列型を入れておく(ハンドラーを書くと、その文字列と一緒に型エラーになる)
-export type RouteTable<K extends string> = {
+export type RouteTable<K extends string, V extends object = any> = {
     [Key in K]: Key extends `${string} ${infer Path}`
-        ? Handler<Simplify<ExtractParams<Path>>>
+        ? Handler<Simplify<ExtractParams<Path>>, V>
         : 'ルートの書き方が違います。"GET /hello" のように、メソッドとパスの間にスペースを入れてください';
 };
 

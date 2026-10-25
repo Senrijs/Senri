@@ -51,6 +51,30 @@ describe("c.path", () => {
     });
 });
 
+describe("c.set / c.get", () => {
+    test("ミドルウェアで入れた値をハンドラーで読める", async () => {
+        const app = createApp<{ user: string }>();
+        app.use((c, next) => {
+            c.set("user", "yahari");
+            return next();
+        });
+        app.get("/me", (_, c) => c.get("user") ?? "anonymous");
+
+        const res = await app.fetch(req("/me"));
+
+        expect(await res.text()).toBe("yahari");
+    });
+
+    test("入れていないキーは undefined", async () => {
+        const app = createApp<{ user: string }>();
+        app.get("/me", (_, c) => c.get("user") ?? "anonymous");
+
+        const res = await app.fetch(req("/me"));
+
+        expect(await res.text()).toBe("anonymous");
+    });
+});
+
 describe("ミドルウェアの名前", () => {
     test("関数の名前が使われ、無名なら anonymous#番号 になる", () => {
         const app = createApp();

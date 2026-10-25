@@ -1,6 +1,6 @@
 // 型だけのテスト。bun test では実行せず、bun check(bun run typecheck)で確かめる
 // 「ts-expect-error」のコメントは、次の行が型エラーになることを期待する。エラーにならなければ、そちらがエラーになる
-import { createApp } from "../src/index.ts";
+import { createApp, logger, type Middleware } from "../src/index.ts";
 
 const app = createApp();
 
@@ -61,3 +61,42 @@ app.get(dynamicPath, (p) => {
 
 // 末尾スラッシュがあっても推論できる
 app.get("/trailing/:id/", ({ id }) => id);
+
+// --- c.set / c.get(項目19) ---
+
+type User = { name: string };
+const typed = createApp<{ user: User; requestId: string }>();
+
+// 汎用のミドルウェア(logger など)はそのまま使える
+typed.use(logger());
+typed.use((c, next) => {
+    c.set("user", { name: "yahari" });
+    return next();
+});
+typed.use((c, next) => {
+    // @ts-expect-error 型が違う
+    c.set("user", 1);
+    return next();
+});
+typed.use((c, next) => {
+    // @ts-expect-error 知らないキー
+    c.set("nope", 1);
+    return next();
+});
+typed.get("/me", (_, c) => {
+    // 入っていないこともあるので undefined がつく
+    const user: User | undefined = c.get("user");
+    return user?.name ?? "anonymous";
+});
+
+// interface で書いても使える
+interface Vars {
+    user: User;
+}
+const withInterface = createApp<Vars>();
+withInterface.use(logger());
+withInterface.get("/me", (_, c) => c.get("user")?.name ?? "anonymous");
+
+// 外で定義したミドルウェアも使える
+const standalone: Middleware = (_c, next) => next();
+typed.use(standalone);

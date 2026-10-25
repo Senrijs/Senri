@@ -15,8 +15,8 @@ export class HttpError extends Error {
     }
 }
 
-export type ErrorHandler = (err: unknown, c: Context) => HandlerResult | Promise<HandlerResult>;
-export type NotFoundHandler = (c: Context) => HandlerResult | Promise<HandlerResult>;
+export type ErrorHandler<V extends object = any> = (err: unknown, c: Context<V>) => HandlerResult | Promise<HandlerResult>;
+export type NotFoundHandler<V extends object = any> = (c: Context<V>) => HandlerResult | Promise<HandlerResult>;
 
 // onError を通して、例外をレスポンスに変える
 // HttpError なら status と headers を先に c に入れておくので、onError が文字列を返すだけでも正しい status になる

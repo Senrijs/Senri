@@ -36,13 +36,14 @@ export type AppOptions = {
     dev?: boolean;
 };
 
-export function createApp(options: AppOptions = {}) {
+// V は c.set / c.get で使う変数の型。createApp<{ user: User }>() のように指定する
+export function createApp<V extends object = Record<string, unknown>>(options: AppOptions = {}) {
     const dev = options.dev ?? false;
     const routes: Route[] = [];
     // prefix が null なら全部のリクエストで動く。["admin"] なら /admin とその下だけ
-    const middlewares: { name: string; path: string | null; prefix: string[] | null; mw: Middleware }[] = [];
-    let onError: ErrorHandler = defaultOnError(dev);
-    let notFound: NotFoundHandler = defaultNotFound(routes, dev);
+    const middlewares: { name: string; path: string | null; prefix: string[] | null; mw: Middleware<V> }[] = [];
+    let onError: ErrorHandler<V> = defaultOnError(dev);
+    let notFound: NotFoundHandler<V> = defaultNotFound(routes, dev);
 
     function add(method: string, path: string, handler: Handler) {
         const segments = splitPattern(path);
@@ -105,7 +106,7 @@ export function createApp(options: AppOptions = {}) {
     }
 
     return {
-        use(pathOrMw: string | Middleware, mw?: Middleware) {
+        use(pathOrMw: string | Middleware<V>, mw?: Middleware<V>) {
             const path = typeof pathOrMw === "string" ? pathOrMw : null;
             const fn = typeof pathOrMw === "string" ? mw : pathOrMw;
             if (!fn) throw new Error(`app.use("${path}", ...) にミドルウェアがありません`);
@@ -119,41 +120,41 @@ export function createApp(options: AppOptions = {}) {
             });
         },
 
-        onError(handler: ErrorHandler) {
+        onError(handler: ErrorHandler<V>) {
             onError = handler;
         },
 
-        notFound(handler: NotFoundHandler) {
+        notFound(handler: NotFoundHandler<V>) {
             notFound = handler;
         },
 
-        get<Path extends string>(path: Path, handler: Handler<Simplify<ExtractParams<Path>>>) {
+        get<Path extends string>(path: Path, handler: Handler<Simplify<ExtractParams<Path>>, V>) {
             add("GET", path, handler as Handler);
         },
 
-        post<Path extends string>(path: Path, handler: Handler<Simplify<ExtractParams<Path>>>) {
+        post<Path extends string>(path: Path, handler: Handler<Simplify<ExtractParams<Path>>, V>) {
             add("POST", path, handler as Handler);
         },
 
-        put<Path extends string>(path: Path, handler: Handler<Simplify<ExtractParams<Path>>>) {
+        put<Path extends string>(path: Path, handler: Handler<Simplify<ExtractParams<Path>>, V>) {
             add("PUT", path, handler as Handler);
         },
 
-        patch<Path extends string>(path: Path, handler: Handler<Simplify<ExtractParams<Path>>>) {
+        patch<Path extends string>(path: Path, handler: Handler<Simplify<ExtractParams<Path>>, V>) {
             add("PATCH", path, handler as Handler);
         },
 
-        delete<Path extends string>(path: Path, handler: Handler<Simplify<ExtractParams<Path>>>) {
+        delete<Path extends string>(path: Path, handler: Handler<Simplify<ExtractParams<Path>>, V>) {
             add("DELETE", path, handler as Handler);
         },
 
         // どのメソッドでも動く。ただし、メソッドが合うルートがあればそちらが優先
-        all<Path extends string>(path: Path, handler: Handler<Simplify<ExtractParams<Path>>>) {
+        all<Path extends string>(path: Path, handler: Handler<Simplify<ExtractParams<Path>>, V>) {
             add("ALL", path, handler as Handler);
         },
 
         // K はテーブルのキーから推論される。各キーのパスからパラメーターの型が決まる
-        routes<K extends string>(table: RouteTable<K>) {
+        routes<K extends string>(table: RouteTable<K, V>) {
             for (const [key, handler] of Object.entries(table) as [string, Handler][]) {
                 const [method, path] = key.split(" ");
                 if (!method || !path) {
@@ -173,7 +174,7 @@ export function createApp(options: AppOptions = {}) {
         },
 
         async fetch(req: Request): Promise<Response> {
-            const c = new Context(req);
+            const c = new Context<V>(req);
             const fail = (err: unknown) => handleError(err, c, onError);
 
             // ミドルウェアより先にマッチして、c.route / c.params を見られるようにしておく

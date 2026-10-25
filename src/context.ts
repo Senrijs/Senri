@@ -30,23 +30,26 @@ function contentTypeOf(value: BodyValue): string | undefined {
     return undefined;
 }
 
-export type Handler<P = Record<string, string>> = (
+// V は c.set / c.get で使う変数の型(createApp<{ user: User }>() のように決める)
+// 既定の any は「どのアプリでも使える」という意味。logger() のような汎用ミドルウェアのため
+export type Handler<P = Record<string, string>, V extends object = any> = (
     params: P,
-    c: Context,
+    c: Context<V>,
 ) => HandlerResult | Promise<HandlerResult>;
 
 export type Next = () => Promise<Response>;
 
-export type Middleware = (
-    c: Context,
+export type Middleware<V extends object = any> = (
+    c: Context<V>,
     next: Next,
 ) => HandlerResult | void | Promise<HandlerResult | void>;
 
-export class Context {
+export class Context<V extends object = any> {
     req: Request;
     #status = 200;
     #headers = new Headers();
     #segments: string[] | undefined;
+    #vars = new Map<string, unknown>();
     error: unknown = undefined;
     // マッチしたルートのパターン("/users/:id")。見つからなければ undefined
     // ミドルウェアより先にマッチするので、next() の前から読める(ログやダッシュボードの集計用)
@@ -72,6 +75,17 @@ export class Context {
     // パスで判定するミドルウェアは、req.url ではなくこちらを使うこと
     get path(): string {
         return "/" + this.segments.join("/");
+    }
+
+    // ミドルウェアからハンドラーへ値を渡す(ログインしたユーザーなど)
+    set<K extends keyof V & string>(key: K, value: V[K]) {
+        this.#vars.set(key, value);
+        return this;
+    }
+
+    // set していなければ undefined(ミドルウェアが動かなかったときなど)
+    get<K extends keyof V & string>(key: K): V[K] | undefined {
+        return this.#vars.get(key) as V[K] | undefined;
     }
 
     status(code: number) {
