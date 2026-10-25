@@ -206,17 +206,9 @@ export function createApp<V extends object = Record<string, unknown>>(options: A
                 }
             };
 
-            // ハンドラー・notFound・toResponse のどこで投げても onError に集める
-            const handle = async (): Promise<Response> => {
-                try {
-                    return await run();
-                } catch (err) {
-                    return fail(err);
-                }
-            };
-
+            // ハンドラー・notFound・toResponse のどこで投げても、compose が onError に集める
             // 開発モードのときだけ計測する(本番では performance.now() の分も払わない)
-            const res = await compose(applicableMiddlewares(c), c, handle, fail, dev ? c.timings : undefined);
+            const res = await compose(applicableMiddlewares(c), c, run, fail, dev ? c.timings : undefined);
             return c.finalize(res);
         },
     };

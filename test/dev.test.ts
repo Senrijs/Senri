@@ -125,6 +125,46 @@ describe("計測(c.timings)", () => {
         expect(Math.abs(slow!.total - (slow!.self + handler!.total))).toBeLessThan(5);
     });
 
+    test("例外が起きた層に failed が付く(ハンドラー)", async () => {
+        const app = createApp({ dev: true });
+        let timings: { name: string; failed: boolean }[] = [];
+        app.use(async function outer(c, next) {
+            await next();
+            timings = [...c.timings];
+        });
+        app.use(async function inner(_c, next) {
+            await next();
+        });
+        app.get("/x", () => {
+            throw new Error("boom");
+        });
+
+        await app.fetch(req("/x"));
+
+        // timings[0] は outer 自身(読んだ時点ではまだ終わっていないので入っていない)
+        expect(timings[1]).toMatchObject({ name: "inner", failed: false });
+        expect(timings[2]).toMatchObject({ name: "handler", failed: true });
+    });
+
+    test("例外が起きた層に failed が付く(ミドルウェア)", async () => {
+        const app = createApp({ dev: true });
+        let timings: { name: string; failed: boolean }[] = [];
+        app.use(async function outer(c, next) {
+            await next();
+            timings = [...c.timings];
+        });
+        app.use(function auth() {
+            throw new Error("auth failed");
+        });
+        app.get("/x", () => "x");
+
+        await app.fetch(req("/x"));
+
+        expect(timings[1]).toMatchObject({ name: "auth", failed: true });
+        // ハンドラーまでは届いていない
+        expect(timings[2]).toBeUndefined();
+    });
+
     test("本番では計測しない", async () => {
         const { app, read } = measuredApp({});
 
