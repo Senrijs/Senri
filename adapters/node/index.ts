@@ -11,6 +11,11 @@ function toUrl(req: IncomingMessage): URL {
     const protocol = (req.socket as TLSSocket).encrypted ? "https" : "http";
     // HTTP/1.0 などで Host がないこともある
     const host = req.headers.host ?? "localhost";
+    // Host は下で URL の文字列につなぐので、区切り文字が入っているとパスやホストが化ける
+    // (例: "x/admin#" → http://x/admin#/path となり、パスが /admin になる)
+    if (/[\s/?#@\\]/.test(host)) {
+        throw new TypeError(`不正な Host ヘッダーです: ${host}`);
+    }
     const target = req.url ?? "/";
     // absolute-form("GET http://host/path HTTP/1.1")ならそのまま使う
     if (/^https?:\/\//i.test(target)) {

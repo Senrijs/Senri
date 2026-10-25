@@ -78,6 +78,14 @@ describe("Node アダプター", () => {
         assert.equal((await fetch(`${base}/hello`)).status, 200);
     });
 
+    test("Host ヘッダーに URL の区切り文字があっても、パスがすり替わらない(400)", async () => {
+        // "x/admin#" をそのままつなぐと http://x/admin#/hello になり、パスが /admin に化ける
+        for (const host of ["x/admin#", "x/admin?", "x@evil", "x\\admin"]) {
+            const res = await raw(`GET /hello HTTP/1.1\r\nHost: ${host}\r\nConnection: close\r\n\r\n`);
+            assert.match(res, /^HTTP\/1\.1 400/, `Host: ${host}`);
+        }
+    });
+
     test("Host ヘッダーがなくても動く(HTTP/1.0)", async () => {
         const res = await raw("GET /url HTTP/1.0\r\n\r\n");
 
