@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { cwd, env } from "../../src/dev/runtime.ts";
+import { cwd, env } from "../src/runtime.ts";
 
 // Deno の permissions を真似る偽物を globalThis.Deno に置く
 type Desc = { name: string; path?: string; variable?: string };
