@@ -1,5 +1,5 @@
 // ダッシュボードの計算・判断だけを集めたもの(DOM も Vue も使わないので、bun test でそのまま試せる)
-import type { RequestSummary } from "../../src/dev/page-data.ts";
+import type { MiddlewareRow, RequestSummary, RouteRow } from "../../src/dev/page-data.ts";
 import type { DashboardRecord, LayerState } from "../../src/dev/dashboard/record.ts";
 
 // --- 一覧 ---
@@ -89,6 +89,27 @@ export function timeline(r: DashboardRecord): TimelineBar[] {
             label,
         };
     });
+}
+
+// --- ルートのタブ ---
+
+// そのルートに来たリクエストが、どのミドルウェアを順に通ってハンドラーに着くか
+// (かからないものは省く。パスによるもの ":page" などは maybe の印を付ける)
+export function routeChain(row: RouteRow): { name: string; maybe: boolean }[] {
+    return [
+        ...row.middlewares.filter((m) => m.applies !== "no").map((m) => ({ name: m.name, maybe: m.applies === "maybe" })),
+        { name: "handler", maybe: false },
+    ];
+}
+
+// --- ミドルウェアのタブ ---
+
+export function middlewareScope(path: string | null): string {
+    return path === null ? "すべてのパス" : `${path} とその下`;
+}
+
+export function formatAverage(m: MiddlewareRow): string {
+    return m.avgSelfMs === null ? "—" : `平均 ${formatMs(m.avgSelfMs)}(${m.runs}件)`;
 }
 
 // タイムラインの下に出す説明(何が起きたか)。言うことがなければ空

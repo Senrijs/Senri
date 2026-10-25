@@ -3,7 +3,10 @@ import {
     applyEvent,
     describeRequest,
     filterRequests,
+    formatAverage,
     formatTime,
+    middlewareScope,
+    routeChain,
     statusClass,
     timeline,
 } from "../../ui/src/dashboard.ts";
@@ -114,6 +117,38 @@ describe("玉ねぎタイムライン", () => {
     test("全体が 0ms でも 0 で割らない", () => {
         const [bar] = timeline(record([layer("handler", 0, 0, 0, 0)], 200, 0));
         expect(bar).toMatchObject({ left: 0, width: 100, selfWidth: 100 });
+    });
+});
+
+describe("ルートのタブ", () => {
+    test("通るミドルウェアを順に並べ、最後に handler。かからないものは省き、パスによるものは印を付ける", () => {
+        const chain = routeChain({
+            method: "GET",
+            path: "/:page",
+            middlewares: [
+                { name: "logger", applies: "yes" },
+                { name: "auth", applies: "maybe" },
+                { name: "cache", applies: "no" },
+            ],
+        });
+
+        expect(chain).toEqual([
+            { name: "logger", maybe: false },
+            { name: "auth", maybe: true },
+            { name: "handler", maybe: false },
+        ]);
+    });
+});
+
+describe("ミドルウェアのタブ", () => {
+    test("かかる範囲の言い方", () => {
+        expect(middlewareScope(null)).toBe("すべてのパス");
+        expect(middlewareScope("/admin")).toBe("/admin とその下");
+    });
+
+    test("平均時間(まだ通っていなければ —)", () => {
+        expect(formatAverage({ order: 1, name: "logger", path: null, runs: 3, avgSelfMs: 0.25 })).toBe("平均 0.3ms(3件)");
+        expect(formatAverage({ order: 2, name: "auth", path: "/admin", runs: 0, avgSelfMs: null })).toBe("—");
     });
 });
 
