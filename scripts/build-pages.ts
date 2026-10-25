@@ -7,7 +7,9 @@ const FALLBACK_PLACEHOLDER = "<!--senri:fallback-->";
 const input = new URL("../ui/dist/index.html", import.meta.url);
 const output = new URL("../src/dev/page.generated.ts", import.meta.url);
 
-const html = readFileSync(input, "utf8");
+// 改行は LF にそろえる。Windows では git がチェックアウト時に ui/index.html を CRLF にすることがあり、
+// そのままだと生成物の中身が「誰のどの PC でビルドしたか」で変わってしまう(CI の差分チェックが落ちる)
+const html = readFileSync(input, "utf8").replace(/\r\n?/g, "\n");
 
 // 1枚にまとまっているか(外のファイルを読みにいっていないか)を確かめる
 if (/<script[^>]+src=/.test(html) || /<link[^>]+rel="stylesheet"[^>]+href="\.?\//.test(html)) {

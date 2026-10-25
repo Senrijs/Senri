@@ -1,6 +1,6 @@
 // エラーが起きた行の前後を読み込んで、ページに出す「該当コード」を作る
 import type { StackFrame } from "./stack.ts";
-import * as runtime from "./runtime.ts";
+import * as runtime from "../runtime.ts";
 
 export type CodeLine = { num: number; code: string; hit: boolean };
 

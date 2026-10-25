@@ -3,6 +3,10 @@ import { PAGE_HTML } from "../../src/dev/page.generated.ts";
 import { DATA_PLACEHOLDER, renderPage } from "../../src/dev/render.ts";
 
 describe("ビルド済みのページ(page.generated.ts)", () => {
+    test("改行は LF だけ(Windows で git が CRLF に変換しても、生成物が変わらない)", () => {
+        expect(PAGE_HTML.includes("\r")).toBe(false);
+    });
+
     test("データの置き場所がちょうど1つある", () => {
         expect(PAGE_HTML.split(DATA_PLACEHOLDER)).toHaveLength(2);
     });

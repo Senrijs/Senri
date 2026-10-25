@@ -1,0 +1,4 @@
+# テキストファイルの改行は、どの OS でも LF にそろえる
+# (Windows の core.autocrlf=true でチェックアウト時に CRLF になると、
+#  ui/ のビルド結果 src/dev/page.generated.ts の中身が PC ごとに変わってしまうため)
+* text=auto eol=lf

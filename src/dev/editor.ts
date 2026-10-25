@@ -8,7 +8,7 @@
 // - JetBrains: TERMINAL_EMULATOR=JetBrains-JediTerm (IntelliJ のソースで設定。WebStorm 以外の IDE も同じ値)
 // - Zed:      TERM_PROGRAM=zed / ZED_TERM=true (Zed のドキュメントで確認)
 import type { EditorId } from "./editor-url.ts";
-import * as runtime from "./runtime.ts";
+import * as runtime from "../runtime.ts";
 
 export type EditorGuess = {
     id: EditorId;

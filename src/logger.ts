@@ -109,7 +109,8 @@ const ACCENT = "\x1b[38;2;227;65;43m";
 export function showRoutes(
     app: { routeList(): RouteInfo[] },
     url: string,
-    options: { color?: boolean } = {},
+    // note: URL の横に薄く出す補足(serve() は、ポートをどこから決めたかを出す)
+    options: { color?: boolean; note?: string } = {},
 ) {
     const color = options.color ?? true;
     const paint = (code: string, text: string) =>
@@ -128,7 +129,8 @@ export function showRoutes(
             .join("/");
 
     console.log("");
-    console.log(`  ${paint(C.bold, "senr")}${paint(ACCENT, "/")}  ${paint(C.green, "ready")}  ${url}`);
+    const note = options.note ? `  ${paint(C.dim, `(${options.note})`)}` : "";
+    console.log(`  ${paint(C.bold, "senr")}${paint(ACCENT, "/")}  ${paint(C.green, "ready")}  ${url}${note}`);
     console.log("");
     for (const r of list) {
         console.log(`    ${paint(METHOD_COLOR[r.method] ?? C.bold, r.method.padEnd(7))} ${highlight(r.path)}`);
