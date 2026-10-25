@@ -114,6 +114,60 @@ describe("マージのルール", () => {
     });
 });
 
+describe("ハンドラーの戻り値", () => {
+    test("Blob はそのままボディになる(JSON にしない)", async () => {
+        const app = createApp();
+        app.get("/b", () => new Blob(["hello"], { type: "image/png" }));
+
+        const res = await app.fetch(req("/b"));
+
+        expect(await res.text()).toBe("hello");
+        expect(res.headers.get("content-type")).toBe("image/png");
+    });
+
+    test("Uint8Array / ArrayBuffer / ReadableStream もそのままボディになる", async () => {
+        const app = createApp();
+        app.get("/u8", () => new TextEncoder().encode("u8"));
+        app.get("/ab", () => new TextEncoder().encode("ab").buffer);
+        app.get("/rs", () => new Blob(["rs"]).stream());
+
+        for (const name of ["u8", "ab", "rs"]) {
+            const res = await app.fetch(req(`/${name}`));
+            expect(await res.text()).toBe(name);
+        }
+    });
+
+    test("URLSearchParams はフォームの形式になる", async () => {
+        const app = createApp();
+        app.get("/q", () => new URLSearchParams({ a: "1" }));
+
+        const res = await app.fetch(req("/q"));
+
+        expect(await res.text()).toBe("a=1");
+        expect(res.headers.get("content-type")).toStartWith("application/x-www-form-urlencoded");
+    });
+
+    test("関数を返したら、呼び忘れとして 500 になる", async () => {
+        const app = createApp({ dev: true });
+        app.get("/f", () => (() => 1) as never);
+
+        const res = await app.fetch(req("/f"));
+
+        expect(res.status).toBe(500);
+        expect(await res.text()).toContain("関数");
+    });
+
+    test("undefined を返したら 500 になる(JS から使ったときなど)", async () => {
+        const app = createApp({ dev: true });
+        app.get("/u", () => undefined as never);
+
+        const res = await app.fetch(req("/u"));
+
+        expect(res.status).toBe(500);
+        expect(await res.text()).toContain("何も返していません");
+    });
+});
+
 describe("c.json() と c.text()", () => {
     test("文字列を返すと text/plain; charset=utf-8 になる(どのランタイムでも同じ)", async () => {
         const app = createApp();

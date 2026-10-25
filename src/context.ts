@@ -1,6 +1,33 @@
 import { splitPath } from "./router.ts";
 
-export type HandlerResult = Response | string | object;
+// そのままレスポンスのボディにできるもの(JSON にはしない)
+// TypedArray は SharedArrayBuffer のもの以外(Response のボディにできないので)
+export type BodyValue = Blob | ArrayBuffer | ArrayBufferView<ArrayBuffer> | ReadableStream | FormData | URLSearchParams;
+
+// JSON にするオブジェクト。関数(call を持つ)と Promise(then を持つ)は object でもあるので、ここで外す
+// 関数を返すのはたいてい呼び忘れ、Promise は二重に包んでしまったときに起きる
+export type JsonObject = object & { call?: never; then?: never };
+
+export type HandlerResult = Response | string | BodyValue | JsonObject;
+
+function isBodyValue(value: unknown): value is BodyValue {
+    return (
+        value instanceof Blob ||
+        value instanceof ArrayBuffer ||
+        ArrayBuffer.isView(value) ||
+        value instanceof ReadableStream ||
+        value instanceof FormData ||
+        value instanceof URLSearchParams
+    );
+}
+
+// ボディの種類から決まる Content-Type。Bun は Headers に入れてくれないので、ランタイム差が出ないよう自分で入れる
+// FormData は boundary 付きの値を Response が作るので、ここでは決めない
+function contentTypeOf(value: BodyValue): string | undefined {
+    if (value instanceof Blob) return value.type || undefined;
+    if (value instanceof URLSearchParams) return "application/x-www-form-urlencoded;charset=UTF-8";
+    return undefined;
+}
 
 export type Handler<P = Record<string, string>> = (
     params: P,
@@ -101,6 +128,20 @@ export class Context {
         }
         if (typeof value === "string") {
             return this.text(value);
+        }
+        if (isBodyValue(value)) {
+            const contentType = this.#headers.get("content-type") ?? contentTypeOf(value);
+            return new Response(value, {
+                status: this.#status,
+                headers: contentType ? { "content-type": contentType } : undefined,
+            });
+        }
+        // 型では防いでいるが、JS から使ったときや as で無理やり通したときのために実行時にも確かめる
+        if (typeof value === "function") {
+            throw new TypeError("ハンドラーが関数を返しました。呼び出し忘れではありませんか？");
+        }
+        if (value === undefined || value === null) {
+            throw new TypeError("ハンドラーが何も返していません(undefined / null)");
         }
         return this.json(value);
     }
