@@ -1,6 +1,6 @@
 // エラーページに埋め込むデータを組み立てる
 import type { Context } from "../context.ts";
-import { HttpError } from "../errors.ts";
+import { conversionOriginOf, HttpError } from "../errors.ts";
 import { guessEditor } from "./editor.ts";
 import { hintFor } from "./hints.ts";
 import type { ErrorPageData, PageFrame } from "./page-data.ts";
@@ -44,7 +44,10 @@ export async function buildErrorPageData(err: unknown, c: Context, res: Response
         err instanceof Error ? { name: err.name, message: err.message } : { name: "throw", message: String(err) };
     const stack = err instanceof Error && typeof err.stack === "string" ? parseStack(err.stack) : [];
     const frames = stack.map((f) => toPageFrame(f, root));
-    const first = stack.find((f) => f.kind === "user") ?? null;
+    // 返した値をレスポンスにする途中で失敗したときは、スタックの利用者のコードは
+    // 「返した場所」ではなく外側のミドルウェアの `await next()` なので、場所としては出さない
+    const origin = conversionOriginOf(err);
+    const first = origin ? null : (stack.find((f) => f.kind === "user") ?? null);
 
     return {
         kind: "error",
@@ -53,6 +56,7 @@ export async function buildErrorPageData(err: unknown, c: Context, res: Response
         // いちばん外側の層の total が、リクエスト全体の時間
         durationMs: c.timings[0]?.total ?? null,
         error,
+        origin,
         location: first ? toPageFrame(first, root) : null,
         code: first ? await readCodeFrame(first, { root }) : null,
         hint: hintFor(err),

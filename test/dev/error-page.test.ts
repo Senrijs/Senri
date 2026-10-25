@@ -137,6 +137,62 @@ describe("ページの中身", () => {
     });
 });
 
+describe("返した値をレスポンスにできなかったとき", () => {
+    test("ハンドラーが返した値: ミドルウェアの行ではなく、どのハンドラーが返したかを出す", async () => {
+        const app = boomApp();
+        app.get("/big", () => ({ n: 1n }));
+
+        const data = await pageData(await app.fetch(req("/big", { headers: html })));
+
+        expect(data.origin).toEqual({ kind: "handler", name: "GET /big" });
+        // logger の `await next()` の行を「エラーの場所」として出さない
+        expect(data.location).toBeNull();
+        expect(data.code).toBeNull();
+        expect(data.hint!.text).toContain("BigInt");
+    });
+
+    test("ミドルウェアが返した値", async () => {
+        const app = createApp({ dev: true });
+        app.use(async function logger(_c, next) {
+            await next();
+        });
+        app.use(function cache() {
+            return { n: 1n };
+        });
+        app.get("/x", () => "x");
+
+        const data = await pageData(await app.fetch(req("/x", { headers: html })));
+
+        expect(data.origin).toEqual({ kind: "middleware", name: "cache" });
+        expect(data.location).toBeNull();
+    });
+
+    test("ハンドラーの中で c.json() を呼んで失敗したなら、ハンドラーの行を場所として出す", async () => {
+        const app = boomApp();
+        app.get("/json", (_, c) => c.json({ n: 1n }));
+
+        const data = await pageData(await app.fetch(req("/json", { headers: html })));
+
+        expect(data.origin).toBeNull();
+        expect(data.location!.file).toEndWith("test/dev/error-page.test.ts");
+    });
+
+    test("onError には、元のエラーがそのまま届く", async () => {
+        const app = createApp({ dev: true });
+        let received: unknown;
+        app.onError((err) => {
+            received = err;
+            return "x";
+        });
+        app.get("/big", () => ({ n: 1n }));
+
+        await app.fetch(req("/big"));
+
+        expect(received).toBeInstanceOf(TypeError);
+        expect((received as Error).message).toMatch(/BigInt/);
+    });
+});
+
 describe("ミドルウェアが next() のあとで変えたものを引き継ぐ", () => {
     test("c.header() と Set-Cookie", async () => {
         const app = boomApp();

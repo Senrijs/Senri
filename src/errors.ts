@@ -17,6 +17,24 @@ export class HttpError extends Error {
     }
 }
 
+// ハンドラーやミドルウェアが返した値を、Senri がレスポンスに変換する途中で失敗したときの印
+// (例: { n: 1n } を返すと、JSON にするところで失敗する)
+// このときのスタックには、返した側の行はもう残っていない(関数は返し終わっている)。
+// 代わりに外側のミドルウェアの `await next()` の行が出てきて紛らわしいので、どこが返した値かを覚えておく
+// エラーを包み直すと onError に届くエラーが変わってしまうので、エラーをキーにして横に置いておく
+export type ConversionOrigin = { kind: "handler" | "middleware"; name: string };
+
+const conversionOrigins = new WeakMap<object, ConversionOrigin>();
+
+export function markConversionError(err: unknown, origin: ConversionOrigin): unknown {
+    if (typeof err === "object" && err !== null) conversionOrigins.set(err, origin);
+    return err;
+}
+
+export function conversionOriginOf(err: unknown): ConversionOrigin | null {
+    return typeof err === "object" && err !== null ? (conversionOrigins.get(err) ?? null) : null;
+}
+
 export type ErrorHandler<V extends object = any> = (err: unknown, c: Context<V>) => HandlerResult | Promise<HandlerResult>;
 export type NotFoundHandler<V extends object = any> = (c: Context<V>) => HandlerResult | Promise<HandlerResult>;
 

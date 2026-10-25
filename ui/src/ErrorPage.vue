@@ -5,7 +5,17 @@ import { copyText, editorUrl } from "../../src/dev/editor-url.ts";
 import SiteHeader from "./components/SiteHeader.vue";
 import EditorSelect from "./components/EditorSelect.vue";
 import CopyButton from "./components/CopyButton.vue";
-import { editorOptions, formatMs, inlineCode, layerBars, loadEditor, openLabel, saveEditor, visibleFrames } from "./view.ts";
+import {
+    editorOptions,
+    formatMs,
+    inlineCode,
+    layerBars,
+    loadEditor,
+    openLabel,
+    originText,
+    saveEditor,
+    visibleFrames,
+} from "./view.ts";
 
 const props = defineProps<{ data: ErrorPageData }>();
 const d = props.data;
@@ -44,7 +54,10 @@ const duration = formatMs(d.durationMs);
             <h1>
                 <span class="mono error-name">{{ d.error.name }}:</span> {{ d.error.message }}
             </h1>
-            <div v-if="d.location" class="mono location">
+            <div v-if="d.origin" class="mono location">
+                <span class="muted">--&gt; <span class="text">{{ originText(d.origin) }}</span></span>
+            </div>
+            <div v-else-if="d.location" class="mono location">
                 <span class="muted"
                     >--&gt; <span class="text">{{ d.location.display }}</span>:{{ d.location.line }}:{{
                         d.location.col

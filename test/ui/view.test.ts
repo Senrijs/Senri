@@ -9,6 +9,7 @@ import {
     layerBars,
     loadEditor,
     openLabel,
+    originText,
     saveEditor,
     visibleFrames,
 } from "../../ui/src/view.ts";
@@ -165,6 +166,17 @@ describe("404ページのルート一覧", () => {
     test("メソッドの色は CSS 変数で、知らないメソッドは文字色", () => {
         expect(methodColor("GET")).toBe("var(--get)");
         expect(methodColor("ALL")).toBe("var(--text)");
+    });
+});
+
+describe("originText: 返した値をレスポンスにできなかったときの説明", () => {
+    test("ハンドラーとミドルウェア", () => {
+        expect(originText({ kind: "handler", name: "GET /big" })).toBe(
+            "GET /big のハンドラーが返した値を、レスポンスにできませんでした",
+        );
+        expect(originText({ kind: "middleware", name: "cache" })).toBe(
+            "ミドルウェア cache が返した値を、レスポンスにできませんでした",
+        );
     });
 });
 

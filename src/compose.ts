@@ -1,4 +1,14 @@
 import type { Context, HandlerResult, Middleware } from "./context.ts";
+import { markConversionError, type ConversionOrigin } from "./errors.ts";
+
+// 返した値をレスポンスにする。失敗したら、どこが返した値だったかをエラーに覚えさせてから投げ直す
+export function toResponseOf(c: Context, value: HandlerResult, origin: ConversionOrigin): Response {
+    try {
+        return c.toResponse(value);
+    } catch (err) {
+        throw markConversionError(err, origin);
+    }
+}
 
 export type Layer = { name: string; mw: Middleware };
 
@@ -65,7 +75,7 @@ export function compose(
                 return downstream;
             });
             // toResponse も JSON.stringify で投げることがあるので try の中で
-            if (result !== undefined) return c.toResponse(result);
+            if (result !== undefined) return toResponseOf(c, result, { kind: "middleware", name: layer.name });
             // 何も返さず next() 済みなら、下流を使う(await し忘れていても、ここで待つ)
             if (downstream) return await downstream;
         } catch (err) {

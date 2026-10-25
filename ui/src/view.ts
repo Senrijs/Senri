@@ -15,6 +15,13 @@ export function formatMs(ms: number | null): string | null {
     return ms === null ? null : `${ms.toFixed(1)}ms`;
 }
 
+// 返した値をレスポンスにできなかったときの説明(エラーの場所の代わりに出す)
+export function originText(origin: NonNullable<ErrorPageData["origin"]>): string {
+    // ミドルウェア名は英数字なので、「が」との間に空白を入れて読みやすくする
+    const who = origin.kind === "handler" ? `${origin.name} のハンドラー` : `ミドルウェア ${origin.name} `;
+    return `${who}が返した値を、レスポンスにできませんでした`;
+}
+
 // 「通った順番」のバー。幅は self(その層だけの時間)の割合
 export function layerBars(layers: ErrorPageData["layers"]) {
     const sum = layers.reduce((s, l) => s + l.self, 0);

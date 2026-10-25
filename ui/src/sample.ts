@@ -41,6 +41,7 @@ export function sample(page: string | null): PageData {
         statusText: "Internal Server Error",
         durationMs: 2.1,
         error: { name: "Error", message: "わざと壊した" },
+        origin: null,
         location: { fn: "<anonymous>", file, display: "examples/shared/app.ts", line: 38, col: 15, kind: "user" },
         code: {
             file,

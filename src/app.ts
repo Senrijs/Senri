@@ -12,7 +12,7 @@ import {
     type Route,
     type Simplify,
 } from "./router.ts";
-import { compose, type Layer } from "./compose.ts";
+import { compose, toResponseOf, type Layer } from "./compose.ts";
 import {
     defaultNotFound,
     defaultOnError,
@@ -192,7 +192,11 @@ export function createApp<V extends object = Record<string, unknown>>(options: A
                     case "badRequest":
                         throw resolved.error;
                     case "route": {
-                        const res = c.toResponse(await resolved.route.handler(c.params, c));
+                        const result = await resolved.route.handler(c.params, c);
+                        const res = toResponseOf(c, result, {
+                            kind: "handler",
+                            name: `${resolved.route.method} ${resolved.route.path}`,
+                        });
                         if (req.method !== "HEAD") return res;
                         // HEAD はヘッダーと status だけ返す(ボディは捨てる)
                         await res.body?.cancel();
