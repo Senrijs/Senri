@@ -177,7 +177,8 @@ export function createApp(options: AppOptions = {}) {
                 }
             };
 
-            return compose(applicableMiddlewares(c), c, handle, fail);
+            const res = await compose(applicableMiddlewares(c), c, handle, fail);
+            return c.finalize(res);
         },
     };
 }

@@ -43,24 +43,56 @@ export class Context {
         return this;
     }
 
+    // ここで設定したヘッダーは、最後に finalize() で1回だけレスポンスに足される
+    // なので、Response を直接返したときも、エラーのときも、next() のあとに設定しても効く
     header(name: string, value: string) {
-        this.#headers.set(name, value);
+        // Set-Cookie は1つのレスポンスに何個も付けるものなので、上書きせずに足す
+        if (name.toLowerCase() === "set-cookie") {
+            this.#headers.append(name, value);
+        } else {
+            this.#headers.set(name, value);
+        }
         return this;
     }
 
+    // json() と text() は Content-Type と status だけ決める(ほかのヘッダーは finalize() で足す)
+    // 共有の #headers を書き換えないので、json() のあとに text() しても Content-Type が混ざらない
     json(data: unknown, status?: number): Response {
-        this.#headers.set("Content-Type", "application/json");
         return new Response(JSON.stringify(data), {
             status: status ?? this.#status,
-            headers: this.#headers,
+            headers: { "content-type": this.#headers.get("content-type") ?? "application/json" },
         });
     }
 
     text(body: string, status?: number): Response {
+        const contentType = this.#headers.get("content-type");
         return new Response(body, {
             status: status ?? this.#status,
-            headers: this.#headers,
+            headers: contentType ? { "content-type": contentType } : undefined,
         });
+    }
+
+    // c.header() で設定したヘッダーを res に足す。app が最後に1回だけ呼ぶ
+    // - c.header() の値が優先。ただし Content-Type だけはレスポンス自身のものが優先
+    // - Set-Cookie は足す
+    // - c.status() は使わない(Response を直接返したなら、その status を尊重する)
+    finalize(res: Response): Response {
+        let hasHeaders = false;
+        this.#headers.forEach(() => (hasHeaders = true));
+        // 何もなければ作り直さない。101(WebSocket のアップグレード)なども作り直すと壊れる
+        if (!hasHeaders || res.status < 200) return res;
+
+        // fetch() や Response.redirect() の Response はヘッダーを変更できないので、新しく作る
+        const headers = new Headers(res.headers);
+        this.#headers.forEach((value, key) => {
+            if (key === "set-cookie") return;
+            if (key === "content-type" && headers.has(key)) return;
+            headers.set(key, value);
+        });
+        for (const cookie of this.#headers.getSetCookie()) {
+            headers.append("set-cookie", cookie);
+        }
+        return new Response(res.body, { status: res.status, statusText: res.statusText, headers });
     }
 
     toResponse(value: HandlerResult): Response {
