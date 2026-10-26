@@ -23,6 +23,7 @@ export type { CookieOptions } from "./cookie.ts";
 export type { FormBody, FormValue } from "./body.ts";
 export type { Timing } from "./compose.ts";
 export { logger, showRoutes } from "./logger.ts";
+export { health, type HealthOptions } from "./health.ts";
 export { cors, type CorsOptions } from "./middleware/cors.ts";
 export { secureHeaders, type SecureHeadersOptions } from "./middleware/secure-headers.ts";
 export { bodyLimit, type BodyLimitOptions } from "./middleware/body-limit.ts";
