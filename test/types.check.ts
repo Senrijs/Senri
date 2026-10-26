@@ -121,3 +121,10 @@ app.on("PROPFIND", "/dav/:name", ({ nope }) => nope);
 app.head("/h/:id", ({ id }) => id);
 app.options("/o/:id", ({ id }) => id);
 usersRouter.on("QUERY", "/search", ({ id }) => id);
+// 別のアプリをプレフィックス付きでつなぐ(中のハンドラーでは、プレフィックスのパラメーターに型は付かない)
+const subApp = createApp();
+// c.params から読む
+subApp.get("/posts", (_, c) => c.params.id ?? "none");
+app.route("/users/:id", subApp);
+// @ts-expect-error プレフィックスなしでアプリは渡せない
+app.route(subApp);

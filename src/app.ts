@@ -14,7 +14,7 @@ import {
     type Simplify,
 } from "./router.ts";
 import { compose, toResponseOf, type Layer } from "./compose.ts";
-import { groupEntries, type Router } from "./group.ts";
+import { groupEntries, joinPath, type GroupEntry, type Router } from "./group.ts";
 import {
     defaultNotFound,
     defaultOnError,
@@ -56,6 +56,12 @@ const INNER_NAME: Record<Resolved["kind"], string> = {
 
 // 扱わないメソッド。ルートがあってもなくても 501 にする(app.all() でも受けない)
 const NOT_IMPLEMENTED = new Set(["CONNECT", "TRACE", "TRACK"]);
+
+// app.route(prefix, app) でつなげるように、アプリに登録されたものを横に置いておく
+const appEntries = new WeakMap<object, () => GroupEntry[]>();
+
+// app.route(prefix, app) に渡せるもの(createApp() で作ったアプリ)
+export type MountableApp = { routeList(): { method: string; path: string }[] };
 
 export type AppOptions = {
     // 開発モード。エラーの詳細や「もしかして」を返す。本番では絶対にオンにしない
@@ -239,9 +245,20 @@ export function createApp<V extends object = Record<string, unknown>>(options: A
         },
 
         // createRouter() で作ったルーターをつなげる。ルーターに登録済みのものが、この時点でアプリに入る
-        route(router: Router<string, V>) {
+        // app.route(prefix, app) なら、別のアプリをプレフィックス付きでつなげる
+        // (つなぐ側のアプリでは、プレフィックスのパラメーターに型は付かない。型が必要なら createRouter を使う)
+        // つないだアプリの onError / notFound は使わず、こちらのものを使う
+        route(routerOrPrefix: Router<string, V> | string, child?: MountableApp) {
             // 先に全部読んでおく(ルーターの作りがおかしいときに、途中まで登録された状態にしない)
-            for (const entry of groupEntries(router)) {
+            let list: GroupEntry[];
+            if (typeof routerOrPrefix === "string") {
+                const read = child ? appEntries.get(child) : undefined;
+                if (!read) throw new TypeError(`app.route("${routerOrPrefix}", app) には createApp() で作ったアプリを渡してください`);
+                list = read().map((entry) => ({ ...entry, path: joinPath(routerOrPrefix, entry.path) }));
+            } else {
+                list = groupEntries(routerOrPrefix);
+            }
+            for (const entry of list) {
                 if (entry.kind === "use") app.use(entry.path, entry.mw);
                 else add(entry.method, entry.path, entry.handler);
             }
@@ -329,6 +346,12 @@ export function createApp<V extends object = Record<string, unknown>>(options: A
             return final;
         },
     };
+
+    // ミドルウェアを先に(登録順のまま)、ルートはそのあと。ルートの順番は add() が並べ直すので関係ない
+    appEntries.set(app, () => [
+        ...middlewares.map((m): GroupEntry => ({ kind: "use", path: m.path ?? "/", mw: m.mw as Middleware })),
+        ...routes.map((r): GroupEntry => ({ kind: "route", method: r.method, path: r.path, handler: r.handler })),
+    ]);
 
     // 開発モードでは、ダッシュボードを作ってアプリに結び付けておく
     const dashboardPromise = devTools?.then((m) => {
