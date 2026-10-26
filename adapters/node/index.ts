@@ -1,4 +1,5 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
+import type { Duplex } from "node:stream";
 import type { TLSSocket } from "node:tls";
 import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
@@ -47,7 +48,12 @@ function toRequest(req: IncomingMessage, signal: AbortSignal): Request {
     }
 
     // GET / HEAD はボディを持てない(渡すと Request が TypeError を投げる)
-    const hasBody = req.method !== "GET" && req.method !== "HEAD";
+    // ボディがない(Content-Length も Transfer-Encoding もない)ときは、空のストリームではなく null にする
+    // (Bun / Deno と同じ。QUERY の「ボディがない」を見分けるのに使う)
+    const hasBody =
+        req.method !== "GET" &&
+        req.method !== "HEAD" &&
+        (req.headers["content-length"] !== undefined || req.headers["transfer-encoding"] !== undefined);
 
     return new Request(toUrl(req), {
         method: req.method,
@@ -77,8 +83,31 @@ async function writeResponse(res: ServerResponse, response: Response) {
     await pipeline(Readable.fromWeb(response.body as unknown as import("node:stream/web").ReadableStream), res);
 }
 
+// 扱わないメソッド。CONNECT はプロキシ用、TRACE / TRACK はリクエストをそのまま返すので XST 攻撃に使われる
+const NOT_IMPLEMENTED = new Set(["CONNECT", "TRACE", "TRACK"]);
+
+function notImplemented(socket: Duplex) {
+    const body = "501 Not Implemented";
+    socket.end(
+        [
+            "HTTP/1.1 501 Not Implemented",
+            "Content-Type: text/plain; charset=utf-8",
+            `Content-Length: ${body.length}`,
+            "Connection: close",
+            "",
+            body,
+        ].join("\r\n"),
+    );
+}
+
 export function serve(app: App, options: { port: number }) {
     const server = createServer(async (req, res) => {
+        if (NOT_IMPLEMENTED.has(req.method ?? "")) {
+            res.writeHead(501, { "content-type": "text/plain; charset=utf-8", connection: "close" });
+            res.end("501 Not Implemented");
+            return;
+        }
+
         // レスポンスを送り終える前に接続が切れたら、アプリに c.req.signal で知らせる
         const controller = new AbortController();
         res.once("close", () => {
@@ -111,6 +140,26 @@ export function serve(app: App, options: { port: number }) {
                 res.end("500 Internal Server Error");
             }
         }
+    });
+
+    // CONNECT は request ではなく connect イベントで来る(聞いていないと、何も返さずに切ってしまう)
+    server.on("connect", (_req, socket: Duplex) => notImplemented(socket));
+    // Node の HTTP パーサーが知らないメソッドは、アプリに届く前にエラーになる。既定の 400 ではなく 501 にする
+    server.on("clientError", (err: NodeJS.ErrnoException, socket: Duplex) => {
+        if (!socket.writable) return socket.destroy();
+        // ほかは Node の既定と同じ status にする(リスナーを付けると、既定の処理は動かなくなる)
+        const status =
+            err.code === "HPE_INVALID_METHOD"
+                ? "501 Not Implemented"
+                : err.code === "HPE_HEADER_OVERFLOW"
+                  ? "431 Request Header Fields Too Large"
+                  : err.code === "HPE_CHUNK_EXTENSIONS_OVERFLOW"
+                    ? "413 Payload Too Large"
+                    : err.code === "ERR_HTTP_REQUEST_TIMEOUT"
+                      ? "408 Request Timeout"
+                      : "400 Bad Request";
+        if (status.startsWith("501")) return notImplemented(socket);
+        socket.end(`HTTP/1.1 ${status}\r\nConnection: close\r\n\r\n`);
     });
 
     server.listen(options.port);

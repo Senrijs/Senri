@@ -111,3 +111,13 @@ usersRouter.get("/posts/:postId", ({ id, postId }) => `${id}${postId}`);
 // @ts-expect-error プレフィックスにもパスにもないパラメーター
 usersRouter.get("/", ({ nope }) => nope);
 app.route(usersRouter);
+
+// --- app.on / head / options ---
+
+app.on("QUERY", "/q/:id", ({ id }) => id);
+app.on(["GET", "POST"], "/multi/:id", ({ id }) => id);
+// @ts-expect-error パスにないパラメーター
+app.on("PROPFIND", "/dav/:name", ({ nope }) => nope);
+app.head("/h/:id", ({ id }) => id);
+app.options("/o/:id", ({ id }) => id);
+usersRouter.on("QUERY", "/search", ({ id }) => id);

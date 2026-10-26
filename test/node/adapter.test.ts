@@ -10,6 +10,8 @@ const app = createApp();
 app.get("/hello", () => "hi");
 app.get("/url", (_, c) => c.req.url);
 app.post("/echo", async (_, c) => `body=${await c.req.text()}`);
+app.on("QUERY", "/search", async (_, c) => `query=${await c.req.text()}`);
+app.all("/anything", (_, c) => c.req.method);
 app.get("/cookies", () => {
     const headers = new Headers();
     headers.append("set-cookie", "a=1");
@@ -178,5 +180,43 @@ describe("Node アダプター", () => {
         broken.close();
 
         assert.equal(res.status, 500);
+    });
+
+    test("QUERY のボディがアプリに届く", async () => {
+        const res = await fetch(`${base}/search`, {
+            method: "QUERY",
+            headers: { "content-type": "application/json" },
+            body: `{"q":"senri"}`,
+        });
+
+        assert.equal(await res.text(), `query={"q":"senri"}`);
+    });
+
+    test("ボディのない QUERY は 400(空のストリームにしない)", async () => {
+        const res = await raw(
+            `QUERY /search HTTP/1.1\r\nHost: localhost:${port}\r\nContent-Type: application/json\r\nConnection: close\r\n\r\n`,
+        );
+
+        assert.match(res, /^HTTP\/1\.1 400/);
+    });
+
+    for (const method of ["TRACE", "TRACK"]) {
+        test(`${method} は 501 Not Implemented`, async () => {
+            const res = await raw(`${method} /anything HTTP/1.1\r\nHost: localhost:${port}\r\nConnection: close\r\n\r\n`);
+
+            assert.match(res, /^HTTP\/1\.1 501/);
+        });
+    }
+
+    test("CONNECT は 501 Not Implemented", async () => {
+        const res = await raw(`CONNECT example.com:443 HTTP/1.1\r\nHost: example.com:443\r\n\r\n`);
+
+        assert.match(res, /^HTTP\/1\.1 501/);
+    });
+
+    test("Node が知らないメソッドは 501 Not Implemented", async () => {
+        const res = await raw(`FOOBAR /anything HTTP/1.1\r\nHost: localhost:${port}\r\nConnection: close\r\n\r\n`);
+
+        assert.match(res, /^HTTP\/1\.1 501/);
     });
 });

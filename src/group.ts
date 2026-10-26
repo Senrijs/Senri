@@ -1,7 +1,7 @@
 // ルートのグループ化。プレフィックスは createRouter のときに決める
 // (あとから app.route("/users/:id", router) のように付ける形だと、中のハンドラーで id の型が分からないため)
 import type { Handler, Middleware } from "./context.ts";
-import { splitPattern, type ExtractParams, type Simplify } from "./router.ts";
+import { normalizeMethod, splitPattern, type ExtractParams, type Simplify } from "./router.ts";
 
 // プレフィックスとパスをつないだときのパラメーター。"/" を挟むので、"posts" のように "/" なしで書いてもよい
 type GroupParams<Prefix extends string, Path extends string> = Simplify<ExtractParams<`${Prefix}/${Path}`>>;
@@ -21,6 +21,13 @@ export type Router<Prefix extends string = string, V extends object = any> = {
     patch: GroupMethod<Prefix, V>;
     delete: GroupMethod<Prefix, V>;
     all: GroupMethod<Prefix, V>;
+    head: GroupMethod<Prefix, V>;
+    options: GroupMethod<Prefix, V>;
+    on<Path extends string>(
+        method: string | readonly string[],
+        path: Path,
+        handler: Handler<GroupParams<Prefix, Path>, V>,
+    ): void;
     // ルーターの中にルーターをつなげる。中のルーターのプレフィックスは、このルーターからの相対パス
     route(router: Router<string, V>): void;
 };
@@ -69,6 +76,17 @@ export function createRouter<Prefix extends string, V extends object = Record<st
         patch: method("PATCH"),
         delete: method("DELETE"),
         all: method("ALL"),
+        head: method("HEAD"),
+        options: method("OPTIONS"),
+        on(methods, path, handler) {
+            const list = typeof methods === "string" ? [methods] : methods;
+            if (list.length === 0) throw new Error(`router.on(..., "${path}") にメソッドがありません`);
+            for (const m of list) {
+                if (m.toUpperCase() === "ALL") throw new Error("すべてのメソッドで動かすには all() を使ってください");
+                // 名前の確認(CONNECT などの拒否)は、ここで先にしておく(app.route まで待たない)
+                method(normalizeMethod(m))(path, handler);
+            }
+        },
         route(child) {
             if (!entries.has(child)) throw new TypeError("route() には createRouter() で作ったルーターを渡してください");
             items.push({ kind: "router", router: child });

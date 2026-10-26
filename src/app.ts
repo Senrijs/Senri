@@ -4,6 +4,7 @@ import {
     matchPath,
     allowedMethods,
     checkParamNames,
+    normalizeMethod,
     routeShape,
     splitPattern,
     startsWithSegments,
@@ -17,7 +18,9 @@ import { groupEntries, type Router } from "./group.ts";
 import {
     defaultNotFound,
     defaultOnError,
+    checkQueryRequest,
     handleError,
+    HttpError,
     methodNotAllowed,
     type ErrorHandler,
     type NotFoundHandler,
@@ -29,6 +32,7 @@ type Resolved =
     | { kind: "options"; allow: string }
     | { kind: "methodNotAllowed"; allow: string }
     | { kind: "notFound" }
+    | { kind: "notImplemented" }
     | { kind: "badRequest"; error: unknown };
 
 // パスが /_senri か /_senri/... なら、"_senri" より後ろのセグメント。そうでなければ null
@@ -47,7 +51,11 @@ const INNER_NAME: Record<Resolved["kind"], string> = {
     methodNotAllowed: "405",
     options: "options",
     badRequest: "400",
+    notImplemented: "501",
 };
+
+// 扱わないメソッド。ルートがあってもなくても 501 にする(app.all() でも受けない)
+const NOT_IMPLEMENTED = new Set(["CONNECT", "TRACE", "TRACK"]);
 
 export type AppOptions = {
     // 開発モード。エラーの詳細や「もしかして」を返す。本番では絶対にオンにしない
@@ -72,7 +80,9 @@ export function createApp<V extends object = Record<string, unknown>>(options: A
         : baseOnError;
     let notFound: NotFoundHandler<V> = defaultNotFound(routes, dev);
 
-    function add(method: string, path: string, handler: Handler) {
+    function add(rawMethod: string, path: string, handler: Handler) {
+        // app.all() の印の "ALL" だけはそのまま。ほかは名前を確かめて大文字にする
+        const method = rawMethod === "ALL" ? rawMethod : normalizeMethod(rawMethod);
         const segments = splitPattern(path);
         checkParamNames(path, segments);
         // 開発モードでは /_senri 以下はダッシュボードが使うので、登録しても呼ばれない。気づけるようにエラーにする
@@ -105,6 +115,7 @@ export function createApp<V extends object = Record<string, unknown>>(options: A
             return { kind: "badRequest", error };
         }
         const method = c.req.method;
+        if (NOT_IMPLEMENTED.has(method)) return { kind: "notImplemented" };
 
         // パスが合うルートを、優先順位の順に集める(メソッドはまだ見ない)
         const matched: { route: Route; params: Record<string, string> }[] = [];
@@ -185,6 +196,31 @@ export function createApp<V extends object = Record<string, unknown>>(options: A
             add("DELETE", path, handler as Handler);
         },
 
+        // 登録しなければ GET を使う(ボディは送らない)。登録すれば GET より優先される
+        head<Path extends string>(path: Path, handler: Handler<Simplify<ExtractParams<Path>>, V>) {
+            add("HEAD", path, handler as Handler);
+        },
+
+        // 登録しなければ 204 と Allow を自動で返す。登録すればそちらが優先される
+        options<Path extends string>(path: Path, handler: Handler<Simplify<ExtractParams<Path>>, V>) {
+            add("OPTIONS", path, handler as Handler);
+        },
+
+        // 任意のメソッド(QUERY や、PROPFIND などの WebDAV)を登録する。配列でまとめて登録もできる
+        // 小文字で書いても大文字にする。CONNECT / TRACE / TRACK は扱わない
+        on<Path extends string>(
+            method: string | readonly string[],
+            path: Path,
+            handler: Handler<Simplify<ExtractParams<Path>>, V>,
+        ) {
+            const methods = typeof method === "string" ? [method] : method;
+            if (methods.length === 0) throw new Error(`app.on(..., "${path}") にメソッドがありません`);
+            for (const m of methods) {
+                if (m.toUpperCase() === "ALL") throw new Error("すべてのメソッドで動かすには app.all() を使ってください");
+                add(m, path, handler as Handler);
+            }
+        },
+
         // どのメソッドでも動く。ただし、メソッドが合うルートがあればそちらが優先
         all<Path extends string>(path: Path, handler: Handler<Simplify<ExtractParams<Path>>, V>) {
             add("ALL", path, handler as Handler);
@@ -249,6 +285,11 @@ export function createApp<V extends object = Record<string, unknown>>(options: A
                     case "badRequest":
                         throw resolved.error;
                     case "route": {
+                        // QUERY として登録したルートだけ、ボディと Content-Type を確かめる(app.all はハンドラーに任せる)
+                        if (resolved.route.method === "QUERY") {
+                            const invalid = await checkQueryRequest(c, dev);
+                            if (invalid) throw invalid;
+                        }
                         const result = await resolved.route.handler(c.params, c);
                         const res = toResponseOf(c, result, {
                             kind: "handler",
@@ -263,6 +304,8 @@ export function createApp<V extends object = Record<string, unknown>>(options: A
                         return new Response(null, { status: 204, headers: { allow: resolved.allow } });
                     case "methodNotAllowed":
                         throw methodNotAllowed(c, c.path, resolved.allow, dev);
+                    case "notImplemented":
+                        throw new HttpError(501, "501 Not Implemented");
                     case "notFound":
                         c.status(404);
                         return c.toResponse(await notFound(c));

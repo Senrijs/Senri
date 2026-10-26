@@ -127,6 +127,21 @@ export function checkParamNames(path: string, segments: readonly string[]) {
     }
 }
 
+// メソッド名に使える文字(RFC 9110 の token)
+const METHOD = /^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$/;
+
+// 登録するメソッド名を確かめて、大文字にする("propfind" → "PROPFIND")
+// - CONNECT はプロキシ用、TRACE / TRACK はリクエストをそのまま返すので Cookie を盗む攻撃(XST)に使われる。どれも扱わない
+// - "ALL" は app.all() の印として使っているので、app.on() からは登録させない
+export function normalizeMethod(method: string): string {
+    if (!METHOD.test(method)) throw new Error(`メソッド名に使えない文字があります: ${JSON.stringify(method)}`);
+    const upper = method.toUpperCase();
+    if (upper === "CONNECT" || upper === "TRACE" || upper === "TRACK") {
+        throw new Error(`${upper} メソッドは扱いません(Senri では CONNECT / TRACE / TRACK を登録できません)`);
+    }
+    return upper;
+}
+
 // Allow ヘッダーに入れるメソッドの一覧("GET, HEAD, POST, OPTIONS")
 // GET があれば HEAD も使える(GET にフォールバックするので)。OPTIONS はいつでも使える
 export function allowedMethods(routes: readonly Route[]): string {
