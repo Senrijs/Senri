@@ -37,13 +37,11 @@ function contentTypeOf(value: BodyValue): string | undefined {
 // (オブジェクトリテラルを渡すより速い。毎回 Headers に変換しなくて済むため)
 const TEXT_HEADERS = new Headers({ "content-type": "text/plain; charset=utf-8" });
 const JSON_HEADERS = new Headers({ "content-type": "application/json" });
-// status が 200 のときは init も共有する(毎回オブジェクトを作らない)
-const TEXT_INIT = { status: 200, headers: TEXT_HEADERS };
-const JSON_INIT = { status: 200, headers: JSON_HEADERS };
 
-function initOf(status: number, type: string | null | undefined, headers: Headers, shared: ResponseInit): ResponseInit {
-    if (type) return { status, headers: { "content-type": type } };
-    return status === 200 ? shared : { status, headers };
+// init のオブジェクトは毎回作る。Bun.serve では、同じ init を使い回した Response を返すと
+// HTTP のスループットが数分の1に落ちる(プロセス内で fetch を呼ぶだけでは差が出ない。bench/http.ts で確認)
+function initOf(status: number, type: string | null | undefined, headers: Headers): ResponseInit {
+    return { status, headers: type ? { "content-type": type } : headers };
 }
 
 // V は c.set / c.get で使う変数の型(createApp<{ user: User }>() のように決める)
@@ -220,13 +218,13 @@ export class Context<V extends object = any> {
     // json() と text() は Content-Type と status だけ決める(ほかのヘッダーは finalize() で足す)
     // 共有の #headers を書き換えないので、json() のあとに text() しても Content-Type が混ざらない
     json(data: unknown, status?: number): Response {
-        const init = initOf(status ?? this.#status, this.#headers?.get("content-type"), JSON_HEADERS, JSON_INIT);
+        const init = initOf(status ?? this.#status, this.#headers?.get("content-type"), JSON_HEADERS);
         return new Response(JSON.stringify(data), init);
     }
 
     text(body: string, status?: number): Response {
         // 明示しないと、Bun は Headers に Content-Type を入れない(Node / Deno は入れる)のでランタイムで差が出る
-        const init = initOf(status ?? this.#status, this.#headers?.get("content-type"), TEXT_HEADERS, TEXT_INIT);
+        const init = initOf(status ?? this.#status, this.#headers?.get("content-type"), TEXT_HEADERS);
         return new Response(body, init);
     }
 
