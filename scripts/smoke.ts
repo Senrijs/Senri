@@ -94,6 +94,8 @@ const CHECKS: Check[] = [
         status: 400,
         body: "400 Bad Request: パスパラメーターが、スキーマに合いません\n- n: 正の整数ではありません",
     },
+    { name: "/healthz", path: "/healthz", status: 200, body: "ok" },
+    { name: "/readyz", path: "/readyz", status: 200, body: "ready" },
     { name: "OPTIONS", path: "/hello", init: { method: "OPTIONS" }, status: 204 },
     { name: "認証", path: "/admin", status: 401 },
     { name: "認証(//admin)", path: "//admin", status: 401 },

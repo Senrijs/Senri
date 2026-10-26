@@ -1,8 +1,10 @@
-import { createApp, logger, type StandardSchemaV1 } from "../../src/index.ts";
+import { createApp, health, logger, type StandardSchemaV1 } from "../../src/index.ts";
 
 // examples は手元で動かすものなので開発モード
 export const app = createApp({ dev: true });
 
+// ヘルスチェックはロガーより先に置く(probe のたびにログが出ないように)
+app.use(health());
 app.use(logger({ format: "json" }));
 
 app.get("/hello", () => "こんにちは!");
