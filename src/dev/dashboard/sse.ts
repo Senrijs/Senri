@@ -20,11 +20,16 @@ export type EventStreamOptions = {
     // 何も送るものがなくても、この間隔で ping を送る。
     // Bun は無通信の接続を約10秒で切るので、それより短くする
     heartbeatMs?: number;
+    // ブラウザに送れないまま、たまってよいイベントの数。これを超えたら閉じる
+    // (読む側が詰まっていると、記録が増えるたびにメモリに積み上がってしまうので。
+    //  閉じても EventSource が自動でつなぎ直し、画面は一覧を取り直す)
+    maxQueued?: number;
 };
 
 export function eventStream(log: RequestLog<DashboardRecord>, req: Request, options: EventStreamOptions = {}): Response {
     const encoder = new TextEncoder();
     const heartbeatMs = options.heartbeatMs ?? 5000;
+    const maxQueued = options.maxQueued ?? 32;
     let closed = false;
     let cleanup = () => {};
 
@@ -32,6 +37,11 @@ export function eventStream(log: RequestLog<DashboardRecord>, req: Request, opti
         start(controller) {
             const send = (text: string) => {
                 if (closed) return;
+                // desiredSize は「あと何件ためられるか」。0 以下なら、読まれないまま上限までたまっている
+                if (controller.desiredSize !== null && controller.desiredSize <= 0) {
+                    cleanup();
+                    return;
+                }
                 try {
                     controller.enqueue(encoder.encode(text));
                 } catch {
@@ -77,7 +87,7 @@ export function eventStream(log: RequestLog<DashboardRecord>, req: Request, opti
         cancel() {
             cleanup();
         },
-    });
+    }, new CountQueuingStrategy({ highWaterMark: maxQueued }));
 
     return new Response(stream, {
         headers: {

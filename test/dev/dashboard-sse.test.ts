@@ -92,6 +92,19 @@ describe("eventStream: SSE", () => {
         expect(log.listenerCount).toBe(0);
     });
 
+    test("読まれないまま送り待ちがたまったら、閉じて購読をやめる(メモリに積み上がらないように)", async () => {
+        const log = new RequestLog<DashboardRecord>();
+        // 読まない(ブラウザ側が詰まっている)状態で、上限 3 件
+        const res = eventStream(log, new Request("http://l/"), { maxQueued: 3 });
+
+        for (let i = 1; i <= 10; i++) log.add(record(String(i)));
+
+        expect(log.listenerCount).toBe(0);
+        // たまっていた分は読めて、そのあと終わる(EventSource はつなぎ直して一覧を取り直す)
+        const text = await readUntil(res.body!.getReader(), () => false).catch((e: Error) => e.message);
+        expect(text).not.toContain('"id":"10"');
+    });
+
     test("何もなくても一定間隔でコメント(: ping)を送る(Bun などが無通信の接続を切らないように)", async () => {
         const log = new RequestLog<DashboardRecord>();
         const ac = new AbortController();
