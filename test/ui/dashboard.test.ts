@@ -5,6 +5,7 @@ import {
     filterRequests,
     formatAverage,
     formatTime,
+    latestOnly,
     middlewareScope,
     routeChain,
     statusClass,
@@ -117,6 +118,27 @@ describe("玉ねぎタイムライン", () => {
     test("全体が 0ms でも 0 で割らない", () => {
         const [bar] = timeline(record([layer("handler", 0, 0, 0, 0)], 200, 0));
         expect(bar).toMatchObject({ left: 0, width: 100, selfWidth: 100 });
+    });
+});
+
+describe("latestOnly: 最後に始めた取得の結果だけを使う", () => {
+    test("A を取りに行っている間に B を選んだら、A の結果は捨てる", () => {
+        const latest = latestOnly();
+
+        const a = latest.start();
+        const b = latest.start();
+
+        expect(a()).toBe(false);
+        expect(b()).toBe(true);
+    });
+
+    test("クリアなどで選択がなくなったときも、取得中のものは捨てる", () => {
+        const latest = latestOnly();
+        const b = latest.start();
+
+        latest.start();
+
+        expect(b()).toBe(false);
     });
 });
 

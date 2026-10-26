@@ -13,6 +13,7 @@ import {
     filterRequests,
     formatMs,
     formatTime,
+    latestOnly,
     STATUS_FILTERS,
     statusClass,
     type DashboardEvent,
@@ -75,14 +76,19 @@ async function clearAll() {
 // --- 詳細(選んだときに取りに行く) ---
 const detail = ref<DashboardRecord | null>(null);
 const missing = ref(false);
+// 選び直したり、クリアで選択がなくなったりしたら、取得中だった前の結果は捨てる
+const detailRequests = latestOnly();
 watch(
     selectedId,
     async (id) => {
+        const isLatest = detailRequests.start();
         detail.value = null;
         missing.value = false;
         if (id === null) return;
         const res = await fetch(`/_senri/api/requests/${encodeURIComponent(id)}`);
-        if (res.ok) detail.value = (await res.json()) as DashboardRecord;
+        const record = res.ok ? ((await res.json()) as DashboardRecord) : null;
+        if (!isLatest()) return;
+        if (record) detail.value = record;
         else missing.value = true;
     },
     { immediate: false },

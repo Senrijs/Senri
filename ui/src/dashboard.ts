@@ -47,6 +47,21 @@ export function applyEvent(list: RequestSummary[], event: DashboardEvent, max: n
     return [event.item, ...rest].slice(0, max);
 }
 
+// --- 詳細の取得 ---
+
+// 最後に始めたものだけを採用する仕組み
+// 行 A の詳細を取りに行っている間に行 B を選ぶと、A の結果があとから届くことがある。
+// start() で世代を進め、結果が届いたときに、返ってきた関数で「まだ最新か」を確かめる
+export function latestOnly() {
+    let current = 0;
+    return {
+        start(): () => boolean {
+            const mine = ++current;
+            return () => mine === current;
+        },
+    };
+}
+
 // --- 玉ねぎタイムライン ---
 
 export type TimelineBar = {
