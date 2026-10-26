@@ -13,6 +13,8 @@ export type LayerState = "ok" | "stopped" | "failed" | "skipped";
 
 export type RecordLayer = {
     name: string;
+    // ミドルウェアの登録順(1 から)。いちばん内側(handler など)は null
+    order: number | null;
     // 外側から何番目か(0 がいちばん外側)。画面での字下げに使う
     depth: number;
     // リクエストの開始からの時刻と、かかった時間(ミリ秒)。未到達なら 0
@@ -63,7 +65,7 @@ export async function buildRecord(input: {
     c: Context;
     res: Response;
     // この リクエストで通るはずだった層の名前(外側から。最後がいちばん内側)
-    layerNames: string[];
+    layerNames: { name: string; order: number | null }[];
 }): Promise<DashboardRecord> {
     const { id, time, c, res, layerNames } = input;
 
@@ -71,12 +73,12 @@ export async function buildRecord(input: {
     // (c.timings の start は app.fetch の開始が基準で、ルートのマッチなど、層に入る前の準備の分だけずれている。
     //  全体の時間 durationMs はいちばん外側の層の total なので、基準をそろえないと棒がはみ出す)
     const base = c.timings[0]?.start ?? 0;
-    const layers: RecordLayer[] = layerNames.map((name, depth) => {
+    const layers: RecordLayer[] = layerNames.map(({ name, order }, depth) => {
         const t = c.timings[depth];
         // 計測がない = そこまで届かなかった
-        if (!t) return { name, depth, start: 0, total: 0, self: 0, state: "skipped" };
+        if (!t) return { name, order, depth, start: 0, total: 0, self: 0, state: "skipped" };
         const state: LayerState = t.failed ? "failed" : t.stopped ? "stopped" : "ok";
-        return { name, depth, start: t.start - base, total: t.total, self: t.self, state };
+        return { name, order, depth, start: t.start - base, total: t.total, self: t.self, state };
     });
 
     // 5xx で、例外が残っていれば(意図した 4xx の HttpError は c.error に入らない)、エラーページと同じ中身を取っておく

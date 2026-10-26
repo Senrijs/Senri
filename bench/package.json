@@ -1,0 +1,16 @@
+{
+  "name": "senri-bench",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "router": "bun run router.ts",
+    "fetch": "bun run fetch.ts",
+    "http": "bun run http.ts"
+  },
+  "dependencies": {
+    "elysia": "1.4.30",
+    "hono": "4.13.13",
+    "memoirist": "0.4.0",
+    "mitata": "1.0.34"
+  }
+}

@@ -13,5 +13,5 @@
         // adapters/node が node:http などを使うため
         "types": ["node"]
     },
-    "include": ["src", "adapters/node", "adapters/serve"]
+    "include": ["src", "adapters/node", "adapters/serve", "adapters/static"]
 }

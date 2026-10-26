@@ -81,6 +81,53 @@ export function methodNotAllowed(c: Context, path: string, methods: string, dev:
     return new HttpError(405, message, { headers: { allow: methods } });
 }
 
+// QUERY(RFC 10008)は、検索の条件をボディに入れて送るメソッド。ボディと、その形式(Content-Type)が必須
+// ハンドラーを呼ぶ前に確かめる。どちらも問題なければ null
+export async function checkQueryRequest(c: Context, dev: boolean): Promise<HttpError | null> {
+    if (await isEmptyBody(c)) {
+        return new HttpError(
+            400,
+            dev
+                ? "400 Bad Request: QUERY リクエストにボディがありません\nQUERY は、検索の条件をボディに入れて送るメソッドです"
+                : "400 Bad Request",
+        );
+    }
+    if (!c.req.headers.get("content-type")) {
+        return new HttpError(
+            415,
+            dev
+                ? "415 Unsupported Media Type: QUERY リクエストに Content-Type がありません\nボディの形式を指定してください(例: Content-Type: application/json)"
+                : "415 Unsupported Media Type",
+        );
+    }
+    return null;
+}
+
+// ボディが空か。Content-Length があればそれで決める
+// ないとき(Deno はボディがなくても空のストリームを渡す。チャンク転送のこともある)は、
+// 複製(clone)のほうを中身のあるチャンクが来るまで読んで確かめる。元の c.req はそのまま読める
+async function isEmptyBody(c: Context): Promise<boolean> {
+    const req = c.req;
+    if (req.body === null) return true;
+    const length = req.headers.get("content-length");
+    if (length !== null) return length.trim() === "0";
+    // ミドルウェアが読み済みなら clone() は例外になる。読めたということは、ボディはあった
+    if (req.bodyUsed) return false;
+
+    const reader = req.clone().body!.getReader();
+    try {
+        // 長さ 0 のチャンクが来ることもある(Deno)
+        for (;;) {
+            const { done, value } = await reader.read();
+            if (done) return true;
+            if (value.byteLength > 0) return false;
+        }
+    } finally {
+        // 複製のほうはもう読まない(元のほうに、読んだ分ため込まれ続けないようにする)
+        reader.cancel().catch(() => {});
+    }
+}
+
 export function defaultNotFound(routes: Route[], dev: boolean): NotFoundHandler {
     return async (c) => {
         if (!dev) {

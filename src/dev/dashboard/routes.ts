@@ -63,12 +63,13 @@ function routeRows(d: Dashboard): RouteRow[] {
 function middlewareRows(d: Dashboard): MiddlewareRow[] {
     const records = d.log.list();
     return d.source.middlewares().map((m, i) => {
-        // 記録の layers は外側から並んでいるので、名前が同じでも登録順の何番目かで数えたいところだが、
-        // パス指定のミドルウェアはかからないことがあり位置がずれる。名前で数える(同じ名前が複数あれば合算になる)
-        const selfs = records.flatMap((r) => r.layers.filter((l) => l.name === m.name && l.state !== "skipped").map((l) => l.self));
+        // 名前ではなく登録順(order)で数える(同じ名前のミドルウェアが2つあっても、別々に集計される)
+        const order = i + 1;
+        const selfs = records.flatMap((r) => r.layers.filter((l) => l.order === order && l.state !== "skipped").map((l) => l.self));
         return {
-            order: i + 1,
+            order,
             name: m.name,
+            anonymous: m.anonymous,
             path: m.path,
             runs: selfs.length,
             avgSelfMs: selfs.length === 0 ? null : selfs.reduce((a, b) => a + b, 0) / selfs.length,

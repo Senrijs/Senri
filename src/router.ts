@@ -5,6 +5,8 @@ export type Route = {
     path: string;
     // path を "/" で分割したもの(登録時に1回だけ作る)
     segments: string[];
+    // パラメーターの名前。パスに出てくる順(":id" → "id")
+    paramNames: string[];
     method: string;
     handler: Handler;
 };
@@ -49,13 +51,18 @@ export function splitPath(pathname: string): string[] {
     for (const raw of pathname.split("/")) {
         if (raw === "") continue;
 
-        let segment: string;
-        try {
-            segment = decodeURIComponent(raw);
-        } catch {
-            throw new HttpError(400, "400 Bad Request");
+        // "%" がなければデコードしても同じなので、しない(ほとんどのリクエストはこちら)
+        // デコードしなければ "/" は含まれない(split で分けたので)
+        let segment = raw;
+        if (raw.includes("%")) {
+            try {
+                segment = decodeURIComponent(raw);
+            } catch {
+                throw new HttpError(400, "400 Bad Request");
+            }
+            if (segment.includes("/")) throw new HttpError(400, "400 Bad Request");
         }
-        if (segment.includes("/") || segment === "." || segment === "..") {
+        if (segment === "." || segment === "..") {
             throw new HttpError(400, "400 Bad Request");
         }
         segments.push(segment);
@@ -70,13 +77,33 @@ const BAD_HOST = /[\s/?#@\\]/;
 // - ランタイムが Host ヘッダーをつないで URL を作ることがある(Deno)。
 //   "Host: x/admin#" だと http://x/admin#/public になり、パスが /admin にすり替わるので弾く
 // - Bun は Host が不正だと req.url を "/public" のような相対 URL にするので、new URL() が失敗する
+// - 速さのため、ふつうは new URL() を使わず req.url の文字列から切り出す。
+//   ただし Deno は req.url を正規化しない("/a/../b" のまま来る)ので、"." のセグメント・%2e・\ を含むときだけ
+//   new URL() に任せて、URL の仕様どおりに解決させる(どちらで取り出しても、同じ結果になるようにしている)
 export function requestPathname(req: Request): string {
     const host = req.headers.get("host");
     if (host !== null && BAD_HOST.test(host)) {
         throw new HttpError(400, "400 Bad Request");
     }
+    const url = req.url;
+    const scheme = url.indexOf("://");
+    if (scheme !== -1) {
+        const start = url.indexOf("/", scheme + 3);
+        if (start === -1) return "/";
+        // "?" か "#" までがパス。1回の走査で、new URL() に任せるべきもの("/." と "%2e" と "\")も探す
+        let needsUrl = false;
+        let i = start;
+        for (; i < url.length; i++) {
+            const ch = url.charCodeAt(i);
+            if (ch === 63 || ch === 35) break; // "?" "#"
+            if (ch === 92) needsUrl = true; // "\"
+            else if (ch === 46 && url.charCodeAt(i - 1) === 47) needsUrl = true; // "/."
+            else if (ch === 37 && url.charCodeAt(i + 1) === 50 && (url.charCodeAt(i + 2) | 32) === 101) needsUrl = true; // "%2e" "%2E"
+        }
+        if (!needsUrl) return url.slice(start, i);
+    }
     try {
-        return new URL(req.url).pathname;
+        return new URL(url).pathname;
     } catch {
         throw new HttpError(400, "400 Bad Request");
     }
@@ -127,6 +154,21 @@ export function checkParamNames(path: string, segments: readonly string[]) {
     }
 }
 
+// メソッド名に使える文字(RFC 9110 の token)
+const METHOD = /^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$/;
+
+// 登録するメソッド名を確かめて、大文字にする("propfind" → "PROPFIND")
+// - CONNECT はプロキシ用、TRACE / TRACK はリクエストをそのまま返すので Cookie を盗む攻撃(XST)に使われる。どれも扱わない
+// - "ALL" は app.all() の印として使っているので、app.on() からは登録させない
+export function normalizeMethod(method: string): string {
+    if (!METHOD.test(method)) throw new Error(`メソッド名に使えない文字があります: ${JSON.stringify(method)}`);
+    const upper = method.toUpperCase();
+    if (upper === "CONNECT" || upper === "TRACE" || upper === "TRACK") {
+        throw new Error(`${upper} メソッドは扱いません(Senri では CONNECT / TRACE / TRACK を登録できません)`);
+    }
+    return upper;
+}
+
 // Allow ヘッダーに入れるメソッドの一覧("GET, HEAD, POST, OPTIONS")
 // GET があれば HEAD も使える(GET にフォールバックするので)。OPTIONS はいつでも使える
 export function allowedMethods(routes: readonly Route[]): string {
@@ -140,9 +182,10 @@ export function allowedMethods(routes: readonly Route[]): string {
 }
 
 // path の先頭が prefix と一致するか。セグメント単位で比べるので "/admin" は "/administrator" にはマッチしない
+// プレフィックスの ":id" のようなパラメーターは、どんなセグメントにも合う(matchPath と同じ判定)
 export function startsWithSegments(path: readonly string[], prefix: readonly string[]): boolean {
     if (path.length < prefix.length) return false;
-    return prefix.every((p, i) => p === path[i]);
+    return prefix.every((p, i) => p.startsWith(":") || p === path[i]);
 }
 
 // sort 用の比較関数。どの2つを比べても答えが矛盾しない(=並び順が一意に決まる)ようにする

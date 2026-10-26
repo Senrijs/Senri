@@ -145,6 +145,41 @@ describe("API", () => {
         expect(data.middlewares[1]!.avgSelfMs).toBeNull();
     });
 
+    test("ミドルウェア: 同じ名前が2つあっても、登録順で別々に集計する", async () => {
+        const a = createApp({ dev: true });
+        const named = (label: string) =>
+            async function timer(_c: unknown, next: () => Promise<Response>) {
+                await next();
+                void label;
+            };
+        a.use(named("1つ目"));
+        a.use("/admin", named("2つ目"));
+        a.get("/hello", () => "hi");
+        await a.fetch(req("/hello"), local);
+        await a.fetch(req("/hello"), local);
+
+        const data = await pageData(await a.fetch(req("/_senri"), local));
+
+        expect(data.middlewares.map((m) => [m.order, m.name, m.runs])).toEqual([
+            [1, "timer", 2],
+            [2, "timer", 0],
+        ]);
+    });
+
+    test("ミドルウェア: 無名の関数には印が付く(画面で「名前付きの関数にすると名前が出る」と案内する)", async () => {
+        const data = await pageData(await app().fetch(req("/_senri"), local));
+
+        expect(data.middlewares.map((m) => [m.name, m.anonymous])).toEqual([
+            ["logger", false],
+            ["auth", false],
+        ]);
+
+        const b = createApp({ dev: true });
+        b.use((_c, next) => next());
+        const anon = await pageData(await b.fetch(req("/_senri"), local));
+        expect(anon.middlewares[0]).toMatchObject({ name: "anonymous#1", anonymous: true });
+    });
+
     test("クリアは、ダッシュボード自身のページからの POST だけ受け付ける", async () => {
         const a = app();
         await a.fetch(req("/hello"), local);

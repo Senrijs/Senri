@@ -1,6 +1,7 @@
 // examples を Bun / Deno / Node で順に起動して、実際に HTTP で叩いて確かめる
-// 使い方: node scripts/smoke.ts [bun] [deno] [node]   (省略すると全部)
-import { spawn } from "node:child_process";
+// 使い方: node scripts/smoke.ts [bun] [deno] [node] [workers]   (省略すると全部)
+// workers は bun build で1つのファイルにまとめてから、workerd(Cloudflare Workers のランタイム)で動かす
+import { spawn, spawnSync } from "node:child_process";
 import net from "node:net";
 
 // 子プロセスには環境変数 PORT=3928 を渡す。serve() は「明示 → PORT → 3927」の順にポートを決めるので、
@@ -9,14 +10,34 @@ import net from "node:net";
 const ENV_PORT = 3928;
 const DEFAULT_PORT = 3927;
 
-const RUNTIMES: Record<string, { command: string[]; port: number; note: string }> = {
+// workerd の実行ファイルそのもの。node_modules/.bin/workerd はこれを起動するだけのラッパーで、
+// ラッパーを止めても本物が残ってしまう(smoke が終わらなくなる)ので、直接起動する
+// workers を選んだときだけ解決する(ほかのランタイムの smoke では、workerd を入れていなくても動くように)
+// (文字列を変数にしてから import すると、TypeScript は型を探しにいかない)
+async function workerdPath(): Promise<string> {
+    const name = "workerd";
+    return ((await import(name)) as { default: { default: string } }).default.default;
+}
+
+// note: serve() のバナーに出る「ポートをどこから決めたか」。null ならバナーはない(workerd は serve() を使わない)
+const RUNTIMES: Record<string, { command: string[]; port: number; note: string | null; build?: string[] }> = {
     bun: { command: ["bun", "run", "examples/bun/index.ts"], port: ENV_PORT, note: "環境変数 PORT" },
     deno: { command: ["deno", "run", "--allow-net", "examples/deno/index.ts"], port: DEFAULT_PORT, note: "デフォルト" },
     node: { command: ["node", "examples/node/index.ts"], port: ENV_PORT, note: "環境変数 PORT" },
+    // ポートは examples/workers/config.capnp で決めている
+    workers: {
+        build: ["bun", "build", "examples/workers/index.ts", "--target", "browser", "--format", "esm", "--outfile", "examples/workers/dist/worker.js"],
+        command: ["workerd", "serve", "examples/workers/config.capnp"],
+        port: 3929,
+        note: null,
+    },
 };
 
 type Check = {
     name: string;
+    // このランタイムでだけ確かめる / このランタイムでは確かめない
+    only?: string[];
+    except?: string[];
     path: string;
     init?: RequestInit;
     status: number;
@@ -25,7 +46,7 @@ type Check = {
     // 開発モードの HTML ページ。埋め込まれた JSON を確かめて、だめなら理由を返す
     page?: (data: any, runtime: string) => string | null;
     // JSON のレスポンス。中身を確かめて、だめなら理由を返す
-    json?: (data: any) => string | null;
+    json?: (data: any, runtime: string) => string | null;
 };
 
 const browser = { accept: "text/html,application/xhtml+xml,*/*;q=0.8" };
@@ -38,6 +59,34 @@ const CHECKS: Check[] = [
     { name: "Set-Cookie 2つ", path: "/cookies", status: 200, cookies: ["a=1", "b=2"] },
     { name: "日本語パラメーター", path: "/users/山田", status: 200, body: "user 山田" },
     { name: "HEAD", path: "/hello", init: { method: "HEAD" }, status: 200, body: "" },
+    {
+        name: "QUERY",
+        path: "/search",
+        init: { method: "QUERY", headers: { "content-type": "application/json" }, body: `{"q":"senri"}` },
+        status: 200,
+        json: (d) => (d.query?.q === "senri" ? null : "ボディが届いていない"),
+    },
+    // 文字列のボディだと fetch が text/plain を付けてしまうので、バイト列で送る
+    { name: "QUERY(Content-Type なし)", path: "/search", init: { method: "QUERY", body: new Uint8Array([120]) }, status: 415 },
+    { name: "QUERY(ボディなし)", path: "/search", init: { method: "QUERY" }, status: 400 },
+    {
+        name: "c.ip",
+        path: "/client-ip",
+        status: 200,
+        except: ["workers"],
+        json: (d) => (/^(127\.0\.0\.1|::1)$/.test(d.ip ?? "") ? null : `ループバックでない: ${d.ip}`),
+    },
+    // Workers には接続元を渡す引数がないので、Cloudflare が付ける CF-Connecting-IP を読む
+    {
+        name: "c.ip(CF-Connecting-IP)",
+        path: "/client-ip",
+        init: { headers: { "cf-connecting-ip": "203.0.113.5" } },
+        status: 200,
+        only: ["workers"],
+        json: (d) => (d.ip === "203.0.113.5" ? null : `CF-Connecting-IP を読んでいない: ${d.ip}`),
+    },
+    { name: "c.env", path: "/env", status: 200, body: "Workers から、こんにちは", only: ["workers"] },
+    { name: "c.executionCtx", path: "/wait-until", status: 200, body: "ok", only: ["workers"] },
     { name: "OPTIONS", path: "/hello", init: { method: "OPTIONS" }, status: 204 },
     { name: "認証", path: "/admin", status: 401 },
     { name: "認証(//admin)", path: "//admin", status: 401 },
@@ -52,9 +101,16 @@ const CHECKS: Check[] = [
         status: 500,
         page: (d, runtime) => {
             if (d.error?.message !== "わざと壊した") return "error.message が違う";
-            if (!d.location?.file.endsWith("examples/shared/app.ts")) return "location が利用者のコードを指していない";
+            // Workers は1つのファイルにまとめてあり、ファイルも読めないので、場所とコードは出ない(それでもページは出る)
+            if (runtime === "workers") {
+                if (d.location !== null || d.code !== null) return "Workers なのに場所やコードが出ている";
+            } else if (!d.location?.file.endsWith("examples/shared/app.ts")) {
+                return "location が利用者のコードを指していない";
+            }
             // Deno は --allow-read なしで動かしているので、該当コードは読めない(それでもページは出る)
-            if (runtime === "deno" ? d.code !== null : !d.code?.lines.some((l: any) => l.hit)) return "該当コードの扱いが違う";
+            if (runtime === "deno" || runtime === "workers" ? d.code !== null : !d.code?.lines.some((l: any) => l.hit)) {
+                return "該当コードの扱いが違う";
+            }
             if (!d.layers?.some((l: any) => l.name === "handler" && l.failed)) return "通った順番に handler の失敗がない";
             return null;
         },
@@ -71,16 +127,20 @@ const CHECKS: Check[] = [
         },
     },
     // ダッシュボード(開発モード・localhost から)。smoke は同じ PC から叩くので開ける
+    // Workers ではダッシュボードを作らない(/_senri はふつうの 404)
+    { name: "ダッシュボードなし", path: "/_senri", status: 404, only: ["workers"] },
     {
         name: "ダッシュボード(HTML)",
         path: "/_senri",
         status: 200,
+        except: ["workers"],
         page: (d) => (d.kind === "dashboard" && d.routes?.length > 0 ? null : "ダッシュボードのデータが違う"),
     },
     {
         name: "ダッシュボードの API(記録)",
         path: "/_senri/api/requests",
         status: 200,
+        except: ["workers"],
         json: (list) =>
             !list.some((r: any) => r.path === "/hello")
                 ? "/hello が記録されていない"
@@ -96,7 +156,8 @@ function readPageData(body: string): unknown {
 }
 
 // fetch では送れない、生の HTTP リクエストで確かめるもの
-type RawCheck = { name: string; request: string; status: number };
+// statusOn: ランタイムによって status が違うもの
+type RawCheck = { name: string; request: string; status: number; statusOn?: Record<string, number> };
 
 const RAW_CHECKS: RawCheck[] = [
     // Host をつないで URL を作ると http://x/admin#/hello になり、パスが /admin に化ける
@@ -104,6 +165,8 @@ const RAW_CHECKS: RawCheck[] = [
         name: "不正な Host(パスのすり替え)",
         request: "GET /hello HTTP/1.1\r\nHost: x/admin#\r\nConnection: close\r\n\r\n",
         status: 400,
+        // workerd は URL を作れず、Worker を呼ぶ前に自分で 500 を返す(アプリには届かないので、すり替えも起きない)
+        statusOn: { workers: 500 },
     },
     // DNS リバインディング: 接続元は localhost でも、Host が外のドメインならダッシュボードは開けない(普通の 404)
     {
@@ -150,6 +213,11 @@ function sendRaw(port: number, request: string): Promise<number> {
         sock.on("data", (d) => (data += d));
         sock.on("end", () => resolve(Number(data.split(" ")[1])));
         sock.on("error", reject);
+        // Connection: close でも閉じないサーバーがあるので、待ちすぎない(届いた分の status を使う)
+        sock.setTimeout(5000, () => {
+            sock.destroy();
+            data ? resolve(Number(data.split(" ")[1])) : reject(new Error("応答がありません"));
+        });
     });
 }
 
@@ -168,8 +236,17 @@ async function waitForServer(base: string, exited: () => boolean): Promise<void>
 }
 
 async function smoke(runtime: string): Promise<boolean> {
-    const { command, port, note } = RUNTIMES[runtime]!;
-    const [cmd, ...args] = command;
+    const { command, port, note, build } = RUNTIMES[runtime]!;
+    if (build) {
+        const [buildCmd, ...buildArgs] = build;
+        const built = spawnSync(buildCmd!, buildArgs, { encoding: "utf8" });
+        if (built.status !== 0) {
+            console.log(`  FAIL ビルドできませんでした\n${built.stderr ?? built.error?.message}`);
+            return false;
+        }
+    }
+    // "workerd" は、実行ファイルのパスにここで差し替える
+    const [cmd, ...args] = runtime === "workers" ? [await workerdPath(), ...command.slice(1)] : command;
     const base = `http://localhost:${port}`;
     const child = spawn(cmd!, args, {
         stdio: ["ignore", "pipe", "pipe"],
@@ -200,10 +277,14 @@ async function smoke(runtime: string): Promise<boolean> {
     try {
         await waitForServer(base, () => exited);
         // バナーに、待ち受けている URL と、ポートをどこから決めたかが出ているか
-        const banner = stdout.includes(`${base}`) && stdout.includes(note);
-        if (!banner) ok = false;
-        console.log(`  ${banner ? "ok  " : "FAIL"} ポート: ${port}(${note})`);
+        if (note !== null) {
+            const banner = stdout.includes(`${base}`) && stdout.includes(note);
+            if (!banner) ok = false;
+            console.log(`  ${banner ? "ok  " : "FAIL"} ポート: ${port}(${note})`);
+        }
         for (const check of CHECKS) {
+            if (check.only && !check.only.includes(runtime)) continue;
+            if (check.except?.includes(runtime)) continue;
             const res = await fetch(`${base}${check.path}`, check.init);
             const body = await res.text();
             const cookies = res.headers.getSetCookie();
@@ -220,7 +301,7 @@ async function smoke(runtime: string): Promise<boolean> {
             }
             if (check.json) {
                 try {
-                    reason = check.json(JSON.parse(body));
+                    reason = check.json(JSON.parse(body), runtime);
                 } catch {
                     reason = "JSON ではない";
                 }
@@ -234,12 +315,14 @@ async function smoke(runtime: string): Promise<boolean> {
             const shown = check.page || check.json ? (reason ?? (check.page ? "HTML ページ" : "JSON")) : JSON.stringify(body.slice(0, 60));
             console.log(`  ${pass ? "ok  " : "FAIL"} ${check.name}: ${res.status} ${shown}`);
         }
-        const sse = await checkEvents(base);
-        if (sse) ok = false;
-        console.log(`  ${sse ? "FAIL" : "ok  "} ダッシュボードの SSE: ${sse ?? "イベントが届いた"}`);
+        if (runtime !== "workers") {
+            const sse = await checkEvents(base);
+            if (sse) ok = false;
+            console.log(`  ${sse ? "FAIL" : "ok  "} ダッシュボードの SSE: ${sse ?? "イベントが届いた"}`);
+        }
         for (const check of RAW_CHECKS) {
             const status = await sendRaw(port, check.request);
-            const pass = status === check.status;
+            const pass = status === (check.statusOn?.[runtime] ?? check.status);
             if (!pass) ok = false;
             console.log(`  ${pass ? "ok  " : "FAIL"} ${check.name}: ${status}`);
         }

@@ -4,6 +4,7 @@ import type { Dashboard } from "./dashboard/index.ts";
 
 export { finishErrorPage, withErrorPage } from "./pages.ts";
 export { createDashboard, type Dashboard } from "./dashboard/index.ts";
+export { serverTimingHeader, withServerTiming } from "./server-timing.ts";
 
 // アプリとダッシュボードの対応(テストで中身を確かめるのに使う)
 const dashboards = new WeakMap<object, Dashboard>();

@@ -1,6 +1,6 @@
 // 型だけのテスト。bun test では実行せず、bun check(bun run typecheck)で確かめる
 // 「ts-expect-error」のコメントは、次の行が型エラーになることを期待する。エラーにならなければ、そちらがエラーになる
-import { createApp, logger, type Middleware } from "../src/index.ts";
+import { createApp, logger, type ExecutionContext, type Middleware } from "../src/index.ts";
 
 const app = createApp();
 
@@ -100,3 +100,70 @@ withInterface.get("/me", (_, c) => c.get("user")?.name ?? "anonymous");
 // 外で定義したミドルウェアも使える
 const standalone: Middleware = (_c, next) => next();
 typed.use(standalone);
+
+// --- ルートのグループ化 ---
+
+import { createRouter } from "../src/index.ts";
+
+const usersRouter = createRouter("/users/:id");
+// プレフィックスのパラメーターも推論される
+usersRouter.get("/posts/:postId", ({ id, postId }) => `${id}${postId}`);
+// @ts-expect-error プレフィックスにもパスにもないパラメーター
+usersRouter.get("/", ({ nope }) => nope);
+app.route(usersRouter);
+
+// --- app.on / head / options ---
+
+app.on("QUERY", "/q/:id", ({ id }) => id);
+app.on(["GET", "POST"], "/multi/:id", ({ id }) => id);
+// @ts-expect-error パスにないパラメーター
+app.on("PROPFIND", "/dav/:name", ({ nope }) => nope);
+app.head("/h/:id", ({ id }) => id);
+app.options("/o/:id", ({ id }) => id);
+usersRouter.on("QUERY", "/search", ({ id }) => id);
+// 別のアプリをプレフィックス付きでつなぐ(中のハンドラーでは、プレフィックスのパラメーターに型は付かない)
+const subApp = createApp();
+// c.params から読む
+subApp.get("/posts", (_, c) => c.params.id ?? "none");
+app.route("/users/:id", subApp);
+// @ts-expect-error プレフィックスなしでアプリは渡せない
+app.route(subApp);
+
+// --- Cloudflare Workers(c.env / c.executionCtx) ---
+
+type Env = { GREETING: string; COUNT: number };
+const worker = createApp<{ Bindings: Env; Variables: { user: string } }>();
+worker.use(async (c, next) => {
+    c.set("user", c.env.GREETING);
+    // @ts-expect-error Variables にない名前
+    c.set("nope", 1);
+    return next();
+});
+worker.get("/", (_, c) => {
+    const greeting: string = c.env.GREETING;
+    const count: number = c.env.COUNT;
+    // @ts-expect-error Bindings にない名前
+    c.env.MISSING;
+    const user: string | undefined = c.get("user");
+    c.executionCtx.waitUntil(Promise.resolve());
+    return `${greeting} ${count} ${user}`;
+});
+// export default app で、Workers の ExportedHandler の fetch(req, env, ctx) として渡せる
+const exported: { fetch(req: Request, env: Env, ctx: ExecutionContext): Promise<Response> } = worker;
+void exported;
+
+// Bindings だけ指定したときは、変数は今までどおり何でも入れられる
+const onlyBindings = createApp<{ Bindings: Env }>();
+onlyBindings.get("/", (_, c) => {
+    c.set("anything", 1);
+    return c.env.GREETING;
+});
+
+// 以前からの書き方(変数の型だけ)はそのまま使える。c.env は分からないので unknown
+const varsOnly = createApp<{ user: string }>();
+varsOnly.get("/", (_, c) => {
+    c.set("user", "a");
+    // @ts-expect-error env の中身は分からない
+    c.env.GREETING;
+    return c.get("user") ?? "";
+});

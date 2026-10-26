@@ -15,7 +15,12 @@ type ProcessLike = {
     env: Record<string, string | undefined>;
 };
 
-const g = globalThis as { Deno?: DenoLike; process?: ProcessLike };
+const g = globalThis as { Deno?: DenoLike; process?: ProcessLike; navigator?: { userAgent?: string } };
+
+// Cloudflare Workers(workerd)で動いているか。Workers の navigator.userAgent は決まった値になる
+export function isWorkers(): boolean {
+    return g.navigator?.userAgent === "Cloudflare-Workers";
+}
 
 function denoAllows(desc: { name: string; path?: string; variable?: string }): boolean {
     try {

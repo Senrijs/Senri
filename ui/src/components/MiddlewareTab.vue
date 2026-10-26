@@ -1,12 +1,13 @@
 <script setup lang="ts">
 // ミドルウェアのタブ: 登録順(= 玉ねぎの外側から内側の順 = 実行順)に並べる
 // 1段ずつ字下げして、最後にハンドラーを置くことで「外側から順に包んでいる」形を見せる
-import { onMounted, ref } from "vue";
+import { computed, onMounted, ref } from "vue";
 import type { MiddlewareRow } from "../../../src/dev/page-data.ts";
-import { formatAverage, middlewareScope } from "../dashboard.ts";
+import { anonymousHint, formatAverage, middlewareScope } from "../dashboard.ts";
 
 const props = defineProps<{ initial: MiddlewareRow[] }>();
 const rows = ref<MiddlewareRow[]>(props.initial);
+const hint = computed(() => anonymousHint(rows.value));
 
 // 開いたときに、最新の平均時間を取り直す
 onMounted(async () => {
@@ -37,6 +38,7 @@ onMounted(async () => {
             </li>
         </ol>
         <p v-if="rows.length === 0" class="lead">まだミドルウェアは登録されていません。</p>
+        <p v-if="hint" class="lead hint">{{ hint }}</p>
     </section>
 </template>
 
@@ -83,5 +85,8 @@ onMounted(async () => {
 }
 .handler .order {
     color: var(--muted);
+}
+.hint {
+    color: var(--help-text);
 }
 </style>

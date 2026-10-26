@@ -23,6 +23,9 @@ app.get("/created", (_, c) => {
 app.get("/accepted", (_, c) => c.json({ hi: 1 }, 202));
 app.get("/ua", (_, c) => c.req.headers.get("user-agent") ?? "unknown");
 app.post("/echo", async (_, c) => `body=${await c.req.text()}`);
+// QUERY: 検索の条件をボディに入れて送る(RFC 10008)
+app.on("QUERY", "/search", async (_, c) => ({ query: await c.body() }));
+app.get("/client-ip", (_, c) => ({ ip: c.ip }));
 app.get("/cookies", (_, c) => {
     c.header("set-cookie", "a=1");
     c.header("set-cookie", "b=2");
