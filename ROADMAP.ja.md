@@ -20,22 +20,22 @@ Senri がこれから向かう先です。バージョンは目標であって�
 - 開発モード: エラーページ(該当コード・ヒント・エディタで開く)と 404 ページ(「もしかして」)
 - `/_senri` 開発ダッシュボード: リアルタイムのリクエスト一覧、玉ねぎタイムライン、ルートとミドルウェア
 
-## 0.1.0 — 最初の公開
+## 0.1.0 — 最初の公開(2026-10-26 公開済み)
 
 *すぐに使えて、ほかにない開発体験があって、どこでも動く。*
 
-- [ ] クエリ・ボディ・Cookie のヘルパー
-- [ ] ルートのグループ化(`app.route(prefix, subApp)`)
-- [ ] `app.on`・`app.options`・`app.head`
-- [ ] `QUERY` メソッド([RFC 10008](https://www.rfc-editor.org/rfc/rfc10008.html))
-- [ ] 標準ミドルウェア: CORS、静的ファイル、セキュリティヘッダー、ボディサイズ制限
-- [ ] Cloudflare Workers 対応(`export default app`、`c.env`、`c.executionCtx`)
-- [ ] [Standard Schema](https://standardschema.dev) によるバリデーション(Zod・Valibot・ArkType など)
-- [ ] `/healthz`・`/readyz` とグレースフルシャットダウン
-- [ ] 性能: 再現できるベンチマーク、高速なルーター(Map + Trie)、リクエストごとの負荷の削減
-- [ ] `c.ip`
-- [ ] 開発モードの `Server-Timing` ヘッダー(ブラウザの開発者ツールで玉ねぎが見える)
-- [ ] npm と JSR(どちらも `@senrijs/senri`)への公開
+- [x] クエリ・ボディ・Cookie のヘルパー
+- [x] ルートのグループ化(`app.route(prefix, subApp)`)
+- [x] `app.on`・`app.options`・`app.head`
+- [x] `QUERY` メソッド([RFC 10008](https://www.rfc-editor.org/rfc/rfc10008.html))
+- [x] 標準ミドルウェア: CORS、静的ファイル、セキュリティヘッダー、ボディサイズ制限
+- [x] Cloudflare Workers 対応(`export default app`、`c.env`、`c.executionCtx`)
+- [x] [Standard Schema](https://standardschema.dev) によるバリデーション(Zod・Valibot・ArkType など)
+- [x] `/healthz`・`/readyz` とグレースフルシャットダウン
+- [x] 性能: 再現できるベンチマーク、高速なルーター(Map + Trie)、リクエストごとの負荷の削減
+- [x] `c.ip`
+- [x] 開発モードの `Server-Timing` ヘッダー(ブラウザの開発者ツールで玉ねぎが見える)
+- [x] npm と JSR(どちらも `@senrijs/senri`)への公開
 
 ## 0.1.1
 
