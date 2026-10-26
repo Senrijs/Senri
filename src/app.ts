@@ -336,8 +336,17 @@ export function createApp<V extends object = Record<string, unknown>>(options: A
             const measure = dev ? { timings: c.timings, origin, innerName } : undefined;
             const res = await compose(layers, c, run, fail, measure);
             // ミドルウェアを全部通ったあとなので、ここなら「通った順番」が揃っている
-            const page = devTools ? await (await devTools).finishErrorPage(c, res) : res;
-            const final = c.finalize(page);
+            const tools = devTools ? await devTools : null;
+            const page = tools ? await tools.finishErrorPage(c, res) : res;
+            let final = c.finalize(page);
+            // 開発モードでは、層ごとの時間を Server-Timing に載せる(ブラウザの開発者ツールで見られる)
+            if (tools) {
+                const inner = {
+                    name: innerName,
+                    desc: resolved.kind === "route" ? `${resolved.route.method} ${resolved.route.path}` : innerName,
+                };
+                final = tools.withServerTiming(final, tools.serverTimingHeader(c.timings, inner, performance.now() - origin));
+            }
             // 開発モードでは、ダッシュボードに記録する(失敗してもレスポンスには影響しない)
             await dashboard?.record(c, final, time, [
                 ...layers.map((l) => ({ name: l.name, order: l.order ?? null })),
