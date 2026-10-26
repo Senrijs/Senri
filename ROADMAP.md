@@ -20,22 +20,22 @@ Ideas and requests are welcome in [Issues](https://github.com/Senrijs/Senri/issu
 - Dev mode: error page (failing line, hints, open in editor) and 404 page ("did you mean…?")
 - `/_senri` dev dashboard: live requests, onion timeline, routes and middleware
 
-## 0.1.0 — First release
+## 0.1.0 — First release (released 2026-10-26)
 
 *Usable today, a dev experience you won't find elsewhere, and it runs everywhere.*
 
-- [ ] Query, body and cookie helpers
-- [ ] Route groups (`app.route(prefix, subApp)`)
-- [ ] `app.on`, `app.options`, `app.head`
-- [ ] `QUERY` method ([RFC 10008](https://www.rfc-editor.org/rfc/rfc10008.html))
-- [ ] Built-in middleware: CORS, static files, secure headers, body limit
-- [ ] Cloudflare Workers support (`export default app`, `c.env`, `c.executionCtx`)
-- [ ] Validation with [Standard Schema](https://standardschema.dev) (Zod, Valibot, ArkType, …)
-- [ ] `/healthz` / `/readyz` and graceful shutdown
-- [ ] Performance: reproducible benchmarks, faster router (Map + Trie), lower per-request overhead
-- [ ] `c.ip`
-- [ ] `Server-Timing` header in dev mode (see the onion in your browser's DevTools)
-- [ ] Published to npm and JSR (both `@senrijs/senri`)
+- [x] Query, body and cookie helpers
+- [x] Route groups (`app.route(prefix, subApp)`)
+- [x] `app.on`, `app.options`, `app.head`
+- [x] `QUERY` method ([RFC 10008](https://www.rfc-editor.org/rfc/rfc10008.html))
+- [x] Built-in middleware: CORS, static files, secure headers, body limit
+- [x] Cloudflare Workers support (`export default app`, `c.env`, `c.executionCtx`)
+- [x] Validation with [Standard Schema](https://standardschema.dev) (Zod, Valibot, ArkType, …)
+- [x] `/healthz` / `/readyz` and graceful shutdown
+- [x] Performance: reproducible benchmarks, faster router (Map + Trie), lower per-request overhead
+- [x] `c.ip`
+- [x] `Server-Timing` header in dev mode (see the onion in your browser's DevTools)
+- [x] Published to npm and JSR (both `@senrijs/senri`)
 
 ## 0.1.1
 
