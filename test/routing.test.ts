@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { createApp, HttpError, logger } from "../src/index.ts";
-import { splitPath } from "../src/router.ts";
+import { requestPathname, splitPath } from "../src/router.ts";
 
 const req = (path: string, init?: RequestInit) =>
     new Request(`http://localhost${path}`, init);
@@ -168,6 +168,32 @@ describe("HEAD と OPTIONS", () => {
 
         expect(res.status).toBe(405);
         expect(res.headers.get("allow")).toBe("GET, HEAD, OPTIONS");
+    });
+});
+
+describe("pathname の取り出し", () => {
+    // Deno のように req.url が正規化されていないものも含めて、new URL() と同じ pathname になる
+    test("文字列から切り出しても new URL() と同じ", () => {
+        const urls = [
+            "http://localhost",
+            "http://localhost/",
+            "http://localhost/a/b?x=1#h",
+            "http://localhost/a#h?x",
+            "http://localhost/a/../b",
+            "http://localhost/a/./b/.",
+            "http://localhost/a/%2e%2E/b",
+            "http://localhost/a/%2E/b",
+            "http://localhost/a\\b",
+            "http://localhost/.well-known/x",
+            "http://localhost/a.b/c..d",
+            "http://localhost/%2f/%41",
+            "http://localhost:3000//a//b/",
+            "http://[::1]:3000/x?",
+        ];
+        for (const url of urls) {
+            const req = { url, headers: new Headers() } as Request;
+            expect([url, requestPathname(req)]).toEqual([url, new URL(url).pathname]);
+        }
     });
 });
 

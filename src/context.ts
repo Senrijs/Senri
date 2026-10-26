@@ -33,6 +33,19 @@ function contentTypeOf(value: BodyValue): string | undefined {
     return undefined;
 }
 
+// c.text() / c.json() の既定の Content-Type。Response は渡された Headers をコピーして使うので、共有してよい
+// (オブジェクトリテラルを渡すより速い。毎回 Headers に変換しなくて済むため)
+const TEXT_HEADERS = new Headers({ "content-type": "text/plain; charset=utf-8" });
+const JSON_HEADERS = new Headers({ "content-type": "application/json" });
+// status が 200 のときは init も共有する(毎回オブジェクトを作らない)
+const TEXT_INIT = { status: 200, headers: TEXT_HEADERS };
+const JSON_INIT = { status: 200, headers: JSON_HEADERS };
+
+function initOf(status: number, type: string | null | undefined, headers: Headers, shared: ResponseInit): ResponseInit {
+    if (type) return { status, headers: { "content-type": type } };
+    return status === 200 ? shared : { status, headers };
+}
+
 // V は c.set / c.get で使う変数の型(createApp<{ user: User }>() のように決める)
 // 既定の any は「どのアプリでも使える」という意味。logger() のような汎用ミドルウェアのため
 export type Handler<P = Record<string, string>, V extends object = any> = (
@@ -50,9 +63,14 @@ export type Middleware<V extends object = any> = (
 export class Context<V extends object = any> {
     req: Request;
     #status = 200;
-    #headers = new Headers();
+    // c.header() で初めて作る(ほとんどのリクエストでは使わないので、毎回作らない)
+    #headers: Headers | undefined;
     #segments: string[] | undefined;
-    #vars = new Map<string, unknown>();
+    // 取り出したままの pathname と、正規化したパス(c.path)
+    #pathname: string | undefined;
+    #path: string | undefined;
+    // c.set() で初めて作る
+    #vars: Map<string, unknown> | undefined;
     // 一度読んだボディ(ミドルウェアとハンドラーの両方から読めるように覚えておく)
     #body: Promise<unknown> | undefined;
     #query: URLSearchParams | undefined;
@@ -63,9 +81,7 @@ export class Context<V extends object = any> {
     route: string | undefined = undefined;
     // パスパラメーター。ハンドラーでは第1引数でも受け取れる
     params: Record<string, string> = {};
-    // 開発モードのときだけ、ミドルウェアとハンドラーの通過時間が入る(外側から順)
-    // 自分より内側の層は、next() が終わったあとに読める
-    timings: Timing[] = [];
+    #timings: Timing[] | undefined;
 
     // app.fetch に渡された元のリクエストと2つ目の引数(c.ip で使う)
     // Bun の requestIP は元のリクエストでしか答えないので、c.req が差し替えられても元のほうで聞く
@@ -89,25 +105,44 @@ export class Context<V extends object = any> {
     // パスをデコードして "/" で分けたもの。ルーターもミドルウェアもこれを見る
     // 初めて読んだときに1回だけ作る。エンコードが不正なら HttpError(400) を投げる
     get segments(): readonly string[] {
-        this.#segments ??= splitPath(requestPathname(this.req));
+        this.#segments ??= splitPath(this.#rawPathname());
         return this.#segments;
+    }
+
+    // req.url から取り出したままの pathname(1回だけ取り出す)。おかしなリクエストなら HttpError(400) を投げる
+    #rawPathname(): string {
+        this.#pathname ??= requestPathname(this.req);
+        return this.#pathname;
     }
 
     // 正規化・デコード済みのパス("//admin/" → "/admin"、"/%61dmin" → "/admin")
     // パスで判定するミドルウェアは、req.url ではなくこちらを使うこと
     get path(): string {
-        return "/" + this.segments.join("/");
+        if (this.#path === undefined) {
+            const p = this.#rawPathname();
+            // エンコードも、連続・末尾のスラッシュもなければ、取り出したままのものと同じ(分割もつなぎ直しもしない)
+            // ("." のセグメントは requestPathname が new URL() で解決済みなので、ここには来ない)
+            const clean = !p.includes("%") && !p.includes("//") && (p.length === 1 || !p.endsWith("/"));
+            this.#path = clean ? p : "/" + this.segments.join("/");
+        }
+        return this.#path;
+    }
+
+    // 開発モードのときだけ、ミドルウェアとハンドラーの通過時間が入る(外側から順)
+    // 自分より内側の層は、next() が終わったあとに読める
+    get timings(): Timing[] {
+        return (this.#timings ??= []);
     }
 
     // ミドルウェアからハンドラーへ値を渡す(ログインしたユーザーなど)
     set<K extends keyof V & string>(key: K, value: V[K]) {
-        this.#vars.set(key, value);
+        (this.#vars ??= new Map()).set(key, value);
         return this;
     }
 
     // set していなければ undefined(ミドルウェアが動かなかったときなど)
     get<K extends keyof V & string>(key: K): V[K] | undefined {
-        return this.#vars.get(key) as V[K] | undefined;
+        return this.#vars?.get(key) as V[K] | undefined;
     }
 
     // --- クエリ ---
@@ -173,10 +208,11 @@ export class Context<V extends object = any> {
     // なので、Response を直接返したときも、エラーのときも、next() のあとに設定しても効く
     header(name: string, value: string) {
         // Set-Cookie は1つのレスポンスに何個も付けるものなので、上書きせずに足す
+        const headers = (this.#headers ??= new Headers());
         if (name.toLowerCase() === "set-cookie") {
-            this.#headers.append(name, value);
+            headers.append(name, value);
         } else {
-            this.#headers.set(name, value);
+            headers.set(name, value);
         }
         return this;
     }
@@ -184,18 +220,14 @@ export class Context<V extends object = any> {
     // json() と text() は Content-Type と status だけ決める(ほかのヘッダーは finalize() で足す)
     // 共有の #headers を書き換えないので、json() のあとに text() しても Content-Type が混ざらない
     json(data: unknown, status?: number): Response {
-        return new Response(JSON.stringify(data), {
-            status: status ?? this.#status,
-            headers: { "content-type": this.#headers.get("content-type") ?? "application/json" },
-        });
+        const init = initOf(status ?? this.#status, this.#headers?.get("content-type"), JSON_HEADERS, JSON_INIT);
+        return new Response(JSON.stringify(data), init);
     }
 
     text(body: string, status?: number): Response {
         // 明示しないと、Bun は Headers に Content-Type を入れない(Node / Deno は入れる)のでランタイムで差が出る
-        return new Response(body, {
-            status: status ?? this.#status,
-            headers: { "content-type": this.#headers.get("content-type") ?? "text/plain; charset=utf-8" },
-        });
+        const init = initOf(status ?? this.#status, this.#headers?.get("content-type"), TEXT_HEADERS, TEXT_INIT);
+        return new Response(body, init);
     }
 
     // c.header() で設定したヘッダーを res に足す。app が最後に1回だけ呼ぶ
@@ -203,19 +235,21 @@ export class Context<V extends object = any> {
     // - Set-Cookie は足す
     // - c.status() は使わない(Response を直接返したなら、その status を尊重する)
     finalize(res: Response): Response {
-        let hasHeaders = false;
-        this.#headers.forEach(() => (hasHeaders = true));
+        const own = this.#headers;
         // 何もなければ作り直さない。101(WebSocket のアップグレード)なども作り直すと壊れる
-        if (!hasHeaders || res.status < 200) return res;
+        if (own === undefined || res.status < 200) return res;
+        let hasHeaders = false;
+        own.forEach(() => (hasHeaders = true));
+        if (!hasHeaders) return res;
 
         // fetch() や Response.redirect() の Response はヘッダーを変更できないので、新しく作る
         const headers = new Headers(res.headers);
-        this.#headers.forEach((value, key) => {
+        own.forEach((value, key) => {
             if (key === "set-cookie") return;
             if (key === "content-type" && headers.has(key)) return;
             headers.set(key, value);
         });
-        for (const cookie of this.#headers.getSetCookie()) {
+        for (const cookie of own.getSetCookie()) {
             headers.append("set-cookie", cookie);
         }
         return new Response(res.body, { status: res.status, statusText: res.statusText, headers });
@@ -229,7 +263,7 @@ export class Context<V extends object = any> {
             return this.text(value);
         }
         if (isBodyValue(value)) {
-            const contentType = this.#headers.get("content-type") ?? contentTypeOf(value);
+            const contentType = this.#headers?.get("content-type") ?? contentTypeOf(value);
             return new Response(value, {
                 status: this.#status,
                 headers: contentType ? { "content-type": contentType } : undefined,

@@ -36,10 +36,18 @@ export type Measure = {
 export function compose(
     layers: Layer[],
     c: Context,
-    handle: () => Promise<Response>,
+    handle: () => Response | Promise<Response>,
     onError: (err: unknown) => Promise<Response>,
     measure?: Measure,
 ): Promise<Response> {
+    // 近道: ミドルウェアがなく、計測もしないなら、いちばん内側の処理を呼ぶだけ(下の dispatch と同じ結果になる)
+    if (layers.length === 0 && !measure) {
+        try {
+            return Promise.resolve(handle()).catch(onError);
+        } catch (err) {
+            return onError(err);
+        }
+    }
     const timings = measure?.timings;
     // 計測しないときは時計を読まない
     const now = timings ? () => performance.now() : () => 0;

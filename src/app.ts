@@ -1,7 +1,6 @@
-import { Context, type Handler, type Middleware } from "./context.ts";
+import { Context, type Handler, type HandlerResult, type Middleware } from "./context.ts";
 import {
     compareRoutes,
-    matchPath,
     allowedMethods,
     checkParamNames,
     normalizeMethod,
@@ -13,7 +12,8 @@ import {
     type Route,
     type Simplify,
 } from "./router.ts";
-import { compose, toResponseOf, type Layer } from "./compose.ts";
+import { compose, type Layer } from "./compose.ts";
+import { createMatcher } from "./matcher.ts";
 import { groupEntries, joinPath, type GroupEntry, type Router } from "./group.ts";
 import {
     defaultNotFound,
@@ -21,6 +21,7 @@ import {
     checkQueryRequest,
     handleError,
     HttpError,
+    markConversionError,
     methodNotAllowed,
     type ErrorHandler,
     type NotFoundHandler,
@@ -73,6 +74,7 @@ export type AppOptions = {
 export function createApp<V extends object = Record<string, unknown>>(options: AppOptions = {}) {
     const dev = options.dev ?? false;
     const routes: Route[] = [];
+    const matcher = createMatcher();
     // prefix が null なら全部のリクエストで動く。["admin"] なら /admin とその下だけ
     // anonymous: 無名の関数だった(名前を anonymous#番号 にした)。ダッシュボードで「名前を付けると出る」と案内する
     const middlewares: { name: string; anonymous: boolean; path: string | null; prefix: string[] | null; mw: Middleware<V> }[] = [];
@@ -108,14 +110,26 @@ export function createApp<V extends object = Record<string, unknown>>(options: A
             );
         }
 
-        routes.push({ path, segments, method, handler });
+        const paramNames = segments.filter((s) => s.startsWith(":")).map((s) => s.slice(1));
+        const route: Route = { path, segments, paramNames, method, handler };
+        // routes は一覧(routeList や 404 の「もしかして」)用。探すのは matcher(Trie)で行う
+        routes.push(route);
         routes.sort(compareRoutes);
+        matcher.add(route);
+    }
+
+    // マッチしたルートのパラメーターを、ルートごとの名前で組み立てる
+    function paramsOf(route: Route, values: string[]): Record<string, string> {
+        const params: Record<string, string> = {};
+        const names = route.paramNames;
+        for (let i = 0; i < names.length; i++) params[names[i]!] = values[i]!;
+        return params;
     }
 
     function resolve(c: Context): Resolved {
-        let segments: readonly string[];
+        let path: string;
         try {
-            segments = c.segments;
+            path = c.path;
         } catch (error) {
             // エンコードが不正(HttpError 400)。ミドルウェアは動かしてから返す
             return { kind: "badRequest", error };
@@ -123,24 +137,38 @@ export function createApp<V extends object = Record<string, unknown>>(options: A
         const method = c.req.method;
         if (NOT_IMPLEMENTED.has(method)) return { kind: "notImplemented" };
 
-        // パスが合うルートを、優先順位の順に集める(メソッドはまだ見ない)
-        const matched: { route: Route; params: Record<string, string> }[] = [];
-        for (const route of routes) {
-            const params = matchPath(route.segments, segments);
-            if (params !== null) matched.push({ route, params });
+        // 近道: パラメーターのないルートにぴったり合い、メソッドも合えば、それがいちばん優先される
+        // (この場合はパスを分割しなくて済む)
+        const exact = matcher.staticLeaf(path);
+        if (exact) {
+            for (const route of exact) {
+                if (route.method === method) return { kind: "route", route, params: {} };
+            }
         }
-        const find = (m: string) => matched.find((x) => x.route.method === m);
 
-        // 1. メソッドが合うもの → 2. HEAD なら GET → 3. all の順に探す
+        // c.path が読めたので、ここで分割に失敗することはない
+        const segments = c.segments;
+        const find = (m: string): Resolved | undefined => {
+            const hit = matcher.first(segments, m);
+            return hit ? { kind: "route", route: hit.route, params: paramsOf(hit.route, hit.values) } : undefined;
+        };
+
+        // 1. メソッドが合うもの → 2. HEAD なら GET → 3. all の順に、優先順位の高いルートから探す
         const hit = find(method) ?? (method === "HEAD" ? find("GET") : undefined) ?? find("ALL");
-        if (hit) return { kind: "route", ...hit };
+        if (hit) return hit;
 
+        // どれもなければ、パスが合うルートを全部集めて 404 か 405 かを決める
+        const matched = matcher.match(segments);
         if (matched.length === 0) return { kind: "notFound" };
-        const allow = allowedMethods(matched.map((x) => x.route));
+        const allow = allowedMethods(matched.flatMap((x) => x.leaf));
         return method === "OPTIONS" ? { kind: "options", allow } : { kind: "methodNotAllowed", allow };
     }
 
+    // ミドルウェアがないときに毎回配列を作らないよう、共有の空配列を返す(中身は変えない)
+    const NO_LAYERS: Layer[] = [];
+
     function applicableMiddlewares(c: Context): Layer[] {
+        if (middlewares.length === 0) return NO_LAYERS;
         let segments: readonly string[] | null;
         try {
             segments = c.segments;
@@ -148,14 +176,16 @@ export function createApp<V extends object = Record<string, unknown>>(options: A
             // パスが不正なら、パス指定のミドルウェアは動かさない(どのみちルーターが 400 にする)
             segments = null;
         }
-        return (
-            middlewares
+        const layers: Layer[] = [];
+        for (let i = 0; i < middlewares.length; i++) {
+            const { name, mw, prefix } = middlewares[i]!;
+            if (prefix === null || (segments !== null && startsWithSegments(segments, prefix))) {
                 // order は登録順(1 から)。同じ関数を2回登録しても区別できるよう、配列の位置から決める
                 // (ダッシュボードで、名前ではなく登録順で集計するのに使う)
-                .map(({ name, mw, prefix }, i) => ({ name, mw, prefix, order: i + 1 }))
-                .filter(({ prefix }) => prefix === null || (segments !== null && startsWithSegments(segments, prefix)))
-                .map(({ name, mw, order }) => ({ name, mw, order }))
-        );
+                layers.push({ name, mw, order: i + 1 });
+            }
+        }
+        return layers;
     }
 
     const app = {
@@ -274,87 +304,131 @@ export function createApp<V extends object = Record<string, unknown>>(options: A
 
         // info: ランタイムが渡す2つ目の引数(Bun の server、Deno の info など)。接続元のアドレスを取るのに使う
         // (形で見分けるので、Cloudflare Workers の env のような別のものが来ても壊れない。src/dev/dashboard/access.ts)
-        async fetch(req: Request, info?: unknown): Promise<Response> {
-            // 開発モードのときだけ、計測の基準になるリクエストの開始時刻を取る
-            const origin = dev ? performance.now() : 0;
-            const time = dev ? Date.now() : 0;
-            const c = new Context<V>(req, info);
-            const dashboard = dashboardPromise ? await dashboardPromise : null;
-            // /_senri 以下はダッシュボード。localhost から開いたときだけ、ミドルウェアを通さずに処理する
-            // (開けないときは普通の処理に回すので、/_senri はないものとして 404 になる)。どちらも記録はしない
-            const dashboardPath = dashboard ? underDashboard(c) : null;
-            if (dashboard && dashboardPath && dashboard.canOpen(req, info)) {
-                return dashboard.handle(req, dashboardPath);
-            }
-            if (!dashboardPath) dashboard?.begin(c, info);
-            const fail = (err: unknown) => handleError(err, c, onError);
-
-            // ミドルウェアより先にマッチして、c.route / c.params を見られるようにしておく
-            const resolved = resolve(c);
-            if (resolved.kind === "route") {
-                c.route = resolved.route.path;
-                c.params = resolved.params;
-            }
-
-            // ミドルウェアを全部通ったあとに動く、いちばん内側の処理
-            const run = async (): Promise<Response> => {
-                switch (resolved.kind) {
-                    case "badRequest":
-                        throw resolved.error;
-                    case "route": {
-                        // QUERY として登録したルートだけ、ボディと Content-Type を確かめる(app.all はハンドラーに任せる)
-                        if (resolved.route.method === "QUERY") {
-                            const invalid = await checkQueryRequest(c, dev);
-                            if (invalid) throw invalid;
-                        }
-                        const result = await resolved.route.handler(c.params, c);
-                        const res = toResponseOf(c, result, {
-                            kind: "handler",
-                            name: `${resolved.route.method} ${resolved.route.path}`,
-                        });
-                        if (req.method !== "HEAD") return res;
-                        // HEAD はヘッダーと status だけ返す(ボディは捨てる)
-                        await res.body?.cancel();
-                        return new Response(null, { status: res.status, statusText: res.statusText, headers: res.headers });
-                    }
-                    case "options":
-                        return new Response(null, { status: 204, headers: { allow: resolved.allow } });
-                    case "methodNotAllowed":
-                        throw methodNotAllowed(c, c.path, resolved.allow, dev);
-                    case "notImplemented":
-                        throw new HttpError(501, "501 Not Implemented");
-                    case "notFound":
-                        c.status(404);
-                        return c.toResponse(await notFound(c));
+        fetch(req: Request, info?: unknown): Promise<Response> {
+            // 開発モードは計測・記録をするので別の道を通る。本番では、その分のコードを一切通らない
+            if (devTools) return devFetch(req, info);
+            try {
+                const c = new Context<V>(req, info);
+                const resolved = resolve(c);
+                if (resolved.kind === "route") {
+                    c.route = resolved.route.path;
+                    c.params = resolved.params;
                 }
-            };
-
-            // ハンドラー・notFound・toResponse のどこで投げても、compose が onError に集める
-            // 開発モードのときだけ計測する(本番では performance.now() の分も払わない)
-            const layers = applicableMiddlewares(c);
-            const innerName = INNER_NAME[resolved.kind];
-            const measure = dev ? { timings: c.timings, origin, innerName } : undefined;
-            const res = await compose(layers, c, run, fail, measure);
-            // ミドルウェアを全部通ったあとなので、ここなら「通った順番」が揃っている
-            const tools = devTools ? await devTools : null;
-            const page = tools ? await tools.finishErrorPage(c, res) : res;
-            let final = c.finalize(page);
-            // 開発モードでは、層ごとの時間を Server-Timing に載せる(ブラウザの開発者ツールで見られる)
-            if (tools) {
-                const inner = {
-                    name: innerName,
-                    desc: resolved.kind === "route" ? `${resolved.route.method} ${resolved.route.path}` : innerName,
-                };
-                final = tools.withServerTiming(final, tools.serverTimingHeader(c.timings, inner, performance.now() - origin));
+                const fail = (err: unknown) => handleError(err, c, onError);
+                const layers = applicableMiddlewares(c);
+                if (layers.length > 0) {
+                    return compose(layers, c, () => inner(c, resolved), fail).then((res) => c.finalize(res));
+                }
+                // 近道: ミドルウェアがなければ compose を通さない。同期のハンドラーなら、待たずにそのまま返す
+                let res: Response | Promise<Response>;
+                try {
+                    res = inner(c, resolved);
+                } catch (err) {
+                    res = fail(err);
+                }
+                if (res instanceof Promise) return res.catch(fail).then((r) => c.finalize(r));
+                return Promise.resolve(c.finalize(res));
+            } catch (err) {
+                return Promise.reject(err);
             }
-            // 開発モードでは、ダッシュボードに記録する(失敗してもレスポンスには影響しない)
-            await dashboard?.record(c, final, time, [
-                ...layers.map((l) => ({ name: l.name, order: l.order ?? null })),
-                { name: innerName, order: null },
-            ]);
-            return final;
         },
     };
+
+    // ミドルウェアを全部通ったあとに動く、いちばん内側の処理
+    // 同期で返せるときは Response をそのまま返す(Promise を作らない)
+    function inner(c: Context<V>, resolved: Resolved): Response | Promise<Response> {
+        switch (resolved.kind) {
+            case "badRequest":
+                throw resolved.error;
+            case "route": {
+                const route = resolved.route;
+                // QUERY として登録したルートだけ、ボディと Content-Type を確かめる(app.all はハンドラーに任せる)
+                if (route.method === "QUERY") {
+                    return checkQueryRequest(c, dev).then((invalid) => {
+                        if (invalid) throw invalid;
+                        return callHandler(c, route);
+                    });
+                }
+                return callHandler(c, route);
+            }
+            case "options":
+                return new Response(null, { status: 204, headers: { allow: resolved.allow } });
+            case "methodNotAllowed":
+                throw methodNotAllowed(c, c.path, resolved.allow, dev);
+            case "notImplemented":
+                throw new HttpError(501, "501 Not Implemented");
+            case "notFound":
+                c.status(404);
+                return Promise.resolve(notFound(c)).then((value) => c.toResponse(value));
+        }
+    }
+
+    function callHandler(c: Context<V>, route: Route): Response | Promise<Response> {
+        const value = route.handler(c.params, c);
+        // 同期のハンドラーなら待たない
+        return value instanceof Promise ? value.then((v) => respond(c, route, v)) : respond(c, route, value);
+    }
+
+    function respond(c: Context<V>, route: Route, value: HandlerResult): Response | Promise<Response> {
+        let res: Response;
+        try {
+            res = c.toResponse(value);
+        } catch (err) {
+            // どこが返した値かは、失敗したときだけ組み立てる
+            throw markConversionError(err, { kind: "handler", name: `${route.method} ${route.path}` });
+        }
+        if (c.req.method !== "HEAD") return res;
+        // HEAD はヘッダーと status だけ返す(ボディは捨てる)
+        return (async () => {
+            await res.body?.cancel();
+            return new Response(null, { status: res.status, statusText: res.statusText, headers: res.headers });
+        })();
+    }
+
+    // 開発モードの fetch。層ごとの時間を測り、エラーページ・Server-Timing・ダッシュボードの記録を付ける
+    async function devFetch(req: Request, info?: unknown): Promise<Response> {
+        // 計測の基準になるリクエストの開始時刻
+        const origin = performance.now();
+        const time = Date.now();
+        const c = new Context<V>(req, info);
+        const dashboard = await dashboardPromise!;
+        // /_senri 以下はダッシュボード。localhost から開いたときだけ、ミドルウェアを通さずに処理する
+        // (開けないときは普通の処理に回すので、/_senri はないものとして 404 になる)。どちらも記録はしない
+        const dashboardPath = underDashboard(c);
+        if (dashboardPath && dashboard.canOpen(req, info)) {
+            return dashboard.handle(req, dashboardPath);
+        }
+        if (!dashboardPath) dashboard.begin(c, info);
+        const fail = (err: unknown) => handleError(err, c, onError);
+
+        // ミドルウェアより先にマッチして、c.route / c.params を見られるようにしておく
+        const resolved = resolve(c);
+        if (resolved.kind === "route") {
+            c.route = resolved.route.path;
+            c.params = resolved.params;
+        }
+
+        // ハンドラー・notFound・toResponse のどこで投げても、compose が onError に集める
+        const layers = applicableMiddlewares(c);
+        const innerName = INNER_NAME[resolved.kind];
+        const measure = { timings: c.timings, origin, innerName };
+        const res = await compose(layers, c, () => inner(c, resolved), fail, measure);
+        // ミドルウェアを全部通ったあとなので、ここなら「通った順番」が揃っている
+        const tools = await devTools!;
+        const page = await tools.finishErrorPage(c, res);
+        // 層ごとの時間を Server-Timing に載せる(ブラウザの開発者ツールで見られる)
+        const desc = resolved.kind === "route" ? `${resolved.route.method} ${resolved.route.path}` : innerName;
+        const final = tools.withServerTiming(
+            c.finalize(page),
+            tools.serverTimingHeader(c.timings, { name: innerName, desc }, performance.now() - origin),
+        );
+        // ダッシュボードに記録する(失敗してもレスポンスには影響しない)
+        await dashboard.record(c, final, time, [
+            ...layers.map((l) => ({ name: l.name, order: l.order ?? null })),
+            { name: innerName, order: null },
+        ]);
+        return final;
+    }
 
     // ミドルウェアを先に(登録順のまま)、ルートはそのあと。ルートの順番は add() が並べ直すので関係ない
     appEntries.set(app, () => [
