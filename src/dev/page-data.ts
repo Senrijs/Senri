@@ -84,6 +84,8 @@ export type RouteRow = {
 export type MiddlewareRow = {
     order: number;
     name: string;
+    // 無名の関数だった(名前付きの関数にすると、ここに名前が出る)
+    anonymous: boolean;
     path: string | null;
     // 記録しているリクエストのうち、この層を通った件数と、自分の時間の平均(通っていなければ null)
     runs: number;

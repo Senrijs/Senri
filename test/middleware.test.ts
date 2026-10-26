@@ -84,9 +84,9 @@ describe("ミドルウェアの名前", () => {
         app.use("/admin", (_c, next) => next());
 
         expect(app.middlewareList()).toEqual([
-            { name: "logger", path: null },
-            { name: "auth", path: null },
-            { name: "anonymous#3", path: "/admin" },
+            { name: "logger", path: null, anonymous: false },
+            { name: "auth", path: null, anonymous: false },
+            { name: "anonymous#3", path: "/admin", anonymous: true },
         ]);
     });
 });

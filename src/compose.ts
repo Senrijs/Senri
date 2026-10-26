@@ -10,7 +10,8 @@ export function toResponseOf(c: Context, value: HandlerResult, origin: Conversio
     }
 }
 
-export type Layer = { name: string; mw: Middleware };
+// order: 登録順(1 から)。ダッシュボードの集計に使う
+export type Layer = { name: string; mw: Middleware; order?: number };
 
 // 1つの層(ミドルウェアかハンドラー)にかかった時間。単位はミリ秒
 // - total: その層に入ってから出るまで(下流の時間も含む)

@@ -59,7 +59,8 @@ export function createApp<V extends object = Record<string, unknown>>(options: A
     const dev = options.dev ?? false;
     const routes: Route[] = [];
     // prefix が null なら全部のリクエストで動く。["admin"] なら /admin とその下だけ
-    const middlewares: { name: string; path: string | null; prefix: string[] | null; mw: Middleware<V> }[] = [];
+    // anonymous: 無名の関数だった(名前を anonymous#番号 にした)。ダッシュボードで「名前を付けると出る」と案内する
+    const middlewares: { name: string; anonymous: boolean; path: string | null; prefix: string[] | null; mw: Middleware<V> }[] = [];
     // 開発モードだけで使うもの(エラーページ、ダッシュボード)。ビルド済みの HTML など大きいので、
     // 本番では読み込まないよう dev のときだけ import() する(src/dev/index.ts)
     const devTools = dev ? import("./dev/index.ts") : null;
@@ -129,9 +130,14 @@ export function createApp<V extends object = Record<string, unknown>>(options: A
             // パスが不正なら、パス指定のミドルウェアは動かさない(どのみちルーターが 400 にする)
             segments = null;
         }
-        return middlewares
-            .filter(({ prefix }) => prefix === null || (segments !== null && startsWithSegments(segments, prefix)))
-            .map(({ name, mw }) => ({ name, mw }));
+        return (
+            middlewares
+                // order は登録順(1 から)。同じ関数を2回登録しても区別できるよう、配列の位置から決める
+                // (ダッシュボードで、名前ではなく登録順で集計するのに使う)
+                .map(({ name, mw, prefix }, i) => ({ name, mw, prefix, order: i + 1 }))
+                .filter(({ prefix }) => prefix === null || (segments !== null && startsWithSegments(segments, prefix)))
+                .map(({ name, mw, order }) => ({ name, mw, order }))
+        );
     }
 
     const app = {
@@ -143,6 +149,7 @@ export function createApp<V extends object = Record<string, unknown>>(options: A
             middlewares.push({
                 // 関数の名前を使う。無名の関数(その場で書いたアロー関数など)は登録順の番号で呼ぶ
                 name: fn.name || `anonymous#${middlewares.length + 1}`,
+                anonymous: !fn.name,
                 path,
                 prefix: path === null ? null : splitPattern(path),
                 mw: fn,
@@ -195,7 +202,7 @@ export function createApp<V extends object = Record<string, unknown>>(options: A
         },
 
         middlewareList() {
-            return middlewares.map((m) => ({ name: m.name, path: m.path }));
+            return middlewares.map((m) => ({ name: m.name, path: m.path, anonymous: m.anonymous }));
         },
 
         routeList() {
@@ -262,7 +269,10 @@ export function createApp<V extends object = Record<string, unknown>>(options: A
             const page = devTools ? await (await devTools).finishErrorPage(c, res) : res;
             const final = c.finalize(page);
             // 開発モードでは、ダッシュボードに記録する(失敗してもレスポンスには影響しない)
-            await dashboard?.record(c, final, time, [...layers.map((l) => l.name), innerName]);
+            await dashboard?.record(c, final, time, [
+                ...layers.map((l) => ({ name: l.name, order: l.order ?? null })),
+                { name: innerName, order: null },
+            ]);
             return final;
         },
     };

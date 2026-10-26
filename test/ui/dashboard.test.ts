@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import {
+    anonymousHint,
     applyEvent,
     describeRequest,
     filterRequests,
@@ -26,6 +27,7 @@ const summary = (id: string, status: number, path = "/x"): RequestSummary => ({
 
 const layer = (name: string, depth: number, start: number, total: number, self: number, state: RecordLayer["state"] = "ok"): RecordLayer => ({
     name,
+    order: null,
     depth,
     start,
     total,
@@ -168,9 +170,16 @@ describe("ミドルウェアのタブ", () => {
         expect(middlewareScope("/admin")).toBe("/admin とその下");
     });
 
+    test("無名のミドルウェアがあるときだけ、名前付きの関数にする案内を出す", () => {
+        const row = (name: string, anonymous: boolean) => ({ order: 1, name, anonymous, path: null, runs: 0, avgSelfMs: null });
+
+        expect(anonymousHint([row("logger", false)])).toBeNull();
+        expect(anonymousHint([row("logger", false), row("anonymous#2", true)])).toContain("function auth(c, next)");
+    });
+
     test("平均時間(まだ通っていなければ —)", () => {
-        expect(formatAverage({ order: 1, name: "logger", path: null, runs: 3, avgSelfMs: 0.25 })).toBe("平均 0.3ms(3件)");
-        expect(formatAverage({ order: 2, name: "auth", path: "/admin", runs: 0, avgSelfMs: null })).toBe("—");
+        expect(formatAverage({ order: 1, name: "logger", anonymous: false, path: null, runs: 3, avgSelfMs: 0.25 })).toBe("平均 0.3ms(3件)");
+        expect(formatAverage({ order: 2, name: "auth", anonymous: false, path: "/admin", runs: 0, avgSelfMs: null })).toBe("—");
     });
 });
 

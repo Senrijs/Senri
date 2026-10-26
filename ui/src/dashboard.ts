@@ -123,6 +123,12 @@ export function middlewareScope(path: string | null): string {
     return path === null ? "すべてのパス" : `${path} とその下`;
 }
 
+// 無名のミドルウェア(anonymous#番号)があるときの案内。なければ null
+export function anonymousHint(rows: MiddlewareRow[]): string | null {
+    if (!rows.some((m) => m.anonymous)) return null;
+    return "anonymous#番号 は無名の関数です。app.use(function auth(c, next) { … }) のように名前付きの関数にすると、ここに名前が出ます。";
+}
+
 export function formatAverage(m: MiddlewareRow): string {
     return m.avgSelfMs === null ? "—" : `平均 ${formatMs(m.avgSelfMs)}(${m.runs}件)`;
 }

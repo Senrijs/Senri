@@ -10,7 +10,7 @@ import { eventStream } from "./sse.ts";
 // ルートとミドルウェアのタブに出すもの(アプリから受け取る)
 export type DashboardSource = {
     routes(): { method: string; path: string }[];
-    middlewares(): { name: string; path: string | null }[];
+    middlewares(): { name: string; path: string | null; anonymous: boolean }[];
 };
 
 export function createDashboard(source: DashboardSource) {
@@ -49,7 +49,7 @@ export function createDashboard(source: DashboardSource) {
         },
 
         // レスポンスを返す直前に呼ぶ。記録に失敗しても、リクエストには影響させない
-        async record(c: Context, res: Response, time: number, layerNames: string[]) {
+        async record(c: Context, res: Response, time: number, layerNames: { name: string; order: number | null }[]) {
             const id = ids.get(c);
             if (id === undefined) return;
             try {
