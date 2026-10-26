@@ -24,7 +24,8 @@ function senri(): Find {
     return (method, path) => {
         const exact = matcher.staticLeaf(path);
         if (exact) {
-            for (const route of exact) if (route.method === method) return route;
+            // app.ts の resolve と同じく、パラメーターの空のオブジェクトも作る
+            for (const route of exact) if (route.method === method) return [route, {}];
         }
         const hit = matcher.first(splitPath(path), method);
         if (!hit) return null;

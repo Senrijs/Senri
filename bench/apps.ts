@@ -20,17 +20,26 @@ export const ROUTES: [string, string][] = [
     ["GET", "/users/:id/posts/:postId/comments/:commentId"],
 ];
 
-// [名前, メソッド, パス]。最後は 404
-export const REQUESTS: [string, string, string][] = [
-    ["static (short)", "GET", "/user"],
-    ["static (same prefix)", "GET", "/user/comments"],
-    ["static (long)", "GET", "/very/deeply/nested/route/hello/there"],
-    ["1 param", "GET", "/event/abcd1234"],
-    ["1 param + static", "GET", "/event/abcd1234/comments"],
-    ["1 param (POST)", "POST", "/event/abcd1234/comment"],
-    ["3 params", "GET", "/users/1/posts/2/comments/3"],
-    ["not found", "GET", "/not/found/here"],
+// [名前, メソッド, パス, 当たるルート]。当たるルートが null なら 404
+// ハンドラーはルートのパスをそのまま返すので、本文が当たるルートと一致するかで、正しく測れているかを確かめる
+export const REQUESTS: [string, string, string, string | null][] = [
+    ["static (short)", "GET", "/user", "/user"],
+    ["static (same prefix)", "GET", "/user/comments", "/user/comments"],
+    ["static (long)", "GET", "/very/deeply/nested/route/hello/there", "/very/deeply/nested/route/hello/there"],
+    ["1 param", "GET", "/event/abcd1234", "/event/:id"],
+    ["1 param + static", "GET", "/event/abcd1234/comments", "/event/:id/comments"],
+    ["1 param (POST)", "POST", "/event/abcd1234/comment", "/event/:id/comment"],
+    ["3 params", "GET", "/users/1/posts/2/comments/3", "/users/:id/posts/:postId/comments/:commentId"],
+    ["not found", "GET", "/not/found/here", null],
 ];
+
+// 期待どおりのレスポンスか。だめなら理由を返す
+export async function checkResponse(res: Response, route: string | null): Promise<string | null> {
+    const body = await res.text();
+    if (route === null) return res.status === 404 ? null : `404 のはずが ${res.status}`;
+    if (res.status !== 200) return `200 のはずが ${res.status}`;
+    return body === route ? null : `本文が ${JSON.stringify(route)} ではなく ${JSON.stringify(body.slice(0, 60))}`;
+}
 
 const text = (s: string) => () => s;
 
