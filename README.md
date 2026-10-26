@@ -1,41 +1,61 @@
-# senri
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/Senrijs/Senri/main/.github/assets/senri-wordmark-dark.svg">
+    <img src="https://raw.githubusercontent.com/Senrijs/Senri/main/.github/assets/senri-wordmark-light.svg" alt="Senri" width="320">
+  </picture>
+</p>
 
-Web 標準の `Request` / `Response` だけで書かれた、小さな Web フレームワークです。Bun / Deno / Node で動きます(Node は `senri/node` のアダプターを使います)。
+<p align="center">
+  Web 標準の <code>Request</code> / <code>Response</code> だけで書かれた、小さな Web フレームワーク。<br>
+  Bun・Deno・Node.js・Cloudflare Workers で、同じコードが動きます。
+</p>
 
 ```ts
-import { createApp, logger } from "senri";
+import { createApp } from "senri";
+import { serve } from "senri/serve";
 
 const app = createApp();
 
-app.use(logger());
-app.get("/hello", () => "こんにちは!");                 // 文字列 → text/plain
-app.get("/users/:id", ({ id }) => ({ id }));           // オブジェクト → JSON
-app.post("/users", async (_, c) => c.json(await c.req.json(), 201));
+app.get("/hello", () => "こんにちは!");          // 文字列 → text/plain
+app.get("/users/:id", ({ id }) => ({ id }));    // オブジェクト → JSON(id の型はパスから推論)
+
+serve(app);   // Bun でも Deno でも Node.js でも
 ```
+
+- **返した値がレスポンスになる。** 文字列はテキスト、オブジェクトは JSON。`Response` もそのまま返せます
+- **型はパスから。** `/users/:id` と書けば、ハンドラーの `id` に型が付きます。[Standard Schema](https://standardschema.dev)(Zod・Valibot・ArkType など)で、パラメーター・クエリ・ボディも確かめられます
+- **開発モードが親切。** エラーページ(該当コード・ヒント・エディタで開く)、404 の「もしかして」、リクエストを玉ねぎのように見られるダッシュボード(`/_senri`)、層ごとの `Server-Timing`
+- **どこでも動く。** Web 標準の API だけで書いていて、`eval` も `new Function` も使いません
+
+## インストール
+
+```bash
+npm install senri          # Node.js / Bun
+bun add senri
+deno add jsr:@senrijs/senri
+```
+
+Node.js は 22 以降で動きます。
 
 ## 起動のしかた
 
-`senri/serve` の `serve()` を使うと、Bun / Deno / Node のどれでも同じ書き方で起動できます(ランタイムは自動で判別します)。
+`senri/serve` の `serve()` は、ランタイムを自動で判別して起動します。
 
 ```ts
 import { serve } from "senri/serve";
 
 const server = await serve(app);   // 起動すると、URL と登録されているルートの一覧を表示する
 server.url;                        // 例: "http://localhost:3927"
-await server.stop();               // 止める
+await server.stop();               // 処理中のリクエストを待ってから止める
 ```
 
-### ポートの決まり方
-
-次の順に、最初に見つかったものを使います。
+ポートは次の順に、最初に見つかったものを使います。
 
 1. `serve(app, { port: 8080 })` で明示したポート(`0` なら空いているポートを自動で選ぶ)
-2. 環境変数 `PORT`(デプロイ先のサービスが決めることが多い)
+2. 環境変数 `PORT`(数字でない、範囲外などのときは、黙って別のポートで待ち受けずにエラーにします)
 3. デフォルトの `3927`
 
-- 起動時の表示に、どこから決めたかが出ます(例: `ready  http://localhost:3927  (デフォルト。環境変数 PORT で変えられます)`)
-- `PORT` が数字でない、範囲外(0〜65535 以外)などのときは、黙って別のポートで待ち受けずにエラーにします
-- Deno では、環境変数を読む許可(`--allow-env=PORT` など)があるときだけ `PORT` を読みます。許可がなければ、許可を求めるプロンプトを出さずにデフォルトを使います
+Deno では、環境変数を読む許可(`--allow-env=PORT` など)があるときだけ `PORT` を読みます。許可がなければ、プロンプトを出さずにデフォルトを使います。
 
 ランタイムの API を直接使うこともできます。
 
@@ -43,26 +63,66 @@ await server.stop();               // 止める
 Bun.serve({ port: 3927, fetch: app.fetch });   // Bun
 Deno.serve({ port: 3927 }, app.fetch);          // Deno
 
-import { serve } from "senri/node";             // Node
+import { serve } from "senri/node";             // Node.js
 serve(app, { port: 3927 });
 ```
 
-`examples/` に3つのランタイムで同じアプリを動かす例があります(開いたら http://localhost:3927 )。
+### Cloudflare Workers
 
-```bash
-bun run dev                                    # Bun(ファイルを保存すると再起動)
-cd examples/deno && deno task start            # Deno(--allow-env=PORT 付き)
-node examples/node/index.ts                    # Node
-PORT=8080 node examples/node/index.ts          # ポートを変える
+アプリをそのまま `export default` します。`c.env` と `c.executionCtx` が使えます。
+
+```ts
+import { createApp } from "senri";
+
+type Env = { GREETING: string };
+const app = createApp<{ Bindings: Env }>();
+
+app.get("/", (_, c) => {
+    c.executionCtx.waitUntil(logSomewhere());
+    return c.env.GREETING;   // string
+});
+
+export default app;
 ```
+
+- 変数の型も決めるときは `createApp<{ Bindings: Env; Variables: { user: User } }>()` と書きます。変数だけなら、今までどおり `createApp<{ user: User }>()` です
+- `c.ip` は、Cloudflare が付ける `CF-Connecting-IP` を読みます(Workers で動いているときだけ)
+- 開発モードのダッシュボードは作りません(`/_senri` はふつうの 404)。エラーページは出ますが、該当コードは出ません
+- 静的ファイルは `senri/static` ではなく、Workers の [Static Assets](https://developers.cloudflare.com/workers/static-assets/) で配ってください
+
+### 止め方(graceful shutdown)
+
+`serve()` は SIGTERM / SIGINT を受けると、次の順に止まります。
+
+1. `health()` の `/readyz` を 503 にする(ロードバランサーが新しいリクエストを送ってこないように)
+2. 新しい接続を受けるのをやめ、処理中のリクエストが終わるのを待つ(`shutdownTimeout`、既定 10 秒。過ぎたら残りの接続を切る)
+3. `onShutdown` を呼んでから終わる。待っている間にもう一度シグナルを受けたら、すぐに終わる
+
+```ts
+serve(app, {
+    shutdownTimeout: 30_000,
+    onShutdown: () => db.close(),
+});
+```
+
+ランタイムの既定どおりにしたいときは `gracefulShutdown: false` にします。
 
 ## ルート
 
-- `app.get` / `post` / `put` / `patch` / `delete` / `all` で登録します。`all` はどのメソッドでも動きますが、メソッドが合うルートがあればそちらが優先です。
-- `app.routes({ "GET /ping": () => "pong" })` のように、表の形でもまとめて登録できます。
-- パスパラメーター(`:id`)はハンドラーの第1引数に入ります。型もパスから推論されます。
-- 登録順は気にしなくて大丈夫です。`/users/me` は `/users/:id` より優先されます(静的なセグメントが優先)。
-- HEAD は GET のルートで処理してボディを捨てます。OPTIONS は 204 と `Allow` ヘッダーを返します。
+```ts
+app.get("/users/me", () => "それは自分です");     // 静的なセグメントが優先(登録順は関係ない)
+app.get("/users/:id", ({ id }) => `user ${id}`);
+app.post("/users", async (_, c) => c.json(await c.body(), 201));
+app.on(["PUT", "PATCH"], "/users/:id", () => "updated");
+app.all("/any", () => "どのメソッドでも");
+app.routes({ "GET /ping": () => "pong" });        // 表の形でもまとめて登録できる
+```
+
+- `app.get` / `post` / `put` / `patch` / `delete` / `head` / `options` / `all`、任意のメソッドは `app.on(method | method[], path, handler)`
+- HEAD は、登録していなければ GET のルートで処理してボディを捨てます。OPTIONS は、登録していなければ 204 と `Allow` を返します
+- `QUERY` メソッド([RFC 10008](https://www.rfc-editor.org/rfc/rfc10008.html))は `app.on("QUERY", path, handler)` で登録します。ボディがなければ 400、Content-Type がなければ 415 にします
+- CONNECT / TRACE / TRACK は扱いません(501)
+- 同じメソッド + 同じパス(パラメーター名だけ違うものも含む)を2回登録するとエラーになります
 
 ### ハンドラーの戻り値
 
@@ -75,19 +135,72 @@ PORT=8080 node examples/node/index.ts          # ポートを変える
 
 関数を返す(呼び忘れ)のは型エラーで、実行時も 500 になります。
 
-## パスのルール
+### グループ化
 
-- 末尾スラッシュと連続スラッシュは無視します。`/users`、`/users/`、`//users` はどれも同じパスです。
-- パスはセグメント(`/` の間)ごとにパーセントデコードされます。`/こんにちは` のようにそのまま書いたルートにマッチし、パスパラメーターもデコード済みの値で届きます。
-- デコードできないパス(`%E0%A4%A` など)と、`%2F`(エンコードされた `/`)を含むパスは 400 になります。
-- 正規化・デコード済みのパスは `c.path` で読めます。パスで判定するミドルウェアは `req.url` ではなく `c.path` か `app.use("/admin", mw)` を使ってください。
-- 同じメソッド + 同じパス(パラメーター名だけ違うものも含む)を2回登録するとエラーになります。
+```ts
+import { createRouter } from "senri";
+
+const posts = createRouter("/users/:id/posts");
+posts.get("/", ({ id }) => `user ${id} の投稿`);          // id に型が付く
+posts.get("/:postId", ({ id, postId }) => `${id} / ${postId}`);
+app.route(posts);
+
+app.route("/admin", adminApp);                             // 別の createApp() をつなぐこともできる
+```
+
+### パスのルール
+
+- 末尾スラッシュと連続スラッシュは無視します。`/users`、`/users/`、`//users` はどれも同じです
+- パスはセグメントごとにパーセントデコードされます。`/こんにちは` のようにそのまま書いたルートにマッチします
+- デコードできないパスと、`%2F`(エンコードされた `/`)を含むパスは 400 です
+- 正規化・デコード済みのパスは `c.path` で読めます。パスで判定するミドルウェアは、`req.url` ではなく `c.path` か `app.use("/admin", mw)` を使ってください
+
+## リクエストを読む
+
+```ts
+app.post("/search", async (_, c) => {
+    c.query("page");          // "2"(なければ undefined。c.query() で全部)
+    c.queries("tag");         // ["a", "b"]
+    await c.body();           // Content-Type に合わせて読む(JSON・フォーム・テキスト・それ以外は ArrayBuffer)
+    c.cookie("session");      // Cookie
+    c.ip;                     // 接続元の IP アドレス(分からなければ null)
+    return "ok";
+});
+```
+
+- `c.body()` は何度呼んでも同じ結果です(ミドルウェアとハンドラーの両方から読めます)
+- `c.ip` はランタイムが渡す接続元を使います。`X-Forwarded-For` などのヘッダーは偽装できるので読みません。プロキシの後ろでは、プロキシが付けるヘッダーを自分で読んでください
+- `c.setCookie(name, value, options)` の既定は `Path=/`・`HttpOnly`・`SameSite=Lax` です
+
+## バリデーション
+
+ルートにスキーマを渡すと、ハンドラーを呼ぶ前に確かめます。[Standard Schema](https://standardschema.dev) に対応したライブラリ(Zod・Valibot・ArkType など)のスキーマが、そのまま使えます。
+
+```ts
+import { z } from "zod";
+
+app.post(
+    "/users/:id",
+    {
+        params: z.object({ id: z.coerce.number() }),
+        body: z.object({ name: z.string().min(1) }),
+    },
+    ({ id }, c) => {
+        const { name } = c.valid("body");   // { name: string }
+        return { id, name };                // id: number
+    },
+);
+```
+
+- `params`・`query`・`body` を渡せます。`params` が通れば、ハンドラーの第1引数が変換後の値になります
+- 通らなければ 400 です。本番の本文は `400 Bad Request` だけで、開発モードでは、どこが違うかを一覧にします
+- 自分の形で返したいときは、`app.onError` で `ValidationError` を受けます(`err.target` と `err.issues`)
 
 ## ミドルウェア
 
 ```ts
 app.use(async (c, next) => {
-    const res = await next();     // 下流(後ろのミドルウェアとハンドラー)を動かす
+    const res = await next();       // 下流(後ろのミドルウェアとハンドラー)を動かす
     c.header("x-powered-by", "senri");
     return res;
 });
@@ -96,28 +209,34 @@ app.use(async (c, next) => {
 app.use("/admin", (c, next) => {
     if (c.req.headers.get("authorization") !== "secret") {
         c.status(401);
-        return "ログインしてね";  // 値を返したら、そこで終わり
+        return "ログインしてね";      // 値を返したら、そこで終わり
     }
     return next();
 });
 ```
 
-- 値を返したら、それがレスポンスになります。何も返さず `next()` 済みなら、下流のレスポンスが使われます。
-- `next()` を2回呼ぶとエラーです。
-- ルートはミドルウェアより先にマッチするので、`next()` の前から `c.route`(`"/users/:id"` のようなパターン)と `c.params` が読めます。
-- `c.header()` で設定したヘッダーは、最後に1回だけレスポンスに足されます。`Response` を直接返したとき、エラーのとき、`next()` のあとに設定したときも効きます。
+- ルートはミドルウェアより先にマッチするので、`next()` の前から `c.route`(`"/users/:id"` のようなパターン)と `c.params` が読めます
+- `c.header()` で設定したヘッダーは、最後に1回だけレスポンスに足されます。`Response` を直接返したときも、エラーのときも効きます
+- ミドルウェアからハンドラーへ値を渡すには `c.set` / `c.get` を使います。型は `createApp<{ user: User }>()` で決めます
 
-### ミドルウェアからハンドラーへ値を渡す
+### 標準のミドルウェア
 
 ```ts
-const app = createApp<{ user: { name: string } }>();
+import { bodyLimit, cors, health, logger, secureHeaders } from "senri";
+import { serveStatic } from "senri/static";
 
-app.use((c, next) => {
-    c.set("user", { name: "yahari" });
-    return next();
-});
-app.get("/me", (_, c) => c.get("user")?.name ?? "anonymous");
+app.use(health({ ready: () => db.isConnected() }));   // /healthz と /readyz
+app.use(logger());                                     // 色付きで1行ずつ。{ format: "json" } で pino 形式
+app.use(secureHeaders());                              // X-Content-Type-Options など
+app.use(cors({ origin: ["https://example.com"] }));
+app.use(bodyLimit({ maxSize: 1024 * 1024 }));          // 超えたら 413
+app.use(serveStatic({ root: "./public" }));            // Bun・Deno・Node.js で静的ファイルを配る
 ```
+
+- `health()`: `/healthz` は応答できれば 200。`/readyz` は `ready()` が true なら 200、false・例外・止まり始めたあとは 503
+- `logger()`: 色は既定でオンです。ファイルや CI に流すときは `color: false` にしてください
+- `secureHeaders()`: Content-Security-Policy と Cross-Origin-Embedder-Policy は既定でオフです(アプリによって壊れやすいので)
+- `serveStatic()`: ドットファイルは既定で配りません。root の外(シンボリックリンクを含む)には出ません
 
 ## エラー
 
@@ -125,11 +244,11 @@ app.get("/me", (_, c) => c.get("user")?.name ?? "anonymous");
 import { HttpError } from "senri";
 
 app.get("/secret", () => {
-    throw new HttpError(403, "見せられません");   // message はそのままクライアントに返る
+    throw new HttpError(403, "見せられません");      // message はそのままクライアントに返る
 });
 
-app.onError((err, c) => ({ error: "something went wrong" }));  // 例外のレスポンスを変える
-app.notFound((c) => `ありません: ${c.path}`);                    // 404 のレスポンスを変える
+app.onError((err, c) => ({ error: "something went wrong" }));
+app.notFound((c) => `ありません: ${c.path}`);
 ```
 
 ## 開発モード
@@ -138,75 +257,76 @@ app.notFound((c) => `ありません: ${c.path}`);                    // 404 の
 const app = createApp({ dev: true });
 ```
 
-開発モードのときだけ、次のものを返します。本番(既定)では `500 Internal Server Error` のような固定の文言だけです。
+開発モードのときだけ、次のものが動きます。本番(既定)では、固定の文言(`500 Internal Server Error` など)だけを返し、計測も記録もしません。
 
-- 500 の本文に、エラーメッセージ
-- 404 に「もしかして: GET /hello ?」
-- 405 に、どのメソッドならあるか
+- 500 の本文にエラーメッセージ、404 に「もしかして: GET /hello ?」、405 にどのメソッドならあるか、バリデーションの 400 に違うところの一覧
+- **エラーページと 404 ページ**: ブラウザから開いたとき(`Accept` に `text/html` があるとき)だけ。エラーが起きた行の前後のコード、ヒント、スタックトレース、ミドルウェアを通った順番と時間。エラーの場所は VS Code・Cursor・WebStorm・Zed で開けます
+- **ダッシュボード(`/_senri`)**: 直近 200 件のリクエストをリアルタイムで。玉ねぎタイムライン(ミドルウェアごとの自分の時間と下流込みの時間)、ルートとミドルウェアの一覧
+- **`Server-Timing` ヘッダー**: 層ごとの時間が、ブラウザの開発者ツールの「タイミング」に出ます
 
-ミドルウェアとハンドラーの通過時間も、開発モードのときだけ `c.timings` に記録されます(`self` は `next()` の中の時間を除いたもの、`failed` はその層で例外が起きたか)。
+開発モードを決めるのに環境変数(`NODE_ENV` など)は読みません。本番では `dev: true` にしないでください。
 
-開発モードを決めるのに環境変数(`NODE_ENV` など)は読みません。ランタイムによって読み方や権限が違うためです。本番では `dev: true` にしないでください。
+ダッシュボードの記録とセキュリティについて:
 
-### エラーページと404ページ
+- 記録はメモリ上だけで、再起動すると消えます。`/_senri` 自体へのリクエストと、リクエストやレスポンスのボディは記録しません
+- `authorization`・`cookie`・`set-cookie` や、名前に `token`・`secret`・`session`・`api-key` などを含むヘッダーとクエリは `***` に伏せます
+- **同じ PC(localhost)からしか開けません。** 接続元がループバックで、かつ `Host` も `localhost` などのときだけです。それ以外は `/_senri` がないものとして扱います(ふつうの 404)
+- 接続元は `app.fetch` の2つ目の引数から取ります。`fetch: (req) => app.fetch(req)` のように包むと渡らないので、`(req, info) => app.fetch(req, info)` としてください
+- Docker などのコンテナの中で動かすと、接続元が localhost に見えないので、ダッシュボードは開けません
 
-開発モードで、ブラウザから開いたとき(`Accept` に `text/html` があるとき)だけ、HTML のページを返します。curl や `fetch` の既定(`*/*`)では、今までどおりテキストです。
+## 性能
 
-- **エラーページ**(5xx): エラーが起きた行の前後のコード、ヒント、スタックトレース(Senri 内部は折りたたみ)、リクエスト、ミドルウェアを通った順番と時間。意図して投げた 4xx の `HttpError` は今までどおりテキストです
-- **404ページ**: 「もしかして」(どこが違うかの印付き)と、登録されているルートの一覧(絞り込みつき)
-- `app.onError` / `app.notFound` を自分で書いた場合は、そちらが使われます
-- ミドルウェアが `next()` のあとで付けたヘッダーや Set-Cookie、作り直したレスポンスのステータスは、そのまま引き継がれます
+Hono 4.13.13・Elysia 1.4.30 と、同じルート(12 個)・同じリクエストで比べました。どれも本番モード、ミドルウェアなし、ハンドラーはテキストを返すだけです。手順とコードは [bench/](./bench/) にあり、だれでも同じものを動かせます。
 
-エラーの場所は、ページ上で選んだエディタで開けます(選択はブラウザに保存されます)。
+**計測した環境**: Intel N100(4 コア)、Windows 11、Bun 1.4.3。ほかのアプリも動いているふだん使いの PC で、数字は回によって 1〜2 割ほどぶれます。
 
-| エディタ | 開き方 | 自動判別(エディタの中のターミナルから起動したとき) |
-| --- | --- | --- |
-| VS Code | `vscode://file/…` | `TERM_PROGRAM=vscode` |
-| Cursor | `cursor://file/…` | `CURSOR_TRACE_ID` |
-| WebStorm(実験的) | `jetbrains://web-storm/…`(JetBrains Toolbox が必要) | `TERMINAL_EMULATOR=JetBrains-JediTerm` |
-| Zed | `zed://file/…` | `TERM_PROGRAM=zed` |
+### プロセスの中で `app.fetch` を呼ぶ(1 リクエストあたりの時間。小さいほど速い)
 
-分からなければ VS Code になります。該当コードは、プロジェクト(カレントディレクトリ)の中の、利用者のコードだけを読みます(`node_modules` やランタイム内部は読みません)。Deno で `--allow-read` / `--allow-env` がないときは、該当コードやエディタの判別なしでページを出します(許可を求めるプロンプトは出しません)。
+ネットワークを通さず、`Request` を渡してから `Response` の本文を読み終えるまで。`bun run fetch`(mitata 1.0.34)。
 
-ページは `ui/` に Vue + Vite で書かれていて、`bun run build:pages` で1枚の HTML(`src/dev/page.generated.ts`)にして同梱しています。Vue も Vite も、利用者の依存には入りません。見た目を確かめるときは `npx vite --config ui/vite.config.ts` で開けます(`?page=notFound` で404ページ)。
+| リクエスト | Senri | Hono | Elysia |
+| --- | ---: | ---: | ---: |
+| 静的(`/user`) | 1.63 µs | 0.90 µs | 0.58 µs |
+| 静的・長い | 1.57 µs | 1.41 µs | 0.81 µs |
+| パラメーター1つ | 3.00 µs | 1.60 µs | 0.90 µs |
+| パラメーター3つ | 3.12 µs | 1.95 µs | 1.24 µs |
+| 404 | 4.97 µs | 3.56 µs | 1.01 µs |
 
-### ダッシュボード(/_senri)
+この計測では、Senri は3つの中でいちばん遅く、Hono の 1.1〜1.9 倍の時間がかかっています。理由の一部は分かっています。
 
-開発モードのときは、ブラウザで `http://localhost:3927/_senri` を開くと、アプリに来たリクエストを見られます。
+- Senri は、どのランタイムでも同じになるよう、テキストの `Content-Type` を自分で付けます。Hono と Elysia は `new Response(text)` でランタイムに任せます
+- Elysia は登録したルートからコードを生成して最適化します。Senri は Cloudflare Workers でも動くよう、`new Function` / `eval` を使いません
 
-- **リクエスト**: 直近 200 件を新しい順に、リアルタイムで(SSE)。行を選ぶと、ルート・params・ヘッダー・玉ねぎタイムライン(ミドルウェアごとの「自分の時間」と「下流込みの時間」、`next()` を呼ばずに止まった層、例外が起きた層、届かなかった層)が出ます。500 になったものは、エラーページも見られます
-- **ルート**: 登録されているルートと、それぞれに来たリクエストがどのミドルウェアを順に通るか
-- **ミドルウェア**: 登録順(= 外側から内側へ通る順)と、かかる範囲、直近の平均時間
+### HTTP 越し(1 秒あたりのリクエスト数。大きいほど速い)
 
-エラーページと404ページの「/_senri で詳しく見る」から、そのリクエストを開けます。
+3 つとも同じ `Bun.serve({ fetch })` で動かし、[oha](https://github.com/hatoo/oha) 1.16.0 で負荷をかけました(`oha -z 10s -c 64`、交互に 3 回ずつ測った中央値)。`bun run http`。
 
-記録とセキュリティについて:
+| リクエスト | Senri | Hono | Elysia |
+| --- | ---: | ---: | ---: |
+| 静的(`/user`) | 21,703 | 17,167 | 14,447 |
+| パラメーター1つ | 16,390 | 17,461 | 21,516 |
+| パラメーター3つ | 19,426 | 23,692 | 12,186 |
+| 404 | 22,349 | 23,030 | 24,761 |
 
-- 記録はメモリ上だけで、再起動すると消えます。`/_senri` 自体へのリクエストは記録しません。リクエストやレスポンスのボディは記録しません
-- `authorization`・`cookie`・`set-cookie` や、名前に `token`・`secret`・`session`・`api-key` などを含むヘッダーは `***` に伏せます。クエリ文字列も同じルールで、`?token=***` のように値を伏せます
-- **同じ PC(localhost)からしか開けません。** 接続元のアドレスがループバック(`127.0.0.1` や `::1`)で、かつ `Host` ヘッダーも `localhost` などのときだけです。それ以外は `/_senri` がないものとして扱います(普通の 404)
-- 接続元のアドレスは、`app.fetch` の2つ目の引数から取ります。`Bun.serve({ fetch: app.fetch })`・`Deno.serve(app.fetch)`・`senri/node`・`senri/serve` はそのまま渡されます。`fetch: (req) => app.fetch(req)` のように包むと渡らないので、`(req, info) => app.fetch(req, info)` としてください。分からないとき(Cloudflare Workers など)は、ダッシュボードだけ開けなくなり、ほかは普通に動きます
-- **Docker などのコンテナで動かすと、ホストのブラウザから開いても、接続元が localhost に見えません**(コンテナのネットワークを通るため)。そのため、ダッシュボードは使えません。開くときは、コンテナを使わずに動かしてください
-- 開発モードでは、`/_senri` から始まるルートは登録できません(ダッシュボードに隠れて呼ばれないため)。本番では登録できます
+負荷をかける側も同じ PC で動いているので、サーバーそのものの処理が大半を占めます。この条件では 3 つとも同じくらいの範囲に入り、どれが速いとは言い切れません。順位は回によって入れ替わります。
 
-## logger
+## 例
 
-```ts
-app.use(logger());                     // 色付きで1行ずつ
-app.use(logger({ format: "json" }));   // pino 形式の JSON
-app.use(logger({ color: false }));     // 色なし
-```
-
-色は既定でオンです。ログをファイルや CI に流すときなど、端末でない場所では `color: false` にしてください(ランタイムごとに端末かどうかの判定が違うので、自動では切り替えません)。
-
-## 開発
+`examples/` に、Bun・Deno・Node.js・Cloudflare Workers(workerd)で同じアプリを動かす例があります。
 
 ```bash
-bun install
-bun test              # テスト(Bun)
-bun run test:node     # Node アダプターとパッケージのテスト(Node)
-bun run typecheck     # 型チェック(src / test / adapters / examples / Deno)
-bun run smoke         # examples を Bun / Deno / Node で起動して確かめる
-bun run build         # dist/ に .js と .d.ts を出す
-bun run build:pages   # ui/ を変えたら、開発用ページ(src/dev/page.generated.ts)を作り直す
+bun run dev                                    # Bun(保存すると再起動)
+cd examples/deno && deno task start            # Deno
+node examples/node/index.ts                    # Node.js
 ```
+
+## ロードマップ・貢献
+
+- これからの予定は [ROADMAP.ja.md](./ROADMAP.ja.md) にあります
+- 開発のしかたは [CONTRIBUTING.md](./CONTRIBUTING.md)、変更点は [CHANGELOG.md](./CHANGELOG.md) にあります
+
+## ライセンス
+
+[MIT](./LICENSE) © 2026 ibuki-hum4
+
+Senri のロゴ(`.github/assets/` の画像)は、MIT ライセンスの対象外です。
