@@ -25,7 +25,7 @@
     "standard-schema"
   ],
   "type": "module",
-  "private": true,
+  "private": false,
   "sideEffects": false,
   "engines": {
     "node": ">=22"
