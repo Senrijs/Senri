@@ -1,4 +1,4 @@
-import { Context, type Handler, type HandlerResult, type Middleware } from "./context.ts";
+import { Context, type ExecutionContext, type Handler, type HandlerResult, type Middleware } from "./context.ts";
 import {
     compareRoutes,
     allowedMethods,
@@ -14,6 +14,7 @@ import {
 } from "./router.ts";
 import { compose, type Layer } from "./compose.ts";
 import { createMatcher } from "./matcher.ts";
+import { isWorkers } from "./runtime.ts";
 import { groupEntries, joinPath, type GroupEntry, type Router } from "./group.ts";
 import {
     defaultNotFound,
@@ -70,7 +71,8 @@ export type AppOptions = {
     dev?: boolean;
 };
 
-// V は c.set / c.get で使う変数の型。createApp<{ user: User }>() のように指定する
+// V はアプリの型。c.set / c.get で使う変数の型(createApp<{ user: User }>())か、
+// Workers の env も含めた形(createApp<{ Bindings: Env; Variables: { user: User } }>())で指定する(src/context.ts)
 export function createApp<V extends object = Record<string, unknown>>(options: AppOptions = {}) {
     const dev = options.dev ?? false;
     const routes: Route[] = [];
@@ -304,11 +306,12 @@ export function createApp<V extends object = Record<string, unknown>>(options: A
 
         // info: ランタイムが渡す2つ目の引数(Bun の server、Deno の info など)。接続元のアドレスを取るのに使う
         // (形で見分けるので、Cloudflare Workers の env のような別のものが来ても壊れない。src/dev/dashboard/access.ts)
-        fetch(req: Request, info?: unknown): Promise<Response> {
+        // ctx: Cloudflare Workers の3つ目の引数(c.executionCtx)。export default app で、Workers がそのまま呼ぶ
+        fetch(req: Request, info?: unknown, ctx?: ExecutionContext): Promise<Response> {
             // 開発モードは計測・記録をするので別の道を通る。本番では、その分のコードを一切通らない
-            if (devTools) return devFetch(req, info);
+            if (devTools) return devFetch(req, info, ctx);
             try {
-                const c = new Context<V>(req, info);
+                const c = new Context<V>(req, info, ctx);
                 const resolved = resolve(c);
                 if (resolved.kind === "route") {
                     c.route = resolved.route.path;
@@ -386,19 +389,19 @@ export function createApp<V extends object = Record<string, unknown>>(options: A
     }
 
     // 開発モードの fetch。層ごとの時間を測り、エラーページ・Server-Timing・ダッシュボードの記録を付ける
-    async function devFetch(req: Request, info?: unknown): Promise<Response> {
+    async function devFetch(req: Request, info?: unknown, ctx?: ExecutionContext): Promise<Response> {
         // 計測の基準になるリクエストの開始時刻
         const origin = performance.now();
         const time = Date.now();
-        const c = new Context<V>(req, info);
-        const dashboard = await dashboardPromise!;
+        const c = new Context<V>(req, info, ctx);
+        const dashboard = dashboardPromise ? await dashboardPromise : null;
         // /_senri 以下はダッシュボード。localhost から開いたときだけ、ミドルウェアを通さずに処理する
         // (開けないときは普通の処理に回すので、/_senri はないものとして 404 になる)。どちらも記録はしない
         const dashboardPath = underDashboard(c);
-        if (dashboardPath && dashboard.canOpen(req, info)) {
+        if (dashboard && dashboardPath && dashboard.canOpen(req, info)) {
             return dashboard.handle(req, dashboardPath);
         }
-        if (!dashboardPath) dashboard.begin(c, info);
+        if (!dashboardPath) dashboard?.begin(c, info);
         const fail = (err: unknown) => handleError(err, c, onError);
 
         // ミドルウェアより先にマッチして、c.route / c.params を見られるようにしておく
@@ -423,7 +426,7 @@ export function createApp<V extends object = Record<string, unknown>>(options: A
             tools.serverTimingHeader(c.timings, { name: innerName, desc }, performance.now() - origin),
         );
         // ダッシュボードに記録する(失敗してもレスポンスには影響しない)
-        await dashboard.record(c, final, time, [
+        await dashboard?.record(c, final, time, [
             ...layers.map((l) => ({ name: l.name, order: l.order ?? null })),
             { name: innerName, order: null },
         ]);
@@ -437,7 +440,9 @@ export function createApp<V extends object = Record<string, unknown>>(options: A
     ]);
 
     // 開発モードでは、ダッシュボードを作ってアプリに結び付けておく
-    const dashboardPromise = devTools?.then((m) => {
+    // Cloudflare Workers では作らない(接続元が分からず localhost 制限で開けないうえ、
+    // リクエストごとに別の isolate で動くことがあり、記録が残らない)。/_senri はふつうの 404 になる
+    const dashboardPromise = isWorkers() ? null : devTools?.then((m) => {
         const dashboard = m.createDashboard({
             routes: () => app.routeList(),
             middlewares: () => app.middlewareList(),

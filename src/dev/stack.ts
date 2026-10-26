@@ -29,8 +29,12 @@ export type ParseOptions = {
 
 // このファイルは src/dev/stack.ts(ビルド後は dist/src/dev/stack.js)にある
 // そこから2つ上がパッケージのルートで、その下の src / adapters / dist が Senri 本体
+// Cloudflare Workers のように1つのファイルにまとめられていると import.meta.url がない(またはファイルの URL でない)。
+// そのときは Senri の場所が分からないので、区別しない(どのフレームも利用者のコードとして扱う)
 function defaultSenriDirs(): string[] {
-    const root = toPath(new URL("../..", import.meta.url).href).replace(/\/$/, "");
+    const here: unknown = import.meta.url;
+    if (typeof here !== "string" || !URL.canParse(here)) return [];
+    const root = toPath(new URL("../..", here).href).replace(/\/$/, "");
     // ビルド後は root が .../dist になっている
     const pkg = root.endsWith("/dist") ? root.slice(0, -"/dist".length) : root;
     return [`${pkg}/src`, `${pkg}/adapters`, `${pkg}/dist`];

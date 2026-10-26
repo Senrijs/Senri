@@ -1,5 +1,5 @@
 import { requestPathname, splitPath } from "./router.ts";
-import { clientIp } from "./connection.ts";
+import { clientIp, isConnectionInfo } from "./connection.ts";
 import type { Timing } from "./compose.ts";
 import { readBody } from "./body.ts";
 import { deletionCookie, parseCookies, serializeCookie, type CookieOptions } from "./cookie.ts";
@@ -44,7 +44,23 @@ function initOf(status: number, type: string | null | undefined, headers: Header
     return { status, headers: type ? { "content-type": type } : headers };
 }
 
-// V は c.set / c.get で使う変数の型(createApp<{ user: User }>() のように決める)
+// Cloudflare Workers の fetch(req, env, ctx) の ctx。使う部分だけ自分で書く(Workers の型には依存しない)
+export type ExecutionContext = {
+    waitUntil(promise: Promise<unknown>): void;
+    passThroughOnException(): void;
+};
+
+// アプリの型の指定は2通り:
+// - createApp<{ user: User }>(): c.set / c.get で使う変数の型だけ(以前からの書き方)
+// - createApp<{ Bindings: Env; Variables: { user: User } }>(): Workers の env(c.env)の型も決める
+// Bindings か Variables を持っていれば後者として読む
+type IsAny<T> = 0 extends 1 & T ? true : false;
+type EnvForm = { Bindings: object } | { Variables: object };
+export type VariablesOf<E> =
+    IsAny<E> extends true ? any : E extends EnvForm ? (E extends { Variables: infer V extends object } ? V : Record<string, unknown>) : E;
+export type BindingsOf<E> = IsAny<E> extends true ? any : E extends { Bindings: infer B extends object } ? B : unknown;
+
+// V はアプリの型(上の2通りのどちらか)。createApp<...>() で決める
 // 既定の any は「どのアプリでも使える」という意味。logger() のような汎用ミドルウェアのため
 export type Handler<P = Record<string, string>, V extends object = any> = (
     params: P,
@@ -87,10 +103,27 @@ export class Context<V extends object = any> {
     #info: unknown;
     #ip: string | null | undefined;
 
-    constructor(req: Request, info?: unknown) {
+    #ctx: ExecutionContext | undefined;
+
+    constructor(req: Request, info?: unknown, ctx?: ExecutionContext) {
         this.req = req;
         this.#original = req;
         this.#info = info;
+        this.#ctx = ctx;
+    }
+
+    // Cloudflare Workers の env(KV や環境変数などのバインディング)。型は createApp<{ Bindings: ... }>() で決める
+    // Bun の server や Deno の info(接続元を知るためのもの)は env ではないので、そのときは undefined
+    get env(): BindingsOf<V> {
+        return (isConnectionInfo(this.#info) ? undefined : this.#info) as BindingsOf<V>;
+    }
+
+    // Cloudflare Workers の ctx(waitUntil など)。Workers 以外では渡されないので、読むとエラーにする
+    get executionCtx(): ExecutionContext {
+        if (!this.#ctx) {
+            throw new Error("c.executionCtx がありません。Cloudflare Workers で、app.fetch(req, env, ctx) として呼ばれたときだけ使えます");
+        }
+        return this.#ctx;
     }
 
     // 接続元の IP アドレス。分からなければ null(Cloudflare Workers や、app.fetch を直接呼んだときなど)
@@ -133,14 +166,14 @@ export class Context<V extends object = any> {
     }
 
     // ミドルウェアからハンドラーへ値を渡す(ログインしたユーザーなど)
-    set<K extends keyof V & string>(key: K, value: V[K]) {
+    set<K extends keyof VariablesOf<V> & string>(key: K, value: VariablesOf<V>[K]) {
         (this.#vars ??= new Map()).set(key, value);
         return this;
     }
 
     // set していなければ undefined(ミドルウェアが動かなかったときなど)
-    get<K extends keyof V & string>(key: K): V[K] | undefined {
-        return this.#vars?.get(key) as V[K] | undefined;
+    get<K extends keyof VariablesOf<V> & string>(key: K): VariablesOf<V>[K] | undefined {
+        return this.#vars?.get(key) as VariablesOf<V>[K] | undefined;
     }
 
     // --- クエリ ---
