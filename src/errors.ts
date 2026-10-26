@@ -1,7 +1,5 @@
 import type { Context, HandlerResult } from "./context.ts";
 import type { Route } from "./router.ts";
-import { suggest } from "./dev/suggest.ts";
-import { wantsHtml } from "./dev/render.ts";
 
 // status 付きで投げられるエラー。message はそのままクライアントに見せる前提のもの
 export class HttpError extends Error {
@@ -135,24 +133,12 @@ async function isEmptyBody(c: Context): Promise<boolean> {
     }
 }
 
-export function defaultNotFound(routes: Route[], dev: boolean): NotFoundHandler {
-    return async (c) => {
-        if (!dev) {
-            return c.text("404 Not Found");
-        }
-        // ブラウザで開いたときは、ルートの一覧付きの404ページ(HTML)にする
-        // ページの HTML は大きいので、本番では読み込まないよう、ここで初めて import() する
-        if (wantsHtml(c.req)) {
-            const { notFoundPage } = await import("./dev/not-found-page.ts");
-            return notFoundPage(c, routes);
-        }
-        // ルートと同じく、デコード・正規化したパスで比べる(notFound に来るのはデコードできたリクエストだけ)
-        const path = c.path;
-        let message = `404 Not Found: ${c.req.method} ${path}`;
-        const closest = suggest(routes, path);
-        if (closest) {
-            message += `\nもしかして: ${closest.method} ${closest.path} ?`;
-        }
-        return c.text(message);
-    };
+// devTools: 開発モードのとき、開発用のモジュール(src/dev/index.ts)。本番では null で、固定の文言だけを返す
+// (開発モードの「もしかして」や 404 ページは src/dev/not-found.ts)
+export function defaultNotFound(
+    routes: Route[],
+    devTools: Promise<{ devNotFound(c: Context, routes: Route[]): HandlerResult | Promise<HandlerResult> }> | null,
+): NotFoundHandler {
+    if (!devTools) return (c) => c.text("404 Not Found");
+    return async (c) => (await devTools).devNotFound(c, routes);
 }

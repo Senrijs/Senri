@@ -113,24 +113,40 @@ export type AppOptions = {
     dev?: boolean;
 };
 
+// 開発用のモジュール(src/dev/index.ts)。型だけ使う(実体は loadDev で読み込む)
+export type DevTools = typeof import("./dev/index.ts");
+
+// アプリを作る本体。開発用のモジュールの読み込み方(loadDev)は、入口が決める
+// - src/index.ts の createApp: () => import("./dev/index.ts") を渡す。dev: true のときだけ呼ぶ
+// - src/tiny.ts: 渡さない。バンドラーが開発用のコードを同じファイルに入れてしまうのを避けるため
 // V はアプリの型。c.set / c.get で使う変数の型(createApp<{ user: User }>())か、
 // Workers の env も含めた形(createApp<{ Bindings: Env; Variables: { user: User } }>())で指定する(src/context.ts)
-export function createApp<V extends object = Record<string, unknown>>(options: AppOptions = {}): App<V> {
+export function createAppWith<V extends object = Record<string, unknown>>(
+    options: AppOptions,
+    loadDev: (() => Promise<DevTools>) | null,
+): App<V> {
     const dev = options.dev ?? false;
     const routes: Route[] = [];
     const matcher = createMatcher();
     // prefix が null なら全部のリクエストで動く。["admin"] なら /admin とその下だけ
     // anonymous: 無名の関数だった(名前を anonymous#番号 にした)。ダッシュボードで「名前を付けると出る」と案内する
     const middlewares: { name: string; anonymous: boolean; path: string | null; prefix: string[] | null; mw: Middleware<V> }[] = [];
-    // 開発モードだけで使うもの(エラーページ、ダッシュボード)。ビルド済みの HTML など大きいので、
-    // 本番では読み込まないよう dev のときだけ import() する(src/dev/index.ts)
-    const devTools = dev ? import("./dev/index.ts") : null;
+    // 開発モードだけで使うもの(エラーページ、ダッシュボード、「もしかして」)。ビルド済みの HTML など大きいので、
+    // 本番では読み込まない。createApp は同期のままにしたいので、ここでは読み込みを始めるだけで、最初のリクエストで待つ
+    if (dev && !loadDev) {
+        throw new Error(
+            "@senrijs/senri/tiny には開発モードがありません。開発モードを使うときは @senrijs/senri から createApp を import してください",
+        );
+    }
+    const devTools = dev ? loadDev!() : null;
+    // 読み込みに失敗しても、待つ前に unhandled rejection にしない(最初のリクエストで、そのエラーになる)
+    devTools?.catch(() => {});
     // 開発モードでは、ブラウザから開いた 5xx を HTML のエラーページにする(src/dev/pages.ts)
     const baseOnError = defaultOnError(dev);
     let onError: ErrorHandler<V> = devTools
         ? async (err, c) => (await devTools).withErrorPage(baseOnError, true)(err, c)
         : baseOnError;
-    let notFound: NotFoundHandler<V> = defaultNotFound(routes, dev);
+    let notFound: NotFoundHandler<V> = defaultNotFound(routes, devTools);
 
     function method(name: string): RouteMethod<V> {
         return ((path: string, a: Handler | RouteSchemas, b?: Handler) => add(name, path, routeHandler(path, a, b))) as RouteMethod<V>;
