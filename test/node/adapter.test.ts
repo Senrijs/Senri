@@ -148,6 +148,27 @@ describe("Node アダプター", () => {
         await sawAbort;
     });
 
+    test("app.fetch の2つ目の引数に、接続元のアドレスを Deno と同じ形で渡す", async () => {
+        let seen: unknown;
+        const probe = serve(
+            {
+                fetch: (_req: Request, info?: unknown) => {
+                    seen = info;
+                    return new Response("ok");
+                },
+            },
+            { port: 0 },
+        );
+        await new Promise<void>((resolve) => probe.once("listening", resolve));
+        const probePort = (probe.address() as AddressInfo).port;
+
+        await (await fetch(`http://127.0.0.1:${probePort}/`)).text();
+        probe.close();
+
+        const hostname = (seen as { remoteAddr?: { hostname?: string } })?.remoteAddr?.hostname ?? "";
+        assert.match(hostname, /^(::ffff:)?127\.0\.0\.1$|^::1$/);
+    });
+
     test("アプリが reject しても 500 を返して落ちない", async () => {
         const broken = serve({ fetch: () => Promise.reject(new Error("boom")) }, { port: 0 });
         await new Promise<void>((resolve) => broken.once("listening", resolve));

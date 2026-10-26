@@ -1,5 +1,6 @@
 // 開発モードの404ページ(HTML)を作る
 import type { Context } from "../context.ts";
+import { dashboardLinkOf } from "./dashboard/links.ts";
 import { notFoundFallback } from "./fallback.ts";
 import type { NotFoundPageData } from "./page-data.ts";
 import { PAGE_HTML } from "./page.generated.ts";
@@ -33,6 +34,7 @@ export function notFoundPage(c: Context, routes: RouteInfo[]): Response {
         routes: [...routes]
             .sort((a, b) => a.path.localeCompare(b.path) || a.method.localeCompare(b.method))
             .map((r) => ({ method: r.method, path: r.path, link: linkable(r) })),
+        dashboardUrl: dashboardLinkOf(c),
     };
 
     const body = c.req.method === "HEAD" ? null : renderPage(PAGE_HTML, data, notFoundFallback(data));

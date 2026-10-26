@@ -45,6 +45,8 @@ export type ErrorPageData = {
     root: string | null;
     // 本番(dev: false)で、このエラーのときに返る本文
     production: string;
+    // ダッシュボードのこのリクエストへのリンク(localhost から開いたときだけ。開けなければ null)
+    dashboardUrl: string | null;
 };
 
 export type NotFoundPageData = {
@@ -53,6 +55,48 @@ export type NotFoundPageData = {
     path: string;
     suggestion: (Difference & { method: string; path: string; link: boolean }) | null;
     routes: { method: string; path: string; link: boolean }[];
+    // ダッシュボードへのリンク(localhost から開いたときだけ)
+    dashboardUrl: string | null;
 };
 
-export type PageData = ErrorPageData | NotFoundPageData;
+// --- ダッシュボード(/_senri) ---
+
+// 一覧に出す要約(詳細は /_senri/api/requests/:id で取る)
+export type RequestSummary = {
+    id: string;
+    time: number;
+    method: string;
+    path: string;
+    status: number;
+    durationMs: number;
+    hasError: boolean;
+};
+
+// ルートのタブ。各ルートに、登録順でミドルウェアがかかるかどうか
+// - yes: かかる / no: かからない / maybe: パスによる(":page" のようにパラメーターで決まる)
+export type RouteRow = {
+    method: string;
+    path: string;
+    middlewares: { name: string; applies: "yes" | "no" | "maybe" }[];
+};
+
+// ミドルウェアのタブ。order は登録順(= 玉ねぎの外側から内側の順 = 実行順)
+export type MiddlewareRow = {
+    order: number;
+    name: string;
+    path: string | null;
+    // 記録しているリクエストのうち、この層を通った件数と、自分の時間の平均(通っていなければ null)
+    runs: number;
+    avgSelfMs: number | null;
+};
+
+export type DashboardPageData = {
+    kind: "dashboard";
+    // 記録しておく件数の上限
+    max: number;
+    requests: RequestSummary[];
+    routes: RouteRow[];
+    middlewares: MiddlewareRow[];
+};
+
+export type PageData = ErrorPageData | NotFoundPageData | DashboardPageData;

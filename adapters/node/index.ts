@@ -4,7 +4,10 @@ import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 
 type App = {
-    fetch: (req: Request) => Response | Promise<Response>;
+    // 2つ目の引数には、接続元のアドレスを Deno の info と同じ形で渡す(ダッシュボードの localhost 制限で使う)
+    fetch: (req: Request, info?: { remoteAddr: { hostname: string; port: number; transport: "tcp" } }) =>
+        | Response
+        | Promise<Response>;
 };
 
 function toUrl(req: IncomingMessage): URL {
@@ -92,7 +95,10 @@ export function serve(app: App, options: { port: number }) {
         }
 
         try {
-            await writeResponse(res, await app.fetch(request));
+            const info = {
+                remoteAddr: { hostname: req.socket.remoteAddress ?? "", port: req.socket.remotePort ?? 0, transport: "tcp" as const },
+            };
+            await writeResponse(res, await app.fetch(request, info));
         } catch (err) {
             // クライアントが途中で切っただけならエラーではない
             if (controller.signal.aborted) return;

@@ -166,6 +166,7 @@ const duration = formatMs(d.durationMs);
                         <span class="layer-ms">{{ l.ms }}</span>
                     </li>
                 </ol>
+                <a v-if="d.dashboardUrl" :href="d.dashboardUrl" class="dashboard-link">/_senri で詳しく見る →</a>
             </div>
         </section>
 
@@ -421,6 +422,10 @@ dd {
     color: var(--muted);
 }
 .failed .layer-ms {
+    color: var(--accent-text);
+}
+.dashboard-link {
+    font-size: 13px;
     color: var(--accent-text);
 }
 </style>

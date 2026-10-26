@@ -18,6 +18,15 @@
     --put: #7a4f00;
     --patch: #7a2e8a;
 
+    /* ダッシュボード */
+    --row-sel: #f1f2f5;
+    --track: #f5f6f8;
+    --total-bg: #d5d8de;
+    --self-bg: #3a3f47;
+    --ok: #0b6b43;
+    --redirect: #0b5e70;
+    --live: #0e9f6e;
+
     --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
     --sans: "Noto Sans JP", system-ui, sans-serif;
 }
@@ -41,6 +50,14 @@
         --delete: #ff8a75;
         --put: #f2c14e;
         --patch: #d79be6;
+
+        --row-sel: #1d2128;
+        --track: #16191e;
+        --total-bg: #3a404a;
+        --self-bg: #c9ced6;
+        --ok: #5fd39a;
+        --redirect: #5cc8dd;
+        --live: #5fd39a;
     }
 }
 

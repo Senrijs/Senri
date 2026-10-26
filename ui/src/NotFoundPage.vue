@@ -14,7 +14,9 @@ const list = computed(() => visibleRoutes(d.routes, query.value, LIMIT));
 </script>
 
 <template>
-    <SiteHeader />
+    <SiteHeader>
+        <a v-if="d.dashboardUrl" :href="d.dashboardUrl" class="mono dashboard-link">/_senri</a>
+    </SiteHeader>
 
     <main>
         <section class="head">
@@ -151,6 +153,10 @@ h1 {
 .note {
     color: var(--muted);
     font-size: 13px;
+}
+.dashboard-link {
+    font-size: 13px;
+    color: var(--muted);
 }
 
 .routes {

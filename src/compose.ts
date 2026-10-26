@@ -16,18 +16,30 @@ export type Layer = { name: string; mw: Middleware };
 // - total: その層に入ってから出るまで(下流の時間も含む)
 // - self: total から next() の中で待っていた時間を引いたもの = その層「自身」の時間
 // - failed: この層で例外が起きた(エラーページの「通った順番」で印を付ける)
-export type Timing = { name: string; total: number; self: number; failed: boolean };
+// - start: リクエストの開始から、この層に入るまでの時間(ダッシュボードの玉ねぎタイムラインで棒の位置に使う)
+// - stopped: next() を呼ばずに値を返して終わった(認証で 401 を返した、など。ここより内側には届いていない)
+export type Timing = { name: string; total: number; self: number; failed: boolean; start: number; stopped: boolean };
+
+// 計測するときに渡すもの(開発モードのときだけ)
+export type Measure = {
+    timings: Timing[];
+    // リクエストの開始時刻(performance.now() の値)。start はここからの差
+    origin: number;
+    // いちばん内側の層の名前(handler / notFound / 405 / options / 400)
+    innerName: string;
+};
 
 // ミドルウェアを順に通して、最後に handle を呼ぶ
 // 例外は(ミドルウェアでもハンドラーでも)onError に渡してレスポンスにしてもらう
-// timings を渡したときだけ、各層の時間を timings[i] に記録する(i = 層の順番、最後がハンドラー)
+// measure を渡したときだけ、各層の時間を timings[i] に記録する(i = 層の順番、最後がいちばん内側)
 export function compose(
     layers: Layer[],
     c: Context,
     handle: () => Promise<Response>,
     onError: (err: unknown) => Promise<Response>,
-    timings?: Timing[],
+    measure?: Measure,
 ): Promise<Response> {
+    const timings = measure?.timings;
     // 計測しないときは時計を読まない
     const now = timings ? () => performance.now() : () => 0;
     // どの層で例外が起きたか(層の番号)
@@ -41,17 +53,26 @@ export function compose(
         const start = now();
         // next() の中(下流)で待っていた時間
         let inner = 0;
+        // next() を呼ばずに値を返して終わったか
+        let stopped = false;
         try {
-            return await step(i, (ms) => (inner += ms));
+            return await step(i, (ms) => (inner += ms), () => (stopped = true));
         } finally {
-            if (timings) {
+            if (measure) {
                 const total = now() - start;
-                timings[i] = { name: layers[i]?.name ?? "handler", total, self: total - inner, failed: failedAt === i };
+                measure.timings[i] = {
+                    name: layers[i]?.name ?? measure.innerName,
+                    total,
+                    self: total - inner,
+                    failed: failedAt === i,
+                    start: start - measure.origin,
+                    stopped,
+                };
             }
         }
     };
 
-    const step = async (i: number, addInner: (ms: number) => void): Promise<Response> => {
+    const step = async (i: number, addInner: (ms: number) => void, markStopped: () => void): Promise<Response> => {
         const layer = layers[i];
         if (!layer) {
             try {
@@ -75,7 +96,10 @@ export function compose(
                 return downstream;
             });
             // toResponse も JSON.stringify で投げることがあるので try の中で
-            if (result !== undefined) return toResponseOf(c, result, { kind: "middleware", name: layer.name });
+            if (result !== undefined) {
+                if (!downstream) markStopped();
+                return toResponseOf(c, result, { kind: "middleware", name: layer.name });
+            }
             // 何も返さず next() 済みなら、下流を使う(await し忘れていても、ここで待つ)
             if (downstream) return await downstream;
         } catch (err) {

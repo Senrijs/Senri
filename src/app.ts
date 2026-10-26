@@ -30,6 +30,24 @@ type Resolved =
     | { kind: "notFound" }
     | { kind: "badRequest"; error: unknown };
 
+// パスが /_senri か /_senri/... なら、"_senri" より後ろのセグメント。そうでなければ null
+function underDashboard(c: Context): readonly string[] | null {
+    try {
+        return c.segments[0] === "_senri" ? c.segments.slice(1) : null;
+    } catch {
+        return null;
+    }
+}
+
+// 計測で、いちばん内側の層に付ける名前(ダッシュボードの玉ねぎタイムラインに出る)
+const INNER_NAME: Record<Resolved["kind"], string> = {
+    route: "handler",
+    notFound: "notFound",
+    methodNotAllowed: "405",
+    options: "options",
+    badRequest: "400",
+};
+
 export type AppOptions = {
     // 開発モード。エラーの詳細や「もしかして」を返す。本番では絶対にオンにしない
     // 環境変数からは読まない(Deno では --allow-env がないと読めない、などランタイム差があるため)
@@ -42,18 +60,23 @@ export function createApp<V extends object = Record<string, unknown>>(options: A
     const routes: Route[] = [];
     // prefix が null なら全部のリクエストで動く。["admin"] なら /admin とその下だけ
     const middlewares: { name: string; path: string | null; prefix: string[] | null; mw: Middleware<V> }[] = [];
+    // 開発モードだけで使うもの(エラーページ、ダッシュボード)。ビルド済みの HTML など大きいので、
+    // 本番では読み込まないよう dev のときだけ import() する(src/dev/index.ts)
+    const devTools = dev ? import("./dev/index.ts") : null;
     // 開発モードでは、ブラウザから開いた 5xx を HTML のエラーページにする(src/dev/pages.ts)
-    // 開発用のページ(ビルド済みの HTML など、約90KB)は、本番では読み込まないよう dev のときだけ import() する
-    const devPages = dev ? import("./dev/pages.ts") : null;
     const baseOnError = defaultOnError(dev);
-    let onError: ErrorHandler<V> = devPages
-        ? async (err, c) => (await devPages).withErrorPage(baseOnError, true)(err, c)
+    let onError: ErrorHandler<V> = devTools
+        ? async (err, c) => (await devTools).withErrorPage(baseOnError, true)(err, c)
         : baseOnError;
     let notFound: NotFoundHandler<V> = defaultNotFound(routes, dev);
 
     function add(method: string, path: string, handler: Handler) {
         const segments = splitPattern(path);
         checkParamNames(path, segments);
+        // 開発モードでは /_senri 以下はダッシュボードが使うので、登録しても呼ばれない。気づけるようにエラーにする
+        if (dev && segments[0] === "_senri") {
+            throw new Error(`${method} ${path}: /_senri 以下は、開発モードではダッシュボード用に予約されています`);
+        }
 
         // 同じメソッド + 同じ形のパスがあったら、あとから登録したほうは絶対に呼ばれないのでエラーにする
         const shape = routeShape(segments);
@@ -111,7 +134,7 @@ export function createApp<V extends object = Record<string, unknown>>(options: A
             .map(({ name, mw }) => ({ name, mw }));
     }
 
-    return {
+    const app = {
         use(pathOrMw: string | Middleware<V>, mw?: Middleware<V>) {
             const path = typeof pathOrMw === "string" ? pathOrMw : null;
             const fn = typeof pathOrMw === "string" ? mw : pathOrMw;
@@ -179,8 +202,21 @@ export function createApp<V extends object = Record<string, unknown>>(options: A
             return routes.map((r) => ({ method: r.method, path: r.path }));
         },
 
-        async fetch(req: Request): Promise<Response> {
+        // info: ランタイムが渡す2つ目の引数(Bun の server、Deno の info など)。接続元のアドレスを取るのに使う
+        // (形で見分けるので、Cloudflare Workers の env のような別のものが来ても壊れない。src/dev/dashboard/access.ts)
+        async fetch(req: Request, info?: unknown): Promise<Response> {
+            // 開発モードのときだけ、計測の基準になるリクエストの開始時刻を取る
+            const origin = dev ? performance.now() : 0;
+            const time = dev ? Date.now() : 0;
             const c = new Context<V>(req);
+            const dashboard = dashboardPromise ? await dashboardPromise : null;
+            // /_senri 以下はダッシュボード。localhost から開いたときだけ、ミドルウェアを通さずに処理する
+            // (開けないときは普通の処理に回すので、/_senri はないものとして 404 になる)。どちらも記録はしない
+            const dashboardPath = dashboard ? underDashboard(c) : null;
+            if (dashboard && dashboardPath && dashboard.canOpen(req, info)) {
+                return dashboard.handle(req, dashboardPath);
+            }
+            if (!dashboardPath) dashboard?.begin(c, info);
             const fail = (err: unknown) => handleError(err, c, onError);
 
             // ミドルウェアより先にマッチして、c.route / c.params を見られるようにしておく
@@ -218,10 +254,28 @@ export function createApp<V extends object = Record<string, unknown>>(options: A
 
             // ハンドラー・notFound・toResponse のどこで投げても、compose が onError に集める
             // 開発モードのときだけ計測する(本番では performance.now() の分も払わない)
-            const res = await compose(applicableMiddlewares(c), c, run, fail, dev ? c.timings : undefined);
+            const layers = applicableMiddlewares(c);
+            const innerName = INNER_NAME[resolved.kind];
+            const measure = dev ? { timings: c.timings, origin, innerName } : undefined;
+            const res = await compose(layers, c, run, fail, measure);
             // ミドルウェアを全部通ったあとなので、ここなら「通った順番」が揃っている
-            const page = devPages ? await (await devPages).finishErrorPage(c, res) : res;
-            return c.finalize(page);
+            const page = devTools ? await (await devTools).finishErrorPage(c, res) : res;
+            const final = c.finalize(page);
+            // 開発モードでは、ダッシュボードに記録する(失敗してもレスポンスには影響しない)
+            await dashboard?.record(c, final, time, [...layers.map((l) => l.name), innerName]);
+            return final;
         },
     };
+
+    // 開発モードでは、ダッシュボードを作ってアプリに結び付けておく
+    const dashboardPromise = devTools?.then((m) => {
+        const dashboard = m.createDashboard({
+            routes: () => app.routeList(),
+            middlewares: () => app.middlewareList(),
+        });
+        m.registerDashboard(app, dashboard);
+        return dashboard;
+    });
+
+    return app;
 }
