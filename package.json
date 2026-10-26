@@ -1,7 +1,35 @@
 {
   "name": "senri",
+  "version": "0.1.0",
+  "description": "Web 標準の Request / Response で書かれた、小さな Web フレームワーク。Bun・Deno・Node.js・Cloudflare Workers で動く",
+  "license": "MIT",
+  "author": "ibuki-hum4",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Senrijs/Senri.git"
+  },
+  "homepage": "https://github.com/Senrijs/Senri#readme",
+  "bugs": {
+    "url": "https://github.com/Senrijs/Senri/issues"
+  },
+  "keywords": [
+    "web",
+    "framework",
+    "router",
+    "http",
+    "fetch",
+    "bun",
+    "deno",
+    "node",
+    "cloudflare-workers",
+    "standard-schema"
+  ],
   "type": "module",
   "private": true,
+  "sideEffects": false,
+  "engines": {
+    "node": ">=22"
+  },
   "exports": {
     ".": {
       "types": "./dist/src/index.d.ts",
