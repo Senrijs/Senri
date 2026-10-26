@@ -1,0 +1,51 @@
+name: Publish
+
+# v0.1.0 のようなタグを push したときだけ動く(main への push では動かない)
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # JSR と npm に、GitHub Actions の OIDC で認証する(シークレットは使わない)
+      id-token: write
+    steps:
+      - uses: actions/checkout@v6
+      - uses: oven-sh/setup-bun@v2
+      - uses: denoland/setup-deno@v2
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+
+      # タグと package.json / jsr.json のバージョンがそろっているか(v0.1.0 なら 0.1.0)
+      - name: Check versions
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          npm_version=$(node -p "require('./package.json').version")
+          jsr_version=$(node -p "require('./jsr.json').version")
+          if [ "$tag" != "$npm_version" ] || [ "$tag" != "$jsr_version" ]; then
+            echo "タグ ($tag) と package.json ($npm_version) / jsr.json ($jsr_version) のバージョンが違います"
+            exit 1
+          fi
+
+      - run: bun install
+      - run: bun run typecheck
+      - run: bun test
+      - run: bun run test:node
+
+      # JSR: @senrijs/senri は GitHub の Senrijs/Senri とリンク済みなので、OIDC で公開できる
+      - name: Publish to JSR
+        run: npx jsr publish
+
+      # npm: Trusted Publishing(OIDC)で公開する。provenance(どのワークフローで作ったか)も付く
+      # Trusted Publishing には npm 11.5.1 以降が必要
+      - name: Publish to npm
+        run: |
+          bun run build
+          npm --version
+          npm publish --provenance --access public
