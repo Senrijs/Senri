@@ -38,6 +38,22 @@ const CHECKS: Check[] = [
     { name: "Set-Cookie 2つ", path: "/cookies", status: 200, cookies: ["a=1", "b=2"] },
     { name: "日本語パラメーター", path: "/users/山田", status: 200, body: "user 山田" },
     { name: "HEAD", path: "/hello", init: { method: "HEAD" }, status: 200, body: "" },
+    {
+        name: "QUERY",
+        path: "/search",
+        init: { method: "QUERY", headers: { "content-type": "application/json" }, body: `{"q":"senri"}` },
+        status: 200,
+        json: (d) => (d.query?.q === "senri" ? null : "ボディが届いていない"),
+    },
+    // 文字列のボディだと fetch が text/plain を付けてしまうので、バイト列で送る
+    { name: "QUERY(Content-Type なし)", path: "/search", init: { method: "QUERY", body: new Uint8Array([120]) }, status: 415 },
+    { name: "QUERY(ボディなし)", path: "/search", init: { method: "QUERY" }, status: 400 },
+    {
+        name: "c.ip",
+        path: "/client-ip",
+        status: 200,
+        json: (d) => (/^(127\.0\.0\.1|::1)$/.test(d.ip ?? "") ? null : `ループバックでない: ${d.ip}`),
+    },
     { name: "OPTIONS", path: "/hello", init: { method: "OPTIONS" }, status: 204 },
     { name: "認証", path: "/admin", status: 401 },
     { name: "認証(//admin)", path: "//admin", status: 401 },
