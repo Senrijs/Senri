@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { RequestLog } from "../../src/dev/dashboard/log.ts";
-import { maskHeaders } from "../../src/dev/dashboard/mask.ts";
+import { maskHeaders, maskQuery } from "../../src/dev/dashboard/mask.ts";
 
 const item = (id: number) => ({ id: String(id) });
 
@@ -50,6 +50,22 @@ describe("RequestLog: 直近の記録だけを持つ", () => {
         expect(() => log.add(item(1))).not.toThrow();
         expect(got).toHaveLength(1);
         expect(log.size).toBe(1);
+    });
+});
+
+describe("maskQuery: クエリ文字列の機密値を *** に伏せる", () => {
+    test("ヘッダーと同じルールで、名前が機密っぽいパラメーターの値を伏せる(元の並びとエンコードはそのまま)", () => {
+        expect(maskQuery("?token=abc&api_key=xyz&page=2&q=%E5%B1%B1")).toBe("?token=***&api_key=***&page=2&q=%E5%B1%B1");
+        expect(maskQuery("?Session=1&X-Auth-Token=t&password=p")).toBe("?Session=***&X-Auth-Token=***&password=***");
+    });
+
+    test("名前がエンコードされていても見抜く", () => {
+        expect(maskQuery("?api%5Fkey=xyz")).toBe("?api%5Fkey=***");
+    });
+
+    test("値のないパラメーター・空のクエリはそのまま", () => {
+        expect(maskQuery("?debug&token")).toBe("?debug&token");
+        expect(maskQuery("")).toBe("");
     });
 });
 

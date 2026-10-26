@@ -2,7 +2,7 @@
 import type { Context } from "../../context.ts";
 import { buildErrorPageData } from "../error-page.ts";
 import type { ErrorPageData } from "../page-data.ts";
-import { maskHeaders } from "./mask.ts";
+import { maskHeaders, maskQuery } from "./mask.ts";
 
 // 玉ねぎタイムラインでの、層の状態
 // - ok: 通過した(next() を呼んで下流に渡した、またはいちばん内側で処理した)
@@ -44,7 +44,8 @@ export type DashboardRecord = {
 function requestPath(c: Context): { path: string; query: string } {
     let query = "";
     try {
-        query = new URL(c.req.url).search;
+        // ?token=... のような機密値は伏せる
+        query = maskQuery(new URL(c.req.url).search);
     } catch {
         // URL として読めなくても記録はする
     }

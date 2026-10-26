@@ -183,7 +183,7 @@ const app = createApp({ dev: true });
 記録とセキュリティについて:
 
 - 記録はメモリ上だけで、再起動すると消えます。`/_senri` 自体へのリクエストは記録しません。リクエストやレスポンスのボディは記録しません
-- `authorization`・`cookie`・`set-cookie` や、名前に `token`・`secret`・`session`・`api-key` などを含むヘッダーは `***` に伏せます
+- `authorization`・`cookie`・`set-cookie` や、名前に `token`・`secret`・`session`・`api-key` などを含むヘッダーは `***` に伏せます。クエリ文字列も同じルールで、`?token=***` のように値を伏せます
 - **同じ PC(localhost)からしか開けません。** 接続元のアドレスがループバック(`127.0.0.1` や `::1`)で、かつ `Host` ヘッダーも `localhost` などのときだけです。それ以外は `/_senri` がないものとして扱います(普通の 404)
 - 接続元のアドレスは、`app.fetch` の2つ目の引数から取ります。`Bun.serve({ fetch: app.fetch })`・`Deno.serve(app.fetch)`・`senri/node`・`senri/serve` はそのまま渡されます。`fetch: (req) => app.fetch(req)` のように包むと渡らないので、`(req, info) => app.fetch(req, info)` としてください。分からないとき(Cloudflare Workers など)は、ダッシュボードだけ開けなくなり、ほかは普通に動きます
 - **Docker などのコンテナで動かすと、ホストのブラウザから開いても、接続元が localhost に見えません**(コンテナのネットワークを通るため)。そのため、ダッシュボードは使えません。開くときは、コンテナを使わずに動かしてください

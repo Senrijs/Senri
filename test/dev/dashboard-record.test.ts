@@ -119,6 +119,14 @@ describe("リクエストの記録(開発モード)", () => {
         expect(r.responseHeaders).toContainEqual(["set-cookie", "***"]);
     });
 
+    test("クエリ文字列の機密値も伏せて記録する", async () => {
+        const a = app();
+
+        await a.fetch(req("/users/1?token=abc&tab=posts"));
+
+        expect((await lastRecord(a)).query).toBe("?token=***&tab=posts");
+    });
+
     test("記録した順に id が振られる", async () => {
         const a = app();
 
