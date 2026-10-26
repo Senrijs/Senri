@@ -62,9 +62,16 @@ export async function handleError(err: unknown, c: Context, onError: ErrorHandle
 // 本番では、エラーの中身(DB のパスワードなど)や、ルートの一覧がもれないよう固定の文言だけ返す
 // dev: true のときだけ、開発者向けの詳しい情報を足す
 
+// validate.ts を import すると循環するので、形で見分ける
+function isValidationError(err: HttpError): err is HttpError & { describe(): string } {
+    return err.name === "ValidationError" && typeof (err as { describe?: unknown }).describe === "function";
+}
+
 export function defaultOnError(dev: boolean): ErrorHandler {
     return (err, c) => {
         if (err instanceof HttpError) {
+            // バリデーションのエラーは、開発モードでだけ、どこが違うかを返す
+            if (dev && isValidationError(err)) return c.text(err.describe());
             return c.text(err.message);
         }
         if (!dev) {

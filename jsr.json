@@ -1,0 +1,15 @@
+{
+  "name": "@senrijs/senri",
+  "version": "0.1.0",
+  "license": "MIT",
+  "exports": {
+    ".": "./src/index.ts",
+    "./node": "./adapters/node/index.ts",
+    "./serve": "./adapters/serve/index.ts",
+    "./static": "./adapters/static/index.ts"
+  },
+  "publish": {
+    "include": ["src/**/*.ts", "adapters/**/*.ts", "README.md", "LICENSE"],
+    "exclude": ["**/*.test.ts", "adapters/**/tsconfig.json"]
+  }
+}

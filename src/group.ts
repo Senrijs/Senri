@@ -2,14 +2,28 @@
 // (あとから app.route("/users/:id", router) のように付ける形だと、中のハンドラーで id の型が分からないため)
 import type { Handler, Middleware } from "./context.ts";
 import { normalizeMethod, splitPattern, type ExtractParams, type Simplify } from "./router.ts";
+import { checkSchemas, withValidation, type RouteSchemas, type Validated, type ValidatedParams } from "./validate.ts";
+
+// 2つ目の引数がスキーマなら、確かめてからハンドラーを呼ぶものにする(app.ts と同じ)
+export function routeHandler(path: string, a: Handler | RouteSchemas, b: Handler | undefined): Handler {
+    if (typeof a === "function") return a;
+    if (typeof b !== "function") throw new TypeError(`${path}: ハンドラーがありません`);
+    checkSchemas(path, a);
+    return withValidation(a, b);
+}
 
 // プレフィックスとパスをつないだときのパラメーター。"/" を挟むので、"posts" のように "/" なしで書いてもよい
 type GroupParams<Prefix extends string, Path extends string> = Simplify<ExtractParams<`${Prefix}/${Path}`>>;
 
-type GroupMethod<Prefix extends string, V extends object> = <Path extends string>(
-    path: Path,
-    handler: Handler<GroupParams<Prefix, Path>, V>,
-) => void;
+// router.get(path, handler) と、スキーマを付けた router.get(path, { params, query, body }, handler)
+type GroupMethod<Prefix extends string, V extends object> = {
+    <Path extends string>(path: Path, handler: Handler<GroupParams<Prefix, Path>, V>): void;
+    <Path extends string, S extends RouteSchemas>(
+        path: Path,
+        schemas: S,
+        handler: Handler<ValidatedParams<S, GroupParams<Prefix, Path>>, V, Validated<S>>,
+    ): void;
+};
 
 export type Router<Prefix extends string = string, V extends object = any> = {
     readonly prefix: Prefix;
@@ -27,6 +41,12 @@ export type Router<Prefix extends string = string, V extends object = any> = {
         method: string | readonly string[],
         path: Path,
         handler: Handler<GroupParams<Prefix, Path>, V>,
+    ): void;
+    on<Path extends string, S extends RouteSchemas>(
+        method: string | readonly string[],
+        path: Path,
+        schemas: S,
+        handler: Handler<ValidatedParams<S, GroupParams<Prefix, Path>>, V, Validated<S>>,
     ): void;
     // ルーターの中にルーターをつなげる。中のルーターのプレフィックスは、このルーターからの相対パス
     route(router: Router<string, V>): void;
@@ -56,11 +76,11 @@ export function createRouter<Prefix extends string, V extends object = Record<st
 ): Router<Prefix, V> {
     // 子のルーターは、つなげた時点ではなく app.route の時点で中身を読む(あとから足したルートも入る)
     const items: ({ kind: "entry"; entry: GroupEntry } | { kind: "router"; router: Router })[] = [];
-    const method =
-        (name: string) =>
-        (path: string, handler: Handler<any, V>): void => {
-            items.push({ kind: "entry", entry: { kind: "route", method: name, path, handler: handler as Handler } });
-        };
+    const push = (name: string, path: string, handler: Handler) => {
+        items.push({ kind: "entry", entry: { kind: "route", method: name, path, handler } });
+    };
+    const method = (name: string) =>
+        ((path: string, a: Handler | RouteSchemas, b?: Handler) => push(name, path, routeHandler(path, a, b))) as GroupMethod<Prefix, V>;
 
     const router: Router<Prefix, V> = {
         prefix,
@@ -78,15 +98,16 @@ export function createRouter<Prefix extends string, V extends object = Record<st
         all: method("ALL"),
         head: method("HEAD"),
         options: method("OPTIONS"),
-        on(methods, path, handler) {
+        on: ((methods: string | readonly string[], path: string, a: Handler<any> | RouteSchemas, b?: Handler<any>) => {
             const list = typeof methods === "string" ? [methods] : methods;
             if (list.length === 0) throw new Error(`router.on(..., "${path}") にメソッドがありません`);
+            const handler = routeHandler(path, a, b);
             for (const m of list) {
                 if (m.toUpperCase() === "ALL") throw new Error("すべてのメソッドで動かすには all() を使ってください");
                 // 名前の確認(CONNECT などの拒否)は、ここで先にしておく(app.route まで待たない)
-                method(normalizeMethod(m))(path, handler);
+                push(normalizeMethod(m), path, handler);
             }
-        },
+        }) as Router<Prefix, V>["on"],
         route(child) {
             if (!entries.has(child)) throw new TypeError("route() には createRouter() で作ったルーターを渡してください");
             items.push({ kind: "router", router: child });

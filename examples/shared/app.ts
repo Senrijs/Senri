@@ -1,8 +1,10 @@
-import { createApp, logger } from "../../src/index.ts";
+import { createApp, health, logger, type StandardSchemaV1 } from "../../src/index.ts";
 
 // examples は手元で動かすものなので開発モード
 export const app = createApp({ dev: true });
 
+// ヘルスチェックはロガーより先に置く(probe のたびにログが出ないように)
+app.use(health());
 app.use(logger({ format: "json" }));
 
 app.get("/hello", () => "こんにちは!");
@@ -26,6 +28,18 @@ app.post("/echo", async (_, c) => `body=${await c.req.text()}`);
 // QUERY: 検索の条件をボディに入れて送る(RFC 10008)
 app.on("QUERY", "/search", async (_, c) => ({ query: await c.body() }));
 app.get("/client-ip", (_, c) => ({ ip: c.ip }));
+// バリデーション(Standard Schema)。ふつうは Zod・Valibot・ArkType などのスキーマを渡す。ここでは依存なしで書いた最小のもの
+const positive: StandardSchemaV1<unknown, { n: number }> = {
+    "~standard": {
+        version: 1,
+        vendor: "example",
+        validate: (value) => {
+            const n = Number((value as { n?: unknown }).n);
+            return Number.isInteger(n) && n > 0 ? { value: { n } } : { issues: [{ message: "正の整数ではありません", path: ["n"] }] };
+        },
+    },
+};
+app.get("/double/:n", { params: positive }, ({ n }) => ({ double: n * 2 }));
 app.get("/cookies", (_, c) => {
     c.header("set-cookie", "a=1");
     c.header("set-cookie", "b=2");

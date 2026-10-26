@@ -62,9 +62,10 @@ export type BindingsOf<E> = IsAny<E> extends true ? any : E extends { Bindings: 
 
 // V はアプリの型(上の2通りのどちらか)。createApp<...>() で決める
 // 既定の any は「どのアプリでも使える」という意味。logger() のような汎用ミドルウェアのため
-export type Handler<P = Record<string, string>, V extends object = any> = (
+// I はスキーマで確かめた値の型(c.valid() で読めるもの)。スキーマを渡したルートだけ決まる(src/validate.ts)
+export type Handler<P = Record<string, string>, V extends object = any, I extends object = {}> = (
     params: P,
-    c: Context<V>,
+    c: Context<V, I>,
 ) => HandlerResult | Promise<HandlerResult>;
 
 export type Next = () => Promise<Response>;
@@ -74,7 +75,16 @@ export type Middleware<V extends object = any> = (
     next: Next,
 ) => HandlerResult | void | Promise<HandlerResult | void>;
 
-export class Context<V extends object = any> {
+// スキーマで確かめた値(src/validate.ts が入れる)。c.valid() で読む
+const validated = new WeakMap<Context, Record<string, unknown>>();
+
+export function setValidated(c: Context, target: string, value: unknown): void {
+    let values = validated.get(c);
+    if (!values) validated.set(c, (values = {}));
+    values[target] = value;
+}
+
+export class Context<V extends object = any, I extends object = {}> {
     req: Request;
     #status = 200;
     // c.header() で初めて作る(ほとんどのリクエストでは使わないので、毎回作らない)
@@ -165,8 +175,18 @@ export class Context<V extends object = any> {
         return (this.#timings ??= []);
     }
 
+    // ルートに渡したスキーマで確かめた値。c.valid("body") / c.valid("query")
+    // (スキーマを渡していないものは型エラー。JS から呼んだときは、分かりやすいエラーにする)
+    valid<K extends keyof I & string>(target: K): I[K] {
+        const values = validated.get(this);
+        if (!values || !(target in values)) {
+            throw new Error(`c.valid("${target}") の値がありません。ルートに { ${target}: スキーマ } を渡すと使えます`);
+        }
+        return values[target] as I[K];
+    }
+
     // ミドルウェアからハンドラーへ値を渡す(ログインしたユーザーなど)
-    set<K extends keyof VariablesOf<V> & string>(key: K, value: VariablesOf<V>[K]) {
+    set<K extends keyof VariablesOf<V> & string>(key: K, value: VariablesOf<V>[K]): this {
         (this.#vars ??= new Map()).set(key, value);
         return this;
     }
@@ -219,25 +239,25 @@ export class Context<V extends object = any> {
     }
 
     // 既定は Path=/・HttpOnly・SameSite=Lax(src/cookie.ts)
-    setCookie(name: string, value: string, options?: CookieOptions) {
+    setCookie(name: string, value: string, options?: CookieOptions): this {
         this.header("set-cookie", serializeCookie(name, value, options));
         return this;
     }
 
     // Path と Domain は、付けたときと同じものを指定する
-    deleteCookie(name: string, options?: Pick<CookieOptions, "path" | "domain">) {
+    deleteCookie(name: string, options?: Pick<CookieOptions, "path" | "domain">): this {
         this.header("set-cookie", deletionCookie(name, options));
         return this;
     }
 
-    status(code: number) {
+    status(code: number): this {
         this.#status = code;
         return this;
     }
 
     // ここで設定したヘッダーは、最後に finalize() で1回だけレスポンスに足される
     // なので、Response を直接返したときも、エラーのときも、next() のあとに設定しても効く
-    header(name: string, value: string) {
+    header(name: string, value: string): this {
         // Set-Cookie は1つのレスポンスに何個も付けるものなので、上書きせずに足す
         const headers = (this.#headers ??= new Headers());
         if (name.toLowerCase() === "set-cookie") {

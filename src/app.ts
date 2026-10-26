@@ -15,7 +15,8 @@ import {
 import { compose, type Layer } from "./compose.ts";
 import { createMatcher } from "./matcher.ts";
 import { isWorkers } from "./runtime.ts";
-import { groupEntries, joinPath, type GroupEntry, type Router } from "./group.ts";
+import type { RouteSchemas, Validated, ValidatedParams } from "./validate.ts";
+import { groupEntries, joinPath, routeHandler, type GroupEntry, type Router } from "./group.ts";
 import {
     defaultNotFound,
     defaultOnError,
@@ -59,11 +60,52 @@ const INNER_NAME: Record<Resolved["kind"], string> = {
 // 扱わないメソッド。ルートがあってもなくても 501 にする(app.all() でも受けない)
 const NOT_IMPLEMENTED = new Set(["CONNECT", "TRACE", "TRACK"]);
 
+// app.get(path, handler) と、スキーマを付けた app.get(path, { params, query, body }, handler)
+export type RouteMethod<V extends object> = {
+    <Path extends string>(path: Path, handler: Handler<Simplify<ExtractParams<Path>>, V>): void;
+    <Path extends string, S extends RouteSchemas>(
+        path: Path,
+        schemas: S,
+        handler: Handler<ValidatedParams<S, Simplify<ExtractParams<Path>>>, V, Validated<S>>,
+    ): void;
+};
+
+export type OnMethod<V extends object> = {
+    <Path extends string>(method: string | readonly string[], path: Path, handler: Handler<Simplify<ExtractParams<Path>>, V>): void;
+    <Path extends string, S extends RouteSchemas>(
+        method: string | readonly string[],
+        path: Path,
+        schemas: S,
+        handler: Handler<ValidatedParams<S, Simplify<ExtractParams<Path>>>, V, Validated<S>>,
+    ): void;
+};
+
 // app.route(prefix, app) でつなげるように、アプリに登録されたものを横に置いておく
 const appEntries = new WeakMap<object, () => GroupEntry[]>();
 
 // app.route(prefix, app) に渡せるもの(createApp() で作ったアプリ)
 export type MountableApp = { routeList(): { method: string; path: string }[] };
+
+// createApp() が返すアプリ
+export type App<V extends object = Record<string, unknown>> = {
+    use(pathOrMw: string | Middleware<V>, mw?: Middleware<V>): void;
+    onError(handler: ErrorHandler<V>): void;
+    notFound(handler: NotFoundHandler<V>): void;
+    get: RouteMethod<V>;
+    post: RouteMethod<V>;
+    put: RouteMethod<V>;
+    patch: RouteMethod<V>;
+    delete: RouteMethod<V>;
+    head: RouteMethod<V>;
+    options: RouteMethod<V>;
+    all: RouteMethod<V>;
+    on: OnMethod<V>;
+    routes<K extends string>(table: RouteTable<K, V>): void;
+    route(routerOrPrefix: Router<string, V> | string, child?: MountableApp): void;
+    middlewareList(): { name: string; path: string | null; anonymous: boolean }[];
+    routeList(): { method: string; path: string }[];
+    fetch(req: Request, info?: unknown, ctx?: ExecutionContext): Promise<Response>;
+};
 
 export type AppOptions = {
     // 開発モード。エラーの詳細や「もしかして」を返す。本番では絶対にオンにしない
@@ -73,7 +115,7 @@ export type AppOptions = {
 
 // V はアプリの型。c.set / c.get で使う変数の型(createApp<{ user: User }>())か、
 // Workers の env も含めた形(createApp<{ Bindings: Env; Variables: { user: User } }>())で指定する(src/context.ts)
-export function createApp<V extends object = Record<string, unknown>>(options: AppOptions = {}) {
+export function createApp<V extends object = Record<string, unknown>>(options: AppOptions = {}): App<V> {
     const dev = options.dev ?? false;
     const routes: Route[] = [];
     const matcher = createMatcher();
@@ -89,6 +131,10 @@ export function createApp<V extends object = Record<string, unknown>>(options: A
         ? async (err, c) => (await devTools).withErrorPage(baseOnError, true)(err, c)
         : baseOnError;
     let notFound: NotFoundHandler<V> = defaultNotFound(routes, dev);
+
+    function method(name: string): RouteMethod<V> {
+        return ((path: string, a: Handler | RouteSchemas, b?: Handler) => add(name, path, routeHandler(path, a, b))) as RouteMethod<V>;
+    }
 
     function add(rawMethod: string, path: string, handler: Handler) {
         // app.all() の印の "ALL" だけはそのまま。ほかは名前を確かめて大文字にする
@@ -190,7 +236,7 @@ export function createApp<V extends object = Record<string, unknown>>(options: A
         return layers;
     }
 
-    const app = {
+    const app: App<V> = {
         use(pathOrMw: string | Middleware<V>, mw?: Middleware<V>) {
             const path = typeof pathOrMw === "string" ? pathOrMw : null;
             const fn = typeof pathOrMw === "string" ? mw : pathOrMw;
@@ -214,55 +260,30 @@ export function createApp<V extends object = Record<string, unknown>>(options: A
             notFound = handler;
         },
 
-        get<Path extends string>(path: Path, handler: Handler<Simplify<ExtractParams<Path>>, V>) {
-            add("GET", path, handler as Handler);
-        },
-
-        post<Path extends string>(path: Path, handler: Handler<Simplify<ExtractParams<Path>>, V>) {
-            add("POST", path, handler as Handler);
-        },
-
-        put<Path extends string>(path: Path, handler: Handler<Simplify<ExtractParams<Path>>, V>) {
-            add("PUT", path, handler as Handler);
-        },
-
-        patch<Path extends string>(path: Path, handler: Handler<Simplify<ExtractParams<Path>>, V>) {
-            add("PATCH", path, handler as Handler);
-        },
-
-        delete<Path extends string>(path: Path, handler: Handler<Simplify<ExtractParams<Path>>, V>) {
-            add("DELETE", path, handler as Handler);
-        },
-
+        // どれも app.get(path, handler) か、スキーマを付けた app.get(path, { params, query, body }, handler)(src/validate.ts)
+        get: method("GET"),
+        post: method("POST"),
+        put: method("PUT"),
+        patch: method("PATCH"),
+        delete: method("DELETE"),
         // 登録しなければ GET を使う(ボディは送らない)。登録すれば GET より優先される
-        head<Path extends string>(path: Path, handler: Handler<Simplify<ExtractParams<Path>>, V>) {
-            add("HEAD", path, handler as Handler);
-        },
-
+        head: method("HEAD"),
         // 登録しなければ 204 と Allow を自動で返す。登録すればそちらが優先される
-        options<Path extends string>(path: Path, handler: Handler<Simplify<ExtractParams<Path>>, V>) {
-            add("OPTIONS", path, handler as Handler);
-        },
+        options: method("OPTIONS"),
+        // どのメソッドでも動く。ただし、メソッドが合うルートがあればそちらが優先
+        all: method("ALL"),
 
         // 任意のメソッド(QUERY や、PROPFIND などの WebDAV)を登録する。配列でまとめて登録もできる
         // 小文字で書いても大文字にする。CONNECT / TRACE / TRACK は扱わない
-        on<Path extends string>(
-            method: string | readonly string[],
-            path: Path,
-            handler: Handler<Simplify<ExtractParams<Path>>, V>,
-        ) {
-            const methods = typeof method === "string" ? [method] : method;
-            if (methods.length === 0) throw new Error(`app.on(..., "${path}") にメソッドがありません`);
-            for (const m of methods) {
+        on: ((methods: string | readonly string[], path: string, a: Handler | RouteSchemas, b?: Handler) => {
+            const list = typeof methods === "string" ? [methods] : methods;
+            if (list.length === 0) throw new Error(`app.on(..., "${path}") にメソッドがありません`);
+            const handler = routeHandler(path, a, b);
+            for (const m of list) {
                 if (m.toUpperCase() === "ALL") throw new Error("すべてのメソッドで動かすには app.all() を使ってください");
-                add(m, path, handler as Handler);
+                add(m, path, handler);
             }
-        },
-
-        // どのメソッドでも動く。ただし、メソッドが合うルートがあればそちらが優先
-        all<Path extends string>(path: Path, handler: Handler<Simplify<ExtractParams<Path>>, V>) {
-            add("ALL", path, handler as Handler);
-        },
+        }) as OnMethod<V>,
 
         // K はテーブルのキーから推論される。各キーのパスからパラメーターの型が決まる
         routes<K extends string>(table: RouteTable<K, V>) {

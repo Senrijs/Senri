@@ -1,4 +1,4 @@
-import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
+import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import type { Duplex } from "node:stream";
 import type { TLSSocket } from "node:tls";
 import { Readable } from "node:stream";
@@ -100,7 +100,7 @@ function notImplemented(socket: Duplex) {
     );
 }
 
-export function serve(app: App, options: { port: number }) {
+export function serve(app: App, options: { port: number }): Server {
     const server = createServer(async (req, res) => {
         if (NOT_IMPLEMENTED.has(req.method ?? "")) {
             res.writeHead(501, { "content-type": "text/plain; charset=utf-8", connection: "close" });
