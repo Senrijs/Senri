@@ -9,7 +9,7 @@
 ### 追加
 
 - Web 標準(`Request` → `Response`)のコア。Bun・Deno・Node.js・Cloudflare Workers で動く
-- `serve(app)`(`senri/serve`): ランタイムを自動で判別して起動する。ポートは 明示 → `PORT` → `3927`
+- `serve(app)`(`@senrijs/senri/serve`): ランタイムを自動で判別して起動する。ポートは 明示 → `PORT` → `3927`
   - SIGTERM / SIGINT で、処理中のリクエストを待ってから止まる(`shutdownTimeout`・`onShutdown`・`gracefulShutdown: false`)
 - ルーター
   - パラメーターのないルートは Map、それ以外は Trie。静的なセグメントが優先
@@ -20,7 +20,7 @@
 - パスパラメーターの型推論
 - Context: `c.status`・`c.header`・`c.json`・`c.text`・`c.set` / `c.get`・`c.query`・`c.body`・`c.cookie` / `c.setCookie` / `c.deleteCookie`・`c.ip`・`c.env`・`c.executionCtx`
 - [Standard Schema](https://standardschema.dev) によるバリデーション: `app.post(path, { params, query, body }, handler)` と `c.valid()`
-- ミドルウェア: 玉ねぎモデル、パス指定。標準で `logger`・`cors`・`secureHeaders`・`bodyLimit`・`health`(`/healthz`・`/readyz`)、`senri/static` の `serveStatic`
+- ミドルウェア: 玉ねぎモデル、パス指定。標準で `logger`・`cors`・`secureHeaders`・`bodyLimit`・`health`(`/healthz`・`/readyz`)、`@senrijs/senri/static` の `serveStatic`
 - 開発モード(`createApp({ dev: true })`)
   - エラーページ(該当コード・ヒント・エディタで開く)と 404 ページ(もしかして)
   - `/_senri` ダッシュボード(リクエスト一覧、玉ねぎタイムライン、ルートとミドルウェア)

@@ -35,7 +35,7 @@ Ideas and requests are welcome in [Issues](https://github.com/Senrijs/Senri/issu
 - [ ] Performance: reproducible benchmarks, faster router (Map + Trie), lower per-request overhead
 - [ ] `c.ip`
 - [ ] `Server-Timing` header in dev mode (see the onion in your browser's DevTools)
-- [ ] Published to npm (`senri`) and JSR (`@senrijs/senri`)
+- [ ] Published to npm and JSR (both `@senrijs/senri`)
 
 ## 0.1.1
 

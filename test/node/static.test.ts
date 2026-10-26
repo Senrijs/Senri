@@ -18,9 +18,9 @@ after(async () => {
 
 describe("senri/static(Node)", () => {
     test("ビルド済みの dist/ を指し、ファイルを返せる", async () => {
-        assert.match(import.meta.resolve("senri/static"), /\/dist\/adapters\/static\/index\.js$/);
-        const { createApp } = await import("senri");
-        const { serveStatic } = await import("senri/static");
+        assert.match(import.meta.resolve("@senrijs/senri/static"), /\/dist\/adapters\/static\/index\.js$/);
+        const { createApp } = await import("@senrijs/senri");
+        const { serveStatic } = await import("@senrijs/senri/static");
         const app = createApp();
         app.use(serveStatic({ root }));
 

@@ -11,8 +11,8 @@
 </p>
 
 ```ts
-import { createApp } from "senri";
-import { serve } from "senri/serve";
+import { createApp } from "@senrijs/senri";
+import { serve } from "@senrijs/senri/serve";
 
 const app = createApp();
 
@@ -30,8 +30,8 @@ serve(app);   // Bun でも Deno でも Node.js でも
 ## インストール
 
 ```bash
-npm install senri          # Node.js / Bun
-bun add senri
+npm install @senrijs/senri   # Node.js / Bun
+bun add @senrijs/senri
 deno add jsr:@senrijs/senri
 ```
 
@@ -39,10 +39,10 @@ Node.js は 22 以降で動きます。
 
 ## 起動のしかた
 
-`senri/serve` の `serve()` は、ランタイムを自動で判別して起動します。
+`@senrijs/senri/serve` の `serve()` は、ランタイムを自動で判別して起動します。
 
 ```ts
-import { serve } from "senri/serve";
+import { serve } from "@senrijs/senri/serve";
 
 const server = await serve(app);   // 起動すると、URL と登録されているルートの一覧を表示する
 server.url;                        // 例: "http://localhost:3927"
@@ -63,7 +63,7 @@ Deno では、環境変数を読む許可(`--allow-env=PORT` など)があると
 Bun.serve({ port: 3927, fetch: app.fetch });   // Bun
 Deno.serve({ port: 3927 }, app.fetch);          // Deno
 
-import { serve } from "senri/node";             // Node.js
+import { serve } from "@senrijs/senri/node";             // Node.js
 serve(app, { port: 3927 });
 ```
 
@@ -72,7 +72,7 @@ serve(app, { port: 3927 });
 アプリをそのまま `export default` します。`c.env` と `c.executionCtx` が使えます。
 
 ```ts
-import { createApp } from "senri";
+import { createApp } from "@senrijs/senri";
 
 type Env = { GREETING: string };
 const app = createApp<{ Bindings: Env }>();
@@ -88,7 +88,7 @@ export default app;
 - 変数の型も決めるときは `createApp<{ Bindings: Env; Variables: { user: User } }>()` と書きます。変数だけなら、今までどおり `createApp<{ user: User }>()` です
 - `c.ip` は、Cloudflare が付ける `CF-Connecting-IP` を読みます(Workers で動いているときだけ)
 - 開発モードのダッシュボードは作りません(`/_senri` はふつうの 404)。エラーページは出ますが、該当コードは出ません
-- 静的ファイルは `senri/static` ではなく、Workers の [Static Assets](https://developers.cloudflare.com/workers/static-assets/) で配ってください
+- 静的ファイルは `@senrijs/senri/static` ではなく、Workers の [Static Assets](https://developers.cloudflare.com/workers/static-assets/) で配ってください
 
 ### 止め方(graceful shutdown)
 
@@ -138,7 +138,7 @@ app.routes({ "GET /ping": () => "pong" });        // 表の形でもまとめて
 ### グループ化
 
 ```ts
-import { createRouter } from "senri";
+import { createRouter } from "@senrijs/senri";
 
 const posts = createRouter("/users/:id/posts");
 posts.get("/", ({ id }) => `user ${id} の投稿`);          // id に型が付く
@@ -222,8 +222,8 @@ app.use("/admin", (c, next) => {
 ### 標準のミドルウェア
 
 ```ts
-import { bodyLimit, cors, health, logger, secureHeaders } from "senri";
-import { serveStatic } from "senri/static";
+import { bodyLimit, cors, health, logger, secureHeaders } from "@senrijs/senri";
+import { serveStatic } from "@senrijs/senri/static";
 
 app.use(health({ ready: () => db.isConnected() }));   // /healthz と /readyz
 app.use(logger());                                     // 色付きで1行ずつ。{ format: "json" } で pino 形式
@@ -241,7 +241,7 @@ app.use(serveStatic({ root: "./public" }));            // Bun・Deno・Node.js �
 ## エラー
 
 ```ts
-import { HttpError } from "senri";
+import { HttpError } from "@senrijs/senri";
 
 app.get("/secret", () => {
     throw new HttpError(403, "見せられません");      // message はそのままクライアントに返る
