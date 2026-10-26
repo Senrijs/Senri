@@ -1,18 +1,18 @@
 // パッケージとして使われたときの形を確かめる(bun run build のあとに動かす)
-// "senri" はパッケージの自己参照なので、package.json の exports がそのまま使われる
+// "@senrijs/senri" はパッケージの自己参照なので、package.json の exports がそのまま使われる
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 describe("パッケージ", () => {
-    test('"senri" はビルド済みの dist/ の .js を指す', () => {
+    test('"@senrijs/senri" はビルド済みの dist/ の .js を指す', () => {
         // node_modules に入ったとき、Node は .ts の型を外してくれないので .js でないといけない
-        assert.match(import.meta.resolve("senri"), /\/dist\/src\/index\.js$/);
+        assert.match(import.meta.resolve("@senrijs/senri"), /\/dist\/src\/index\.js$/);
     });
 
-    test('"senri/node" で Node アダプターが使える', async () => {
-        assert.match(import.meta.resolve("senri/node"), /\/dist\/adapters\/node\/index\.js$/);
-        const { serve } = await import("senri/node");
+    test('"@senrijs/senri/node" で Node アダプターが使える', async () => {
+        assert.match(import.meta.resolve("@senrijs/senri/node"), /\/dist\/adapters\/node\/index\.js$/);
+        const { serve } = await import("@senrijs/senri/node");
 
         assert.equal(typeof serve, "function");
     });
@@ -28,7 +28,7 @@ describe("パッケージ", () => {
                 visit(new URL(m[1]!, file));
             }
         };
-        visit(new URL(import.meta.resolve("senri")));
+        visit(new URL(import.meta.resolve("@senrijs/senri")));
         const names = [...reached].map((href) => href.split("/dist/")[1]);
 
         assert.ok(names.includes("src/app.js"), "たどれていない");
@@ -37,7 +37,7 @@ describe("パッケージ", () => {
     });
 
     test("ビルド済みのコードでアプリが動く", async () => {
-        const { createApp } = await import("senri");
+        const { createApp } = await import("@senrijs/senri");
         const app = createApp();
         app.get("/users/:id", ({ id }) => `user ${id}`);
 

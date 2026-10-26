@@ -1,4 +1,4 @@
-import { createApp } from "senri";
+import { createApp } from "@senrijs/senri";
 
 const app = createApp();
 
