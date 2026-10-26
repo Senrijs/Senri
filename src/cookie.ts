@@ -21,7 +21,8 @@ const NAME = /^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$/;
 
 // "Cookie: a=1; b=2" を { a: "1", b: "2" } に。値はデコードする(できなければそのまま)
 export function parseCookies(header: string | null): Record<string, string> {
-    const out: Record<string, string> = {};
+    // プロトタイプのないオブジェクト(ふつうの {} だと "constructor" などの名前が継承したものと混ざる)
+    const out: Record<string, string> = Object.create(null);
     if (!header) return out;
     for (const part of header.split(";")) {
         const eq = part.indexOf("=");

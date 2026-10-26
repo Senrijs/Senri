@@ -9,8 +9,10 @@ function mediaType(req: Request): string {
     return (req.headers.get("content-type") ?? "").split(";")[0]!.trim().toLowerCase();
 }
 
+// フィールド名は送る側が決められるので、プロトタイプのないオブジェクトに入れる
+// (ふつうの {} だと "__proto__" でプロトタイプが差し替わり、"constructor" は継承した関数と混ざる)
 function formToObject(form: FormData): FormBody {
-    const out: FormBody = {};
+    const out: FormBody = Object.create(null);
     for (const [name, value] of form) {
         const prev = out[name];
         if (prev === undefined) out[name] = value;

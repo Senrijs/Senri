@@ -168,3 +168,28 @@ describe("Cookie", () => {
         return app.fetch(req("/c")).then(() => expect(error).toBeInstanceOf(TypeError));
     });
 });
+
+describe("送る側が決める名前(__proto__ / constructor)", () => {
+    test("フォームのフィールド名が、継承したものと混ざらない", async () => {
+        const app = createApp();
+        app.post("/", async (_, c) => {
+            const body = (await c.body()) as Record<string, unknown>;
+            return { keys: Object.keys(body), proto: body["__proto__"], ctor: body["constructor"], length: body["length"] ?? null };
+        });
+        const res = await app.fetch(
+            new Request("http://localhost/", {
+                method: "POST",
+                headers: { "content-type": "application/x-www-form-urlencoded" },
+                body: "__proto__=a&__proto__=b&constructor=c",
+            }),
+        );
+        expect(await res.json()).toEqual({ keys: ["__proto__", "constructor"], proto: ["a", "b"], ctor: "c", length: null });
+    });
+
+    test("constructor という名前の Cookie も読める。ない名前は undefined", async () => {
+        const app = createApp();
+        app.get("/", (_, c) => ({ ctor: c.cookie("constructor") ?? null, missing: c.cookie("toString") ?? null }));
+        const res = await app.fetch(new Request("http://localhost/", { headers: { cookie: "constructor=1" } }));
+        expect(await res.json()).toEqual({ ctor: "1", missing: null });
+    });
+});

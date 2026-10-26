@@ -118,6 +118,17 @@ describe("serveStatic()", () => {
         expect(res.status).toBe(404);
     });
 
+    test("root の中のシンボリックリンクがドットファイルを指していても配らない", async () => {
+        try {
+            await symlink(join(root, ".env"), join(root, "config.txt"));
+        } catch {
+            // Windows では権限がないとシンボリックリンクを作れない
+            return;
+        }
+        expect((await makeApp().fetch(req("/config.txt"))).status).toBe(404);
+        expect(await (await makeApp({ dotfiles: true }).fetch(req("/config.txt"))).text()).toBe("SECRET=1");
+    });
+
     test("prefix の下だけで配る", async () => {
         const app = makeApp({ prefix: "/static" });
         expect(await (await app.fetch(req("/static/app.js"))).text()).toBe("console.log(1)");

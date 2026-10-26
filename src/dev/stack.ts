@@ -33,7 +33,8 @@ export type ParseOptions = {
 // そのときは Senri の場所が分からないので、区別しない(どのフレームも利用者のコードとして扱う)
 function defaultSenriDirs(): string[] {
     const here: unknown = import.meta.url;
-    if (typeof here !== "string" || !URL.canParse(here)) return [];
+    // data: URL のように、相対パスを解決できない URL のこともある
+    if (typeof here !== "string" || !URL.canParse("../..", here)) return [];
     const root = toPath(new URL("../..", here).href).replace(/\/$/, "");
     // ビルド後は root が .../dist になっている
     const pkg = root.endsWith("/dist") ? root.slice(0, -"/dist".length) : root;

@@ -24,6 +24,8 @@ export function bodyLimit(options: BodyLimitOptions): Middleware {
         // Content-Length があれば、読む前に決められる(ランタイムが、それより長いボディは受け取らない)
         const length = c.req.headers.get("content-length");
         if (length !== null) {
+            // 数字でない値(ふつうはランタイムの HTTP パーサーがはじく)は、長さが分からないので通さない
+            if (!/^\s*\d+\s*$/.test(length)) return new Response("400 Bad Request", { status: 400 });
             return Number(length) > max ? tooLarge(c) : next();
         }
 

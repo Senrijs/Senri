@@ -3,8 +3,11 @@
 import type { Timing } from "../compose.ts";
 
 // desc は quoted-string なので、" と \ をエスケープする
+// ヘッダーの値は ByteString(U+00FF まで)なので、ASCII の表示文字以外(日本語の名前など)は %XX にする
+// (そのまま入れると Headers.set が例外を投げて、開発モードのレスポンスが返らなくなる)
 function quote(text: string): string {
-    return `"${text.replace(/[\\"]/g, (ch) => `\\${ch}`)}"`;
+    const ascii = text.replace(/[^\x20-\x7e]/gu, (ch) => encodeURIComponent(ch));
+    return `"${ascii.replace(/[\\"]/g, (ch) => `\\${ch}`)}"`;
 }
 
 const ms = (n: number) => Math.max(0, n).toFixed(2);

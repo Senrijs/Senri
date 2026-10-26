@@ -243,3 +243,30 @@ describe("扱わないメソッド", () => {
         expect(called).toBe(false);
     });
 });
+
+describe("QUERY とミドルウェア", () => {
+    test("ミドルウェアがボディを読み済みでも(Content-Length なし)、500 にならない", async () => {
+        const app = createApp();
+        app.use(async (c, next) => {
+            await c.body();
+            return next();
+        });
+        app.on("QUERY", "/search", async (_, c) => ({ query: await c.body() }));
+        const stream = new ReadableStream({
+            start(controller) {
+                controller.enqueue(new TextEncoder().encode(`{"q":"senri"}`));
+                controller.close();
+            },
+        });
+        const res = await app.fetch(
+            new Request("http://localhost/search", {
+                method: "QUERY",
+                headers: { "content-type": "application/json" },
+                body: stream,
+                duplex: "half",
+            } as RequestInit),
+        );
+        expect(res.status).toBe(200);
+        expect(await res.json()).toEqual({ query: { q: "senri" } });
+    });
+});

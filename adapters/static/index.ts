@@ -112,6 +112,8 @@ export function serveStatic(options: ServeStaticOptions): Middleware {
         const real = await realpath(file).catch(() => null);
         const base = await realRoot;
         if (real === null || (real !== base && !real.startsWith(base.endsWith(sep) ? base : base + sep))) return next();
+        // root の中のシンボリックリンクが .env などを指していることもあるので、実体のパスでもドットファイルを確かめる
+        if (!options.dotfiles && relative(base, real).split(sep).some((s) => s.startsWith("."))) return next();
 
         const etag = `W/"${info.size.toString(16)}-${Math.floor(info.mtimeMs).toString(16)}"`;
         const lastModified = info.mtime.toUTCString();

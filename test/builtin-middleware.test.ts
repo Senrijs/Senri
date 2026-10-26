@@ -265,3 +265,31 @@ describe("bodyLimit()", () => {
         expect(() => bodyLimit({ maxSize: -1 })).toThrow("maxSize");
     });
 });
+
+describe("レビューで見つかったもの", () => {
+    test("cors: 許可するオリジンがリクエストで変わるなら、Origin のないレスポンスにも Vary: Origin", async () => {
+        for (const origin of [["https://a.example"], () => true]) {
+            const app = createApp();
+            app.use(cors({ origin }));
+            app.get("/", () => "ok");
+            const res = await app.fetch(new Request("http://localhost/"));
+            expect(res.headers.get("vary")).toBe("Origin");
+            expect(res.headers.get("access-control-allow-origin")).toBeNull();
+        }
+        // "*" ならオリジンで変わらないので付けない
+        const app = createApp();
+        app.use(cors());
+        app.get("/", () => "ok");
+        expect((await app.fetch(new Request("http://localhost/"))).headers.get("vary")).toBeNull();
+    });
+
+    test("bodyLimit: 数字でない Content-Length は 400", async () => {
+        const app = createApp();
+        app.use(bodyLimit({ maxSize: 10 }));
+        app.post("/", async (_, c) => c.req.text());
+        const res = await app.fetch(
+            new Request("http://localhost/", { method: "POST", body: "x".repeat(100), headers: { "content-length": "abc" } }),
+        );
+        expect(res.status).toBe(400);
+    });
+});

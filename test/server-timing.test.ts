@@ -92,3 +92,18 @@ describe("Server-Timing(開発モード)", () => {
         expect(res.headers.get("server-timing")).toBeNull();
     });
 });
+
+describe("ASCII でない名前", () => {
+    test("日本語の名前のミドルウェアやルートでも、レスポンスが返り、名前は %XX になる", async () => {
+        const app = createApp({ dev: true });
+        app.use(async function 認証(_c, next) {
+            return next();
+        });
+        app.get("/ユーザー", () => "ok");
+        const res = await app.fetch(req("/ユーザー"));
+        expect(res.status).toBe(200);
+        const header = res.headers.get("server-timing")!;
+        expect(header).toContain(encodeURIComponent("認証"));
+        expect(header).toContain(`GET /${encodeURIComponent("ユーザー")}`);
+    });
+});

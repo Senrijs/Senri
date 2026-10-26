@@ -43,7 +43,16 @@ export function cors(options: CorsOptions = {}): Middleware {
 
     return async function cors(c, next) {
         const requestOrigin = c.req.headers.get("origin");
-        if (requestOrigin === null) return next();
+        if (requestOrigin === null) {
+            if (!varies) return next();
+            // 許可するオリジンがリクエストで変わるなら、Origin のないレスポンスにも Vary: Origin を付ける
+            // (付けないと、共有キャッシュが CORS ヘッダーのないこのレスポンスを、ほかのオリジンにも返してしまう)
+            const downstream = await next();
+            if (downstream.status < 200) return downstream;
+            const res = editable(downstream);
+            appendVary(res.headers, "Origin");
+            return res;
+        }
         const allowed = allowOrigin(requestOrigin, c);
 
         // プリフライト(本番のリクエストの前に、ブラウザが「送ってよいか」を OPTIONS で聞いてくるもの)には、ここで答える

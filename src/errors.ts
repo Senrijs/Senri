@@ -111,6 +111,8 @@ async function isEmptyBody(c: Context): Promise<boolean> {
     if (req.body === null) return true;
     const length = req.headers.get("content-length");
     if (length !== null) return length.trim() === "0";
+    // ミドルウェアが読み済みなら clone() は例外になる。読めたということは、ボディはあった
+    if (req.bodyUsed) return false;
 
     const reader = req.clone().body!.getReader();
     try {
