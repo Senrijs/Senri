@@ -1,4 +1,4 @@
-export { createApp, type AppOptions, type MountableApp } from "./app.ts";
+export { createApp, type App, type AppOptions, type MountableApp } from "./app.ts";
 export { createRouter, type Router } from "./group.ts";
 export {
     Context,

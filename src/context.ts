@@ -186,7 +186,7 @@ export class Context<V extends object = any, I extends object = {}> {
     }
 
     // ミドルウェアからハンドラーへ値を渡す(ログインしたユーザーなど)
-    set<K extends keyof VariablesOf<V> & string>(key: K, value: VariablesOf<V>[K]) {
+    set<K extends keyof VariablesOf<V> & string>(key: K, value: VariablesOf<V>[K]): this {
         (this.#vars ??= new Map()).set(key, value);
         return this;
     }
@@ -239,25 +239,25 @@ export class Context<V extends object = any, I extends object = {}> {
     }
 
     // 既定は Path=/・HttpOnly・SameSite=Lax(src/cookie.ts)
-    setCookie(name: string, value: string, options?: CookieOptions) {
+    setCookie(name: string, value: string, options?: CookieOptions): this {
         this.header("set-cookie", serializeCookie(name, value, options));
         return this;
     }
 
     // Path と Domain は、付けたときと同じものを指定する
-    deleteCookie(name: string, options?: Pick<CookieOptions, "path" | "domain">) {
+    deleteCookie(name: string, options?: Pick<CookieOptions, "path" | "domain">): this {
         this.header("set-cookie", deletionCookie(name, options));
         return this;
     }
 
-    status(code: number) {
+    status(code: number): this {
         this.#status = code;
         return this;
     }
 
     // ここで設定したヘッダーは、最後に finalize() で1回だけレスポンスに足される
     // なので、Response を直接返したときも、エラーのときも、next() のあとに設定しても効く
-    header(name: string, value: string) {
+    header(name: string, value: string): this {
         // Set-Cookie は1つのレスポンスに何個も付けるものなので、上書きせずに足す
         const headers = (this.#headers ??= new Headers());
         if (name.toLowerCase() === "set-cookie") {

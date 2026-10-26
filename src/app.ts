@@ -86,6 +86,27 @@ const appEntries = new WeakMap<object, () => GroupEntry[]>();
 // app.route(prefix, app) に渡せるもの(createApp() で作ったアプリ)
 export type MountableApp = { routeList(): { method: string; path: string }[] };
 
+// createApp() が返すアプリ
+export type App<V extends object = Record<string, unknown>> = {
+    use(pathOrMw: string | Middleware<V>, mw?: Middleware<V>): void;
+    onError(handler: ErrorHandler<V>): void;
+    notFound(handler: NotFoundHandler<V>): void;
+    get: RouteMethod<V>;
+    post: RouteMethod<V>;
+    put: RouteMethod<V>;
+    patch: RouteMethod<V>;
+    delete: RouteMethod<V>;
+    head: RouteMethod<V>;
+    options: RouteMethod<V>;
+    all: RouteMethod<V>;
+    on: OnMethod<V>;
+    routes<K extends string>(table: RouteTable<K, V>): void;
+    route(routerOrPrefix: Router<string, V> | string, child?: MountableApp): void;
+    middlewareList(): { name: string; path: string | null; anonymous: boolean }[];
+    routeList(): { method: string; path: string }[];
+    fetch(req: Request, info?: unknown, ctx?: ExecutionContext): Promise<Response>;
+};
+
 export type AppOptions = {
     // 開発モード。エラーの詳細や「もしかして」を返す。本番では絶対にオンにしない
     // 環境変数からは読まない(Deno では --allow-env がないと読めない、などランタイム差があるため)
@@ -94,7 +115,7 @@ export type AppOptions = {
 
 // V はアプリの型。c.set / c.get で使う変数の型(createApp<{ user: User }>())か、
 // Workers の env も含めた形(createApp<{ Bindings: Env; Variables: { user: User } }>())で指定する(src/context.ts)
-export function createApp<V extends object = Record<string, unknown>>(options: AppOptions = {}) {
+export function createApp<V extends object = Record<string, unknown>>(options: AppOptions = {}): App<V> {
     const dev = options.dev ?? false;
     const routes: Route[] = [];
     const matcher = createMatcher();
@@ -215,7 +236,7 @@ export function createApp<V extends object = Record<string, unknown>>(options: A
         return layers;
     }
 
-    const app = {
+    const app: App<V> = {
         use(pathOrMw: string | Middleware<V>, mw?: Middleware<V>) {
             const path = typeof pathOrMw === "string" ? pathOrMw : null;
             const fn = typeof pathOrMw === "string" ? mw : pathOrMw;
