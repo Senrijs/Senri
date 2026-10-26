@@ -1,5 +1,7 @@
 import { requestPathname, splitPath } from "./router.ts";
 import type { Timing } from "./compose.ts";
+import { readBody } from "./body.ts";
+import { deletionCookie, parseCookies, serializeCookie, type CookieOptions } from "./cookie.ts";
 
 // そのままレスポンスのボディにできるもの(JSON にはしない)
 // TypedArray は SharedArrayBuffer のもの以外(Response のボディにできないので)
@@ -50,6 +52,10 @@ export class Context<V extends object = any> {
     #headers = new Headers();
     #segments: string[] | undefined;
     #vars = new Map<string, unknown>();
+    // 一度読んだボディ(ミドルウェアとハンドラーの両方から読めるように覚えておく)
+    #body: Promise<unknown> | undefined;
+    #query: URLSearchParams | undefined;
+    #cookies: Record<string, string> | undefined;
     error: unknown = undefined;
     // マッチしたルートのパターン("/users/:id")。見つからなければ undefined
     // ミドルウェアより先にマッチするので、next() の前から読める(ログやダッシュボードの集計用)
@@ -86,6 +92,60 @@ export class Context<V extends object = any> {
     // set していなければ undefined(ミドルウェアが動かなかったときなど)
     get<K extends keyof V & string>(key: K): V[K] | undefined {
         return this.#vars.get(key) as V[K] | undefined;
+    }
+
+    // --- クエリ ---
+
+    #searchParams(): URLSearchParams {
+        this.#query ??= new URL(this.req.url).searchParams;
+        return this.#query;
+    }
+
+    // c.query("page") で1つ(なければ undefined)、c.query() で全部(同じ名前が複数あれば最後の値)
+    query(): Record<string, string>;
+    query(name: string): string | undefined;
+    query(name?: string): string | undefined | Record<string, string> {
+        const params = this.#searchParams();
+        if (name !== undefined) {
+            const all = params.getAll(name);
+            return all.length > 0 ? all[all.length - 1] : undefined;
+        }
+        return Object.fromEntries(params);
+    }
+
+    // 同じ名前のものを全部(?tag=a&tag=b → ["a", "b"])
+    queries(name: string): string[] {
+        return this.#searchParams().getAll(name);
+    }
+
+    // --- ボディ ---
+
+    // Content-Type に合わせて読む(JSON / フォーム / テキスト / それ以外は ArrayBuffer。src/body.ts)
+    // 一度読んだら覚えておくので、何度呼んでもよい
+    body<T = unknown>(): Promise<T> {
+        this.#body ??= readBody(this.req);
+        return this.#body as Promise<T>;
+    }
+
+    // --- Cookie ---
+
+    cookie(): Record<string, string>;
+    cookie(name: string): string | undefined;
+    cookie(name?: string): string | undefined | Record<string, string> {
+        this.#cookies ??= parseCookies(this.req.headers.get("cookie"));
+        return name === undefined ? { ...this.#cookies } : this.#cookies[name];
+    }
+
+    // 既定は Path=/・HttpOnly・SameSite=Lax(src/cookie.ts)
+    setCookie(name: string, value: string, options?: CookieOptions) {
+        this.header("set-cookie", serializeCookie(name, value, options));
+        return this;
+    }
+
+    // Path と Domain は、付けたときと同じものを指定する
+    deleteCookie(name: string, options?: Pick<CookieOptions, "path" | "domain">) {
+        this.header("set-cookie", deletionCookie(name, options));
+        return this;
     }
 
     status(code: number) {
