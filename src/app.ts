@@ -13,6 +13,7 @@ import {
     type Simplify,
 } from "./router.ts";
 import { compose, toResponseOf, type Layer } from "./compose.ts";
+import { groupEntries, type Router } from "./group.ts";
 import {
     defaultNotFound,
     defaultOnError,
@@ -198,6 +199,15 @@ export function createApp<V extends object = Record<string, unknown>>(options: A
                 }
 
                 add(method.toUpperCase(), path, handler);
+            }
+        },
+
+        // createRouter() で作ったルーターをつなげる。ルーターに登録済みのものが、この時点でアプリに入る
+        route(router: Router<string, V>) {
+            // 先に全部読んでおく(ルーターの作りがおかしいときに、途中まで登録された状態にしない)
+            for (const entry of groupEntries(router)) {
+                if (entry.kind === "use") app.use(entry.path, entry.mw);
+                else add(entry.method, entry.path, entry.handler);
             }
         },
 

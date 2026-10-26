@@ -100,3 +100,14 @@ withInterface.get("/me", (_, c) => c.get("user")?.name ?? "anonymous");
 // 外で定義したミドルウェアも使える
 const standalone: Middleware = (_c, next) => next();
 typed.use(standalone);
+
+// --- ルートのグループ化 ---
+
+import { createRouter } from "../src/index.ts";
+
+const usersRouter = createRouter("/users/:id");
+// プレフィックスのパラメーターも推論される
+usersRouter.get("/posts/:postId", ({ id, postId }) => `${id}${postId}`);
+// @ts-expect-error プレフィックスにもパスにもないパラメーター
+usersRouter.get("/", ({ nope }) => nope);
+app.route(usersRouter);

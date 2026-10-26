@@ -140,9 +140,10 @@ export function allowedMethods(routes: readonly Route[]): string {
 }
 
 // path の先頭が prefix と一致するか。セグメント単位で比べるので "/admin" は "/administrator" にはマッチしない
+// プレフィックスの ":id" のようなパラメーターは、どんなセグメントにも合う(matchPath と同じ判定)
 export function startsWithSegments(path: readonly string[], prefix: readonly string[]): boolean {
     if (path.length < prefix.length) return false;
-    return prefix.every((p, i) => p === path[i]);
+    return prefix.every((p, i) => p.startsWith(":") || p === path[i]);
 }
 
 // sort 用の比較関数。どの2つを比べても答えが矛盾しない(=並び順が一意に決まる)ようにする
