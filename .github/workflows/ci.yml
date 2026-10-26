@@ -29,7 +29,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        runtime: [bun, deno, node]
+        runtime: [bun, deno, node, workers]
     steps:
       - uses: actions/checkout@v6
 
@@ -37,8 +37,11 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: 24
-      - if: matrix.runtime == 'bun'
+      # workers は bun build でまとめてから workerd(devDependencies)で動かすので、Bun と依存も入れる
+      - if: matrix.runtime == 'bun' || matrix.runtime == 'workers'
         uses: oven-sh/setup-bun@v2
+      - if: matrix.runtime == 'workers'
+        run: bun install
       - if: matrix.runtime == 'deno'
         uses: denoland/setup-deno@v2
 

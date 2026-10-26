@@ -12,9 +12,12 @@ const DEFAULT_PORT = 3927;
 
 // workerd の実行ファイルそのもの。node_modules/.bin/workerd はこれを起動するだけのラッパーで、
 // ラッパーを止めても本物が残ってしまう(smoke が終わらなくなる)ので、直接起動する
+// workers を選んだときだけ解決する(ほかのランタイムの smoke では、workerd を入れていなくても動くように)
 // (文字列を変数にしてから import すると、TypeScript は型を探しにいかない)
-const WORKERD_PACKAGE = "workerd";
-const WORKERD: string = ((await import(WORKERD_PACKAGE)) as { default: { default: string } }).default.default;
+async function workerdPath(): Promise<string> {
+    const name = "workerd";
+    return ((await import(name)) as { default: { default: string } }).default.default;
+}
 
 // note: serve() のバナーに出る「ポートをどこから決めたか」。null ならバナーはない(workerd は serve() を使わない)
 const RUNTIMES: Record<string, { command: string[]; port: number; note: string | null; build?: string[] }> = {
@@ -24,7 +27,7 @@ const RUNTIMES: Record<string, { command: string[]; port: number; note: string |
     // ポートは examples/workers/config.capnp で決めている
     workers: {
         build: ["bun", "build", "examples/workers/index.ts", "--target", "browser", "--format", "esm", "--outfile", "examples/workers/dist/worker.js"],
-        command: [WORKERD, "serve", "examples/workers/config.capnp"],
+        command: ["workerd", "serve", "examples/workers/config.capnp"],
         port: 3929,
         note: null,
     },
@@ -242,7 +245,8 @@ async function smoke(runtime: string): Promise<boolean> {
             return false;
         }
     }
-    const [cmd, ...args] = command;
+    // "workerd" は、実行ファイルのパスにここで差し替える
+    const [cmd, ...args] = runtime === "workers" ? [await workerdPath(), ...command.slice(1)] : command;
     const base = `http://localhost:${port}`;
     const child = spawn(cmd!, args, {
         stdio: ["ignore", "pipe", "pipe"],
