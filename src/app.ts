@@ -278,7 +278,7 @@ export function createApp<V extends object = Record<string, unknown>>(options: A
             // 開発モードのときだけ、計測の基準になるリクエストの開始時刻を取る
             const origin = dev ? performance.now() : 0;
             const time = dev ? Date.now() : 0;
-            const c = new Context<V>(req);
+            const c = new Context<V>(req, info);
             const dashboard = dashboardPromise ? await dashboardPromise : null;
             // /_senri 以下はダッシュボード。localhost から開いたときだけ、ミドルウェアを通さずに処理する
             // (開けないときは普通の処理に回すので、/_senri はないものとして 404 になる)。どちらも記録はしない

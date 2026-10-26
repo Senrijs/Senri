@@ -12,6 +12,7 @@ app.get("/url", (_, c) => c.req.url);
 app.post("/echo", async (_, c) => `body=${await c.req.text()}`);
 app.on("QUERY", "/search", async (_, c) => `query=${await c.req.text()}`);
 app.all("/anything", (_, c) => c.req.method);
+app.get("/ip", (_, c) => c.ip ?? "unknown");
 app.get("/cookies", () => {
     const headers = new Headers();
     headers.append("set-cookie", "a=1");
@@ -180,6 +181,12 @@ describe("Node アダプター", () => {
         broken.close();
 
         assert.equal(res.status, 500);
+    });
+
+    test("c.ip で接続元のアドレスが読める", async () => {
+        const res = await fetch(`http://127.0.0.1:${port}/ip`);
+
+        assert.equal(await res.text(), "127.0.0.1");
     });
 
     test("QUERY のボディがアプリに届く", async () => {

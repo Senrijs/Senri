@@ -1,4 +1,5 @@
 import { requestPathname, splitPath } from "./router.ts";
+import { clientIp } from "./connection.ts";
 import type { Timing } from "./compose.ts";
 import { readBody } from "./body.ts";
 import { deletionCookie, parseCookies, serializeCookie, type CookieOptions } from "./cookie.ts";
@@ -66,8 +67,23 @@ export class Context<V extends object = any> {
     // 自分より内側の層は、next() が終わったあとに読める
     timings: Timing[] = [];
 
-    constructor(req: Request) {
+    // app.fetch に渡された元のリクエストと2つ目の引数(c.ip で使う)
+    // Bun の requestIP は元のリクエストでしか答えないので、c.req が差し替えられても元のほうで聞く
+    #original: Request;
+    #info: unknown;
+    #ip: string | null | undefined;
+
+    constructor(req: Request, info?: unknown) {
         this.req = req;
+        this.#original = req;
+        this.#info = info;
+    }
+
+    // 接続元の IP アドレス。分からなければ null(Cloudflare Workers や、app.fetch を直接呼んだときなど)
+    // X-Forwarded-For などのヘッダーは偽装できるので読まない。プロキシの後ろでは、プロキシが付けるヘッダーを自分で読む
+    get ip(): string | null {
+        if (this.#ip === undefined) this.#ip = clientIp(this.#original, this.#info);
+        return this.#ip;
     }
 
     // パスをデコードして "/" で分けたもの。ルーターもミドルウェアもこれを見る

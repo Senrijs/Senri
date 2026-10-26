@@ -1,33 +1,11 @@
 // ダッシュボード(/_senri)を開いてよいリクエストかを決める
 //
 // ダッシュボードには、リクエストのヘッダーやエラーの中身(ソースコード)が出るので、
-// 同じ PC(ループバック)からのアクセスだけに絞る。そのために接続元のアドレスが要るが、
-// Web 標準の Request には入っていないので、app.fetch の2つ目の引数から取り出す:
-// - Bun:  Bun.serve({ fetch: app.fetch }) は server を渡す → server.requestIP(req)
-// - Deno: Deno.serve(app.fetch) は info を渡す → info.remoteAddr.hostname
-// - Node: senri/node のアダプターが Deno と同じ形 { remoteAddr: { hostname } } で渡す
-// 型ではなく「形」で見分けるので、Cloudflare Workers の fetch(req, env, ctx) の env のような
-// 別のものが来ても壊れず、「接続元不明」になる(ダッシュボードだけ拒否し、ほかは普通に動く)
+// 同じ PC(ループバック)からのアクセスだけに絞る。接続元のアドレスは src/connection.ts で取り出す
+// (取り出せなければ「接続元不明」として、ダッシュボードだけ拒否し、ほかは普通に動く)
+import { remoteAddress } from "../../connection.ts";
 
-type BunServerLike = { requestIP(req: Request): { address: string } | null };
-type DenoInfoLike = { remoteAddr: { hostname: string } };
-
-export function remoteAddress(req: Request, info: unknown): string | null {
-    try {
-        if (typeof info !== "object" || info === null) return null;
-        const bun = info as Partial<BunServerLike>;
-        if (typeof bun.requestIP === "function") {
-            const address = bun.requestIP(req)?.address;
-            return typeof address === "string" ? address : null;
-        }
-        const deno = info as Partial<DenoInfoLike>;
-        const hostname = typeof deno.remoteAddr === "object" && deno.remoteAddr !== null ? deno.remoteAddr.hostname : undefined;
-        return typeof hostname === "string" ? hostname : null;
-    } catch {
-        // プロパティを読んだだけで例外を投げるような値でも、壊れずに「不明」にする
-        return null;
-    }
-}
+export { remoteAddress };
 
 // 127.0.0.0/8 と ::1(IPv4 を IPv6 の形で書いた ::ffff:127.x.x.x も)
 export function isLoopback(address: string | null): boolean {
