@@ -1,5 +1,8 @@
 // 型だけのテスト。bun test では実行せず、bun check(bun run typecheck)で確かめる
 // 「ts-expect-error」のコメントは、次の行が型エラーになることを期待する。エラーにならなければ、そちらがエラーになる
+import { type } from "arktype";
+import * as v from "valibot";
+import { z } from "zod";
 import { createApp, logger, type ExecutionContext, type Middleware } from "../src/index.ts";
 
 const app = createApp();
@@ -166,4 +169,36 @@ varsOnly.get("/", (_, c) => {
     // @ts-expect-error env の中身は分からない
     c.env.GREETING;
     return c.get("user") ?? "";
+});
+
+// --- Standard Schema によるバリデーション ---
+
+const zBody = z.object({ name: z.string(), age: z.number() });
+app.post("/v/:id", { params: z.object({ id: z.coerce.number() }), body: zBody }, ({ id }, c) => {
+    // params のスキーマの変換後の型
+    const n: number = id;
+    const body: { name: string; age: number } = c.valid("body");
+    // @ts-expect-error query のスキーマは渡していない
+    c.valid("query");
+    return { n, body };
+});
+// params のスキーマがなければ、今までどおりパスから取り出した型
+app.post("/v2/:slug", { query: v.object({ q: v.string() }) }, ({ slug }, c) => {
+    const s: string = slug;
+    const q: string = c.valid("query").q;
+    return s + q;
+});
+// @ts-expect-error params のスキーマがなければ、パスにないパラメーターは型エラー
+app.post("/v2b/:slug", { query: v.object({ q: v.string() }) }, ({ nope }) => nope);
+app.put("/v3", { body: type({ ok: "boolean" }) }, (_, c) => {
+    const ok: boolean = c.valid("body").ok;
+    return { ok };
+});
+app.on("QUERY", "/v4", { body: zBody }, (_, c) => c.valid("body").name);
+usersRouter.post("/v5", { body: zBody }, ({ id }, c) => `${id} ${c.valid("body").age}`);
+// スキーマのないルートでは c.valid は何も読めない
+app.get("/v6", (_, c) => {
+    // @ts-expect-error スキーマを渡していない
+    c.valid("body");
+    return "x";
 });
