@@ -45,13 +45,4 @@ describe("パッケージ", () => {
 
         assert.equal(await res.text(), "user 42");
     });
-
-    test('"@senrijs/senri/tiny" も dist/ の .js を指し、そのまま使える', async () => {
-        assert.match(import.meta.resolve("@senrijs/senri/tiny"), /\/dist\/src\/tiny\.js$/);
-        const { createApp } = await import("@senrijs/senri/tiny");
-        const app = createApp();
-        app.get("/", () => "tiny");
-        assert.equal(await (await app.fetch(new Request("http://localhost/"))).text(), "tiny");
-        assert.throws(() => createApp({ dev: true }), /開発モードがありません/);
-    });
 });

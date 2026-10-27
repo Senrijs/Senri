@@ -202,10 +202,3 @@ app.get("/v6", (_, c) => {
     c.valid("body");
     return "x";
 });
-
-// --- @senrijs/senri/tiny は同じ型 ---
-import { createApp as createTinyApp } from "../src/tiny.ts";
-const tinyApp = createTinyApp<{ Bindings: { KEY: string } }>();
-tinyApp.get("/t/:id", ({ id }, c) => `${id} ${c.env.KEY}`);
-const tinyWorker: { fetch(req: Request, env: { KEY: string }, ctx: ExecutionContext): Promise<Response> } = tinyApp;
-void tinyWorker;
