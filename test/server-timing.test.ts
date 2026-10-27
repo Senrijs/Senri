@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { createApp } from "../src/index.ts";
+import { devtools } from "../src/dev/index.ts";
 
 const req = (path: string, init?: RequestInit) => new Request(`http://localhost${path}`, init);
 
@@ -17,7 +18,7 @@ function parse(header: string | null) {
 }
 
 function devApp() {
-    const app = createApp({ dev: true });
+    const app = createApp({ dev: devtools() });
     app.use(async function first(_c, next) {
         await next();
     });
@@ -49,7 +50,7 @@ describe("Server-Timing(開発モード)", () => {
     });
 
     test("アプリが付けた Server-Timing は残して、後ろに足す", async () => {
-        const app = createApp({ dev: true });
+        const app = createApp({ dev: devtools() });
         app.get("/db", (_, c) => {
             c.header("server-timing", 'db;desc="query";dur=12');
             return "ok";
@@ -63,7 +64,7 @@ describe("Server-Timing(開発モード)", () => {
     });
 
     test('名前に " や \\ があってもヘッダーが壊れない', async () => {
-        const app = createApp({ dev: true });
+        const app = createApp({ dev: devtools() });
         const mw = async (_c: unknown, next: () => Promise<Response>) => {
             await next();
         };
@@ -86,7 +87,7 @@ describe("Server-Timing(開発モード)", () => {
     });
 
     test("ダッシュボード(/_senri)には付けない", async () => {
-        const app = createApp({ dev: true });
+        const app = createApp({ dev: devtools() });
         const info = { remoteAddr: { hostname: "127.0.0.1" } };
         const res = await app.fetch(req("/_senri/api/requests", { headers: { host: "localhost" } }), info);
         expect(res.headers.get("server-timing")).toBeNull();
@@ -95,7 +96,7 @@ describe("Server-Timing(開発モード)", () => {
 
 describe("ASCII でない名前", () => {
     test("日本語の名前のミドルウェアやルートでも、レスポンスが返り、名前は %XX になる", async () => {
-        const app = createApp({ dev: true });
+        const app = createApp({ dev: devtools() });
         app.use(async function 認証(_c, next) {
             return next();
         });

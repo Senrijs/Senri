@@ -29,7 +29,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        runtime: [bun, deno, node, workers]
+        runtime: [bun, deno, node, workers, browser]
     steps:
       - uses: actions/checkout@v6
 
@@ -38,11 +38,17 @@ jobs:
         with:
           node-version: 24
       # workers は bun build でまとめてから workerd(devDependencies)で動かすので、Bun と依存も入れる
-      - if: matrix.runtime == 'bun' || matrix.runtime == 'workers'
+      # browser も bun build でまとめてから、Playwright(devDependencies)の Chromium で開く
+      - if: matrix.runtime == 'bun' || matrix.runtime == 'workers' || matrix.runtime == 'browser'
         uses: oven-sh/setup-bun@v2
-      - if: matrix.runtime == 'workers'
+      - if: matrix.runtime == 'workers' || matrix.runtime == 'browser'
         run: bun install
+      - if: matrix.runtime == 'browser'
+        run: npx playwright install --with-deps chromium
       - if: matrix.runtime == 'deno'
         uses: denoland/setup-deno@v2
 
-      - run: node scripts/smoke.ts ${{ matrix.runtime }}
+      - if: matrix.runtime != 'browser'
+        run: node scripts/smoke.ts ${{ matrix.runtime }}
+      - if: matrix.runtime == 'browser'
+        run: node scripts/browser.ts

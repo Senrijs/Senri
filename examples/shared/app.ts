@@ -1,7 +1,9 @@
 import { createApp, health, logger, type StandardSchemaV1 } from "../../src/index.ts";
+import { devtools } from "../../src/dev/index.ts";
+import { getIp } from "../../src/ip.ts";
 
 // examples は手元で動かすものなので開発モード
-export const app = createApp({ dev: true });
+export const app = createApp({ dev: devtools() });
 
 // ヘルスチェックはロガーより先に置く(probe のたびにログが出ないように)
 app.use(health());
@@ -27,7 +29,7 @@ app.get("/ua", (_, c) => c.req.headers.get("user-agent") ?? "unknown");
 app.post("/echo", async (_, c) => `body=${await c.req.text()}`);
 // QUERY: 検索の条件をボディに入れて送る(RFC 10008)
 app.on("QUERY", "/search", async (_, c) => ({ query: await c.body() }));
-app.get("/client-ip", (_, c) => ({ ip: c.ip }));
+app.get("/client-ip", (_, c) => ({ ip: getIp(c) }));
 // バリデーション(Standard Schema)。ふつうは Zod・Valibot・ArkType などのスキーマを渡す。ここでは依存なしで書いた最小のもの
 const positive: StandardSchemaV1<unknown, { n: number }> = {
     "~standard": {

@@ -3,6 +3,7 @@ import { type } from "arktype";
 import * as v from "valibot";
 import { z } from "zod";
 import { createApp, createRouter, ValidationError, type StandardSchemaV1 } from "../src/index.ts";
+import { devtools } from "../src/dev/index.ts";
 
 const req = (path: string, init?: RequestInit) => new Request(`http://localhost${path}`, init);
 const json = (path: string, body: unknown, method = "POST") =>
@@ -31,7 +32,7 @@ describe("Standard Schema によるバリデーション", () => {
     for (const [name, schemas] of Object.entries(LIBS)) {
         describe(name, () => {
             function makeApp(dev = false) {
-                const app = createApp({ dev });
+                const app = createApp({ dev: dev ? devtools() : undefined });
                 app.post("/users/:id", schemas, ({ id }, c) => ({
                     id,
                     params: c.params,
@@ -91,7 +92,7 @@ describe("ValidationError", () => {
     });
 
     test("ネストしたパスは user[0].name のように出す", async () => {
-        const app = createApp({ dev: true });
+        const app = createApp({ dev: devtools() });
         app.post("/", { body: z.object({ users: z.array(z.object({ name: z.string() })) }) }, () => "ok");
         const res = await app.fetch(json("/", { users: [{ name: 1 }] }));
         expect(await res.text()).toContain("- users[0].name: ");
@@ -152,18 +153,25 @@ describe("いろいろな書き方", () => {
 });
 
 describe("登録時のチェック", () => {
-    test("スキーマでないものや、知らないキーはエラー", () => {
-        const app = createApp();
+    test("開発モードでは、スキーマでないものや知らないキーを、登録した時点でエラーにする", () => {
+        const app = createApp({ dev: devtools() });
         expect(() => app.post("/", { body: {} } as never, () => "x")).toThrow("Standard Schema");
         expect(() => app.post("/", { json: z.string() } as never, () => "x")).toThrow("params / query / body");
         expect(() => app.post("/", { body: z.string() } as never)).toThrow("ハンドラーがありません");
     });
 
+    test("本番でも、ハンドラーがなければ登録時にエラー(短い英語)", () => {
+        const app = createApp();
+        expect(() => app.post("/", { body: z.string() } as never)).toThrow("Missing handler: /");
+    });
+
     test("スキーマを渡していないものを c.valid() で読むと、分かりやすいエラー", async () => {
-        const app = createApp({ dev: true });
+        const app = createApp({ dev: devtools() });
         app.get("/", (_, c) => (c as never as { valid(t: string): unknown }).valid("body") as string);
         const res = await app.fetch(req("/"));
         expect(res.status).toBe(500);
-        expect(await res.text()).toContain('c.valid("body") の値がありません');
+        const text = await res.text();
+        expect(text).toContain("c.valid() で読めるのは");
+        expect(text).toContain('c.valid("body"): no schema for body');
     });
 });

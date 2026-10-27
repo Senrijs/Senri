@@ -1,5 +1,5 @@
 {
     "tasks": {
-        "start": "deno run --allow-net --allow-env=PORT index.ts"
+        "start": "deno run --allow-net --allow-env=PORT,NODE_ENV index.ts"
     }
 }

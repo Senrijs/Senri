@@ -1,5 +1,6 @@
 // よくあるエラーに、直し方のヒントを付ける(ルールベース。当てはまらなければ何も出さない)
 // エラーメッセージの書き方はランタイムで違う(Bun と、V8 の Node / Deno)ので、両方を見る
+import { errorCode } from "../errors.ts";
 import type { StackFrame } from "./stack.ts";
 
 export type Hint = {
@@ -31,18 +32,18 @@ function propertyOfNothing(message: string): string | null {
 const rules: Rule[] = [
     // Senri 自身が投げるエラー
     (err) =>
-        err.message.startsWith("next() が2回呼ばれました")
+        errorCode(err) === "next_twice"
             ? {
                   text: "1つのミドルウェアで `next()` を2回呼んでいます。`await next()` は1回だけにして、結果を変数に入れて使ってください。",
                   code: "const res = await next();",
               }
             : null,
     (err) =>
-        err.message.startsWith("ハンドラーが関数を返しました")
+        errorCode(err) === "returned_function"
             ? { text: "関数を呼び出さずに返しています。`()` を付けて呼び出した結果を返してください。", code: "return getUser();" }
             : null,
     (err) =>
-        err.message.startsWith("ハンドラーが何も返していません")
+        errorCode(err) === "returned_nothing"
             ? { text: "ハンドラーが値を返していません。`return` を忘れていないか確かめてください。", code: 'return "ok";' }
             : null,
 

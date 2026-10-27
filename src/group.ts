@@ -2,15 +2,8 @@
 // (あとから app.route("/users/:id", router) のように付ける形だと、中のハンドラーで id の型が分からないため)
 import type { Handler, Middleware } from "./context.ts";
 import { normalizeMethod, splitPattern, type ExtractParams, type Simplify } from "./router.ts";
-import { checkSchemas, withValidation, type RouteSchemas, type Validated, type ValidatedParams } from "./validate.ts";
-
-// 2つ目の引数がスキーマなら、確かめてからハンドラーを呼ぶものにする(app.ts と同じ)
-export function routeHandler(path: string, a: Handler | RouteSchemas, b: Handler | undefined): Handler {
-    if (typeof a === "function") return a;
-    if (typeof b !== "function") throw new TypeError(`${path}: ハンドラーがありません`);
-    checkSchemas(path, a);
-    return withValidation(a, b);
-}
+import { routeHandler, type RouteSchemas, type Validated, type ValidatedParams } from "./validate.ts";
+import { senriError } from "./errors.ts";
 
 // プレフィックスとパスをつないだときのパラメーター。"/" を挟むので、"posts" のように "/" なしで書いてもよい
 type GroupParams<Prefix extends string, Path extends string> = Simplify<ExtractParams<`${Prefix}/${Path}`>>;
@@ -66,7 +59,7 @@ export function joinPath(...parts: string[]): string {
 // ルーターに登録されたものを、プレフィックスを付けたパスで返す
 export function groupEntries(router: Router): GroupEntry[] {
     const list = entries.get(router);
-    if (!list) throw new TypeError("app.route() には createRouter() で作ったルーターを渡してください");
+    if (!list) throw senriError("not_router", new TypeError("Not a router from createRouter()"));
     return list("");
 }
 
@@ -87,7 +80,7 @@ export function createRouter<Prefix extends string, V extends object = Record<st
         use(pathOrMw, mw) {
             const path = typeof pathOrMw === "string" ? pathOrMw : "/";
             const fn = typeof pathOrMw === "string" ? mw : pathOrMw;
-            if (!fn) throw new Error(`router.use("${path}", ...) にミドルウェアがありません`);
+            if (!fn) throw senriError("no_middleware", `Missing middleware: ${path}`);
             items.push({ kind: "entry", entry: { kind: "use", path, mw: fn as Middleware } });
         },
         get: method("GET"),
@@ -100,16 +93,16 @@ export function createRouter<Prefix extends string, V extends object = Record<st
         options: method("OPTIONS"),
         on: ((methods: string | readonly string[], path: string, a: Handler<any> | RouteSchemas, b?: Handler<any>) => {
             const list = typeof methods === "string" ? [methods] : methods;
-            if (list.length === 0) throw new Error(`router.on(..., "${path}") にメソッドがありません`);
+            if (list.length === 0) throw senriError("no_method", `Missing method: ${path}`);
             const handler = routeHandler(path, a, b);
             for (const m of list) {
-                if (m.toUpperCase() === "ALL") throw new Error("すべてのメソッドで動かすには all() を使ってください");
+                if (m.toUpperCase() === "ALL") throw senriError("on_all", "Use all() for every method");
                 // 名前の確認(CONNECT などの拒否)は、ここで先にしておく(app.route まで待たない)
                 push(normalizeMethod(m), path, handler);
             }
         }) as Router<Prefix, V>["on"],
         route(child) {
-            if (!entries.has(child)) throw new TypeError("route() には createRouter() で作ったルーターを渡してください");
+            if (!entries.has(child)) throw senriError("not_router", new TypeError("Not a router from createRouter()"));
             items.push({ kind: "router", router: child });
         },
     };
@@ -117,7 +110,7 @@ export function createRouter<Prefix extends string, V extends object = Record<st
     const seen = new Set<Router>();
     entries.set(router, (base) => {
         // ルーターが自分自身を(間接的にでも)含んでいると終わらないので止める
-        if (seen.has(router)) throw new Error(`ルーター ${prefix} が自分自身を含んでいます`);
+        if (seen.has(router)) throw senriError("router_cycle", `Router ${prefix} contains itself`);
         seen.add(router);
         try {
             const here = joinPath(base, prefix);

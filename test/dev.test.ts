@@ -1,11 +1,12 @@
-import { describe, expect, test } from "bun:test";
-import { createApp } from "../src/index.ts";
+import { afterEach, beforeEach, describe, expect, test } from "bun:test";
+import { createApp, type AppOptions } from "../src/index.ts";
 import { explainDifference, suggest } from "../src/dev/suggest.ts";
+import { devtools } from "../src/dev/index.ts";
 
 const req = (path: string, init?: RequestInit) =>
     new Request(`http://localhost${path}`, init);
 
-function appWithRoutes(options?: { dev?: boolean }) {
+function appWithRoutes(options?: AppOptions) {
     const app = createApp(options);
     app.get("/hello", () => "hi");
     app.get("/boom", () => {
@@ -49,22 +50,22 @@ describe("本番(既定)では固定の文言だけ返す", () => {
     });
 });
 
-describe("開発モード createApp({ dev: true })", () => {
+describe("開発モード createApp({ dev: devtools() })", () => {
     test("500 にエラーメッセージが出る", async () => {
-        const res = await appWithRoutes({ dev: true }).fetch(req("/boom"));
+        const res = await appWithRoutes({ dev: devtools() }).fetch(req("/boom"));
 
         expect(res.status).toBe(500);
         expect(await res.text()).toContain("db password=hunter2");
     });
 
     test("404 に「もしかして」が出る", async () => {
-        const res = await appWithRoutes({ dev: true }).fetch(req("/helo"));
+        const res = await appWithRoutes({ dev: devtools() }).fetch(req("/helo"));
 
         expect(await res.text()).toContain("もしかして: GET /hello");
     });
 
     test("「もしかして」はデコード・正規化したパスで探す", async () => {
-        const app = createApp({ dev: true });
+        const app = createApp({ dev: devtools() });
         app.get("/こんにちは", () => "ok");
         app.get("/hello", () => "ok");
 
@@ -76,22 +77,37 @@ describe("開発モード createApp({ dev: true })", () => {
     });
 
     test("405 のメッセージも正規化したパスを出す", async () => {
-        const res = await appWithRoutes({ dev: true }).fetch(req("//hello/", { method: "POST" }));
+        const res = await appWithRoutes({ dev: devtools() }).fetch(req("//hello/", { method: "POST" }));
 
         expect(await res.text()).toStartWith("405 Method Not Allowed: POST /hello\n");
     });
 
     test("405 にどのメソッドならあるかが出る", async () => {
-        const res = await appWithRoutes({ dev: true }).fetch(req("/hello", { method: "POST" }));
+        const res = await appWithRoutes({ dev: devtools() }).fetch(req("/hello", { method: "POST" }));
 
         expect(await res.text()).toContain("GET, HEAD, OPTIONS ならあります");
     });
 });
 
 describe("計測(c.timings)", () => {
-    const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+    // 時計(performance.now)を差し替えて、時間を決め打ちにする(マシンの負荷で結果が変わらないように)
+    // 時計はテストのコードが進めたときだけ進む
+    let clock = 0;
+    const realNow = performance.now.bind(performance);
+    beforeEach(() => {
+        clock = 0;
+        performance.now = () => clock;
+    });
+    afterEach(() => {
+        performance.now = realNow;
+    });
+    // 待ったことにする(時計を進めて、ほかの処理に一度順番をゆずる)
+    const sleep = async (ms: number) => {
+        clock += ms;
+        await Promise.resolve();
+    };
 
-    function measuredApp(options: { dev?: boolean }) {
+    function measuredApp(options: AppOptions) {
         const app = createApp(options);
         let timings: unknown[] = [];
         // いちばん外側で、内側の計測結果を読む
@@ -111,22 +127,22 @@ describe("計測(c.timings)", () => {
     }
 
     test("開発モードでは、ミドルウェアとハンドラーの self / total が記録される", async () => {
-        const { app, read } = measuredApp({ dev: true });
+        const { app, read } = measuredApp({ dev: devtools() });
 
         await app.fetch(req("/x"));
         const [, slow, handler] = read();
 
         expect(slow!.name).toBe("slow");
         expect(handler!.name).toBe("handler");
-        // ハンドラーの時間は slow の self には入らない
-        expect(handler!.self).toBeGreaterThanOrEqual(50);
-        expect(slow!.self).toBeLessThan(40);
+        // ハンドラーの 60ms は slow の self には入らない(slow 自身が待った 10ms だけ)
+        expect(handler!.self).toBe(60);
+        expect(slow!.self).toBe(10);
         // total = 自分の時間 + 下流の total
-        expect(Math.abs(slow!.total - (slow!.self + handler!.total))).toBeLessThan(5);
+        expect(slow!.total).toBe(slow!.self + handler!.total);
     });
 
     test("例外が起きた層に failed が付く(ハンドラー)", async () => {
-        const app = createApp({ dev: true });
+        const app = createApp({ dev: devtools() });
         let timings: { name: string; failed: boolean }[] = [];
         app.use(async function outer(c, next) {
             await next();
@@ -147,7 +163,7 @@ describe("計測(c.timings)", () => {
     });
 
     test("例外が起きた層に failed が付く(ミドルウェア)", async () => {
-        const app = createApp({ dev: true });
+        const app = createApp({ dev: devtools() });
         let timings: { name: string; failed: boolean }[] = [];
         app.use(async function outer(c, next) {
             await next();
@@ -166,18 +182,18 @@ describe("計測(c.timings)", () => {
     });
 
     test("各層の開始時刻(リクエストの開始から)が入り、内側の層ほど後に始まる", async () => {
-        const { app, read } = measuredApp({ dev: true });
+        const { app, read } = measuredApp({ dev: devtools() });
 
         await app.fetch(req("/x"));
         const [, slow, handler] = read();
 
-        expect(slow!.start).toBeGreaterThanOrEqual(0);
+        expect(slow!.start).toBe(0);
         // slow は next() の前に 10ms 待つので、handler はその後に始まる
-        expect(handler!.start).toBeGreaterThanOrEqual(slow!.start + 5);
+        expect(handler!.start).toBe(slow!.start + 10);
     });
 
     test("next() を呼ばずに値を返して終わった層に stopped が付く", async () => {
-        const app = createApp({ dev: true });
+        const app = createApp({ dev: devtools() });
         let timings: { name: string; stopped: boolean }[] = [];
         app.use(async function outer(c, next) {
             await next();
@@ -196,7 +212,7 @@ describe("計測(c.timings)", () => {
     });
 
     test("next() のあとに値を返した層は stopped ではない", async () => {
-        const app = createApp({ dev: true });
+        const app = createApp({ dev: devtools() });
         let timings: { name: string; stopped: boolean }[] = [];
         app.use(async function outer(c, next) {
             await next();
@@ -214,7 +230,7 @@ describe("計測(c.timings)", () => {
     });
 
     test("いちばん内側の層の名前は、何が動いたかで変わる(handler / notFound / 405 / options / 400)", async () => {
-        const app = createApp({ dev: true });
+        const app = createApp({ dev: devtools() });
         let last = "";
         app.use(async function outer(c, next) {
             await next();

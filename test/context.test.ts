@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { createApp, HttpError } from "../src/index.ts";
+import { devtools } from "../src/dev/index.ts";
 
 const req = (path: string, init?: RequestInit) =>
     new Request(`http://localhost${path}`, init);
@@ -148,7 +149,7 @@ describe("ハンドラーの戻り値", () => {
     });
 
     test("関数を返したら、呼び忘れとして 500 になる", async () => {
-        const app = createApp({ dev: true });
+        const app = createApp({ dev: devtools() });
         app.get("/f", () => (() => 1) as never);
 
         const res = await app.fetch(req("/f"));
@@ -158,7 +159,7 @@ describe("ハンドラーの戻り値", () => {
     });
 
     test("undefined を返したら 500 になる(JS から使ったときなど)", async () => {
-        const app = createApp({ dev: true });
+        const app = createApp({ dev: devtools() });
         app.get("/u", () => undefined as never);
 
         const res = await app.fetch(req("/u"));

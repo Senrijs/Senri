@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
-import { createApp } from "../../src/index.ts";
-import { dashboardOf } from "../../src/dev/index.ts";
+import { createApp, type AppOptions } from "../../src/index.ts";
+import { dashboardOf } from "../../src/dev/registry.ts";
+import { devtools } from "../../src/dev/index.ts";
 import type { DashboardPageData } from "../../src/dev/page-data.ts";
 
 // localhost からのアクセス(Bun の server を真似る)
@@ -9,7 +10,7 @@ const remote = { requestIP: () => ({ address: "192.168.1.10", family: "IPv4", po
 const req = (path: string, init: RequestInit = {}, host = "localhost:3927") =>
     new Request(`http://${host}${path}`, { ...init, headers: { host, ...(init.headers as Record<string, string>) } });
 
-function app(options = { dev: true }) {
+function app(options: AppOptions = { dev: devtools() }) {
     const a = createApp(options);
     a.use(async function logger(c, next) {
         await next();
@@ -57,7 +58,7 @@ describe("/_senri を開ける条件", () => {
     });
 
     test("本番では /_senri は存在しない(普通の 404)", async () => {
-        const res = await app({ dev: false }).fetch(req("/_senri"), local);
+        const res = await app({}).fetch(req("/_senri"), local);
 
         expect(res.status).toBe(404);
         expect(await res.text()).toBe("404 Not Found");
@@ -66,7 +67,7 @@ describe("/_senri を開ける条件", () => {
     test("開発モードで /_senri から始まるルートを登録するとエラー(ダッシュボードに隠れて呼ばれないので)", () => {
         expect(() => app().get("/_senri/x", () => "x")).toThrow("/_senri");
         // 本番では登録できる
-        expect(() => app({ dev: false }).get("/_senri/x", () => "x")).not.toThrow();
+        expect(() => app({}).get("/_senri/x", () => "x")).not.toThrow();
     });
 });
 
@@ -146,7 +147,7 @@ describe("API", () => {
     });
 
     test("ミドルウェア: 同じ名前が2つあっても、登録順で別々に集計する", async () => {
-        const a = createApp({ dev: true });
+        const a = createApp({ dev: devtools() });
         const named = (label: string) =>
             async function timer(_c: unknown, next: () => Promise<Response>) {
                 await next();
@@ -174,7 +175,7 @@ describe("API", () => {
             ["auth", false],
         ]);
 
-        const b = createApp({ dev: true });
+        const b = createApp({ dev: devtools() });
         b.use((_c, next) => next());
         const anon = await pageData(await b.fetch(req("/_senri"), local));
         expect(anon.middlewares[0]).toMatchObject({ name: "anonymous#1", anonymous: true });

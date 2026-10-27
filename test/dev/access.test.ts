@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { canOpenDashboard, isLocalHost, isLoopback, remoteAddress, sameOrigin } from "../../src/dev/dashboard/access.ts";
 import { createApp } from "../../src/index.ts";
+import { devtools } from "../../src/dev/index.ts";
 
 const req = (url = "http://localhost:3927/_senri", headers: Record<string, string> = {}) =>
     new Request(url, { headers: { host: new URL(url).host, ...headers } });
@@ -85,7 +86,7 @@ describe("sameOrigin: 状態を変える POST の保護", () => {
 
 describe("app.fetch の2つ目以降の引数", () => {
     test("何が来ても、普通のリクエストはそのまま動く(Cloudflare の env, ctx も)", async () => {
-        const app = createApp({ dev: true });
+        const app = createApp({ dev: devtools() });
         app.get("/hello", () => "hi");
         const ctx = { waitUntil() {}, passThroughOnException() {} };
 

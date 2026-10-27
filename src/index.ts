@@ -1,4 +1,15 @@
-export { createApp, type App, type AppOptions, type MountableApp } from "./app.ts";
+// @senrijs/senri の入口
+// 開発モード(エラーページ・ダッシュボードなど)は @senrijs/senri/dev、Cookie は @senrijs/senri/cookie、接続元の IP は @senrijs/senri/ip
+export {
+    createApp,
+    type App,
+    type AppCore,
+    type AppOptions,
+    type DevHooks,
+    type DevInstalled,
+    type MountableApp,
+    type Resolved,
+} from "./app.ts";
 export { createRouter, type Router } from "./group.ts";
 export {
     Context,
@@ -21,7 +32,7 @@ export {
 } from "./validate.ts";
 export type { CookieOptions } from "./cookie.ts";
 export type { FormBody, FormValue } from "./body.ts";
-export type { Timing } from "./compose.ts";
+export type { Layer, Timing, Trace } from "./compose.ts";
 export { logger, showRoutes } from "./logger.ts";
 export { health, type HealthOptions } from "./health.ts";
 export { cors, type CorsOptions } from "./middleware/cors.ts";

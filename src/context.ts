@@ -1,8 +1,8 @@
 import { requestPathname, splitPath } from "./router.ts";
-import { clientIp, isConnectionInfo } from "./connection.ts";
+import { isConnectionInfo } from "./connection.ts";
 import type { Timing } from "./compose.ts";
 import { readBody } from "./body.ts";
-import { deletionCookie, parseCookies, serializeCookie, type CookieOptions } from "./cookie.ts";
+import { senriError } from "./errors.ts";
 
 // そのままレスポンスのボディにできるもの(JSON にはしない)
 // TypedArray は SharedArrayBuffer のもの以外(Response のボディにできないので)
@@ -84,6 +84,10 @@ export function setValidated(c: Context, target: string, value: unknown): void {
     values[target] = value;
 }
 
+// app.fetch に渡された元のリクエストと2つ目の引数を読む(Context の外から。@senrijs/senri/ip で使う)
+// Context のメソッドにしないのは、使わないアプリのバンドルに入れないため
+export let connectionOf: (c: Context) => { req: Request; info: unknown };
+
 export class Context<V extends object = any, I extends object = {}> {
     req: Request;
     #status = 200;
@@ -98,7 +102,6 @@ export class Context<V extends object = any, I extends object = {}> {
     // 一度読んだボディ(ミドルウェアとハンドラーの両方から読めるように覚えておく)
     #body: Promise<unknown> | undefined;
     #query: URLSearchParams | undefined;
-    #cookies: Record<string, string> | undefined;
     error: unknown = undefined;
     // マッチしたルートのパターン("/users/:id")。見つからなければ undefined
     // ミドルウェアより先にマッチするので、next() の前から読める(ログやダッシュボードの集計用)
@@ -107,11 +110,14 @@ export class Context<V extends object = any, I extends object = {}> {
     params: Record<string, string> = {};
     #timings: Timing[] | undefined;
 
-    // app.fetch に渡された元のリクエストと2つ目の引数(c.ip で使う)
+    // app.fetch に渡された元のリクエストと2つ目の引数(@senrijs/senri/ip の getIp で使う)
     // Bun の requestIP は元のリクエストでしか答えないので、c.req が差し替えられても元のほうで聞く
     #original: Request;
     #info: unknown;
-    #ip: string | null | undefined;
+
+    static {
+        connectionOf = (c) => ({ req: c.#original, info: c.#info });
+    }
 
     #ctx: ExecutionContext | undefined;
 
@@ -131,16 +137,9 @@ export class Context<V extends object = any, I extends object = {}> {
     // Cloudflare Workers の ctx(waitUntil など)。Workers 以外では渡されないので、読むとエラーにする
     get executionCtx(): ExecutionContext {
         if (!this.#ctx) {
-            throw new Error("c.executionCtx がありません。Cloudflare Workers で、app.fetch(req, env, ctx) として呼ばれたときだけ使えます");
+            throw senriError("no_execution_ctx", "c.executionCtx is only available on Cloudflare Workers");
         }
         return this.#ctx;
-    }
-
-    // 接続元の IP アドレス。分からなければ null(Cloudflare Workers や、app.fetch を直接呼んだときなど)
-    // X-Forwarded-For などのヘッダーは偽装できるので読まない。プロキシの後ろでは、プロキシが付けるヘッダーを自分で読む
-    get ip(): string | null {
-        if (this.#ip === undefined) this.#ip = clientIp(this.#original, this.#info);
-        return this.#ip;
     }
 
     // パスをデコードして "/" で分けたもの。ルーターもミドルウェアもこれを見る
@@ -180,7 +179,7 @@ export class Context<V extends object = any, I extends object = {}> {
     valid<K extends keyof I & string>(target: K): I[K] {
         const values = validated.get(this);
         if (!values || !(target in values)) {
-            throw new Error(`c.valid("${target}") の値がありません。ルートに { ${target}: スキーマ } を渡すと使えます`);
+            throw senriError("no_valid", `c.valid("${target}"): no schema for ${target}`);
         }
         return values[target] as I[K];
     }
@@ -227,27 +226,6 @@ export class Context<V extends object = any, I extends object = {}> {
     body<T = unknown>(): Promise<T> {
         this.#body ??= readBody(this.req);
         return this.#body as Promise<T>;
-    }
-
-    // --- Cookie ---
-
-    cookie(): Record<string, string>;
-    cookie(name: string): string | undefined;
-    cookie(name?: string): string | undefined | Record<string, string> {
-        this.#cookies ??= parseCookies(this.req.headers.get("cookie"));
-        return name === undefined ? { ...this.#cookies } : this.#cookies[name];
-    }
-
-    // 既定は Path=/・HttpOnly・SameSite=Lax(src/cookie.ts)
-    setCookie(name: string, value: string, options?: CookieOptions): this {
-        this.header("set-cookie", serializeCookie(name, value, options));
-        return this;
-    }
-
-    // Path と Domain は、付けたときと同じものを指定する
-    deleteCookie(name: string, options?: Pick<CookieOptions, "path" | "domain">): this {
-        this.header("set-cookie", deletionCookie(name, options));
-        return this;
     }
 
     status(code: number): this {
@@ -315,17 +293,18 @@ export class Context<V extends object = any, I extends object = {}> {
         }
         if (isBodyValue(value)) {
             const contentType = this.#headers?.get("content-type") ?? contentTypeOf(value);
-            return new Response(value, {
-                status: this.#status,
-                headers: contentType ? { "content-type": contentType } : undefined,
-            });
+            // headers: undefined は渡さない(exactOptionalPropertyTypes の利用者の型チェックで、エラーになるので)
+            return new Response(
+                value,
+                contentType ? { status: this.#status, headers: { "content-type": contentType } } : { status: this.#status },
+            );
         }
         // 型では防いでいるが、JS から使ったときや as で無理やり通したときのために実行時にも確かめる
         if (typeof value === "function") {
-            throw new TypeError("ハンドラーが関数を返しました。呼び出し忘れではありませんか？");
+            throw senriError("returned_function", new TypeError("Handler returned a function"));
         }
         if (value === undefined || value === null) {
-            throw new TypeError("ハンドラーが何も返していません(undefined / null)");
+            throw senriError("returned_nothing", new TypeError("Handler returned undefined or null"));
         }
         return this.json(value);
     }

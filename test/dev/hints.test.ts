@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { HttpError } from "../../src/index.ts";
 import { hintFor } from "../../src/dev/hints.ts";
+import { senriError } from "../../src/errors.ts";
 
 // 3ランタイムで実際に出るメッセージ(Bun と、V8 の Node / Deno で書き方が違う)
 const typeError = (message: string) => new TypeError(message);
@@ -84,13 +85,12 @@ describe("hintFor", () => {
     });
 
     test("Senri が投げるエラー(next() の二重呼び出し、関数や undefined を返した)", () => {
-        expect(hintFor(new Error("next() が2回呼ばれました。1つのミドルウェアで呼べるのは1回だけです"))!.text).toContain(
-            "await next()",
+        // 文言ではなく code で見分ける(本体の文言は短い英語)
+        expect(hintFor(senriError("next_twice", "next() called twice"))!.text).toContain("await next()");
+        expect(hintFor(senriError("returned_function", new TypeError("Handler returned a function")))!.code).toContain("()");
+        expect(hintFor(senriError("returned_nothing", new TypeError("Handler returned undefined or null")))!.text).toContain(
+            "return",
         );
-        expect(hintFor(new TypeError("ハンドラーが関数を返しました。呼び出し忘れではありませんか？"))!.code).toContain(
-            "()",
-        );
-        expect(hintFor(new TypeError("ハンドラーが何も返していません(undefined / null)"))!.text).toContain("return");
     });
 
     test("当てはまらなければ null", () => {

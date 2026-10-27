@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { createApp } from "../src/index.ts";
+import { deleteCookie, getCookie, setCookie } from "../src/cookie.ts";
 
 const req = (path: string, init?: RequestInit) => new Request(`http://localhost${path}`, init);
 
@@ -99,7 +100,7 @@ describe("Cookie", () => {
         const app = createApp();
         let seen: unknown;
         app.get("/c", (_, c) => {
-            seen = { one: c.cookie("name"), none: c.cookie("none"), all: c.cookie() };
+            seen = { one: getCookie(c, "name"), none: getCookie(c, "none"), all: getCookie(c) };
             return "ok";
         });
 
@@ -116,8 +117,8 @@ describe("Cookie", () => {
     test("付ける: 既定は Path=/・HttpOnly・SameSite=Lax。値はエンコードする", async () => {
         const app = createApp();
         app.get("/c", (_, c) => {
-            c.setCookie("name", "山田");
-            c.setCookie("session", "abc", { maxAge: 60, secure: true, sameSite: "Strict", domain: "example.com" });
+            setCookie(c, "name", "山田");
+            setCookie(c, "session", "abc", { maxAge: 60, secure: true, sameSite: "Strict", domain: "example.com" });
             return "ok";
         });
 
@@ -132,7 +133,7 @@ describe("Cookie", () => {
     test("__Host- / __Secure- で始まる名前には Secure を必ず付ける", async () => {
         const app = createApp();
         app.get("/c", (_, c) => {
-            c.setCookie("__Host-id", "1");
+            setCookie(c, "__Host-id", "1");
             return "ok";
         });
 
@@ -144,7 +145,7 @@ describe("Cookie", () => {
     test("消す: Max-Age=0 と過去の Expires", async () => {
         const app = createApp();
         app.get("/c", (_, c) => {
-            c.deleteCookie("name");
+            deleteCookie(c, "name");
             return "ok";
         });
 
@@ -158,7 +159,7 @@ describe("Cookie", () => {
         let error: unknown;
         app.get("/c", (_, c) => {
             try {
-                c.setCookie("bad name;", "x");
+                setCookie(c, "bad name;", "x");
             } catch (e) {
                 error = e;
             }
@@ -188,7 +189,7 @@ describe("送る側が決める名前(__proto__ / constructor)", () => {
 
     test("constructor という名前の Cookie も読める。ない名前は undefined", async () => {
         const app = createApp();
-        app.get("/", (_, c) => ({ ctor: c.cookie("constructor") ?? null, missing: c.cookie("toString") ?? null }));
+        app.get("/", (_, c) => ({ ctor: getCookie(c, "constructor") ?? null, missing: getCookie(c, "toString") ?? null }));
         const res = await app.fetch(new Request("http://localhost/", { headers: { cookie: "constructor=1" } }));
         expect(await res.json()).toEqual({ ctor: "1", missing: null });
     });
