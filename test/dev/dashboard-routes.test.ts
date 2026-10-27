@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { createApp, type AppOptions } from "../../src/index.ts";
-import { dashboardOf, devtools } from "../../src/dev/index.ts";
+import { dashboardOf } from "../../src/dev/registry.ts";
+import { devtools } from "../../src/dev/index.ts";
 import type { DashboardPageData } from "../../src/dev/page-data.ts";
 
 // localhost からのアクセス(Bun の server を真似る)

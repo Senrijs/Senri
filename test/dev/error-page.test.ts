@@ -2,7 +2,8 @@ import { describe, expect, test } from "bun:test";
 import { createApp, HttpError, type AppOptions } from "../../src/index.ts";
 import { PAGE_HTML } from "../../src/dev/page.generated.ts";
 import type { ErrorPageData } from "../../src/dev/page-data.ts";
-import { dashboardOf, devtools } from "../../src/dev/index.ts";
+import { dashboardOf } from "../../src/dev/registry.ts";
+import { devtools } from "../../src/dev/index.ts";
 
 const html = { accept: "text/html,application/xhtml+xml,*/*;q=0.8" };
 const req = (path: string, init: RequestInit = {}) => new Request(`http://localhost${path}`, init);

@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { createApp, HttpError } from "../../src/index.ts";
-import { dashboardOf, devtools } from "../../src/dev/index.ts";
+import { dashboardOf } from "../../src/dev/registry.ts";
+import { devtools } from "../../src/dev/index.ts";
 
 const req = (path: string, init: RequestInit = {}) => new Request(`http://localhost${path}`, init);
 

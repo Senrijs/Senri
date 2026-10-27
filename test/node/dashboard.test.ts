@@ -3,7 +3,8 @@ import { describe, test } from "node:test";
 import assert from "node:assert/strict";
 import type { AddressInfo } from "node:net";
 import { createApp } from "../../src/index.ts";
-import { dashboardOf, devtools } from "../../src/dev/index.ts";
+import { dashboardOf } from "../../src/dev/registry.ts";
+import { devtools } from "../../src/dev/index.ts";
 import { serve } from "../../adapters/node/index.ts";
 
 async function readUntil(reader: ReadableStreamDefaultReader<Uint8Array>, done: (text: string) => boolean) {

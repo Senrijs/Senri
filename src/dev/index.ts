@@ -14,14 +14,13 @@ import { errorCode, HttpError, type ErrorHandler } from "../errors.ts";
 import { compareRoutes } from "../router.ts";
 import * as runtime from "../runtime.ts";
 import { ValidationError } from "../validate.ts";
-import { createDashboard, type Dashboard } from "./dashboard/index.ts";
+import { createDashboard } from "./dashboard/index.ts";
+import { registerDashboard } from "./registry.ts";
 import { explain } from "./explain.ts";
 import { devNotFound } from "./not-found.ts";
 import { finishErrorPage, withErrorPage } from "./pages.ts";
 import { serverTimingHeader, withServerTiming } from "./server-timing.ts";
 import { checkSchemas, describeValidation } from "./validation.ts";
-
-export type { Dashboard } from "./dashboard/index.ts";
 
 // 計測で、いちばん内側の層に付ける名前(ダッシュボードの玉ねぎタイムラインに出る)
 const INNER_NAME: Record<Resolved["kind"], string> = {
@@ -32,13 +31,6 @@ const INNER_NAME: Record<Resolved["kind"], string> = {
     badRequest: "400",
     notImplemented: "501",
 };
-
-// アプリとダッシュボードの対応(テストで中身を確かめるのに使う)
-const dashboards = new WeakMap<object, Dashboard>();
-
-export async function dashboardOf(app: object): Promise<Dashboard | undefined> {
-    return dashboards.get(app);
-}
 
 // 開発モードのフックを作る。本番(NODE_ENV=production)では undefined を返すので、開発モードにならない
 // Deno で NODE_ENV を読む許可がないときは、本番かどうか分からないので、開発モードにしない(案内を1行出す)
@@ -123,7 +115,7 @@ function install(core: AppCore): DevInstalled {
               routes: () => sortedRoutes().map((r) => ({ method: r.method, path: r.path })),
               middlewares: () => app.middlewareList(),
           });
-    if (dashboard) dashboards.set(app, dashboard);
+    if (dashboard) registerDashboard(app, dashboard);
 
     async function fetch(req: Request, info?: unknown, ctx?: ExecutionContext): Promise<Response> {
         // 計測の基準になるリクエストの開始時刻
