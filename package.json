@@ -35,6 +35,10 @@
       "types": "./dist/src/index.d.ts",
       "import": "./dist/src/index.js"
     },
+    "./tiny": {
+      "types": "./dist/src/tiny.d.ts",
+      "import": "./dist/src/tiny.js"
+    },
     "./node": {
       "types": "./dist/adapters/node/index.d.ts",
       "import": "./dist/adapters/node/index.js"

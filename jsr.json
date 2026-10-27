@@ -4,12 +4,21 @@
   "license": "MIT",
   "exports": {
     ".": "./src/index.ts",
+    "./tiny": "./src/tiny.ts",
     "./node": "./adapters/node/index.ts",
     "./serve": "./adapters/serve/index.ts",
     "./static": "./adapters/static/index.ts"
   },
   "publish": {
-    "include": ["src/**/*.ts", "adapters/**/*.ts", "README.md", "LICENSE"],
-    "exclude": ["**/*.test.ts", "adapters/**/tsconfig.json"]
+    "include": [
+      "src/**/*.ts",
+      "adapters/**/*.ts",
+      "README.md",
+      "LICENSE"
+    ],
+    "exclude": [
+      "**/*.test.ts",
+      "adapters/**/tsconfig.json"
+    ]
   }
 }
