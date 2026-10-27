@@ -4,7 +4,7 @@
 
 ## [0.2.0] - 未公開
 
-開発用の機能を本体から切り離し、本体を小さくしました。ブラウザ(Service Worker)にも正式に対応します。**破壊的変更が3つあります**(1.0 より前なので、マイナーバージョンを上げています)。
+開発用の機能を本体から切り離し、本体を小さくしました。ブラウザ(Service Worker)にも正式に対応します。**破壊的変更が5つあります**(1.0 より前なので、マイナーバージョンを上げています)。
 
 ### ⚠️ 破壊的変更と移行方法
 
@@ -53,11 +53,26 @@ import { deleteCookie, getCookie, setCookie } from "@senrijs/senri/cookie";
 import { getIp } from "@senrijs/senri/ip";
 ```
 
+**4. `app.routeList()` は登録順になる**
+
+0.1 は優先順位の順(静的なセグメントが先)でした。順番に頼っていたときは、自分で並べ替えてください。開発モードの一覧(404 ページ・ダッシュボード)と、`serve()` の起動時の表示に使う順番は、開発モードでは今までどおり優先順位の順です。
+
+**5. `ValidationError` の `describe()` をなくした**
+
+開発モードの「どこが違うか」の一覧は、`@senrijs/senri/dev` が組み立てるようになりました。自分で一覧を作っていたときは、`err.target` と `err.issues`(今までどおり)から組み立ててください。
+
+```ts
+app.onError((err, c) => {
+    if (err instanceof ValidationError) {
+        return c.status(400).json({ target: err.target, issues: err.issues.map((i) => i.message) });
+    }
+    return c.text("500 Internal Server Error");
+});
+```
+
 ### 変わったこと(破壊的ではないもの)
 
 - 本体のエラーの文言(ルートの重複、パラメーター名、メソッド名など、登録時のもの)を短い英語にしました。`devtools()` を渡すと、今までどおり日本語の説明が付きます。エラーの種類と、エラーになる条件は変わりません
-- `app.routeList()` は登録順になりました(0.1 は優先順位の順)。開発モードの一覧(404 ページ・ダッシュボード)は、今までどおり優先順位の順です
-- `ValidationError` の `describe()` をなくしました(開発モードの一覧は `@senrijs/senri/dev` が組み立てます)。`target` と `issues` は今までどおりです
 - スキーマの書き間違い(Standard Schema でないもの、知らないキー)を登録時に知らせるのは、開発モードのときだけになりました。ハンドラーがないときは、本番でもエラーです
 
 ### 追加

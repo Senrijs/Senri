@@ -37,17 +37,22 @@ Ideas and requests are welcome in [Issues](https://github.com/Senrijs/Senri/issu
 - [x] `Server-Timing` header in dev mode (see the onion in your browser's DevTools)
 - [x] Published to npm and JSR (both `@senrijs/senri`)
 
-## 0.1.1
+## 0.2.0 — Lighter, and into the browser (done)
 
 - [x] Browser (Service Worker) support
 - [x] Dev tools split out (`devtools()` from `@senrijs/senri/dev`)
 - [x] Smaller core (about 14KB minified; cookies and IP moved to their own entries)
+
+## 0.2.x — Everyday development without friction
+
 - [ ] English / Japanese error messages and dev pages
 - [ ] `create-senri`
 - [ ] SSE / streaming helpers
+- [ ] Response helpers
+- [ ] File uploads
 - [ ] More middleware: Basic / Bearer auth, compression, ETag, request ID, timeout
 
-## 0.2.0 — All the way to production
+## 0.3.0 — All the way to production
 
 - [ ] Typed client
 - [ ] OpenAPI generation
@@ -58,7 +63,7 @@ Ideas and requests are welcome in [Issues](https://github.com/Senrijs/Senri/issu
 - [ ] JWT, CSRF protection
 - [ ] Context storage (access `c` anywhere)
 
-## 0.3.0 — Deploy anywhere
+## 0.4.0 — Deploy anywhere
 
 - [ ] `senri build --target workers | docker | k8s`
 
