@@ -1,5 +1,8 @@
-// app.get("/", () => "hi") だけのアプリをバンドルして、サイズを測る
-// 使い方: bun scripts/size.ts [入口のファイル(既定は src/index.ts)]
+// アプリをバンドルして、サイズを測る
+// 使い方: bun scripts/size.ts [リポジトリのルート(既定はこのリポジトリ。変更前と比べるときは main の worktree を渡す)]
+// 測るアプリは2つ:
+// - hi: app.get("/", () => "hi") だけ(開発用のコードは入れない)
+// - devtools: それに開発モード(createApp({ dev: devtools() }))を足したもの
 // - bun build --target browser(1ファイル / --splitting あり)
 // - Vite(ライブラリモードではなく、ふつうのアプリとしてビルド)
 // - wrangler deploy --dry-run --outdir(Cloudflare Workers。デプロイはしない)
@@ -19,13 +22,29 @@ declare const Bun: {
         logs: unknown[];
     }>;
 };
-const entry = resolve(ROOT, process.argv[2] ?? "src/index.ts").replaceAll("\\", "/");
+const TARGET = resolve(process.argv[2] ?? ROOT);
+const SRC = join(TARGET, "src").replaceAll("\\", "/");
 const WRANGLER = join(ROOT, "node_modules", ".bin", process.platform === "win32" ? "wrangler.exe" : "wrangler");
 
-const APP = `import { createApp } from "${entry}";
+// 0.1 には devtools() がなく、createApp({ dev: true }) で開発モードにしていた
+const legacy = !(await readFile(join(SRC, "dev", "index.ts"), "utf8")).includes("export function devtools");
+const APPS: Record<string, string> = {
+    hi: `import { createApp } from "${SRC}/index.ts";
 const app = createApp();
 app.get("/", () => "hi");
-`;
+`,
+    devtools: legacy
+        ? `import { createApp } from "${SRC}/index.ts";
+const app = createApp({ dev: true });
+app.get("/", () => "hi");
+`
+        : `import { createApp } from "${SRC}/index.ts";
+import { devtools } from "${SRC}/dev/index.ts";
+const app = createApp({ dev: devtools() });
+app.get("/", () => "hi");
+`,
+};
+let APP = APPS.hi!;
 
 type Size = { raw: number; gzip: number };
 type Row = { tool: string; minify: boolean; first: Size; total: Size; files: number };
@@ -112,29 +131,66 @@ async function wrangler(dir: string, minify: boolean): Promise<Row> {
 
 const kb = (n: number) => `${(n / 1024).toFixed(1)} KB`;
 
-const rows: Row[] = [];
-for (const minify of [false, true]) {
-    for (const measure of [
-        (d: string) => bun(d, minify, false),
-        (d: string) => bun(d, minify, true),
-        (d: string) => vite(d, minify),
-        (d: string) => wrangler(d, minify),
-    ]) {
-        const dir = await mkdtemp(join(tmpdir(), "senri-size-"));
-        try {
-            await mkdir(dir, { recursive: true });
-            rows.push(await measure(dir));
-        } finally {
-            await rm(dir, { recursive: true, force: true });
-        }
+// ファイルごとの内訳(esbuild の metafile。minify あり)。hi のアプリだけ
+async function breakdown(): Promise<[string, number][]> {
+    const { createRequire } = await import("node:module");
+    const esbuild = createRequire(join(ROOT, "package.json"))("esbuild") as {
+        build(options: object): Promise<{ metafile: { outputs: Record<string, { inputs: Record<string, { bytesInOutput: number }> }> } }>;
+    };
+    const dir = await mkdtemp(join(tmpdir(), "senri-size-"));
+    try {
+        await writeFile(join(dir, "main.ts"), `${APPS.hi}export default app;\n`);
+        const result = await esbuild.build({
+            entryPoints: [join(dir, "main.ts")],
+            bundle: true,
+            minify: true,
+            format: "esm",
+            platform: "browser",
+            write: false,
+            metafile: true,
+            outfile: join(dir, "out.js"),
+        });
+        const inputs = Object.values(result.metafile.outputs)[0]!.inputs;
+        return Object.entries(inputs)
+            // このリポジトリの中は "src/app.ts"、worktree など外のものは絶対パスで返ってくる
+            .filter(([file]) => /(^|\/)src\//.test(file))
+            .map(([file, v]): [string, number] => [file.slice(file.search(/(^|\/)src\//)).replace(/^\//, ""), v.bytesInOutput])
+            .sort((a, b) => b[1] - a[1]);
+    } finally {
+        await rm(dir, { recursive: true, force: true });
     }
 }
 
-console.log(`入口: ${entry.slice(ROOT.length + 1)}\n`);
-console.log("| ツール | minify | 最初に読むもの | gzip | 全部 | gzip | ファイル数 |");
-console.log("|---|---|---:|---:|---:|---:|---:|");
-for (const r of rows) {
-    console.log(
-        `| ${r.tool} | ${r.minify ? "あり" : "なし"} | ${kb(r.first.raw)} | ${kb(r.first.gzip)} | ${kb(r.total.raw)} | ${kb(r.total.gzip)} | ${r.files} |`,
-    );
+console.log(`対象: ${TARGET}${legacy ? "(0.1 の書き方: createApp({ dev: true }))" : ""}`);
+for (const [name, code] of Object.entries(APPS)) {
+    APP = code;
+    const rows: Row[] = [];
+    for (const minify of [false, true]) {
+        for (const measure of [
+            (d: string) => bun(d, minify, false),
+            (d: string) => bun(d, minify, true),
+            (d: string) => vite(d, minify),
+            (d: string) => wrangler(d, minify),
+        ]) {
+            const dir = await mkdtemp(join(tmpdir(), "senri-size-"));
+            try {
+                await mkdir(dir, { recursive: true });
+                rows.push(await measure(dir));
+            } finally {
+                await rm(dir, { recursive: true, force: true });
+            }
+        }
+    }
+    console.log(`\n### アプリ: ${name}\n`);
+    console.log("| ツール | minify | 最初に読むもの | gzip | 全部 | gzip | ファイル数 |");
+    console.log("|---|---|---:|---:|---:|---:|---:|");
+    for (const r of rows) {
+        console.log(
+            `| ${r.tool} | ${r.minify ? "あり" : "なし"} | ${kb(r.first.raw)} | ${kb(r.first.gzip)} | ${kb(r.total.raw)} | ${kb(r.total.gzip)} | ${r.files} |`,
+        );
+    }
 }
+
+console.log("\n### 内訳(hi のアプリ、esbuild で minify)\n");
+console.log("| ファイル | バイト |\n|---|---:|");
+for (const [file, bytes] of await breakdown()) console.log(`| ${file} | ${bytes} |`);
