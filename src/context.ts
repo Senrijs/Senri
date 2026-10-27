@@ -293,10 +293,11 @@ export class Context<V extends object = any, I extends object = {}> {
         }
         if (isBodyValue(value)) {
             const contentType = this.#headers?.get("content-type") ?? contentTypeOf(value);
-            return new Response(value, {
-                status: this.#status,
-                headers: contentType ? { "content-type": contentType } : undefined,
-            });
+            // headers: undefined は渡さない(exactOptionalPropertyTypes の利用者の型チェックで、エラーになるので)
+            return new Response(
+                value,
+                contentType ? { status: this.#status, headers: { "content-type": contentType } } : { status: this.#status },
+            );
         }
         // 型では防いでいるが、JS から使ったときや as で無理やり通したときのために実行時にも確かめる
         if (typeof value === "function") {

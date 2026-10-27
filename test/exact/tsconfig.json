@@ -1,0 +1,9 @@
+{
+    // exactOptionalPropertyTypes: true の利用者の設定でも、型が通るかを確かめる(bun check -p test/exact)
+    "extends": "../../tsconfig.json",
+    "compilerOptions": {
+        "types": ["bun"],
+        "exactOptionalPropertyTypes": true
+    },
+    "include": ["."]
+}

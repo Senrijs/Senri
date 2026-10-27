@@ -90,7 +90,7 @@ export type App<V extends object = Record<string, unknown>> = {
 export type AppOptions = {
     // 開発モード。@senrijs/senri/dev の devtools() を渡す: createApp({ dev: devtools() })
     // 本体は開発用のコード(エラーページ・ダッシュボードなど)を一切 import しない。渡さなければバンドルにも入らない
-    dev?: DevHooks;
+    dev?: DevHooks | undefined;
 };
 
 // 開発用のフック。@senrijs/senri/dev の devtools() が作る(本体が知っているのは、この形だけ)
