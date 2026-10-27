@@ -70,7 +70,9 @@
     "dev": "bun --watch examples/bun/index.ts",
     "test": "bun test",
     "test:node": "bun run build && node --test --test-timeout=5000 \"test/node/**/*.test.ts\"",
-    "smoke": "node scripts/smoke.ts"
+    "smoke": "node scripts/smoke.ts",
+    "browser": "node scripts/browser.ts",
+    "size": "bun scripts/size.ts"
   },
   "devDependencies": {
     "@types/bun": "latest",
