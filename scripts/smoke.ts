@@ -22,7 +22,8 @@ async function workerdPath(): Promise<string> {
 // note: serve() のバナーに出る「ポートをどこから決めたか」。null ならバナーはない(workerd は serve() を使わない)
 const RUNTIMES: Record<string, { command: string[]; port: number; note: string | null; build?: string[] }> = {
     bun: { command: ["bun", "run", "examples/bun/index.ts"], port: ENV_PORT, note: "環境変数 PORT" },
-    deno: { command: ["deno", "run", "--allow-net", "examples/deno/index.ts"], port: DEFAULT_PORT, note: "デフォルト" },
+    // NODE_ENV だけ読めるようにする(devtools() が本番かどうかを見るため)。PORT は読めないので、デフォルトのポートになる
+    deno: { command: ["deno", "run", "--allow-net", "--allow-env=NODE_ENV", "examples/deno/index.ts"], port: DEFAULT_PORT, note: "デフォルト" },
     node: { command: ["node", "examples/node/index.ts"], port: ENV_PORT, note: "環境変数 PORT" },
     // ポートは examples/workers/config.capnp で決めている
     workers: {

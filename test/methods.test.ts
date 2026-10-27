@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { createApp, createRouter } from "../src/index.ts";
+import { devtools } from "../src/dev/index.ts";
 
 const req = (path: string, init?: RequestInit) => new Request(`http://localhost${path}`, init);
 
@@ -34,16 +35,16 @@ describe("app.on", () => {
     test("CONNECT / TRACE / TRACK は登録できない", () => {
         const app = createApp();
         for (const method of ["CONNECT", "TRACE", "TRACK", "trace"]) {
-            expect(() => app.on(method, "/x", () => "x")).toThrow("扱いません");
+            expect(() => app.on(method, "/x", () => "x")).toThrow("is not supported");
         }
-        expect(() => app.routes({ "TRACE /x": () => "x" })).toThrow("扱いません");
+        expect(() => app.routes({ "TRACE /x": () => "x" })).toThrow("is not supported");
     });
 
     test("メソッド名に使えない文字はエラー", () => {
         const app = createApp();
-        expect(() => app.on("GET POST", "/x", () => "x")).toThrow("メソッド名");
-        expect(() => app.on("", "/x", () => "x")).toThrow("メソッド名");
-        expect(() => app.on([], "/x", () => "x")).toThrow("メソッド");
+        expect(() => app.on("GET POST", "/x", () => "x")).toThrow("Invalid method");
+        expect(() => app.on("", "/x", () => "x")).toThrow("Invalid method");
+        expect(() => app.on([], "/x", () => "x")).toThrow("Missing method");
     });
 
     test("ALL は app.all() を使うよう案内する", () => {
@@ -184,7 +185,7 @@ describe("QUERY メソッド", () => {
     });
 
     test("開発モードでは、理由と直し方を返す", async () => {
-        const app = createApp({ dev: true });
+        const app = createApp({ dev: devtools() });
         app.on("QUERY", "/search", () => "x");
 
         const noType = await (await app.fetch(req("/search", json(`{"q":1}`, {})))).text();

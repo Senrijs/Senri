@@ -57,3 +57,9 @@ export function canRead(path: string): boolean {
     if (g.Deno) return denoAllows({ name: "read", path });
     return true;
 }
+
+// 環境変数を読めるか。Deno で許可(--allow-env)がないときは false(聞き返しはしない)
+export function canReadEnv(name: string): boolean {
+    if (g.Deno) return denoAllows({ name: "env", variable: name });
+    return true;
+}

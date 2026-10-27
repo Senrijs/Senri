@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { createApp } from "../src/index.ts";
+import { devtools } from "../src/dev/index.ts";
 
 // テスト用のリクエストを作る小道具
 const req = (path: string, init?: RequestInit) =>
@@ -48,7 +49,7 @@ describe("ルーティング", () => {
     });
 
     test("見つからないと404で「もしかして」が出る(開発モード)", async () => {
-        const app = createApp({ dev: true });
+        const app = createApp({ dev: devtools() });
         app.get("/hello", () => "hi");
 
         const res = await app.fetch(req("/helo"));

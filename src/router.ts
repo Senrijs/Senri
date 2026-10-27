@@ -1,5 +1,5 @@
 import type { Handler } from "./context.ts";
-import { HttpError } from "./errors.ts";
+import { HttpError, senriError } from "./errors.ts";
 
 export type Route = {
     path: string;
@@ -145,10 +145,10 @@ export function checkParamNames(path: string, segments: readonly string[]) {
         if (!s.startsWith(":")) continue;
         const name = s.slice(1);
         if (name === "") {
-            throw new Error(`パラメーター名が空です: "${path}"`);
+            throw senriError("param_empty", `Empty parameter name: ${path}`);
         }
         if (seen.has(name)) {
-            throw new Error(`パラメーター名 "${name}" が2回使われています: "${path}"`);
+            throw senriError("param_twice", `Parameter "${name}" used twice: ${path}`);
         }
         seen.add(name);
     }
@@ -161,10 +161,10 @@ const METHOD = /^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$/;
 // - CONNECT はプロキシ用、TRACE / TRACK はリクエストをそのまま返すので Cookie を盗む攻撃(XST)に使われる。どれも扱わない
 // - "ALL" は app.all() の印として使っているので、app.on() からは登録させない
 export function normalizeMethod(method: string): string {
-    if (!METHOD.test(method)) throw new Error(`メソッド名に使えない文字があります: ${JSON.stringify(method)}`);
+    if (!METHOD.test(method)) throw senriError("method_invalid", `Invalid method: ${JSON.stringify(method)}`);
     const upper = method.toUpperCase();
     if (upper === "CONNECT" || upper === "TRACE" || upper === "TRACK") {
-        throw new Error(`${upper} メソッドは扱いません(Senri では CONNECT / TRACE / TRACK を登録できません)`);
+        throw senriError("method_unsupported", `${upper} is not supported`);
     }
     return upper;
 }

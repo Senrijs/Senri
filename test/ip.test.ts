@@ -1,15 +1,16 @@
 import { describe, expect, test } from "bun:test";
 import { bodyLimit, createApp } from "../src/index.ts";
+import { getIp } from "../src/ip.ts";
 
 const req = (path: string, init?: RequestInit) => new Request(`http://localhost${path}`, init);
 
 function ipApp() {
     const app = createApp();
-    app.get("/ip", (_, c) => c.ip ?? "unknown");
+    app.get("/ip", (_, c) => getIp(c) ?? "unknown");
     return app;
 }
 
-describe("c.ip", () => {
+describe("getIp(c)", () => {
     test("Bun の server(requestIP)から取る", async () => {
         const server = { requestIP: () => ({ address: "203.0.113.5", family: "IPv4", port: 1 }) };
         expect(await (await ipApp().fetch(req("/ip"), server)).text()).toBe("203.0.113.5");
@@ -40,7 +41,7 @@ describe("c.ip", () => {
     test("ミドルウェアが c.req を差し替えても、元のリクエストで聞く", async () => {
         const app = createApp();
         app.use(bodyLimit({ maxSize: 100 }));
-        app.post("/ip", (_, c) => c.ip ?? "unknown");
+        app.post("/ip", (_, c) => getIp(c) ?? "unknown");
         const original = req("/ip", { method: "POST", body: "x" });
         const server = { requestIP: (r: Request) => (r === original ? { address: "198.51.100.7" } : null) };
 

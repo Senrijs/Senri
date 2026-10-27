@@ -15,10 +15,11 @@ describe("createRouter と app.route", () => {
         expect(await (await app.fetch(req("/users/7"))).text()).toBe("user 7");
         expect(await (await app.fetch(req("/users/7/posts/9"))).text()).toBe("7 の投稿 9");
         expect(await (await app.fetch(req("/users/7/follow", { method: "POST" }))).text()).toBe("follow 7");
+        // routeList は登録順(優先順位の順に並べるのは、開発モードの一覧だけ)
         expect(app.routeList()).toEqual([
             { method: "GET", path: "/users/:id" },
-            { method: "POST", path: "/users/:id/follow" },
             { method: "GET", path: "/users/:id/posts/:postId" },
+            { method: "POST", path: "/users/:id/follow" },
         ]);
     });
 
@@ -73,7 +74,7 @@ describe("createRouter と app.route", () => {
         const app = createApp();
         app.get("/x", () => "x");
 
-        expect(() => app.route(a)).toThrow("すでに登録されています");
+        expect(() => app.route(a)).toThrow("Duplicate route");
     });
 });
 
@@ -87,8 +88,8 @@ describe("app.route(prefix, app)", () => {
 
         expect(await (await app.fetch(req("/api/v1/users/3"))).text()).toBe("user 3");
         expect(app.routeList()).toEqual([
-            { method: "QUERY", path: "/api/v1/search" },
             { method: "GET", path: "/api/v1/users/:id" },
+            { method: "QUERY", path: "/api/v1/search" },
         ]);
     });
 

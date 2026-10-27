@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { createApp, logger, type Middleware } from "../src/index.ts";
+import { devtools } from "../src/dev/index.ts";
 
 const req = (path: string, init?: RequestInit) =>
     new Request(`http://localhost${path}`, init);
@@ -207,7 +208,7 @@ describe("next() の呼び方", () => {
     });
 
     test("next() を2回呼ぶとエラーになり、ハンドラーは1回しか動かない", async () => {
-        const app = createApp({ dev: true });
+        const app = createApp({ dev: devtools() });
         let calls = 0;
         app.use(async (_c, next) => {
             await next();

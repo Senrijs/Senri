@@ -1,6 +1,5 @@
 import { Context, type ExecutionContext, type Handler, type HandlerResult, type Middleware } from "./context.ts";
 import {
-    compareRoutes,
     allowedMethods,
     checkParamNames,
     normalizeMethod,
@@ -14,9 +13,8 @@ import {
 } from "./router.ts";
 import { compose, type Layer } from "./compose.ts";
 import { createMatcher } from "./matcher.ts";
-import { isWorkers } from "./runtime.ts";
-import type { RouteSchemas, Validated, ValidatedParams } from "./validate.ts";
-import { groupEntries, joinPath, routeHandler, type GroupEntry, type Router } from "./group.ts";
+import { routeHandler, type RouteSchemas, type Validated, type ValidatedParams } from "./validate.ts";
+import { groupEntries, joinPath, type GroupEntry, type Router } from "./group.ts";
 import {
     defaultNotFound,
     defaultOnError,
@@ -25,37 +23,19 @@ import {
     HttpError,
     markConversionError,
     methodNotAllowed,
+    senriError,
     type ErrorHandler,
     type NotFoundHandler,
 } from "./errors.ts";
 
 // リクエストをどう処理するかの結論。ミドルウェアより前に1回だけ決める
-type Resolved =
+export type Resolved =
     | { kind: "route"; route: Route; params: Record<string, string> }
     | { kind: "options"; allow: string }
     | { kind: "methodNotAllowed"; allow: string }
     | { kind: "notFound" }
     | { kind: "notImplemented" }
     | { kind: "badRequest"; error: unknown };
-
-// パスが /_senri か /_senri/... なら、"_senri" より後ろのセグメント。そうでなければ null
-function underDashboard(c: Context): readonly string[] | null {
-    try {
-        return c.segments[0] === "_senri" ? c.segments.slice(1) : null;
-    } catch {
-        return null;
-    }
-}
-
-// 計測で、いちばん内側の層に付ける名前(ダッシュボードの玉ねぎタイムラインに出る)
-const INNER_NAME: Record<Resolved["kind"], string> = {
-    route: "handler",
-    notFound: "notFound",
-    methodNotAllowed: "405",
-    options: "options",
-    badRequest: "400",
-    notImplemented: "501",
-};
 
 // 扱わないメソッド。ルートがあってもなくても 501 にする(app.all() でも受けない)
 const NOT_IMPLEMENTED = new Set(["CONNECT", "TRACE", "TRACK"]);
@@ -108,77 +88,98 @@ export type App<V extends object = Record<string, unknown>> = {
 };
 
 export type AppOptions = {
-    // 開発モード。エラーの詳細や「もしかして」を返す。本番では絶対にオンにしない
-    // 環境変数からは読まない(Deno では --allow-env がないと読めない、などランタイム差があるため)
-    dev?: boolean;
+    // 開発モード。@senrijs/senri/dev の devtools() を渡す: createApp({ dev: devtools() })
+    // 本体は開発用のコード(エラーページ・ダッシュボードなど)を一切 import しない。渡さなければバンドルにも入らない
+    dev?: DevHooks;
 };
 
-// 開発用のモジュール(src/dev/index.ts)。型だけ使う(実体は loadDev で読み込む)
-export type DevTools = typeof import("./dev/index.ts");
+// 開発用のフック。@senrijs/senri/dev の devtools() が作る(本体が知っているのは、この形だけ)
+export type DevHooks = {
+    // createApp() の最後に1回だけ呼ぶ。アプリの中身(core)を受け取って、開発モードの処理を返す
+    install(core: AppCore): DevInstalled;
+};
 
-// アプリを作る本体。開発用のモジュールの読み込み方(loadDev)は、入口が決める
-// - src/index.ts の createApp: () => import("./dev/index.ts") を渡す。dev: true のときだけ呼ぶ
-// - src/tiny.ts: 渡さない。バンドラーが開発用のコードを同じファイルに入れてしまうのを避けるため
+// 開発モードで使う、アプリの中身
+export type AppCore = {
+    app: App<any>;
+    // ルートを決める / かかるミドルウェアを集める / いちばん内側の処理(本番の fetch と同じもの)
+    resolve(c: Context): Resolved;
+    layers(c: Context): Layer[];
+    inner(c: Context, resolved: Resolved): Response | Promise<Response>;
+    // いまの onError を通して、例外をレスポンスにする
+    fail(err: unknown, c: Context): Promise<Response>;
+    // 登録されたルート(登録順)
+    routes(): readonly Route[];
+};
+
+export type DevInstalled = {
+    // app.fetch の代わり(計測・エラーページ・ダッシュボードの記録など)
+    fetch(req: Request, info?: unknown, ctx?: ExecutionContext): Promise<Response>;
+    // 既定の onError / notFound(app.onError / app.notFound で替えたら、そちらを使う)
+    onError: ErrorHandler;
+    notFound: NotFoundHandler;
+    // ルートを登録する前に確かめる(/_senri の予約、スキーマの書き間違い)
+    checkRoute(method: string, path: string, schemas: RouteSchemas | undefined): void;
+    // 登録時のエラーに、日本語の説明を付ける
+    explain(err: unknown): unknown;
+};
+
+// 0.1 の createApp({ dev: true }) は使えなくなった。どう書き換えるかを案内する
+const DEV_TRUE = `createApp({ dev: true }) is no longer supported. Use devtools() from "@senrijs/senri/dev".
+createApp({ dev: true }) は使えなくなりました。@senrijs/senri/dev の devtools() を渡してください。
+
+  import { createApp } from "@senrijs/senri";
+  import { devtools } from "@senrijs/senri/dev";
+
+  const app = createApp({ dev: devtools() });`;
+
 // V はアプリの型。c.set / c.get で使う変数の型(createApp<{ user: User }>())か、
 // Workers の env も含めた形(createApp<{ Bindings: Env; Variables: { user: User } }>())で指定する(src/context.ts)
-export function createAppWith<V extends object = Record<string, unknown>>(
-    options: AppOptions,
-    loadDev: (() => Promise<DevTools>) | null,
-): App<V> {
-    const dev = options.dev ?? false;
+export function createApp<V extends object = Record<string, unknown>>(options: AppOptions = {}): App<V> {
+    if ((options.dev as unknown) === true) throw senriError("dev_true", DEV_TRUE);
     const routes: Route[] = [];
     const matcher = createMatcher();
     // prefix が null なら全部のリクエストで動く。["admin"] なら /admin とその下だけ
     // anonymous: 無名の関数だった(名前を anonymous#番号 にした)。ダッシュボードで「名前を付けると出る」と案内する
     const middlewares: { name: string; anonymous: boolean; path: string | null; prefix: string[] | null; mw: Middleware<V> }[] = [];
-    // 開発モードだけで使うもの(エラーページ、ダッシュボード、「もしかして」)。ビルド済みの HTML など大きいので、
-    // 本番では読み込まない。createApp は同期のままにしたいので、ここでは読み込みを始めるだけで、最初のリクエストで待つ
-    if (dev && !loadDev) {
-        throw new Error(
-            "@senrijs/senri/tiny には開発モードがありません。開発モードを使うときは @senrijs/senri から createApp を import してください",
-        );
+    // 開発モードの処理。createApp の最後に devtools().install() で入る(渡さなければ undefined のまま)
+    let devHooks: DevInstalled | undefined;
+    let onError: ErrorHandler<V> = defaultOnError;
+    let notFound: NotFoundHandler<V> = defaultNotFound;
+
+    // 登録時のエラーに、開発モードでは日本語の説明を付ける
+    function guard<A extends unknown[]>(fn: (...args: A) => void): (...args: A) => void {
+        return (...args) => {
+            try {
+                fn(...args);
+            } catch (err) {
+                throw devHooks ? devHooks.explain(err) : err;
+            }
+        };
     }
-    const devTools = dev ? loadDev!() : null;
-    // 読み込みに失敗しても、待つ前に unhandled rejection にしない(最初のリクエストで、そのエラーになる)
-    devTools?.catch(() => {});
-    // 開発モードでは、ブラウザから開いた 5xx を HTML のエラーページにする(src/dev/pages.ts)
-    const baseOnError = defaultOnError(dev);
-    let onError: ErrorHandler<V> = devTools
-        ? async (err, c) => (await devTools).withErrorPage(baseOnError, true)(err, c)
-        : baseOnError;
-    let notFound: NotFoundHandler<V> = defaultNotFound(routes, devTools);
 
     function method(name: string): RouteMethod<V> {
-        return ((path: string, a: Handler | RouteSchemas, b?: Handler) => add(name, path, routeHandler(path, a, b))) as RouteMethod<V>;
+        return guard((path: string, a: Handler | RouteSchemas, b?: Handler) =>
+            add(name, path, routeHandler(path, a, b), typeof a === "function" ? undefined : a),
+        ) as RouteMethod<V>;
     }
 
-    function add(rawMethod: string, path: string, handler: Handler) {
+    function add(rawMethod: string, path: string, handler: Handler, schemas?: RouteSchemas) {
         // app.all() の印の "ALL" だけはそのまま。ほかは名前を確かめて大文字にする
         const method = rawMethod === "ALL" ? rawMethod : normalizeMethod(rawMethod);
+        devHooks?.checkRoute(method, path, schemas);
         const segments = splitPattern(path);
         checkParamNames(path, segments);
-        // 開発モードでは /_senri 以下はダッシュボードが使うので、登録しても呼ばれない。気づけるようにエラーにする
-        if (dev && segments[0] === "_senri") {
-            throw new Error(`${method} ${path}: /_senri 以下は、開発モードではダッシュボード用に予約されています`);
-        }
 
         // 同じメソッド + 同じ形のパスがあったら、あとから登録したほうは絶対に呼ばれないのでエラーにする
         const shape = routeShape(segments);
         const dup = routes.find((r) => r.method === method && routeShape(r.segments) === shape);
-        if (dup) {
-            const samePath = dup.segments.join("/") === segments.join("/");
-            throw new Error(
-                samePath
-                    ? `${method} ${path} はすでに登録されています`
-                    : `${method} ${path} は、登録済みの ${dup.method} ${dup.path} と同じパスです(パラメーター名が違うだけです)`,
-            );
-        }
+        if (dup) throw senriError("route_duplicate", `Duplicate route: ${method} ${path} (already: ${dup.method} ${dup.path})`);
 
         const paramNames = segments.filter((s) => s.startsWith(":")).map((s) => s.slice(1));
         const route: Route = { path, segments, paramNames, method, handler };
-        // routes は一覧(routeList や 404 の「もしかして」)用。探すのは matcher(Trie)で行う
+        // routes は一覧(routeList や 404 の「もしかして」)用で、登録順。探すのは matcher(Trie)で行う
         routes.push(route);
-        routes.sort(compareRoutes);
         matcher.add(route);
     }
 
@@ -253,10 +254,10 @@ export function createAppWith<V extends object = Record<string, unknown>>(
     }
 
     const app: App<V> = {
-        use(pathOrMw: string | Middleware<V>, mw?: Middleware<V>) {
+        use: guard((pathOrMw: string | Middleware<V>, mw?: Middleware<V>) => {
             const path = typeof pathOrMw === "string" ? pathOrMw : null;
             const fn = typeof pathOrMw === "string" ? mw : pathOrMw;
-            if (!fn) throw new Error(`app.use("${path}", ...) にミドルウェアがありません`);
+            if (!fn) throw senriError("no_middleware", `Missing middleware: ${path}`);
 
             middlewares.push({
                 // 関数の名前を使う。無名の関数(その場で書いたアロー関数など)は登録順の番号で呼ぶ
@@ -266,7 +267,7 @@ export function createAppWith<V extends object = Record<string, unknown>>(
                 prefix: path === null ? null : splitPattern(path),
                 mw: fn,
             });
-        },
+        }),
 
         onError(handler: ErrorHandler<V>) {
             onError = handler;
@@ -291,38 +292,35 @@ export function createAppWith<V extends object = Record<string, unknown>>(
 
         // 任意のメソッド(QUERY や、PROPFIND などの WebDAV)を登録する。配列でまとめて登録もできる
         // 小文字で書いても大文字にする。CONNECT / TRACE / TRACK は扱わない
-        on: ((methods: string | readonly string[], path: string, a: Handler | RouteSchemas, b?: Handler) => {
+        on: guard((methods: string | readonly string[], path: string, a: Handler | RouteSchemas, b?: Handler) => {
             const list = typeof methods === "string" ? [methods] : methods;
-            if (list.length === 0) throw new Error(`app.on(..., "${path}") にメソッドがありません`);
+            if (list.length === 0) throw senriError("no_method", `Missing method: ${path}`);
             const handler = routeHandler(path, a, b);
             for (const m of list) {
-                if (m.toUpperCase() === "ALL") throw new Error("すべてのメソッドで動かすには app.all() を使ってください");
-                add(m, path, handler);
+                if (m.toUpperCase() === "ALL") throw senriError("on_all", "Use app.all() for every method");
+                add(m, path, handler, typeof a === "function" ? undefined : a);
             }
         }) as OnMethod<V>,
 
         // K はテーブルのキーから推論される。各キーのパスからパラメーターの型が決まる
-        routes<K extends string>(table: RouteTable<K, V>) {
+        routes: guard(<K extends string>(table: RouteTable<K, V>) => {
             for (const [key, handler] of Object.entries(table) as [string, Handler][]) {
                 const [method, path] = key.split(" ");
-                if (!method || !path) {
-                    throw new Error(`ルートの書き方が違います: "${key}"\n例: "GET /hello"`);
-                }
-
+                if (!method || !path) throw senriError("route_key", `Invalid route key: "${key}" (e.g. "GET /hello")`);
                 add(method.toUpperCase(), path, handler);
             }
-        },
+        }) as App<V>["routes"],
 
         // createRouter() で作ったルーターをつなげる。ルーターに登録済みのものが、この時点でアプリに入る
         // app.route(prefix, app) なら、別のアプリをプレフィックス付きでつなげる
         // (つなぐ側のアプリでは、プレフィックスのパラメーターに型は付かない。型が必要なら createRouter を使う)
         // つないだアプリの onError / notFound は使わず、こちらのものを使う
-        route(routerOrPrefix: Router<string, V> | string, child?: MountableApp) {
+        route: guard((routerOrPrefix: Router<string, V> | string, child?: MountableApp) => {
             // 先に全部読んでおく(ルーターの作りがおかしいときに、途中まで登録された状態にしない)
             let list: GroupEntry[];
             if (typeof routerOrPrefix === "string") {
                 const read = child ? appEntries.get(child) : undefined;
-                if (!read) throw new TypeError(`app.route("${routerOrPrefix}", app) には createApp() で作ったアプリを渡してください`);
+                if (!read) throw senriError("not_app", new TypeError(`Not an app from createApp(): ${routerOrPrefix}`));
                 list = read().map((entry) => ({ ...entry, path: joinPath(routerOrPrefix, entry.path) }));
             } else {
                 list = groupEntries(routerOrPrefix);
@@ -331,7 +329,7 @@ export function createAppWith<V extends object = Record<string, unknown>>(
                 if (entry.kind === "use") app.use(entry.path, entry.mw);
                 else add(entry.method, entry.path, entry.handler);
             }
-        },
+        }),
 
         middlewareList() {
             return middlewares.map((m) => ({ name: m.name, path: m.path, anonymous: m.anonymous }));
@@ -345,8 +343,8 @@ export function createAppWith<V extends object = Record<string, unknown>>(
         // (形で見分けるので、Cloudflare Workers の env のような別のものが来ても壊れない。src/dev/dashboard/access.ts)
         // ctx: Cloudflare Workers の3つ目の引数(c.executionCtx)。export default app で、Workers がそのまま呼ぶ
         fetch(req: Request, info?: unknown, ctx?: ExecutionContext): Promise<Response> {
-            // 開発モードは計測・記録をするので別の道を通る。本番では、その分のコードを一切通らない
-            if (devTools) return devFetch(req, info, ctx);
+            // 開発モードは計測・記録をするので別の道を通る(@senrijs/senri/dev)
+            if (devHooks) return devHooks.fetch(req, info, ctx);
             try {
                 const c = new Context<V>(req, info, ctx);
                 const resolved = resolve(c);
@@ -384,7 +382,7 @@ export function createAppWith<V extends object = Record<string, unknown>>(
                 const route = resolved.route;
                 // QUERY として登録したルートだけ、ボディと Content-Type を確かめる(app.all はハンドラーに任せる)
                 if (route.method === "QUERY") {
-                    return checkQueryRequest(c, dev).then((invalid) => {
+                    return checkQueryRequest(c).then((invalid) => {
                         if (invalid) throw invalid;
                         return callHandler(c, route);
                     });
@@ -394,7 +392,7 @@ export function createAppWith<V extends object = Record<string, unknown>>(
             case "options":
                 return new Response(null, { status: 204, headers: { allow: resolved.allow } });
             case "methodNotAllowed":
-                throw methodNotAllowed(c, c.path, resolved.allow, dev);
+                throw methodNotAllowed(resolved.allow);
             case "notImplemented":
                 throw new HttpError(501, "501 Not Implemented");
             case "notFound":
@@ -425,68 +423,25 @@ export function createAppWith<V extends object = Record<string, unknown>>(
         })();
     }
 
-    // 開発モードの fetch。層ごとの時間を測り、エラーページ・Server-Timing・ダッシュボードの記録を付ける
-    async function devFetch(req: Request, info?: unknown, ctx?: ExecutionContext): Promise<Response> {
-        // 計測の基準になるリクエストの開始時刻
-        const origin = performance.now();
-        const time = Date.now();
-        const c = new Context<V>(req, info, ctx);
-        const dashboard = dashboardPromise ? await dashboardPromise : null;
-        // /_senri 以下はダッシュボード。localhost から開いたときだけ、ミドルウェアを通さずに処理する
-        // (開けないときは普通の処理に回すので、/_senri はないものとして 404 になる)。どちらも記録はしない
-        const dashboardPath = underDashboard(c);
-        if (dashboard && dashboardPath && dashboard.canOpen(req, info)) {
-            return dashboard.handle(req, dashboardPath);
-        }
-        if (!dashboardPath) dashboard?.begin(c, info);
-        const fail = (err: unknown) => handleError(err, c, onError);
-
-        // ミドルウェアより先にマッチして、c.route / c.params を見られるようにしておく
-        const resolved = resolve(c);
-        if (resolved.kind === "route") {
-            c.route = resolved.route.path;
-            c.params = resolved.params;
-        }
-
-        // ハンドラー・notFound・toResponse のどこで投げても、compose が onError に集める
-        const layers = applicableMiddlewares(c);
-        const innerName = INNER_NAME[resolved.kind];
-        const measure = { timings: c.timings, origin, innerName };
-        const res = await compose(layers, c, () => inner(c, resolved), fail, measure);
-        // ミドルウェアを全部通ったあとなので、ここなら「通った順番」が揃っている
-        const tools = await devTools!;
-        const page = await tools.finishErrorPage(c, res);
-        // 層ごとの時間を Server-Timing に載せる(ブラウザの開発者ツールで見られる)
-        const desc = resolved.kind === "route" ? `${resolved.route.method} ${resolved.route.path}` : innerName;
-        const final = tools.withServerTiming(
-            c.finalize(page),
-            tools.serverTimingHeader(c.timings, { name: innerName, desc }, performance.now() - origin),
-        );
-        // ダッシュボードに記録する(失敗してもレスポンスには影響しない)
-        await dashboard?.record(c, final, time, [
-            ...layers.map((l) => ({ name: l.name, order: l.order ?? null })),
-            { name: innerName, order: null },
-        ]);
-        return final;
-    }
-
-    // ミドルウェアを先に(登録順のまま)、ルートはそのあと。ルートの順番は add() が並べ直すので関係ない
+    // ミドルウェアを先に、ルートはそのあと(どちらも登録順)
     appEntries.set(app, () => [
         ...middlewares.map((m): GroupEntry => ({ kind: "use", path: m.path ?? "/", mw: m.mw as Middleware })),
         ...routes.map((r): GroupEntry => ({ kind: "route", method: r.method, path: r.path, handler: r.handler })),
     ]);
 
-    // 開発モードでは、ダッシュボードを作ってアプリに結び付けておく
-    // Cloudflare Workers では作らない(接続元が分からず localhost 制限で開けないうえ、
-    // リクエストごとに別の isolate で動くことがあり、記録が残らない)。/_senri はふつうの 404 になる
-    const dashboardPromise = isWorkers() ? null : devTools?.then((m) => {
-        const dashboard = m.createDashboard({
-            routes: () => app.routeList(),
-            middlewares: () => app.middlewareList(),
+    // 開発モード: 中身を渡して、開発用の fetch と既定の onError / notFound を受け取る
+    if (options.dev) {
+        devHooks = options.dev.install({
+            app,
+            resolve,
+            layers: applicableMiddlewares,
+            inner: inner as AppCore["inner"],
+            fail: (err, c) => handleError(err, c, onError),
+            routes: () => routes,
         });
-        m.registerDashboard(app, dashboard);
-        return dashboard;
-    });
+        onError = devHooks.onError;
+        notFound = devHooks.notFound;
+    }
 
     return app;
 }

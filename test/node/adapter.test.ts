@@ -5,6 +5,7 @@ import net, { type AddressInfo } from "node:net";
 import type { Server } from "node:http";
 import { createApp } from "../../src/index.ts";
 import { serve } from "../../adapters/node/index.ts";
+import { getIp } from "../../src/ip.ts";
 
 const app = createApp();
 app.get("/hello", () => "hi");
@@ -12,7 +13,7 @@ app.get("/url", (_, c) => c.req.url);
 app.post("/echo", async (_, c) => `body=${await c.req.text()}`);
 app.on("QUERY", "/search", async (_, c) => `query=${await c.req.text()}`);
 app.all("/anything", (_, c) => c.req.method);
-app.get("/ip", (_, c) => c.ip ?? "unknown");
+app.get("/ip", (_, c) => getIp(c) ?? "unknown");
 app.get("/cookies", () => {
     const headers = new Headers();
     headers.append("set-cookie", "a=1");

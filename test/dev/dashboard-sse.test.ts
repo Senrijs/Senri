@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { createApp } from "../../src/index.ts";
-import { dashboardOf } from "../../src/dev/index.ts";
+import { dashboardOf, devtools } from "../../src/dev/index.ts";
 import { RequestLog } from "../../src/dev/dashboard/log.ts";
 import { eventStream } from "../../src/dev/dashboard/sse.ts";
 import type { DashboardRecord } from "../../src/dev/dashboard/record.ts";
@@ -121,7 +121,7 @@ describe("/_senri/api/events", () => {
     const local = { requestIP: () => ({ address: "127.0.0.1" }) };
 
     test("アプリにリクエストが来ると、ダッシュボードに届く", async () => {
-        const app = createApp({ dev: true });
+        const app = createApp({ dev: devtools() });
         app.get("/hello", () => "hi");
         const ac = new AbortController();
 

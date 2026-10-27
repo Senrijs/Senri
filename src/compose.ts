@@ -1,5 +1,5 @@
 import type { Context, HandlerResult, Middleware } from "./context.ts";
-import { markConversionError, type ConversionOrigin } from "./errors.ts";
+import { markConversionError, senriError, type ConversionOrigin } from "./errors.ts";
 
 // 返した値をレスポンスにする。失敗したら、どこが返した値だったかをエラーに覚えさせてから投げ直す
 export function toResponseOf(c: Context, value: HandlerResult, origin: ConversionOrigin): Response {
@@ -21,36 +21,34 @@ export type Layer = { name: string; mw: Middleware; order?: number };
 // - stopped: next() を呼ばずに値を返して終わった(認証で 401 を返した、など。ここより内側には届いていない)
 export type Timing = { name: string; total: number; self: number; failed: boolean; start: number; stopped: boolean };
 
-// 計測するときに渡すもの(開発モードのときだけ)
-export type Measure = {
-    timings: Timing[];
-    // リクエストの開始時刻(performance.now() の値)。start はここからの差
-    origin: number;
-    // いちばん内側の層の名前(handler / notFound / 405 / options / 400)
-    innerName: string;
+// 開発モードの計測のためのフック(@senrijs/senri/dev が実装する)。本番では渡さないので、時計も読まない
+// i は層の番号(0 から。最後がいちばん内側の処理)
+export type Trace = {
+    // 層 i に入った
+    enter(i: number): void;
+    // 層 i が next() を呼んだ。返した関数は、下流が終わったときに呼ぶ
+    down(i: number): () => void;
+    // 層 i から出た。failed: この層で例外が起きた / stopped: next() を呼ばずに値を返した
+    leave(i: number, failed: boolean, stopped: boolean): void;
 };
 
 // ミドルウェアを順に通して、最後に handle を呼ぶ
 // 例外は(ミドルウェアでもハンドラーでも)onError に渡してレスポンスにしてもらう
-// measure を渡したときだけ、各層の時間を timings[i] に記録する(i = 層の順番、最後がいちばん内側)
 export function compose(
     layers: Layer[],
     c: Context,
     handle: () => Response | Promise<Response>,
     onError: (err: unknown) => Promise<Response>,
-    measure?: Measure,
+    trace?: Trace,
 ): Promise<Response> {
     // 近道: ミドルウェアがなく、計測もしないなら、いちばん内側の処理を呼ぶだけ(下の dispatch と同じ結果になる)
-    if (layers.length === 0 && !measure) {
+    if (layers.length === 0 && !trace) {
         try {
             return Promise.resolve(handle()).catch(onError);
         } catch (err) {
             return onError(err);
         }
     }
-    const timings = measure?.timings;
-    // 計測しないときは時計を読まない
-    const now = timings ? () => performance.now() : () => 0;
     // どの層で例外が起きたか(層の番号)
     let failedAt = -1;
     const fail = (err: unknown, i: number) => {
@@ -59,29 +57,17 @@ export function compose(
     };
 
     const dispatch = async (i: number): Promise<Response> => {
-        const start = now();
-        // next() の中(下流)で待っていた時間
-        let inner = 0;
+        trace?.enter(i);
         // next() を呼ばずに値を返して終わったか
         let stopped = false;
         try {
-            return await step(i, (ms) => (inner += ms), () => (stopped = true));
+            return await step(i, () => (stopped = true));
         } finally {
-            if (measure) {
-                const total = now() - start;
-                measure.timings[i] = {
-                    name: layers[i]?.name ?? measure.innerName,
-                    total,
-                    self: total - inner,
-                    failed: failedAt === i,
-                    start: start - measure.origin,
-                    stopped,
-                };
-            }
+            trace?.leave(i, failedAt === i, stopped);
         }
     };
 
-    const step = async (i: number, addInner: (ms: number) => void, markStopped: () => void): Promise<Response> => {
+    const step = async (i: number, markStopped: () => void): Promise<Response> => {
         const layer = layers[i];
         if (!layer) {
             try {
@@ -96,12 +82,10 @@ export function compose(
         let result: HandlerResult | void;
         try {
             result = await layer.mw(c, () => {
-                if (downstream) {
-                    // 2回目を許すと、ハンドラーや後ろのミドルウェアが2回動いてしまう
-                    throw new Error("next() が2回呼ばれました。1つのミドルウェアで呼べるのは1回だけです");
-                }
-                const nextStart = now();
-                downstream = dispatch(i + 1).finally(() => addInner(now() - nextStart));
+                // 2回目を許すと、ハンドラーや後ろのミドルウェアが2回動いてしまう
+                if (downstream) throw senriError("next_twice", "next() called twice");
+                const d = dispatch(i + 1);
+                downstream = trace ? d.finally(trace.down(i)) : d;
                 return downstream;
             });
             // toResponse も JSON.stringify で投げることがあるので try の中で
@@ -115,7 +99,7 @@ export function compose(
             return fail(err, i);
         }
 
-        return fail(new Error("ミドルウェアが何も返さず、next()もよんでいません"), i);
+        return fail(senriError("no_response", "Middleware returned nothing and did not call next()"), i);
     };
 
     return dispatch(0);

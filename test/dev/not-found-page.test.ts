@@ -1,7 +1,8 @@
 import { describe, expect, test } from "bun:test";
-import { createApp } from "../../src/index.ts";
+import { createApp, type AppOptions } from "../../src/index.ts";
 import { PAGE_HTML } from "../../src/dev/page.generated.ts";
 import type { NotFoundPageData } from "../../src/dev/page-data.ts";
+import { devtools } from "../../src/dev/index.ts";
 
 const html = { accept: "text/html,*/*;q=0.8" };
 const req = (path: string, init: RequestInit = {}) => new Request(`http://localhost${path}`, init);
@@ -13,7 +14,7 @@ async function pageData(res: Response): Promise<NotFoundPageData> {
     return JSON.parse(m[1]!);
 }
 
-function app(options = { dev: true }) {
+function app(options: AppOptions = { dev: devtools() }) {
     const a = createApp(options);
     a.get("/users/:id", ({ id }) => id);
     a.get("/hello", () => "hi");
@@ -48,7 +49,7 @@ describe("404ページ", () => {
     });
 
     test("候補にパラメーターがあればリンクにしない", async () => {
-        const a = createApp({ dev: true });
+        const a = createApp({ dev: devtools() });
         a.get("/user/:id", () => "x");
 
         const data = await pageData(await a.fetch(req("/usr/:id", { headers: html })));
@@ -91,7 +92,7 @@ describe("404ページ", () => {
     });
 
     test("本番では、Accept: text/html でも固定の文言だけ", async () => {
-        const res = await app({ dev: false }).fetch(req("/helo", { headers: html }));
+        const res = await app({}).fetch(req("/helo", { headers: html }));
 
         expect(await res.text()).toBe("404 Not Found");
     });

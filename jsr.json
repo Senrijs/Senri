@@ -1,15 +1,26 @@
 {
   "name": "@senrijs/senri",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "license": "MIT",
   "exports": {
     ".": "./src/index.ts",
+    "./dev": "./src/dev/index.ts",
+    "./cookie": "./src/cookie.ts",
+    "./ip": "./src/ip.ts",
     "./node": "./adapters/node/index.ts",
     "./serve": "./adapters/serve/index.ts",
     "./static": "./adapters/static/index.ts"
   },
   "publish": {
-    "include": ["src/**/*.ts", "adapters/**/*.ts", "README.md", "LICENSE"],
-    "exclude": ["**/*.test.ts", "adapters/**/tsconfig.json"]
+    "include": [
+      "src/**/*.ts",
+      "adapters/**/*.ts",
+      "README.md",
+      "LICENSE"
+    ],
+    "exclude": [
+      "**/*.test.ts",
+      "adapters/**/tsconfig.json"
+    ]
   }
 }

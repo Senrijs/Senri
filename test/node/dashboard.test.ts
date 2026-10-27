@@ -3,7 +3,7 @@ import { describe, test } from "node:test";
 import assert from "node:assert/strict";
 import type { AddressInfo } from "node:net";
 import { createApp } from "../../src/index.ts";
-import { dashboardOf } from "../../src/dev/index.ts";
+import { dashboardOf, devtools } from "../../src/dev/index.ts";
 import { serve } from "../../adapters/node/index.ts";
 
 async function readUntil(reader: ReadableStreamDefaultReader<Uint8Array>, done: (text: string) => boolean) {
@@ -19,7 +19,7 @@ async function readUntil(reader: ReadableStreamDefaultReader<Uint8Array>, done: 
 
 describe("ダッシュボード(Node)", () => {
     test("SSE でリクエストが届き、切断すると購読が外れる", async () => {
-        const app = createApp({ dev: true });
+        const app = createApp({ dev: devtools() });
         app.get("/hello", () => "hi");
         const server = serve(app, { port: 0 });
         await new Promise<void>((resolve) => server.once("listening", resolve));

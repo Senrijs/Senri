@@ -1,6 +1,6 @@
 {
   "name": "@senrijs/senri",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Web 標準の Request / Response で書かれた、小さな Web フレームワーク。Bun・Deno・Node.js・Cloudflare Workers で動く",
   "license": "MIT",
   "author": "ibuki-hum4",
@@ -34,6 +34,18 @@
     ".": {
       "types": "./dist/src/index.d.ts",
       "import": "./dist/src/index.js"
+    },
+    "./dev": {
+      "types": "./dist/src/dev/index.d.ts",
+      "import": "./dist/src/dev/index.js"
+    },
+    "./cookie": {
+      "types": "./dist/src/cookie.d.ts",
+      "import": "./dist/src/cookie.js"
+    },
+    "./ip": {
+      "types": "./dist/src/ip.d.ts",
+      "import": "./dist/src/ip.js"
     },
     "./node": {
       "types": "./dist/adapters/node/index.d.ts",

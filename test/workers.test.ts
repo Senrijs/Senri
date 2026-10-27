@@ -1,5 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { createApp, type ExecutionContext } from "../src/index.ts";
+import { devtools } from "../src/dev/index.ts";
+import { getIp } from "../src/ip.ts";
 
 const req = (path: string, init?: RequestInit) => new Request(`http://localhost${path}`, init);
 
@@ -38,7 +40,7 @@ describe("Cloudflare Workers の fetch(req, env, ctx)", () => {
 
     test("ミドルウェアがあっても同じ(開発モードでも)", async () => {
         for (const dev of [false, true]) {
-            const app = createApp<{ Bindings: { N: number } }>({ dev });
+            const app = createApp<{ Bindings: { N: number } }>({ dev: dev ? devtools() : undefined });
             app.use(async (c, next) => {
                 c.header("x-n", String(c.env.N));
                 return next();
@@ -84,17 +86,17 @@ describe("Cloudflare Workers の fetch(req, env, ctx)", () => {
 });
 
 describe("Workers で動いているとき", () => {
-    test("c.ip は Cloudflare が付ける CF-Connecting-IP から取る", async () => {
+    test("getIp(c) は Cloudflare が付ける CF-Connecting-IP から取る", async () => {
         pretendWorkers();
         const app = createApp();
-        app.get("/", (_, c) => String(c.ip));
+        app.get("/", (_, c) => String(getIp(c)));
         const res = await app.fetch(req("/", { headers: { "cf-connecting-ip": "203.0.113.5" } }), {}, fakeCtx().ctx);
         expect(await res.text()).toBe("203.0.113.5");
     });
 
     test("Workers でなければ CF-Connecting-IP は読まない(偽装できるので)", async () => {
         const app = createApp();
-        app.get("/", (_, c) => String(c.ip));
+        app.get("/", (_, c) => String(getIp(c)));
         const res = await app.fetch(req("/", { headers: { "cf-connecting-ip": "203.0.113.5" } }));
         expect(await res.text()).toBe("null");
     });
@@ -102,11 +104,11 @@ describe("Workers で動いているとき", () => {
     test("開発モードでも、ダッシュボードは作らない(/_senri はふつうの 404)。ほかの開発用の機能は動く", async () => {
         // localhost からの接続に見える info を渡す(Workers でなければ、これでダッシュボードが開ける)
         const loopback = { requestIP: () => ({ address: "127.0.0.1" }) };
-        const outside = createApp({ dev: true });
+        const outside = createApp({ dev: devtools() });
         expect((await outside.fetch(req("/_senri/api/requests", { headers: { host: "localhost" } }), loopback)).status).toBe(200);
 
         pretendWorkers();
-        const app = createApp({ dev: true });
+        const app = createApp({ dev: devtools() });
         app.get("/boom", () => {
             throw new Error("わざと");
         });

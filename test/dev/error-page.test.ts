@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
-import { createApp, HttpError } from "../../src/index.ts";
+import { createApp, HttpError, type AppOptions } from "../../src/index.ts";
 import { PAGE_HTML } from "../../src/dev/page.generated.ts";
 import type { ErrorPageData } from "../../src/dev/page-data.ts";
-import { dashboardOf } from "../../src/dev/index.ts";
+import { dashboardOf, devtools } from "../../src/dev/index.ts";
 
 const html = { accept: "text/html,application/xhtml+xml,*/*;q=0.8" };
 const req = (path: string, init: RequestInit = {}) => new Request(`http://localhost${path}`, init);
@@ -15,7 +15,7 @@ async function pageData(res: Response): Promise<ErrorPageData> {
     return JSON.parse(m[1]!);
 }
 
-function boomApp(options = { dev: true }) {
+function boomApp(options: AppOptions = { dev: devtools() }) {
     const app = createApp(options);
     app.use(async function logger(_c, next) {
         await next();
@@ -43,13 +43,13 @@ describe("HTML のエラーページを返す条件", () => {
     });
 
     test("本番では、Accept: text/html でも今までどおり", async () => {
-        const res = await boomApp({ dev: false }).fetch(req("/boom", { headers: html }));
+        const res = await boomApp({}).fetch(req("/boom", { headers: html }));
 
         expect(await res.text()).toBe("500 Internal Server Error");
     });
 
     test("意図して投げた 4xx の HttpError は、今までどおりテキスト", async () => {
-        const app = createApp({ dev: true });
+        const app = createApp({ dev: devtools() });
         app.get("/secret", () => {
             throw new HttpError(403, "見せられません");
         });
@@ -61,7 +61,7 @@ describe("HTML のエラーページを返す条件", () => {
     });
 
     test("5xx の HttpError はページになり、本番で返る文言は message", async () => {
-        const app = createApp({ dev: true });
+        const app = createApp({ dev: devtools() });
         app.get("/down", () => {
             throw new HttpError(503, "メンテナンス中");
         });
@@ -84,7 +84,7 @@ describe("HTML のエラーページを返す条件", () => {
     });
 
     test("HEAD ではボディを返さない", async () => {
-        const app = createApp({ dev: true });
+        const app = createApp({ dev: devtools() });
         app.get("/boom", () => {
             throw new Error("x");
         });
@@ -125,7 +125,7 @@ describe("ページの中身", () => {
     });
 
     test("メッセージに </script> があっても、ページの script は増えない(XSS)", async () => {
-        const app = createApp({ dev: true });
+        const app = createApp({ dev: devtools() });
         app.get("/xss", () => {
             throw new Error("</script><script>alert(1)</script>");
         });
@@ -182,7 +182,7 @@ describe("スクリプトが動かなくても読める(CSP など)", () => {
     });
 
     test("最初から入れる HTML もエスケープする(XSS)", async () => {
-        const app = createApp({ dev: true });
+        const app = createApp({ dev: devtools() });
         app.get("/xss", () => {
             throw new Error("<img src=x onerror=alert(1)>");
         });
@@ -209,7 +209,7 @@ describe("返した値をレスポンスにできなかったとき", () => {
     });
 
     test("ミドルウェアが返した値", async () => {
-        const app = createApp({ dev: true });
+        const app = createApp({ dev: devtools() });
         app.use(async function logger(_c, next) {
             await next();
         });
@@ -235,7 +235,7 @@ describe("返した値をレスポンスにできなかったとき", () => {
     });
 
     test("onError には、元のエラーがそのまま届く", async () => {
-        const app = createApp({ dev: true });
+        const app = createApp({ dev: devtools() });
         let received: unknown;
         app.onError((err) => {
             received = err;

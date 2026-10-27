@@ -7,7 +7,7 @@
 // - body: c.body() の結果(Content-Type に合わせて読んだもの)。通れば c.valid("body") で読める
 // どれかが通らなければ、ハンドラーは呼ばずに 400 にする(ValidationError)
 import { setValidated, type Context, type Handler } from "./context.ts";
-import { HttpError } from "./errors.ts";
+import { HttpError, senriError } from "./errors.ts";
 
 // Standard Schema の仕様の型(仕様は、ライブラリ側が依存せずに済むよう、型を写して使うことを勧めている)
 export interface StandardSchemaV1<Input = unknown, Output = Input> {
@@ -50,6 +50,7 @@ export type ValidationTarget = "params" | "query" | "body";
 
 // バリデーションに通らなかった。issues はスキーマのライブラリが返したもの
 // app.onError で受けて、自分の形(JSON など)で返すこともできる
+// (開発モードの「どこが違うか」の一覧は @senrijs/senri/dev が組み立てる)
 export class ValidationError extends HttpError {
     readonly target: ValidationTarget;
     readonly issues: readonly StandardIssue[];
@@ -60,52 +61,6 @@ export class ValidationError extends HttpError {
         this.name = "ValidationError";
         this.target = target;
         this.issues = issues;
-    }
-
-    // 開発モードで返す、どこが違うかの一覧
-    describe(): string {
-        const lines = this.issues.map((issue) => {
-            const path = issuePath(issue);
-            return `- ${path ? `${path}: ` : ""}${issue.message}`;
-        });
-        return [`400 Bad Request: ${LABEL[this.target]}が、スキーマに合いません`, ...lines].join("\n");
-    }
-}
-
-const LABEL: Record<ValidationTarget, string> = {
-    params: "パスパラメーター",
-    query: "クエリ",
-    body: "ボディ",
-};
-
-// ["user", 0, "name"] → "user[0].name"
-function issuePath(issue: StandardIssue): string {
-    let out = "";
-    for (const part of issue.path ?? []) {
-        const key = typeof part === "object" ? part.key : part;
-        if (typeof key === "number") out += `[${key}]`;
-        else out += out ? `.${String(key)}` : String(key);
-    }
-    return out;
-}
-
-// ArkType のスキーマは関数なので、オブジェクトでも関数でもよい
-function isSchema(value: unknown): value is StandardSchemaV1 {
-    return (typeof value === "object" || typeof value === "function") && value !== null && "~standard" in value;
-}
-
-// スキーマを確かめておく(書き間違いに、登録した時点で気づけるように)
-export function checkSchemas(path: string, schemas: RouteSchemas): void {
-    if (typeof schemas !== "object" || schemas === null) {
-        throw new TypeError(`${path}: 2つ目の引数には { params, query, body } のスキーマかハンドラーを渡してください`);
-    }
-    for (const [key, schema] of Object.entries(schemas)) {
-        if (key !== "params" && key !== "query" && key !== "body") {
-            throw new TypeError(`${path}: スキーマに渡せるのは params / query / body だけです("${key}" は使えません)`);
-        }
-        if (schema !== undefined && !isSchema(schema)) {
-            throw new TypeError(`${path}: ${key} が Standard Schema のスキーマではありません(Zod・Valibot・ArkType などのスキーマを渡してください)`);
-        }
     }
 }
 
@@ -127,4 +82,13 @@ export function withValidation(schemas: RouteSchemas, handler: Handler): Handler
         if (schemas.body) setValidated(c, "body", await run(schemas.body, "body", await c.body()));
         return handler(validParams, c);
     };
+}
+
+// app.get(path, handler) と app.get(path, { params, query, body }, handler) のどちらか
+// 2つ目の引数がスキーマなら、確かめてからハンドラーを呼ぶものにする
+// (スキーマの書き間違いは、開発モードで登録した時点で知らせる。@senrijs/senri/dev の validation.ts)
+export function routeHandler(path: string, a: Handler | RouteSchemas, b: Handler | undefined): Handler {
+    if (typeof a === "function") return a;
+    if (typeof b !== "function") throw senriError("no_handler", `Missing handler: ${path}`);
+    return withValidation(a, b);
 }

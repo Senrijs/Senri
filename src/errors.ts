@@ -1,5 +1,4 @@
 import type { Context, HandlerResult } from "./context.ts";
-import type { Route } from "./router.ts";
 
 // status 付きで投げられるエラー。message はそのままクライアントに見せる前提のもの
 export class HttpError extends Error {
@@ -57,53 +56,37 @@ export async function handleError(err: unknown, c: Context, onError: ErrorHandle
     }
 }
 
-// 本番では、エラーの中身(DB のパスワードなど)や、ルートの一覧がもれないよう固定の文言だけ返す
-// dev: true のときだけ、開発者向けの詳しい情報を足す
-
-// validate.ts を import すると循環するので、形で見分ける
-function isValidationError(err: HttpError): err is HttpError & { describe(): string } {
-    return err.name === "ValidationError" && typeof (err as { describe?: unknown }).describe === "function";
+// Senri が投げるエラー。本体の文言は短い英語にして、開発モードでは code から日本語の説明を付ける
+// (@senrijs/senri/dev の messages.ts。本体を小さくするため、長い説明は本体に持たない)
+export function senriError<E extends Error>(code: string, error: E): E;
+export function senriError(code: string, message: string): Error;
+export function senriError(code: string, error: Error | string): Error {
+    return Object.assign(typeof error === "string" ? new Error(error) : error, { code });
 }
 
-export function defaultOnError(dev: boolean): ErrorHandler {
-    return (err, c) => {
-        if (err instanceof HttpError) {
-            // バリデーションのエラーは、開発モードでだけ、どこが違うかを返す
-            if (dev && isValidationError(err)) return c.text(err.describe());
-            return c.text(err.message);
-        }
-        if (!dev) {
-            return c.text("500 Internal Server Error");
-        }
-        return c.text(`500 Internal Server Error: ${err instanceof Error ? err.message : String(err)}`);
-    };
+// Senri が投げたエラーの code(なければ undefined)
+export function errorCode(err: unknown): string | undefined {
+    const code = (err as { code?: unknown } | null)?.code;
+    return typeof code === "string" ? code : undefined;
 }
 
-export function methodNotAllowed(c: Context, path: string, methods: string, dev: boolean): HttpError {
-    const message = dev
-        ? `405 Method Not Allowed: ${c.req.method} ${path}\n${methods} ならあります`
-        : "405 Method Not Allowed";
-    return new HttpError(405, message, { headers: { allow: methods } });
+// 本番の既定。エラーの中身(DB のパスワードなど)がもれないよう、固定の文言だけ返す
+// (開発モードの詳しい文言とエラーページは @senrijs/senri/dev が差し替える)
+export const defaultOnError: ErrorHandler = (err, c) =>
+    c.text(err instanceof HttpError ? err.message : "500 Internal Server Error");
+
+export const defaultNotFound: NotFoundHandler = (c) => c.text("404 Not Found");
+
+export function methodNotAllowed(methods: string): HttpError {
+    return senriError("method_not_allowed", new HttpError(405, "405 Method Not Allowed", { headers: { allow: methods } }));
 }
 
 // QUERY(RFC 10008)は、検索の条件をボディに入れて送るメソッド。ボディと、その形式(Content-Type)が必須
 // ハンドラーを呼ぶ前に確かめる。どちらも問題なければ null
-export async function checkQueryRequest(c: Context, dev: boolean): Promise<HttpError | null> {
-    if (await isEmptyBody(c)) {
-        return new HttpError(
-            400,
-            dev
-                ? "400 Bad Request: QUERY リクエストにボディがありません\nQUERY は、検索の条件をボディに入れて送るメソッドです"
-                : "400 Bad Request",
-        );
-    }
+export async function checkQueryRequest(c: Context): Promise<HttpError | null> {
+    if (await isEmptyBody(c)) return senriError("query_no_body", new HttpError(400, "400 Bad Request"));
     if (!c.req.headers.get("content-type")) {
-        return new HttpError(
-            415,
-            dev
-                ? "415 Unsupported Media Type: QUERY リクエストに Content-Type がありません\nボディの形式を指定してください(例: Content-Type: application/json)"
-                : "415 Unsupported Media Type",
-        );
+        return senriError("query_no_type", new HttpError(415, "415 Unsupported Media Type"));
     }
     return null;
 }
@@ -131,14 +114,4 @@ async function isEmptyBody(c: Context): Promise<boolean> {
         // 複製のほうはもう読まない(元のほうに、読んだ分ため込まれ続けないようにする)
         reader.cancel().catch(() => {});
     }
-}
-
-// devTools: 開発モードのとき、開発用のモジュール(src/dev/index.ts)。本番では null で、固定の文言だけを返す
-// (開発モードの「もしかして」や 404 ページは src/dev/not-found.ts)
-export function defaultNotFound(
-    routes: Route[],
-    devTools: Promise<{ devNotFound(c: Context, routes: Route[]): HandlerResult | Promise<HandlerResult> }> | null,
-): NotFoundHandler {
-    if (!devTools) return (c) => c.text("404 Not Found");
-    return async (c) => (await devTools).devNotFound(c, routes);
 }

@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { createApp, HttpError, logger } from "../src/index.ts";
 import { requestPathname, splitPath } from "../src/router.ts";
+import { devtools } from "../src/dev/index.ts";
 
 const req = (path: string, init?: RequestInit) =>
     new Request(`http://localhost${path}`, init);
@@ -43,23 +44,28 @@ describe("登録のチェック", () => {
         const app = createApp();
         app.get("/users", () => "1");
 
-        expect(() => app.get("/users", () => "2")).toThrow("GET /users はすでに登録されています");
+        expect(() => app.get("/users", () => "2")).toThrow("Duplicate route: GET /users");
     });
 
     test("末尾スラッシュだけ違うものも同じパス", () => {
         const app = createApp();
         app.get("/users", () => "1");
 
-        expect(() => app.get("/users/", () => "2")).toThrow("すでに登録されています");
+        expect(() => app.get("/users/", () => "2")).toThrow("Duplicate route");
     });
 
     test("パラメーター名だけ違うものも同じパス", () => {
         const app = createApp();
         app.get("/users/:id", () => "1");
 
-        expect(() => app.get("/users/:name", () => "2")).toThrow(
-            "GET /users/:name は、登録済みの GET /users/:id と同じパスです",
-        );
+        expect(() => app.get("/users/:name", () => "2")).toThrow("Duplicate route: GET /users/:name (already: GET /users/:id)");
+    });
+
+    test("開発モードでは、登録時のエラーに日本語の説明が付く", () => {
+        const app = createApp({ dev: devtools() });
+        app.get("/users/:id", () => "1");
+        expect(() => app.get("/users/:name", () => "2")).toThrow("同じメソッド・同じ形のパスが、すでに登録されています");
+        expect(() => app.get("/a/:x/:x", () => "2")).toThrow("同じパラメーター名が2回");
     });
 
     test("メソッドが違えば同じパスでも登録できる", () => {
@@ -72,7 +78,7 @@ describe("登録のチェック", () => {
     test("1つのパターンで同じパラメーター名を2回使うとエラー", () => {
         const app = createApp();
 
-        expect(() => app.get("/a/:id/b/:id", () => "x")).toThrow('パラメーター名 "id" が2回使われています');
+        expect(() => app.get("/a/:id/b/:id", () => "x")).toThrow('Parameter "id" used twice');
     });
 });
 
