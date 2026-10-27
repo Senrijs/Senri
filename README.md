@@ -7,14 +7,15 @@
 
 <p align="center">
   Web 標準の <code>Request</code> / <code>Response</code> だけで書かれた、小さな Web フレームワーク。<br>
-  Bun・Deno・Node.js・Cloudflare Workers で、同じコードが動きます。
+  Bun・Deno・Node.js・Cloudflare Workers・ブラウザ(Service Worker)で、同じコードが動きます。
 </p>
 
 ```ts
 import { createApp } from "@senrijs/senri";
+import { devtools } from "@senrijs/senri/dev";
 import { serve } from "@senrijs/senri/serve";
 
-const app = createApp();
+const app = createApp({ dev: devtools() });      // 開発中の親切なエラーページなど。NODE_ENV=production では何もしない
 
 app.get("/hello", () => "こんにちは!");          // 文字列 → text/plain
 app.get("/users/:id", ({ id }) => ({ id }));    // オブジェクト → JSON(id の型はパスから推論)
@@ -22,10 +23,12 @@ app.get("/users/:id", ({ id }) => ({ id }));    // オブジェクト → JSON(i
 serve(app);   // Bun でも Deno でも Node.js でも
 ```
 
+本番のビルドでは `dev: devtools()` を外すと、開発用のコードがバンドルに入らず、本体だけ(minify して約 14KB)になります([開発モード](#開発モード))。
+
 - **返した値がレスポンスになる。** 文字列はテキスト、オブジェクトは JSON。`Response` もそのまま返せます
 - **型はパスから。** `/users/:id` と書けば、ハンドラーの `id` に型が付きます。[Standard Schema](https://standardschema.dev)(Zod・Valibot・ArkType など)で、パラメーター・クエリ・ボディも確かめられます
 - **開発モードが親切。** エラーページ(該当コード・ヒント・エディタで開く)、404 の「もしかして」、リクエストを玉ねぎのように見られるダッシュボード(`/_senri`)、層ごとの `Server-Timing`
-- **どこでも動く。** Web 標準の API だけで書いていて、`eval` も `new Function` も使いません
+- **どこでも動く。** Web 標準の API だけで書いていて、`eval` も `new Function` も使いません。ブラウザの Service Worker でも動きます
 
 ## インストール
 
@@ -86,9 +89,29 @@ export default app;
 ```
 
 - 変数の型も決めるときは `createApp<{ Bindings: Env; Variables: { user: User } }>()` と書きます。変数だけなら、今までどおり `createApp<{ user: User }>()` です
-- `c.ip` は、Cloudflare が付ける `CF-Connecting-IP` を読みます(Workers で動いているときだけ)
+- `getIp(c)`(`@senrijs/senri/ip`)は、Cloudflare が付ける `CF-Connecting-IP` を読みます(Workers で動いているときだけ)
 - 開発モードのダッシュボードは作りません(`/_senri` はふつうの 404)。エラーページは出ますが、該当コードは出ません
+- wrangler は1つのファイルにまとめるので、`dev: devtools()` を残すと、開発用のコード(約 140KB)もバンドルに入ります。本番のビルドでは外してください
 - 静的ファイルは `@senrijs/senri/static` ではなく、Workers の [Static Assets](https://developers.cloudflare.com/workers/static-assets/) で配ってください
+
+### ブラウザ(Service Worker)
+
+Service Worker の `fetch` イベントに、そのまま答えられます。サーバーなしで、ページからの `fetch` に Senri が返事をします。
+
+```ts
+// sw.ts(bun build や Vite でまとめて、navigator.serviceWorker.register("/sw.js") で登録する)
+import { createApp } from "@senrijs/senri";
+
+const app = createApp();
+app.get("/api/todos/:id", ({ id }) => ({ id, done: false }));
+
+self.addEventListener("fetch", (e) => {
+    if (new URL(e.request.url).pathname.startsWith("/api/")) e.respondWith(app.fetch(e.request));
+});
+```
+
+- ページの中で `app.fetch(new Request(...))` を直接呼ぶこともできます
+- CI で、Chromium のページと Service Worker の両方で動くことを確かめています(`scripts/browser.ts`)
 
 ### 止め方(graceful shutdown)
 
@@ -158,19 +181,24 @@ app.route("/admin", adminApp);                             // 別の createApp()
 ## リクエストを読む
 
 ```ts
+import { getCookie, setCookie } from "@senrijs/senri/cookie";
+import { getIp } from "@senrijs/senri/ip";
+
 app.post("/search", async (_, c) => {
-    c.query("page");          // "2"(なければ undefined。c.query() で全部)
-    c.queries("tag");         // ["a", "b"]
-    await c.body();           // Content-Type に合わせて読む(JSON・フォーム・テキスト・それ以外は ArrayBuffer)
-    c.cookie("session");      // Cookie
-    c.ip;                     // 接続元の IP アドレス(分からなければ null)
+    c.query("page");               // "2"(なければ undefined。c.query() で全部)
+    c.queries("tag");              // ["a", "b"]
+    await c.body();                // Content-Type に合わせて読む(JSON・フォーム・テキスト・それ以外は ArrayBuffer)
+    getCookie(c, "session");       // Cookie(getCookie(c) で全部)
+    setCookie(c, "seen", "1");     // deleteCookie(c, name) で消す
+    getIp(c);                      // 接続元の IP アドレス(分からなければ null)
     return "ok";
 });
 ```
 
 - `c.body()` は何度呼んでも同じ結果です(ミドルウェアとハンドラーの両方から読めます)
-- `c.ip` はランタイムが渡す接続元を使います。`X-Forwarded-For` などのヘッダーは偽装できるので読みません。プロキシの後ろでは、プロキシが付けるヘッダーを自分で読んでください
-- `c.setCookie(name, value, options)` の既定は `Path=/`・`HttpOnly`・`SameSite=Lax` です
+- Cookie と IP は、使わないアプリのバンドルに入らないよう、別の入口(`@senrijs/senri/cookie`・`@senrijs/senri/ip`)にしています
+- `getIp(c)` はランタイムが渡す接続元を使います。`X-Forwarded-For` などのヘッダーは偽装できるので読みません。プロキシの後ろでは、プロキシが付けるヘッダーを自分で読んでください
+- `setCookie(c, name, value, options)` の既定は `Path=/`・`HttpOnly`・`SameSite=Lax` です
 
 ## バリデーション
 
@@ -193,7 +221,7 @@ app.post(
 ```
 
 - `params`・`query`・`body` を渡せます。`params` が通れば、ハンドラーの第1引数が変換後の値になります
-- 通らなければ 400 です。本番の本文は `400 Bad Request` だけで、開発モードでは、どこが違うかを一覧にします
+- 通らなければ 400 です。本番の本文は `400 Bad Request` だけで、開発モード(`devtools()`)では、どこが違うかを一覧にします。スキーマの書き間違いも、開発モードなら登録した時点で知らせます
 - 自分の形で返したいときは、`app.onError` で `ValidationError` を受けます(`err.target` と `err.issues`)
 
 ## ミドルウェア
@@ -254,17 +282,27 @@ app.notFound((c) => `ありません: ${c.path}`);
 ## 開発モード
 
 ```ts
-const app = createApp({ dev: true });
+import { createApp } from "@senrijs/senri";
+import { devtools } from "@senrijs/senri/dev";
+
+const app = createApp({ dev: devtools() });
 ```
 
-開発モードのときだけ、次のものが動きます。本番(既定)では、固定の文言(`500 Internal Server Error` など)だけを返し、計測も記録もしません。
+開発用の機能は、すべて `@senrijs/senri/dev` にあります。本体(`@senrijs/senri`)は開発用のコードを一切 import しないので、`devtools()` を渡さなければ、どのバンドラーでも開発用のコードは入りません。`devtools()` を渡したときだけ、次のものが動きます。渡さなければ、固定の文言(`500 Internal Server Error` など)だけを返し、計測も記録もしません。
 
-- 500 の本文にエラーメッセージ、404 に「もしかして: GET /hello ?」、405 にどのメソッドならあるか、バリデーションの 400 に違うところの一覧
+- 500 の本文にエラーメッセージ、404 に「もしかして: GET /hello ?」、405 にどのメソッドならあるか、バリデーションの 400 に違うところの一覧、登録時のエラーに日本語の説明
 - **エラーページと 404 ページ**: ブラウザから開いたとき(`Accept` に `text/html` があるとき)だけ。エラーが起きた行の前後のコード、ヒント、スタックトレース、ミドルウェアを通った順番と時間。エラーの場所は VS Code・Cursor・WebStorm・Zed で開けます
 - **ダッシュボード(`/_senri`)**: 直近 200 件のリクエストをリアルタイムで。玉ねぎタイムライン(ミドルウェアごとの自分の時間と下流込みの時間)、ルートとミドルウェアの一覧
 - **`Server-Timing` ヘッダー**: 層ごとの時間が、ブラウザの開発者ツールの「タイミング」に出ます
 
-開発モードを決めるのに環境変数(`NODE_ENV` など)は読みません。本番では `dev: true` にしないでください。
+本番での扱いは、2通りあります。
+
+- **本番のビルドから `devtools()` を外す(`dev` を渡さない)**: 開発用のコードがバンドルに入らず、サイズが最小になります。依存は増えません(同じパッケージの別の入口なので)
+- **`dev: devtools()` を残して `NODE_ENV=production` にする**: `devtools()` は何もしないので、本番に開発ページは出ません。ただし、1つのファイルにまとめるバンドラー(Workers の wrangler など)では、コードが入ったままなのでサイズは減りません
+
+Deno では、`NODE_ENV` を読む許可(`--allow-env=NODE_ENV`)がないと本番かどうか分からないので、`devtools()` は無効になり、その旨を1行出します。
+
+0.1 の `createApp({ dev: true })` は、0.2 からエラーになります([CHANGELOG](./CHANGELOG.md) に移行方法があります)。
 
 ダッシュボードの記録とセキュリティについて:
 

@@ -39,6 +39,9 @@ Ideas and requests are welcome in [Issues](https://github.com/Senrijs/Senri/issu
 
 ## 0.1.1
 
+- [x] Browser (Service Worker) support
+- [x] Dev tools split out (`devtools()` from `@senrijs/senri/dev`)
+- [x] Smaller core (about 14KB minified; cookies and IP moved to their own entries)
 - [ ] English / Japanese error messages and dev pages
 - [ ] `create-senri`
 - [ ] SSE / streaming helpers

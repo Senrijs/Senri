@@ -39,6 +39,9 @@ Senri がこれから向かう先です。バージョンは目標であって�
 
 ## 0.1.1
 
+- [x] ブラウザ(Service Worker)対応
+- [x] 開発機能の分離(`@senrijs/senri/dev` の `devtools()`)
+- [x] 本体の軽量化(minify 後 約 14KB。Cookie と IP は別の入口へ)
 - [ ] エラーメッセージと開発ページの日英対応
 - [ ] `create-senri`
 - [ ] SSE / ストリーミングのヘルパー
