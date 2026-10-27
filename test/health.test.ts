@@ -1,10 +1,13 @@
-import { afterEach, describe, expect, spyOn, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, spyOn, test } from "bun:test";
 import { createApp, health } from "../src/index.ts";
 import { isDraining, setDraining } from "../src/health.ts";
 import { serve } from "../adapters/serve/index.ts";
 
 const req = (path: string, init?: RequestInit) => new Request(`http://localhost${path}`, init);
 
+// setDraining はプロセス全体で1つの状態。ほかのテストファイル(serve() を止めるもの)が先に動いて true のまま残っていても、
+// 順番に依存しないよう、前後の両方で戻す
+beforeEach(() => setDraining(false));
 afterEach(() => setDraining(false));
 
 describe("health()", () => {
