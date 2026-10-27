@@ -7,10 +7,12 @@
 //   const app = createApp({ dev: devtools() });
 //
 // NODE_ENV=production のとき devtools() は何もしない(undefined を返す)ので、消し忘れても本番に開発ページは出ない
+// Cloudflare Workers とブラウザ(process がない環境)では NODE_ENV が読めないので、localhost へのリクエストのときだけ
+// 開発用の出力をする(それ以外は、そのリクエストだけ本番と同じに振る舞う)
 import type { AppCore, DevHooks, DevInstalled, Resolved } from "../app.ts";
 import { Context, type ExecutionContext } from "../context.ts";
 import { compose, type Layer, type Trace } from "../compose.ts";
-import { errorCode, HttpError, type ErrorHandler } from "../errors.ts";
+import { defaultNotFound, defaultOnError, errorCode, HttpError, type ErrorHandler } from "../errors.ts";
 import { compareRoutes } from "../router.ts";
 import * as runtime from "../runtime.ts";
 import { ValidationError } from "../validate.ts";
@@ -42,7 +44,27 @@ export function devtools(): DevHooks | undefined {
         return undefined;
     }
     if (runtime.env("NODE_ENV") === "production") return undefined;
-    return { install };
+    // Workers(nodejs_compat で process があっても、NODE_ENV はふつう入っていない)とブラウザは、本番かどうか分からない
+    const localOnly = runtime.isWorkers() || typeof (globalThis as { process?: unknown }).process === "undefined";
+    return { install: (core) => install(core, localOnly) };
+}
+
+// request.url のホスト名が localhost か(Host や X-Forwarded-Host などのヘッダーは見ない。だれでも付けられるので)
+// - Workers: Cloudflare は登録されたドメインのリクエストしか渡さないので、本番に localhost は来ない。wrangler dev は localhost
+// - ブラウザ: Service Worker が受けるリクエストの URL は、そのサイトのオリジン。開発中だけ localhost になる
+export function isLocalUrl(url: string): boolean {
+    let host: string;
+    try {
+        host = new URL(url).hostname.toLowerCase();
+    } catch {
+        return false;
+    }
+    return (
+        host === "localhost" ||
+        host.endsWith(".localhost") ||
+        host === "[::1]" ||
+        /^127\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(host)
+    );
 }
 
 // パスが /_senri か /_senri/... なら、"_senri" より後ろのセグメント。そうでなければ null
@@ -102,8 +124,11 @@ const devOnError: ErrorHandler = (err, c) => {
     return c.text(`500 Internal Server Error: ${err instanceof Error ? err.message : String(err)}`);
 };
 
-function install(core: AppCore): DevInstalled {
+// localOnly: localhost へのリクエストのときだけ開発用の出力をする(Workers とブラウザ)
+function install(core: AppCore, localOnly: boolean): DevInstalled {
     const { app } = core;
+    // 本番と同じに振る舞うリクエスト(localOnly で、localhost でないもの)
+    const quiet = new WeakSet<Context>();
     // 一覧は優先順位の順(静的なセグメントが先)。本体は登録順に持っている
     const sortedRoutes = () => [...core.routes()].sort(compareRoutes);
 
@@ -122,6 +147,7 @@ function install(core: AppCore): DevInstalled {
         const origin = performance.now();
         const time = Date.now();
         const c = new Context(req, info, ctx);
+        if (localOnly && !isLocalUrl(req.url)) return quietFetch(c);
         // /_senri 以下はダッシュボード。localhost から開いたときだけ、ミドルウェアを通さずに処理する
         // (開けないときは普通の処理に回すので、/_senri はないものとして 404 になる)。どちらも記録はしない
         const dashboardPath = underDashboard(c);
@@ -163,10 +189,22 @@ function install(core: AppCore): DevInstalled {
         return final;
     }
 
+    // 本番の fetch と同じ流れ(計測・記録・エラーページ・Server-Timing なし。onError / notFound も本番の既定になる)
+    function quietFetch(c: Context): Promise<Response> {
+        quiet.add(c);
+        const resolved = core.resolve(c);
+        if (resolved.kind === "route") {
+            c.route = resolved.route.path;
+            c.params = resolved.params;
+        }
+        return compose(core.layers(c), c, () => core.inner(c, resolved), (err) => core.fail(err, c)).then((res) => c.finalize(res));
+    }
+
+    const pageOnError = withErrorPage(devOnError, true);
     return {
         fetch,
-        onError: withErrorPage(devOnError, true),
-        notFound: (c) => devNotFound(c, sortedRoutes()),
+        onError: (err, c) => (quiet.has(c) ? defaultOnError(err, c) : pageOnError(err, c)),
+        notFound: (c) => (quiet.has(c) ? defaultNotFound(c) : devNotFound(c, sortedRoutes())),
         checkRoute(method, path, schemas) {
             if (schemas) checkSchemas(path, schemas);
             // /_senri 以下はダッシュボードが使うので、登録しても呼ばれない。気づけるようにエラーにする

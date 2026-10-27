@@ -92,6 +92,7 @@ export default app;
 - `getIp(c)`(`@senrijs/senri/ip`)は、Cloudflare が付ける `CF-Connecting-IP` を読みます(Workers で動いているときだけ)
 - 開発モードのダッシュボードは作りません(`/_senri` はふつうの 404)。エラーページは出ますが、該当コードは出ません
 - wrangler は1つのファイルにまとめるので、`dev: devtools()` を残すと、開発用のコード(約 140KB)もバンドルに入ります。本番のビルドでは外してください
+- Workers では `NODE_ENV` が読めないので、`devtools()` は `localhost` へのリクエスト(`wrangler dev`)のときだけ開発用の出力をします([開発モード](#開発モード))
 - 静的ファイルは `@senrijs/senri/static` ではなく、Workers の [Static Assets](https://developers.cloudflare.com/workers/static-assets/) で配ってください
 
 ### ブラウザ(Service Worker)
@@ -295,10 +296,17 @@ const app = createApp({ dev: devtools() });
 - **ダッシュボード(`/_senri`)**: 直近 200 件のリクエストをリアルタイムで。玉ねぎタイムライン(ミドルウェアごとの自分の時間と下流込みの時間)、ルートとミドルウェアの一覧
 - **`Server-Timing` ヘッダー**: 層ごとの時間が、ブラウザの開発者ツールの「タイミング」に出ます
 
-本番での扱いは、2通りあります。
+本番での扱いは、2通りあります。**本番のビルドから外すのが確実です。**
 
 - **本番のビルドから `devtools()` を外す(`dev` を渡さない)**: 開発用のコードがバンドルに入らず、サイズが最小になります。依存は増えません(同じパッケージの別の入口なので)
 - **`dev: devtools()` を残して `NODE_ENV=production` にする**: `devtools()` は何もしないので、本番に開発ページは出ません。ただし、1つのファイルにまとめるバンドラー(Workers の wrangler など)では、コードが入ったままなのでサイズは減りません
+
+**Cloudflare Workers とブラウザ(Service Worker)では `NODE_ENV` が読めない**ので、`devtools()` は、リクエストの URL のホスト名が `localhost`(`127.0.0.1`・`[::1]`・`*.localhost` を含む)のときだけ開発用の出力をします。それ以外のリクエストには、本番と同じ固定の文言だけを返し、エラーページ・ルートの一覧・`Server-Timing` は出しません。
+
+- 見るのは URL のホスト名だけです。`Host` や `X-Forwarded-Host` などのヘッダーは、だれでも付けられるので見ません
+- Workers では、本番の Worker に `localhost` のリクエストは届かない(Cloudflare は登録されたドメインのリクエストしか渡さない)ので、`wrangler dev`(`localhost:8787`)のときだけ有効になります
+- ブラウザでは、開発中のサイト(`localhost`)のときだけ有効になります
+- それでも、本番のビルドからは外すのが確実です。消し忘れても漏れないようにするための、念のための仕組みです
 
 Deno では、`NODE_ENV` を読む許可(`--allow-env=NODE_ENV`)がないと本番かどうか分からないので、`devtools()` は無効になり、その旨を1行出します。
 
