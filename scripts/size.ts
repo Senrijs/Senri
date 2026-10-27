@@ -50,6 +50,22 @@ async function sizeOf(files: string[]): Promise<Size> {
     return { raw, gzip };
 }
 
+// 入口のファイルと、そこから静的に import されるファイル(最初に読まれるもの)。import() で読むものは含めない
+async function staticClosure(file: string): Promise<string[]> {
+    const seen = new Set<string>();
+    const visit = async (path: string) => {
+        if (seen.has(path)) return;
+        seen.add(path);
+        const code = await readFile(path, "utf8");
+        // import x from "./a.js" / import { a } from "./a.js" / import "./a.js"(import( は動的なので合わない)
+        for (const m of code.matchAll(/\bimport\s*(?:[\w$*{}\s,]+?\s*from\s*)?["'](\.\.?\/[^"']+\.js)["']/g)) {
+            await visit(resolve(path, "..", m[1]!));
+        }
+    };
+    await visit(file);
+    return [...seen];
+}
+
 async function bun(dir: string, minify: boolean, splitting: boolean): Promise<Row> {
     await writeFile(join(dir, "main.ts"), `${APP}export default app;\n`);
     const outdir = join(dir, "out");
@@ -59,7 +75,7 @@ async function bun(dir: string, minify: boolean, splitting: boolean): Promise<Ro
     return {
         tool: splitting ? "bun build --splitting" : "bun build",
         minify,
-        first: await sizeOf(files.filter((f) => f.endsWith("main.js"))),
+        first: await sizeOf(await staticClosure(join(outdir, "main.js"))),
         total: await sizeOf(files),
         files: files.length,
     };
