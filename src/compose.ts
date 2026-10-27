@@ -84,8 +84,10 @@ export function compose(
             result = await layer.mw(c, () => {
                 // 2回目を許すと、ハンドラーや後ろのミドルウェアが2回動いてしまう
                 if (downstream) throw senriError("next_twice", "next() called twice");
+                // 下流に入る時刻は、dispatch を始める前に取る(下流が最初の await までに同期で使った時間も、下流の時間にする)
+                const up = trace?.down(i);
                 const d = dispatch(i + 1);
-                downstream = trace ? d.finally(trace.down(i)) : d;
+                downstream = up ? d.finally(up) : d;
                 return downstream;
             });
             // toResponse も JSON.stringify で投げることがあるので try の中で

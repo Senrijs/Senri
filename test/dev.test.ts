@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { createApp, type AppOptions } from "../src/index.ts";
 import { explainDifference, suggest } from "../src/dev/suggest.ts";
 import { devtools } from "../src/dev/index.ts";
@@ -90,7 +90,22 @@ describe("開発モード createApp({ dev: devtools() })", () => {
 });
 
 describe("計測(c.timings)", () => {
-    const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+    // 時計(performance.now)を差し替えて、時間を決め打ちにする(マシンの負荷で結果が変わらないように)
+    // 時計はテストのコードが進めたときだけ進む
+    let clock = 0;
+    const realNow = performance.now.bind(performance);
+    beforeEach(() => {
+        clock = 0;
+        performance.now = () => clock;
+    });
+    afterEach(() => {
+        performance.now = realNow;
+    });
+    // 待ったことにする(時計を進めて、ほかの処理に一度順番をゆずる)
+    const sleep = async (ms: number) => {
+        clock += ms;
+        await Promise.resolve();
+    };
 
     function measuredApp(options: AppOptions) {
         const app = createApp(options);
@@ -119,11 +134,11 @@ describe("計測(c.timings)", () => {
 
         expect(slow!.name).toBe("slow");
         expect(handler!.name).toBe("handler");
-        // ハンドラーの時間は slow の self には入らない
-        expect(handler!.self).toBeGreaterThanOrEqual(50);
-        expect(slow!.self).toBeLessThan(40);
+        // ハンドラーの 60ms は slow の self には入らない(slow 自身が待った 10ms だけ)
+        expect(handler!.self).toBe(60);
+        expect(slow!.self).toBe(10);
         // total = 自分の時間 + 下流の total
-        expect(Math.abs(slow!.total - (slow!.self + handler!.total))).toBeLessThan(5);
+        expect(slow!.total).toBe(slow!.self + handler!.total);
     });
 
     test("例外が起きた層に failed が付く(ハンドラー)", async () => {
@@ -172,9 +187,9 @@ describe("計測(c.timings)", () => {
         await app.fetch(req("/x"));
         const [, slow, handler] = read();
 
-        expect(slow!.start).toBeGreaterThanOrEqual(0);
+        expect(slow!.start).toBe(0);
         // slow は next() の前に 10ms 待つので、handler はその後に始まる
-        expect(handler!.start).toBeGreaterThanOrEqual(slow!.start + 5);
+        expect(handler!.start).toBe(slow!.start + 10);
     });
 
     test("next() を呼ばずに値を返して終わった層に stopped が付く", async () => {
