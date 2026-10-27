@@ -12,6 +12,8 @@ import { extname, join } from "node:path";
 import { chromium } from "playwright";
 
 const ROOT = join(import.meta.dirname, "..");
+// Service Worker の登録と切り替えを待つ上限(ミリ秒)
+const SW_TIMEOUT = 10_000;
 
 type Result = { name: string; ok: boolean; detail: string };
 const results: Result[] = [];
@@ -102,12 +104,21 @@ try {
     check("ページ: 404", inPage.missing.status === 404 && inPage.missing.body === "404 Not Found", JSON.stringify(inPage.missing));
 
     // Service Worker で fetch イベントに答える
-    const viaWorker = await page.evaluate(async () => {
+    // 登録や切り替えが終わらないときに永遠に待たないよう、待ちには上限を付ける(どちらで止まったかを出して失敗にする)
+    const viaWorker = await page.evaluate(async (limit) => {
+        const within = <T>(promise: Promise<T>, label: string) =>
+            Promise.race([
+                promise,
+                new Promise<never>((_, reject) => setTimeout(() => reject(new Error(`${label} を ${limit}ms 待っても終わらなかった`)), limit)),
+            ]);
         await navigator.serviceWorker.register("/sw.js");
-        await navigator.serviceWorker.ready;
+        await within(navigator.serviceWorker.ready, "navigator.serviceWorker.ready");
         // このページを Service Worker が受け持つまで待つ(clients.claim())
         if (!navigator.serviceWorker.controller) {
-            await new Promise((resolve) => navigator.serviceWorker.addEventListener("controllerchange", resolve, { once: true }));
+            await within(
+                new Promise((resolve) => navigator.serviceWorker.addEventListener("controllerchange", resolve, { once: true })),
+                "controllerchange(clients.claim() で、このページを受け持つ)",
+            );
         }
         const res = await fetch("/api/users/7");
         const post = await fetch("/api/echo", { method: "POST", headers: { "content-type": "application/json" }, body: `{"b":2}` });
@@ -119,12 +130,18 @@ try {
             post: await post.text(),
             missing: { status: missing.status, body: await missing.text() },
         };
+    }, SW_TIMEOUT).catch((err: Error) => {
+        // 時間切れ(ほかの失敗も)は、ここで1件の失敗にして、残りの確認は飛ばす
+        check("Service Worker: 登録と切り替え", false, err.message.split("\n")[0]!);
+        return null;
     });
-    check("Service Worker: パラメーター → JSON", viaWorker.body === `{"id":"7","from":"senri"}`, JSON.stringify(viaWorker));
-    check("Service Worker: ミドルウェア", viaWorker.mark === "browser", JSON.stringify(viaWorker));
-    check("Service Worker: ボディを読む", viaWorker.post === `{"body":{"b":2}}`, viaWorker.post);
-    // 静的サーバーの 404("static 404")ではなく、Senri の 404 が返る
-    check("Service Worker: Senri の 404", viaWorker.missing.status === 404 && viaWorker.missing.body === "404 Not Found", JSON.stringify(viaWorker.missing));
+    if (viaWorker) {
+        check("Service Worker: パラメーター → JSON", viaWorker.body === `{"id":"7","from":"senri"}`, JSON.stringify(viaWorker));
+        check("Service Worker: ミドルウェア", viaWorker.mark === "browser", JSON.stringify(viaWorker));
+        check("Service Worker: ボディを読む", viaWorker.post === `{"body":{"b":2}}`, viaWorker.post);
+        // 静的サーバーの 404("static 404")ではなく、Senri の 404 が返る
+        check("Service Worker: Senri の 404", viaWorker.missing.status === 404 && viaWorker.missing.body === "404 Not Found", JSON.stringify(viaWorker.missing));
+    }
 
 } finally {
     await browser.close();
