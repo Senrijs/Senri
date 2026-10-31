@@ -1,20 +1,63 @@
 name: Publish
 
-# v0.1.0 のようなタグを push したときだけ動く(main への push では動かない)
+# - main への push: Release Please がリリースの PR を作る・更新する。その PR をマージしたら、
+#   タグと GitHub Release を作り、同じ実行の中で JSR と npm に公開する
+# - 手動実行(workflow_dispatch): 作り済みのタグを公開し直す(公開が途中で失敗したときなど。CONTRIBUTING.md)
+# Release Please が作るタグは GITHUB_TOKEN で push されるので、タグの push で動くワークフローは起動しない。
+# なので公開は、別のワークフローにせず、このファイルの中で続けて行う
+# (npm の Trusted Publisher は、このファイル名 publish.yml で登録している。名前を変えないこと)
 on:
   push:
-    tags:
-      - "v*"
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "公開するタグ(例: v0.2.1)"
+        required: true
+        type: string
+
+# リリースの PR の更新と公開が、同時に2つ走らないようにする
+concurrency:
+  group: publish
+  cancel-in-progress: false
 
 jobs:
+  release-please:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+    steps:
+      - uses: googleapis/release-please-action@v4
+        id: release
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
   publish:
+    needs: release-please
+    # 手動実行のときは release-please が skipped になるので、!cancelled() で needs の結果を問わずに判定する
+    if: >-
+      !cancelled() && (
+        (github.event_name == 'push' && needs.release-please.outputs.release_created == 'true') ||
+        github.event_name == 'workflow_dispatch'
+      )
     runs-on: ubuntu-latest
     permissions:
       contents: read
       # JSR と npm に、GitHub Actions の OIDC で認証する(シークレットは使わない)
       id-token: write
+    env:
+      TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || needs.release-please.outputs.tag_name }}
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: ${{ env.TAG }}
       - uses: oven-sh/setup-bun@v2
       - uses: denoland/setup-deno@v2
       - uses: actions/setup-node@v6
@@ -25,27 +68,38 @@ jobs:
       # タグと package.json / jsr.json のバージョンがそろっているか(v0.1.0 なら 0.1.0)
       - name: Check versions
         run: |
-          tag="${GITHUB_REF_NAME#v}"
+          tag="${TAG#v}"
           npm_version=$(node -p "require('./package.json').version")
           jsr_version=$(node -p "require('./jsr.json').version")
           if [ "$tag" != "$npm_version" ] || [ "$tag" != "$jsr_version" ]; then
             echo "タグ ($tag) と package.json ($npm_version) / jsr.json ($jsr_version) のバージョンが違います"
             exit 1
           fi
+          echo "VERSION=$tag" >> "$GITHUB_ENV"
 
       - run: bun install
       - run: bun run typecheck
       - run: bun test
       - run: bun run test:node
 
+      # 公開し直すとき(手動実行・再実行)のために、公開済みのものは飛ばす
       # JSR: @senrijs/senri は GitHub の Senrijs/Senri とリンク済みなので、OIDC で公開できる
       - name: Publish to JSR
-        run: npx jsr publish
+        run: |
+          if curl -fsS https://jsr.io/@senrijs/senri/meta.json | node -e 'const m = JSON.parse(require("fs").readFileSync(0, "utf8")); process.exit(m.versions?.[process.env.VERSION] ? 0 : 1)'; then
+            echo "JSR には $VERSION が公開済みなので飛ばします"
+          else
+            npx jsr publish
+          fi
 
       # npm: Trusted Publishing(OIDC)で公開する。provenance(どのワークフローで作ったか)も付く
       # Trusted Publishing には npm 11.5.1 以降が必要
       - name: Publish to npm
         run: |
-          bun run build
-          npm --version
-          npm publish --provenance --access public
+          if npm view "@senrijs/senri@$VERSION" version >/dev/null 2>&1; then
+            echo "npm には $VERSION が公開済みなので飛ばします"
+          else
+            bun run build
+            npm --version
+            npm publish --provenance --access public
+          fi
