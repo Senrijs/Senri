@@ -22,8 +22,9 @@
 //   const app = createApp({ dev: devtools() });
 //
 // NODE_ENV=production のとき devtools() は何もしない(undefined を返す)ので、消し忘れても本番に開発ページは出ない
-// Cloudflare Workers とブラウザ(process がない環境)では NODE_ENV が読めないので、localhost へのリクエストのときだけ
-// 開発用の出力をする(それ以外は、そのリクエストだけ本番と同じに振る舞う)
+// NODE_ENV が development / test のときだけ、全部のリクエストに開発用の出力をする。それ以外(未設定を含む)は、
+// localhost へのリクエストのときだけ開発用の出力をする(それ以外は、そのリクエストだけ本番と同じに振る舞う)
+// Cloudflare Workers とブラウザ(process がない環境)では NODE_ENV が読めないので、いつも localhost のときだけ
 import type { AppCore, DevHooks, DevInstalled, Resolved } from "../app.ts";
 import { Context, type ExecutionContext } from "../context.ts";
 import { compose, type Layer, type Trace } from "../compose.ts";
@@ -38,6 +39,7 @@ import { devNotFound } from "./not-found.ts";
 import { finishErrorPage, withErrorPage } from "./pages.ts";
 import { serverTimingHeader, withServerTiming } from "./server-timing.ts";
 import { checkSchemas, describeValidation } from "./validation.ts";
+import { isLoopback, remoteAddress } from "./dashboard/access.ts";
 
 // 計測で、いちばん内側の層に付ける名前(ダッシュボードの玉ねぎタイムラインに出る)
 const INNER_NAME: Record<Resolved["kind"], string> = {
@@ -49,18 +51,28 @@ const INNER_NAME: Record<Resolved["kind"], string> = {
     notImplemented: "501",
 };
 
+// どのリクエストに開発用の出力をするか
+// - all: 全部(NODE_ENV が development / test)
+// - local: URL のホスト名が localhost で、かつ接続元が loopback のときだけ(Node / Bun / Deno で、それ以外の NODE_ENV。未設定を含む)
+//   request.url のホスト名は Host ヘッダーから作られる(だれでも付けられる)ので、接続元も見る
+// - localUrl: URL のホスト名が localhost のときだけ(Workers とブラウザ。URL はプラットフォームが決めるので偽装できない)
+type Scope = "all" | "local" | "localUrl";
+
 // 開発モードのフックを作る。本番(NODE_ENV=production)では undefined を返すので、開発モードにならない
 // Deno で NODE_ENV を読む許可がないときは、本番かどうか分からないので、開発モードにしない(案内を1行出す)
 /**
  * Creates the development-mode hooks to pass to `createApp({ dev: devtools() })`.
  *
- * Returns `undefined` (development mode stays off) when `NODE_ENV` is `"production"`, or when `NODE_ENV`
- * cannot be read (Deno without `--allow-env=NODE_ENV`; a one-line warning is printed).
- * **If `NODE_ENV` is not set, development mode is on**, so production must run with `NODE_ENV=production`
- * (or not pass `devtools()` at all).
+ * - `NODE_ENV=production`: returns `undefined` (development mode stays off)
+ * - `NODE_ENV=development` or `test`: development output for every request
+ * - `NODE_ENV` not set, or any other value: development output only for requests to localhost
+ *   (the URL's host is localhost **and** the client address is a loopback address); other requests behave as in production
+ *
+ * `NODE_ENV` is read once, when `devtools()` is called. The first time a request is answered as in production
+ * because it is not to localhost, a one-line warning is printed (once per app).
+ * When `NODE_ENV` cannot be read (Deno without `--allow-env=NODE_ENV`), it returns `undefined` and prints a warning.
  * On Cloudflare Workers and in the browser, where `NODE_ENV` is not available, development output is used
- * only for requests to a localhost URL (see {@link isLocalUrl}); other requests behave as in production.
- * The `/_senri` dashboard is not available on Cloudflare Workers.
+ * only for requests to a localhost URL (see {@link isLocalUrl}). The `/_senri` dashboard is not available on Cloudflare Workers.
  *
  * @example
  * ```ts
@@ -78,10 +90,23 @@ export function devtools(): DevHooks | undefined {
         );
         return undefined;
     }
-    if (runtime.env("NODE_ENV") === "production") return undefined;
+    const nodeEnv = runtime.env("NODE_ENV");
+    if (nodeEnv === "production") return undefined;
     // Workers(nodejs_compat で process があっても、NODE_ENV はふつう入っていない)とブラウザは、本番かどうか分からない
-    const localOnly = runtime.isWorkers() || typeof (globalThis as { process?: unknown }).process === "undefined";
-    return { install: (core) => install(core, localOnly) };
+    // それ以外は、development / test と明示したときだけ全部。未設定や staging などは、本番に出ているかもしれないので localhost だけ
+    const scope: Scope =
+        runtime.isWorkers() || typeof (globalThis as { process?: unknown }).process === "undefined"
+            ? "localUrl"
+            : nodeEnv === "development" || nodeEnv === "test"
+              ? "all"
+              : "local";
+    return { install: (core) => install(core, scope, nodeEnv) };
+}
+
+// 開発用の出力をしてよい、localhost へのリクエストか(scope は "all" 以外)
+function isLocalRequest(req: Request, info: unknown, scope: Scope): boolean {
+    if (!isLocalUrl(req.url)) return false;
+    return scope === "localUrl" || isLoopback(remoteAddress(req, info));
 }
 
 // request.url のホスト名が localhost か(Host や X-Forwarded-Host などのヘッダーは見ない。だれでも付けられるので)
@@ -163,11 +188,27 @@ const devOnError: ErrorHandler = (err, c) => {
     return c.text(`500 Internal Server Error: ${err instanceof Error ? err.message : String(err)}`);
 };
 
-// localOnly: localhost へのリクエストのときだけ開発用の出力をする(Workers とブラウザ)
-function install(core: AppCore, localOnly: boolean): DevInstalled {
+// scope: どのリクエストに開発用の出力をするか / nodeEnv: 知らせるときに出す、NODE_ENV の値
+function install(core: AppCore, scope: Scope, nodeEnv: string | undefined): DevInstalled {
     const { app } = core;
-    // 本番と同じに振る舞うリクエスト(localOnly で、localhost でないもの)
+    // 本番と同じに振る舞うリクエスト(localhost でないもの)
     const quiet = new WeakSet<Context>();
+    // localhost でないので開発用の出力をしなかったことを、1回だけ知らせる(Node / Bun / Deno のとき。Workers とブラウザはいつもなので出さない)
+    let warned = scope !== "local";
+    const warnOnce = (req: Request) => {
+        if (warned) return;
+        warned = true;
+        let host = "";
+        try {
+            host = new URL(req.url).host;
+        } catch {}
+        const env = nodeEnv === undefined ? "not set" : `${JSON.stringify(nodeEnv)}`;
+        console.warn(
+            `[senri] NODE_ENV is ${env}, so dev output is shown only for requests to localhost (this request: ${JSON.stringify(host)}). ` +
+                "Set NODE_ENV=development to show it for all requests, or NODE_ENV=production in production. / " +
+                "NODE_ENV が development / test ではないので、開発用の出力は localhost へのリクエストだけにしています",
+        );
+    };
     // 一覧は優先順位の順(静的なセグメントが先)。本体は登録順に持っている
     const sortedRoutes = () => [...core.routes()].sort(compareRoutes);
 
@@ -186,7 +227,10 @@ function install(core: AppCore, localOnly: boolean): DevInstalled {
         const origin = performance.now();
         const time = Date.now();
         const c = new Context(req, info, ctx);
-        if (localOnly && !isLocalUrl(req.url)) return quietFetch(c);
+        if (scope !== "all" && !isLocalRequest(req, info, scope)) {
+            warnOnce(req);
+            return quietFetch(c);
+        }
         // /_senri 以下はダッシュボード。localhost から開いたときだけ、ミドルウェアを通さずに処理する
         // (開けないときは普通の処理に回すので、/_senri はないものとして 404 になる)。どちらも記録はしない
         const dashboardPath = underDashboard(c);

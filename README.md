@@ -301,9 +301,21 @@ const app = createApp({ dev: devtools() });
 - **本番のビルドから `devtools()` を外す(`dev` を渡さない)**: 開発用のコードがバンドルに入らず、サイズが最小になります。依存は増えません(同じパッケージの別の入口なので)
 - **`dev: devtools()` を残して `NODE_ENV=production` にする**: `devtools()` は何もしないので、本番に開発ページは出ません。ただし、1つのファイルにまとめるバンドラー(Workers の wrangler など)では、コードが入ったままなのでサイズは減りません
 
-**Cloudflare Workers とブラウザ(Service Worker)では `NODE_ENV` が読めない**ので、`devtools()` は、リクエストの URL のホスト名が `localhost`(`127.0.0.1`・`[::1]`・`*.localhost` を含む)のときだけ開発用の出力をします。それ以外のリクエストには、本番と同じ固定の文言だけを返し、エラーページ・ルートの一覧・`Server-Timing` は出しません。
+**どのリクエストに開発用の出力をするかは、`NODE_ENV` で決まります。**
 
-- 見るのは URL のホスト名だけです。`Host` や `X-Forwarded-Host` などのヘッダーは、だれでも付けられるので見ません
+| `NODE_ENV` | 開発用の出力 |
+| --- | --- |
+| `production` | しない(`devtools()` は何もしない) |
+| `development` / `test` | 全部のリクエスト |
+| 未設定・それ以外(`staging` など) | **localhost へのリクエストだけ** |
+
+- 「localhost へのリクエスト」は、リクエストの URL のホスト名が `localhost`(`127.0.0.1`・`[::1]`・`*.localhost` を含む)で、**かつ**接続元がループバック(同じ PC)のときです。Node.js・Bun・Deno では、URL のホスト名は `Host` ヘッダーから作られ、だれでも付けられるので、接続元も見ます(接続元は `app.fetch` の2つ目の引数から取ります。ダッシュボードと同じです)
+- それ以外のリクエストには、本番と同じ固定の文言だけを返し、エラーページ・ルートの一覧・`Server-Timing` は出しません。そうしたリクエストが初めて来たときに、1回だけその旨をログに出します
+- Docker の中で動かしてホストのブラウザから開くとき、同じ LAN の別の機器(スマートフォンなど)から開くとき、`localhost` 以外のホスト名で開くときは、`NODE_ENV=development` を付けてください。`bun test` は `NODE_ENV=test` を入れるので、テストでは全部に出ます
+- 同じ PC のリバースプロキシの裏では、プロキシが `Host: localhost` をそのまま転送すると、localhost へのリクエストに見えてしまいます。本番では `NODE_ENV=production` にするか、`devtools()` を外してください
+
+**Cloudflare Workers とブラウザ(Service Worker)では `NODE_ENV` が読めない**ので、いつも localhost へのリクエストだけです。ここでは URL をプラットフォームが決めるので、URL のホスト名だけを見ます。
+
 - Workers では、本番の Worker に `localhost` のリクエストは届かない(Cloudflare は登録されたドメインのリクエストしか渡さない)ので、`wrangler dev`(`localhost:8787`)のときだけ有効になります
 - ブラウザでは、開発中のサイト(`localhost`)のときだけ有効になります
 - それでも、本番のビルドからは外すのが確実です。消し忘れても漏れないようにするための、念のための仕組みです
