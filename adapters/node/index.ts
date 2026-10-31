@@ -116,6 +116,28 @@ function notImplemented(socket: Duplex) {
     );
 }
 
+/**
+ * Serves an app with `node:http` on `options.port` (all network interfaces) and returns the `http.Server`.
+ * Listening starts asynchronously; wait for its `listening` event if you need it.
+ *
+ * - The client address is passed to `app.fetch` (for `getIp` and the dev dashboard)
+ * - If the client disconnects before the response is sent, `c.req.signal` is aborted
+ * - CONNECT, TRACE, TRACK and methods Node.js does not know get 501; an invalid `Host` or request target gets 400
+ * - If `app.fetch` throws, the error is logged and 500 is returned
+ *
+ * Unlike `serve()` from `@senrijs/senri/serve`, it does not read `PORT`, print routes or handle graceful shutdown.
+ *
+ * @example
+ * ```ts
+ * import { createApp } from "@senrijs/senri";
+ * import { serve } from "@senrijs/senri/node";
+ *
+ * const app = createApp();
+ * app.get("/", () => "hi");
+ * const server = serve(app, { port: 3927 });
+ * server.once("listening", () => console.log("listening"));
+ * ```
+ */
 export function serve(app: App, options: { port: number }): Server {
     const server = createServer(async (req, res) => {
         if (NOT_IMPLEMENTED.has(req.method ?? "")) {

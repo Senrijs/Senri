@@ -24,34 +24,68 @@ type App = {
     routeList(): { method: string; path: string }[];
 };
 
-type ServeOptions = {
+/** Options for {@link serve}. */
+export type ServeOptions = {
     // 省略すると、環境変数 PORT → DEFAULT_PORT の順に使う。0 なら空いているポートを自動で選ぶ
+    /**
+     * The port. Without it, the `PORT` environment variable, then {@link DEFAULT_PORT}. `0` picks a free port.
+     * An invalid value (here or in `PORT`) throws a `RangeError`.
+     */
     port?: number;
+    /**
+     * The hostname to listen on, passed to `Bun.serve` / `Deno.serve`. Without it, the runtime's default.
+     * Currently not used on Node.js, which listens on all network interfaces. Also used in {@link Server.url}.
+     */
     hostname?: string;   // 省略するとランタイムのデフォルト(外からも繋がる)
+    /** Print the URL and the route list on start. Default `true`. */
     banner?: boolean;    // false で起動時のルート一覧を出さない
     // SIGTERM / SIGINT を受けたら、処理中のリクエストを待ってから終わる(既定は true)
     // false なら、シグナルはランタイムの既定どおり(すぐ終わる)
+    /**
+     * Shut down gracefully on SIGTERM / SIGINT. Default `true`. In order: `health()` readiness turns 503,
+     * new connections are refused, in-flight requests are awaited (up to `shutdownTimeout`), `onShutdown` is called,
+     * and the process exits. A second signal exits immediately with code 1.
+     * With `false`, signals keep the runtime's default behavior.
+     */
     gracefulShutdown?: boolean;
     // 処理中のリクエストを待つ上限(ミリ秒)。過ぎたら残りの接続を切って終わる。既定は 10 秒
+    /**
+     * How long to wait for in-flight requests, in milliseconds. Default `10000`.
+     * After that, remaining connections are closed on Bun and Node.js; on Deno, waiting just stops.
+     * A negative or non-finite value throws a `RangeError`.
+     */
     shutdownTimeout?: number;
     // 待ち受けを止めたあと、終わる前に呼ぶ(DB の接続を閉じる、など)
+    /**
+     * Called during a signal-triggered shutdown, after the server has stopped and before the process exits
+     * (to close a database connection, for example). Not called by {@link Server.stop}.
+     */
     onShutdown?: () => unknown;
 };
 
+/** A server started by {@link serve}. */
 export type Server = {
     // 実際に待ち受けているポート(port: 0 のときも、選ばれた番号が入る)
+    /** The port actually listened on (the chosen one when `port` is `0`). */
     port: number;
+    /** `http://<hostname or "localhost">:<port>`. */
     url: string;
     // 新しい接続を受けるのをやめ、処理中のリクエストが終わるまで(shutdownTimeout まで)待つ。プロセスは終わらない
+    /**
+     * Stops accepting new connections and waits for in-flight requests (up to `shutdownTimeout`).
+     * `health()` readiness turns 503. The process keeps running. Calling it again returns the same promise.
+     */
     stop(): Promise<void>;
 };
 
 // よく使われる 3000 や 8080 とぶつかりにくい番号にしている
+/** The port used when neither `port` nor the `PORT` environment variable is given. */
 export const DEFAULT_PORT = 3927;
 
 // - option: serve(app, { port }) で明示した
 // - env: 環境変数 PORT(デプロイ先のサービスが決めることが多い)
 // - default: どちらもなかった
+/** Where the port came from: the `port` option, the `PORT` environment variable, or {@link DEFAULT_PORT}. */
 export type PortSource = "option" | "env" | "default";
 
 function isPort(n: number): boolean {
@@ -60,6 +94,12 @@ function isPort(n: number): boolean {
 
 // 使うポートを決める: 明示した port → 環境変数 PORT → DEFAULT_PORT
 // 環境変数は runtime.env で読むので、Deno で --allow-env がなければ聞き返さずにデフォルトになる
+/**
+ * Decides the port: `explicit`, then the `PORT` environment variable, then {@link DEFAULT_PORT}.
+ * Throws a `RangeError` if `explicit` or `PORT` is not a port number (0 to 65535).
+ *
+ * @param env Reads an environment variable. Defaults to the runtime's; on Deno without permission to read `PORT`, it is treated as unset.
+ */
 export function resolvePort(
     explicit: number | undefined,
     env: (name: string) => string | undefined = runtime.env,
@@ -117,6 +157,27 @@ function within(promise: Promise<unknown>, ms: number): Promise<boolean> {
     return Promise.race([promise.then(() => true), timeout]).finally(() => clearTimeout(timer));
 }
 
+/**
+ * Starts the app on Bun (`Bun.serve`), Deno (`Deno.serve`) or Node.js (`@senrijs/senri/node`), detecting the runtime.
+ * The port comes from `options.port`, the `PORT` environment variable, or {@link DEFAULT_PORT}.
+ * Prints the URL and routes, and shuts down gracefully on SIGTERM / SIGINT (see {@link ServeOptions}).
+ * The promise rejects if listening fails (the port is in use, for example).
+ *
+ * @example
+ * ```ts
+ * import { createApp } from "@senrijs/senri";
+ * import { serve } from "@senrijs/senri/serve";
+ *
+ * const app = createApp();
+ * app.get("/", () => "hi");
+ *
+ * const server = await serve(app, {
+ *     shutdownTimeout: 30_000,
+ *     onShutdown: () => console.log("bye"),
+ * });
+ * console.log(server.url);
+ * ```
+ */
 export async function serve(app: App, options: ServeOptions = {}): Promise<Server> {
     const { port, source } = resolvePort(options.port);
     const hostname = options.hostname;
