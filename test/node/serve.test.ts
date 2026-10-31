@@ -69,6 +69,47 @@ describe("serve(Node)", () => {
         await stopped;
     });
 
+    // シグナルは process.emit で送り、process.exit は差し替えて呼ばれた code だけ記録する(テストのプロセスを終わらせない)
+    test("止まっている途中で2回目のシグナルを受けたら、待たずに exit(1) する", async () => {
+        const hangApp = createApp();
+        hangApp.get("/hang", () => new Promise<string>(() => {}));
+        const exits: number[] = [];
+        const realExit = process.exit;
+        process.exit = ((code?: number) => {
+            exits.push(code ?? 0);
+        }) as typeof process.exit;
+        const before = process.listenerCount("SIGTERM");
+        try {
+            const server = await serve(hangApp, { port: 0, banner: false, shutdownTimeout: 300 });
+            const hanging = fetch(`${server.url}/hang`).catch(() => "cut");
+            await new Promise((r) => setTimeout(r, 100));
+
+            process.emit("SIGTERM");
+            // 1回目: 処理中のリクエストを待っているので、まだ終わらない
+            assert.deepEqual(exits, []);
+            process.emit("SIGTERM");
+            // 2回目: 待たずに終わる
+            assert.deepEqual(exits, [1]);
+
+            // 後始末: 時間切れで止まり終わると、onShutdown のあと exit(0) が呼ばれ、シグナルの受け口も外れる
+            await server.stop();
+            await hanging;
+            await new Promise((r) => setTimeout(r, 0));
+            assert.deepEqual(exits, [1, 0]);
+            assert.equal(process.listenerCount("SIGTERM"), before);
+        } finally {
+            process.exit = realExit;
+        }
+    });
+
+    test("stop() で止まり終わったら、シグナルの受け口を外す", async () => {
+        const before = process.listenerCount("SIGTERM");
+        const server = await serve(app, { port: 0, banner: false });
+        assert.equal(process.listenerCount("SIGTERM"), before + 1);
+        await server.stop();
+        assert.equal(process.listenerCount("SIGTERM"), before);
+    });
+
     test("shutdownTimeout を過ぎたら、残りの接続を切って止まる", async () => {
         const hangApp = createApp();
         hangApp.get("/hang", () => new Promise<string>(() => {}));

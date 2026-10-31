@@ -44,8 +44,8 @@ export type ServeOptions = {
     /**
      * Shut down gracefully on SIGTERM / SIGINT. Default `true`. In order: `health()` readiness turns 503,
      * new connections are refused, in-flight requests are awaited (up to `shutdownTimeout`), `onShutdown` is called,
-     * and the process exits. The signal listeners are removed when shutdown starts, so a second signal gets the
-     * runtime's default behavior.
+     * and the process exits. A second signal before in-flight requests finish (or `shutdownTimeout` passes)
+     * exits immediately with code 1.
      * With `false`, signals keep the runtime's default behavior.
      */
     gracefulShutdown?: boolean;
@@ -236,10 +236,11 @@ export async function serve(app: App, options: ServeOptions = {}): Promise<Serve
     const detach: (() => void)[] = [];
     const stop = () => {
         stopping ??= (async () => {
-            for (const off of detach) off();
             // まず /readyz を 503 にする(ロードバランサーが、新しいリクエストを送ってこないように)
             setDraining(true);
             if (!(await within(drain(), timeout))) force();
+            // シグナルの受け口は、止まり終わってから外す(待っている間の2回目のシグナルで、すぐ終われるように)
+            for (const off of detach) off();
         })();
         return stopping;
     };
