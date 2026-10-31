@@ -86,6 +86,7 @@ export function parseCookies(header: string | null): Record<string, string> {
 
 /**
  * Builds a `Set-Cookie` header value. The value is URI-encoded; defaults are `Path=/`, `HttpOnly` and `SameSite=Lax`.
+ * Adds `Secure` for names starting with `__Secure-` or `__Host-`, as browsers ignore it otherwise.
  * Throws a `TypeError` if the name is not a valid cookie name,
  * or if `domain` is given for a name starting with `__Host-`.
  */
@@ -160,7 +161,9 @@ export function getCookie(c: Context, name?: string): string | undefined | Recor
 // 既定は Path=/・HttpOnly・SameSite=Lax。最後に1回だけレスポンスに足される(c.header と同じ)
 /**
  * Adds a `Set-Cookie` header to the response (through `c.header()`, so it is added once at the end).
- * Defaults are `Path=/`, `HttpOnly` and `SameSite=Lax`. Throws a `TypeError` if the name is not a valid cookie name,
+ * Defaults are `Path=/`, `HttpOnly` and `SameSite=Lax`.
+ * Adds `Secure` for names starting with `__Secure-` or `__Host-`, as browsers ignore it otherwise.
+ * Throws a `TypeError` if the name is not a valid cookie name,
  * or if `domain` is given for a name starting with `__Host-`.
  *
  * @example
