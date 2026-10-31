@@ -2,13 +2,35 @@
 import type { Context, HandlerResult, Middleware } from "../context.ts";
 import { HttpError } from "../errors.ts";
 
+/** Options for {@link bodyLimit}. */
 export type BodyLimitOptions = {
     // バイト数
+    /** The maximum body size in bytes. */
     maxSize: number;
     // 超えたときのレスポンス。既定は "413 Content Too Large"
+    /**
+     * The response when the body is too large. Default: 413 `413 Content Too Large`.
+     * When it returns something other than a `Response`, set the status yourself with `c.status(413)`.
+     */
     onError?: (c: Context) => HandlerResult | Promise<HandlerResult>;
 };
 
+/**
+ * Middleware that limits the request body size. Requests without a body pass through.
+ * - With `Content-Length`: decided before reading. Over the limit, `onError` responds; a non-numeric value gets 400.
+ * - Without it (chunked): the body is counted while it is read. Over the limit, reading fails with an
+ *   {@link HttpError} 413 and `onError` responds, even if the handler caught the error.
+ *
+ * Throws if `maxSize` is not a finite number of 0 or more.
+ *
+ * @example
+ * ```ts
+ * import { createApp, bodyLimit } from "@senrijs/senri";
+ *
+ * const app = createApp();
+ * app.use(bodyLimit({ maxSize: 1024 * 1024 })); // 1 MiB
+ * ```
+ */
 export function bodyLimit(options: BodyLimitOptions): Middleware {
     const max = options.maxSize;
     if (typeof max !== "number" || !Number.isFinite(max) || max < 0) {
