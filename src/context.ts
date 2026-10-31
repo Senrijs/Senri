@@ -269,6 +269,7 @@ export class Context<V extends object = any, I extends object = {}> {
     query(): Record<string, string>;
     /** One query parameter, or `undefined`. For repeated names, the last value. */
     query(name: string): string | undefined;
+    /** One query parameter (with `name`), or all of them (without it). For repeated names, the last value. */
     query(name?: string): string | undefined | Record<string, string> {
         const params = this.#searchParams();
         if (name !== undefined) {

@@ -139,6 +139,7 @@ export function getCookie(c: Context): Record<string, string>;
  * ```
  */
 export function getCookie(c: Context, name: string): string | undefined;
+/** Reads one cookie of the request (with `name`), or all of them (without it). */
 export function getCookie(c: Context, name?: string): string | undefined | Record<string, string> {
     const all = parseCookies(c.req.headers.get("cookie"));
     return name === undefined ? { ...all } : all[name];
