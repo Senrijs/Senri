@@ -67,6 +67,16 @@ function raw(request: string): Promise<string> {
 }
 
 describe("Node アダプター", () => {
+    test("hostname を渡すと、そのアドレスで待ち受ける", async () => {
+        const s = serve(app, { port: 0, hostname: "127.0.0.1" });
+        try {
+            await new Promise<void>((resolve) => s.once("listening", resolve));
+            assert.equal((s.address() as AddressInfo).address, "127.0.0.1");
+        } finally {
+            s.close();
+        }
+    });
+
     test("GET でテキストが返る", async () => {
         const res = await fetch(`${base}/hello`);
 

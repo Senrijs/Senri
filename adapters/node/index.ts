@@ -116,8 +116,10 @@ function notImplemented(socket: Duplex) {
     );
 }
 
+// hostname: 待ち受けるアドレス。省略すると全部のアドレス(node:http の既定)
 /**
- * Serves an app with `node:http` on `options.port` (all network interfaces) and returns the `http.Server`.
+ * Serves an app with `node:http` on `options.port` and returns the `http.Server`.
+ * It listens on `options.hostname`, or on all network interfaces when it is omitted.
  * Listening starts asynchronously; wait for its `listening` event if you need it.
  *
  * - The client address is passed to `app.fetch` (for `getIp` and the dev dashboard)
@@ -138,7 +140,7 @@ function notImplemented(socket: Duplex) {
  * server.once("listening", () => console.log("listening"));
  * ```
  */
-export function serve(app: App, options: { port: number }): Server {
+export function serve(app: App, options: { port: number; hostname?: string | undefined }): Server {
     const server = createServer(async (req, res) => {
         if (NOT_IMPLEMENTED.has(req.method ?? "")) {
             res.writeHead(501, { "content-type": "text/plain; charset=utf-8", connection: "close" });
@@ -200,6 +202,6 @@ export function serve(app: App, options: { port: number }): Server {
         socket.end(`HTTP/1.1 ${status}\r\nConnection: close\r\n\r\n`);
     });
 
-    server.listen(options.port);
+    server.listen(options.port, options.hostname);
     return server;
 }

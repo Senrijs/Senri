@@ -33,8 +33,8 @@ export type ServeOptions = {
      */
     port?: number;
     /**
-     * The hostname to listen on, passed to `Bun.serve` / `Deno.serve`. Without it, the runtime's default.
-     * Currently not used on Node.js, which listens on all network interfaces. Also used in {@link Server.url}.
+     * The hostname to listen on, passed to `Bun.serve` / `Deno.serve` / `node:http`.
+     * Without it, the runtime's default (all network interfaces on Node.js). Also used in {@link Server.url}.
      */
     hostname?: string;   // 省略するとランタイムのデフォルト(外からも繋がる)
     /** Print the URL and the route list on start. Default `true`. */
@@ -213,7 +213,7 @@ export async function serve(app: App, options: ServeOptions = {}): Promise<Serve
     } else {
         // Node のときだけ node:http を読み込む
         const node = await import("../node/index.ts");
-        const s = node.serve(app, { port });
+        const s = node.serve(app, { port, hostname });
         // Node は待ち受けが非同期。使用中のポートなどは error イベントで来るので、ここで reject にする
         // (受け取らないとプロセスごと落ちる)
         await new Promise<void>((resolve, reject) => {
