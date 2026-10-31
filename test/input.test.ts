@@ -187,6 +187,45 @@ describe("Cookie", () => {
 
         return app.fetch(req("/c")).then(() => expect(error).toBeInstanceOf(TypeError));
     });
+
+    // __Host- の Cookie に Domain を付けると、ブラウザに捨てられる(黙って効かないより、エラーにする)
+    test("__Host- の Cookie に domain を渡したらエラー(付けるときも消すときも)", async () => {
+        const app = createApp();
+        const errors: unknown[] = [];
+        app.get("/c", (_, c) => {
+            for (const call of [
+                () => setCookie(c, "__Host-id", "1", { domain: "example.com" }),
+                () => deleteCookie(c, "__Host-id", { domain: "example.com" }),
+            ]) {
+                try {
+                    call();
+                } catch (e) {
+                    errors.push(e);
+                }
+            }
+            return "ok";
+        });
+        // domain がなければ、今までどおり付けられる。__Secure- や普通の名前は domain を付けてよい
+        app.get("/ok", (_, c) => {
+            setCookie(c, "__Host-id", "1");
+            deleteCookie(c, "__Host-id");
+            setCookie(c, "__Secure-id", "1", { domain: "example.com" });
+            setCookie(c, "plain", "1", { domain: "example.com" });
+            return "ok";
+        });
+
+        const res = await app.fetch(req("/c"));
+        expect(errors).toHaveLength(2);
+        for (const error of errors) {
+            expect(error).toBeInstanceOf(TypeError);
+            expect((error as { code?: string }).code).toBe("cookie_host_domain");
+        }
+        // 投げたので、Set-Cookie は1つも付いていない
+        expect(res.headers.getSetCookie()).toEqual([]);
+
+        const ok = await app.fetch(req("/ok"));
+        expect(ok.headers.getSetCookie()).toHaveLength(4);
+    });
 });
 
 describe("送る側が決める名前(__proto__ / constructor)", () => {

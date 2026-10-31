@@ -26,7 +26,7 @@ export type CookieOptions = {
     maxAge?: number;
     /** `Expires`. */
     expires?: Date;
-    /** `Domain`. */
+    /** `Domain`. Not allowed for names starting with `__Host-` (throws). */
     domain?: string;
     // 既定は "/"
     /** `Path`. Default `"/"`. */
@@ -46,6 +46,17 @@ export type CookieOptions = {
 
 // Cookie の名前に使える文字(RFC 6265 の token)
 const NAME = /^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$/;
+
+// 名前と、名前に合わない指定を確かめる
+// __Host- で始まる Cookie に Domain を付けると、ブラウザに捨てられる(付けるときも消すときも)。黙って効かないより、エラーにする
+function checkName(name: string, domain: string | undefined): void {
+    if (!NAME.test(name)) {
+        throw senriError("cookie_name", new TypeError(`Invalid cookie name: ${JSON.stringify(name)}`));
+    }
+    if (domain && name.startsWith("__Host-")) {
+        throw senriError("cookie_host_domain", new TypeError(`__Host- cookies cannot have a Domain: ${name}`));
+    }
+}
 
 // "Cookie: a=1; b=2" を { a: "1", b: "2" } に。値はデコードする(できなければそのまま)
 /**
@@ -75,12 +86,11 @@ export function parseCookies(header: string | null): Record<string, string> {
 
 /**
  * Builds a `Set-Cookie` header value. The value is URI-encoded; defaults are `Path=/`, `HttpOnly` and `SameSite=Lax`.
- * Throws a `TypeError` if the name is not a valid cookie name.
+ * Throws a `TypeError` if the name is not a valid cookie name,
+ * or if `domain` is given for a name starting with `__Host-`.
  */
 export function serializeCookie(name: string, value: string, options: CookieOptions = {}): string {
-    if (!NAME.test(name)) {
-        throw senriError("cookie_name", new TypeError(`Invalid cookie name: ${JSON.stringify(name)}`));
-    }
+    checkName(name, options.domain);
     const parts = [`${name}=${encodeURIComponent(value)}`];
     if (options.maxAge !== undefined) parts.push(`Max-Age=${Math.floor(options.maxAge)}`);
     if (options.expires) parts.push(`Expires=${options.expires.toUTCString()}`);
@@ -98,12 +108,11 @@ export function serializeCookie(name: string, value: string, options: CookieOpti
 /**
  * Builds a `Set-Cookie` header value that deletes the cookie. `path` and `domain` must match those used to set it.
  * Adds `Secure` for names starting with `__Secure-` or `__Host-`, as browsers ignore it otherwise.
- * Throws a `TypeError` if the name is not a valid cookie name.
+ * Throws a `TypeError` if the name is not a valid cookie name,
+ * or if `domain` is given for a name starting with `__Host-`.
  */
 export function deletionCookie(name: string, options: Pick<CookieOptions, "path" | "domain"> = {}): string {
-    if (!NAME.test(name)) {
-        throw senriError("cookie_name", new TypeError(`Invalid cookie name: ${JSON.stringify(name)}`));
-    }
+    checkName(name, options.domain);
     const parts = [`${name}=`, "Max-Age=0", "Expires=Thu, 01 Jan 1970 00:00:00 GMT"];
     if (options.domain) parts.push(`Domain=${options.domain}`);
     parts.push(`Path=${options.path ?? "/"}`);
@@ -151,7 +160,8 @@ export function getCookie(c: Context, name?: string): string | undefined | Recor
 // 既定は Path=/・HttpOnly・SameSite=Lax。最後に1回だけレスポンスに足される(c.header と同じ)
 /**
  * Adds a `Set-Cookie` header to the response (through `c.header()`, so it is added once at the end).
- * Defaults are `Path=/`, `HttpOnly` and `SameSite=Lax`. Throws a `TypeError` if the name is not a valid cookie name.
+ * Defaults are `Path=/`, `HttpOnly` and `SameSite=Lax`. Throws a `TypeError` if the name is not a valid cookie name,
+ * or if `domain` is given for a name starting with `__Host-`.
  *
  * @example
  * ```ts
@@ -173,7 +183,8 @@ export function setCookie(c: Context, name: string, value: string, options?: Coo
 /**
  * Adds a `Set-Cookie` header that deletes the cookie. `path` and `domain` must match those used to set it.
  * Adds `Secure` for names starting with `__Secure-` or `__Host-`, as browsers ignore it otherwise.
- * Throws a `TypeError` if the name is not a valid cookie name.
+ * Throws a `TypeError` if the name is not a valid cookie name,
+ * or if `domain` is given for a name starting with `__Host-`.
  */
 export function deleteCookie(c: Context, name: string, options?: Pick<CookieOptions, "path" | "domain">): void {
     c.header("set-cookie", deletionCookie(name, options));
