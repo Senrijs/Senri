@@ -6,16 +6,20 @@ import type { Context, HandlerResult } from "./context.ts";
  * Its `headers` are added to the response, and the default error handler returns its `message`
  * to the client, so the message should be safe to show.
  *
+ * The status and headers are set on `c` before `onError` runs, so they apply when your `onError` returns
+ * a string or an object. If your `onError` returns a `Response`, set its status yourself.
+ *
  * @example
  * ```ts
  * import { createApp, HttpError } from "@senrijs/senri";
  *
+ * const items = new Map([["1", { name: "apple" }]]);
+ *
  * const app = createApp();
- * app.get("/admin", (_, c) => {
- *     if (!c.req.headers.get("authorization")) {
- *         throw new HttpError(401, "401 Unauthorized", { headers: { "www-authenticate": "Bearer" } });
- *     }
- *     return "welcome";
+ * app.get("/items/:id", ({ id }) => {
+ *     const item = items.get(id);
+ *     if (!item) throw new HttpError(404, "404 Not Found");
+ *     return item;
  * });
  * ```
  */

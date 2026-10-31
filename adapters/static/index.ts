@@ -96,7 +96,8 @@ function unsafeSegment(segment: string): boolean {
 
 /**
  * Middleware that serves files from a directory for GET and HEAD. When there is no matching file, it calls `next()`.
- * - Never serves files outside `root`, including through symbolic links
+ * - Never serves files outside `root`, including through symbolic links. This assumes that people you do not
+ *   trust cannot change the contents of `root` (files and links are checked before they are read)
  * - Sends a weak `ETag` and `Last-Modified`, and answers 304 to `If-None-Match` / `If-Modified-Since`
  * - `Content-Type` comes from the file extension (`application/octet-stream` if unknown)
  *

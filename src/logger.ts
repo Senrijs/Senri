@@ -22,7 +22,7 @@ const METHOD_COLOR: Record<string, string> = {
 
 /** Options for {@link logger}. */
 export type LoggerOptions = {
-    /** `"pretty"` (default): one colored line per request. `"json"`: one pino-style JSON line per request. */
+    /** `"pretty"` (default): one line per request. `"json"`: one pino-style JSON line per request. */
     format?: "pretty" | "json";
     /** Use ANSI colors in the `"pretty"` format. Default `true`. */
     color?: boolean;

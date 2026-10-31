@@ -18,6 +18,8 @@ export type BodyLimitOptions = {
 /**
  * Middleware that limits the request body size. Requests without a body pass through.
  * - With `Content-Length`: decided before reading. Over the limit, `onError` responds; a non-numeric value gets 400.
+ *   The body is not counted in this case, so this assumes `Content-Length` can be trusted
+ *   (the runtime's HTTP server does not accept a longer body than it declares).
  * - Without it (chunked): the body is counted while it is read. Over the limit, reading fails with an
  *   {@link HttpError} 413 and `onError` responds, even if the handler caught the error.
  *

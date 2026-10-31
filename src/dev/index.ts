@@ -56,6 +56,8 @@ const INNER_NAME: Record<Resolved["kind"], string> = {
  *
  * Returns `undefined` (development mode stays off) when `NODE_ENV` is `"production"`, or when `NODE_ENV`
  * cannot be read (Deno without `--allow-env=NODE_ENV`; a one-line warning is printed).
+ * **If `NODE_ENV` is not set, development mode is on**, so production must run with `NODE_ENV=production`
+ * (or not pass `devtools()` at all).
  * On Cloudflare Workers and in the browser, where `NODE_ENV` is not available, development output is used
  * only for requests to a localhost URL (see {@link isLocalUrl}); other requests behave as in production.
  * The `/_senri` dashboard is not available on Cloudflare Workers.

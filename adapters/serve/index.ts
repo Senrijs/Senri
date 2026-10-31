@@ -44,7 +44,8 @@ export type ServeOptions = {
     /**
      * Shut down gracefully on SIGTERM / SIGINT. Default `true`. In order: `health()` readiness turns 503,
      * new connections are refused, in-flight requests are awaited (up to `shutdownTimeout`), `onShutdown` is called,
-     * and the process exits. A second signal exits immediately with code 1.
+     * and the process exits. The signal listeners are removed when shutdown starts, so a second signal gets the
+     * runtime's default behavior.
      * With `false`, signals keep the runtime's default behavior.
      */
     gracefulShutdown?: boolean;
@@ -57,8 +58,9 @@ export type ServeOptions = {
     shutdownTimeout?: number;
     // 待ち受けを止めたあと、終わる前に呼ぶ(DB の接続を閉じる、など)
     /**
-     * Called during a signal-triggered shutdown, after the server has stopped and before the process exits
-     * (to close a database connection, for example). Not called by {@link Server.stop}.
+     * Called during a signal-triggered shutdown, after in-flight requests have finished or `shutdownTimeout`
+     * has passed, and before the process exits (to close a database connection, for example).
+     * Not called by {@link Server.stop}.
      */
     onShutdown?: () => unknown;
 };
