@@ -1,6 +1,6 @@
 {
   "name": "@senrijs/senri",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Web 標準の Request / Response で書かれた、小さな Web フレームワーク。Bun・Deno・Node.js・Cloudflare Workers で動く",
   "license": "MIT",
   "author": "ibuki-hum4",

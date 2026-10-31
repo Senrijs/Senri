@@ -2,6 +2,22 @@
 
 このプロジェクトの変更点です。書き方は [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) に、バージョンは [Semantic Versioning](https://semver.org/lang/ja/) にならいます。
 
+## [0.2.1](https://github.com/Senrijs/Senri/compare/v0.2.0...v0.2.1) (2026-10-31)
+
+
+### Bug Fixes
+
+* **body-limit:** respond with 413 when onError returns a non-Response value ([#13](https://github.com/Senrijs/Senri/issues/13)) ([55e9ae0](https://github.com/Senrijs/Senri/commit/55e9ae027d2525fce2f2a2628291bef223fb30db))
+* **cookie:** add Secure when deleting __Host- / __Secure- cookies ([#15](https://github.com/Senrijs/Senri/issues/15)) ([dcb6a2d](https://github.com/Senrijs/Senri/commit/dcb6a2d71912d39efe6f608c4b9a433b7af4b9fc))
+* **cookie:** throw when a domain is given for a __Host- cookie ([#17](https://github.com/Senrijs/Senri/issues/17)) ([ded7f76](https://github.com/Senrijs/Senri/commit/ded7f763f917defaae2272708b25b5024373c105))
+* **serve:** exit immediately on a second signal during shutdown ([#16](https://github.com/Senrijs/Senri/issues/16)) ([46d19fd](https://github.com/Senrijs/Senri/commit/46d19fd062eeaf2798a3c50c71d76b3aba1808a1))
+* **serve:** Node でも hostname を使う ([#12](https://github.com/Senrijs/Senri/issues/12)) ([1c2ab38](https://github.com/Senrijs/Senri/commit/1c2ab38240a1e8075f0a31aaad63a1dee77b1f16))
+
+
+### Documentation
+
+* add JSDoc to all entrypoints ([#11](https://github.com/Senrijs/Senri/issues/11)) ([0310309](https://github.com/Senrijs/Senri/commit/03103094234f57c797a5afb4ab24ce47ca641839))
+
 ## [0.2.0] - 2026-10-27
 
 開発用の機能を本体から切り離し、本体を小さくしました。ブラウザ(Service Worker)にも正式に対応します。**破壊的変更が5つあります**(1.0 より前なので、マイナーバージョンを上げています)。
