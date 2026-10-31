@@ -20,9 +20,13 @@ const METHOD_COLOR: Record<string, string> = {
     PATCH: C.magenta,
 };
 
-type LoggerOptions = {
+/** Options for {@link logger}. */
+export type LoggerOptions = {
+    /** `"pretty"` (default): one line per request. `"json"`: one pino-style JSON line per request. */
     format?: "pretty" | "json";
+    /** Use ANSI colors in the `"pretty"` format. Default `true`. */
     color?: boolean;
+    /** In the `"pretty"` format, durations above this many milliseconds are shown in red. Default `500`. */
     slow?: number;
 };
 
@@ -36,6 +40,20 @@ function rawPath(req: Request): string {
     }
 }
 
+/**
+ * Middleware that logs each request with `console.log` after the response is ready:
+ * method, path (as received), status and duration. If `c.error` is set, the error is logged too.
+ * In the `"json"` format, `level` is 30, 40 (4xx) or 50 (5xx).
+ *
+ * @example
+ * ```ts
+ * import { createApp, logger } from "@senrijs/senri";
+ *
+ * const app = createApp();
+ * app.use(logger());
+ * // or: app.use(logger({ format: "json" }));
+ * ```
+ */
 export function logger(options: LoggerOptions = {}): Middleware {
     const format = options.format ?? "pretty";
     const color = options.color ?? true;
@@ -106,6 +124,12 @@ type RouteInfo = { method: string; path: string };
 
 const ACCENT = "\x1b[38;2;227;65;43m";
 
+/**
+ * Prints a banner with `url` and the app's routes (sorted by path, then method) with `console.log`.
+ * `serve()` from `@senrijs/senri/serve` calls it on start.
+ *
+ * @param options `color`: use ANSI colors (default `true`). `note`: a short note shown next to the URL.
+ */
 export function showRoutes(
     app: { routeList(): RouteInfo[] },
     url: string,

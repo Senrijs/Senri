@@ -2,7 +2,9 @@
 import { HttpError } from "./errors.ts";
 
 // フォームの値。同じ名前が複数あれば配列になる
+/** A form field's value. */
 export type FormValue = string | File;
+/** A form body read by `c.body()`. Repeated field names become arrays. */
 export type FormBody = Record<string, FormValue | FormValue[]>;
 
 function mediaType(req: Request): string {

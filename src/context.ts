@@ -12,6 +12,15 @@ export type BodyValue = Blob | ArrayBuffer | ArrayBufferView<ArrayBuffer> | Read
 // 関数を返すのはたいてい呼び忘れ、Promise は二重に包んでしまったときに起きる
 export type JsonObject = object & { call?: never; then?: never };
 
+/**
+ * What a handler, middleware, `onError` or `notFound` can return:
+ * - `Response`: used as is
+ * - `string`: a `text/plain; charset=utf-8` response
+ * - `Blob`, `ArrayBuffer`, typed arrays, `ReadableStream`, `FormData`, `URLSearchParams`: used as the body
+ * - any other object: serialized as JSON
+ *
+ * Functions and promises are rejected by the type; `undefined` / `null` throw at runtime.
+ */
 export type HandlerResult = Response | string | BodyValue | JsonObject;
 
 function isBodyValue(value: unknown): value is BodyValue {
@@ -45,8 +54,11 @@ function initOf(status: number, type: string | null | undefined, headers: Header
 }
 
 // Cloudflare Workers の fetch(req, env, ctx) の ctx。使う部分だけ自分で書く(Workers の型には依存しない)
+/** The `ctx` argument of Cloudflare Workers' `fetch(req, env, ctx)`. Only the parts used here are typed. */
 export type ExecutionContext = {
+    /** Keeps the Worker running until the promise settles, after the response is sent. */
     waitUntil(promise: Promise<unknown>): void;
+    /** Lets the request fall through to the origin if the Worker throws. */
     passThroughOnException(): void;
 };
 
@@ -56,20 +68,32 @@ export type ExecutionContext = {
 // Bindings か Variables を持っていれば後者として読む
 type IsAny<T> = 0 extends 1 & T ? true : false;
 type EnvForm = { Bindings: object } | { Variables: object };
+/** The variables type (`c.set` / `c.get`) of an app type: `E["Variables"]` in the `{ Bindings, Variables }` form, otherwise `E` itself. */
 export type VariablesOf<E> =
     IsAny<E> extends true ? any : E extends EnvForm ? (E extends { Variables: infer V extends object } ? V : Record<string, unknown>) : E;
+/** The bindings type (`c.env`) of an app type: `E["Bindings"]` in the `{ Bindings, Variables }` form, otherwise `unknown`. */
 export type BindingsOf<E> = IsAny<E> extends true ? any : E extends { Bindings: infer B extends object } ? B : unknown;
 
 // V はアプリの型(上の2通りのどちらか)。createApp<...>() で決める
 // 既定の any は「どのアプリでも使える」という意味。logger() のような汎用ミドルウェアのため
 // I はスキーマで確かめた値の型(c.valid() で読めるもの)。スキーマを渡したルートだけ決まる(src/validate.ts)
+/**
+ * A route handler. Receives the path parameters and the context, and returns a {@link HandlerResult}.
+ * `P` is the parameters, `V` the app's type, and `I` the values validated by the route's schemas (`c.valid()`).
+ */
 export type Handler<P = Record<string, string>, V extends object = any, I extends object = {}> = (
     params: P,
     c: Context<V, I>,
 ) => HandlerResult | Promise<HandlerResult>;
 
+/** Runs the rest of the chain and returns its response. Throws if called twice. */
 export type Next = () => Promise<Response>;
 
+/**
+ * Middleware. Call `next()` to run the rest of the chain, then either return nothing to use its response,
+ * or return a value to respond with that instead. Returning a value without calling `next()` stops the chain there.
+ * Returning nothing without calling `next()` is an error.
+ */
 export type Middleware<V extends object = any> = (
     c: Context<V>,
     next: Next,
@@ -88,7 +112,12 @@ export function setValidated(c: Context, target: string, value: unknown): void {
 // Context のメソッドにしないのは、使わないアプリのバンドルに入れないため
 export let connectionOf: (c: Context) => { req: Request; info: unknown };
 
+/**
+ * The per-request context passed to handlers and middleware as `c`.
+ * Holds the request, path parameters, variables, and the status and headers to add to the response.
+ */
 export class Context<V extends object = any, I extends object = {}> {
+    /** The request. Middleware may replace it (for example, with a body that has a size limit). */
     req: Request;
     #status = 200;
     // c.header() で初めて作る(ほとんどのリクエストでは使わないので、毎回作らない)
@@ -102,11 +131,20 @@ export class Context<V extends object = any, I extends object = {}> {
     // 一度読んだボディ(ミドルウェアとハンドラーの両方から読めるように覚えておく)
     #body: Promise<unknown> | undefined;
     #query: URLSearchParams | undefined;
+    /**
+     * The error being handled. Set when an error is thrown that is not an {@link HttpError},
+     * or is an `HttpError` with status 500 or above; `undefined` otherwise. `logger()` prints it.
+     */
     error: unknown = undefined;
     // マッチしたルートのパターン("/users/:id")。見つからなければ undefined
     // ミドルウェアより先にマッチするので、next() の前から読める(ログやダッシュボードの集計用)
+    /** The matched route's pattern (`"/users/:id"`), or `undefined` if none matched. Set before middleware runs. */
     route: string | undefined = undefined;
     // パスパラメーター。ハンドラーでは第1引数でも受け取れる
+    /**
+     * The path parameters. Handlers also receive them as the first argument.
+     * Replaced by the validated value when the route has a `params` schema.
+     */
     params: Record<string, string> = {};
     #timings: Timing[] | undefined;
 
@@ -121,6 +159,7 @@ export class Context<V extends object = any, I extends object = {}> {
 
     #ctx: ExecutionContext | undefined;
 
+    /** Created by the app for each request; app code does not normally call it. The arguments are those of `app.fetch`. */
     constructor(req: Request, info?: unknown, ctx?: ExecutionContext) {
         this.req = req;
         this.#original = req;
@@ -130,11 +169,16 @@ export class Context<V extends object = any, I extends object = {}> {
 
     // Cloudflare Workers の env(KV や環境変数などのバインディング)。型は createApp<{ Bindings: ... }>() で決める
     // Bun の server や Deno の info(接続元を知るためのもの)は env ではないので、そのときは undefined
+    /**
+     * The second argument of `app.fetch`: on Cloudflare Workers, the `env` bindings (typed with `createApp<{ Bindings: Env }>()`).
+     * `undefined` when it is Bun's server or Deno-style connection info (Bun, Deno, `@senrijs/senri/node`).
+     */
     get env(): BindingsOf<V> {
         return (isConnectionInfo(this.#info) ? undefined : this.#info) as BindingsOf<V>;
     }
 
     // Cloudflare Workers の ctx(waitUntil など)。Workers 以外では渡されないので、読むとエラーにする
+    /** Cloudflare Workers' execution context (`waitUntil` and so on). Throws when it was not passed to `app.fetch`. */
     get executionCtx(): ExecutionContext {
         if (!this.#ctx) {
             throw senriError("no_execution_ctx", "c.executionCtx is only available on Cloudflare Workers");
@@ -144,6 +188,10 @@ export class Context<V extends object = any, I extends object = {}> {
 
     // パスをデコードして "/" で分けたもの。ルーターもミドルウェアもこれを見る
     // 初めて読んだときに1回だけ作る。エンコードが不正なら HttpError(400) を投げる
+    /**
+     * The decoded path split by `/`, without empty segments (`"/a//b/"` → `["a", "b"]`).
+     * Throws an {@link HttpError} 400 for invalid encoding, `%2F`, or `.` / `..` segments.
+     */
     get segments(): readonly string[] {
         this.#segments ??= splitPath(this.#rawPathname());
         return this.#segments;
@@ -157,6 +205,10 @@ export class Context<V extends object = any, I extends object = {}> {
 
     // 正規化・デコード済みのパス("//admin/" → "/admin"、"/%61dmin" → "/admin")
     // パスで判定するミドルウェアは、req.url ではなくこちらを使うこと
+    /**
+     * The normalized, decoded path (`"//admin/"` → `"/admin"`, `"/%61dmin"` → `"/admin"`).
+     * Middleware that checks paths should use this, not `req.url`. Throws an {@link HttpError} 400 in the same cases as `segments`.
+     */
     get path(): string {
         if (this.#path === undefined) {
             const p = this.#rawPathname();
@@ -170,12 +222,20 @@ export class Context<V extends object = any, I extends object = {}> {
 
     // 開発モードのときだけ、ミドルウェアとハンドラーの通過時間が入る(外側から順)
     // 自分より内側の層は、next() が終わったあとに読める
+    /**
+     * Time spent in each middleware and the handler, outermost first. Filled only in development mode; empty otherwise.
+     * Entries for inner layers are available after `next()` returns.
+     */
     get timings(): Timing[] {
         return (this.#timings ??= []);
     }
 
     // ルートに渡したスキーマで確かめた値。c.valid("body") / c.valid("query")
     // (スキーマを渡していないものは型エラー。JS から呼んだときは、分かりやすいエラーにする)
+    /**
+     * A value validated by the route's schema: `c.valid("query")` or `c.valid("body")`.
+     * Throws if the route has no schema for `target`.
+     */
     valid<K extends keyof I & string>(target: K): I[K] {
         const values = validated.get(this);
         if (!values || !(target in values)) {
@@ -185,12 +245,14 @@ export class Context<V extends object = any, I extends object = {}> {
     }
 
     // ミドルウェアからハンドラーへ値を渡す(ログインしたユーザーなど)
+    /** Sets a variable for later middleware and the handler (the logged-in user, for example). */
     set<K extends keyof VariablesOf<V> & string>(key: K, value: VariablesOf<V>[K]): this {
         (this.#vars ??= new Map()).set(key, value);
         return this;
     }
 
     // set していなければ undefined(ミドルウェアが動かなかったときなど)
+    /** Reads a variable set with {@link Context.set}, or `undefined` if it was not set. */
     get<K extends keyof VariablesOf<V> & string>(key: K): VariablesOf<V>[K] | undefined {
         return this.#vars?.get(key) as VariablesOf<V>[K] | undefined;
     }
@@ -203,8 +265,11 @@ export class Context<V extends object = any, I extends object = {}> {
     }
 
     // c.query("page") で1つ(なければ undefined)、c.query() で全部(同じ名前が複数あれば最後の値)
+    /** All query parameters. For repeated names, the last value. */
     query(): Record<string, string>;
+    /** One query parameter, or `undefined`. For repeated names, the last value. */
     query(name: string): string | undefined;
+    /** One query parameter (with `name`), or all of them (without it). For repeated names, the last value. */
     query(name?: string): string | undefined | Record<string, string> {
         const params = this.#searchParams();
         if (name !== undefined) {
@@ -215,6 +280,7 @@ export class Context<V extends object = any, I extends object = {}> {
     }
 
     // 同じ名前のものを全部(?tag=a&tag=b → ["a", "b"])
+    /** All values of a repeated query parameter (`?tag=a&tag=b` → `["a", "b"]`). */
     queries(name: string): string[] {
         return this.#searchParams().getAll(name);
     }
@@ -223,11 +289,24 @@ export class Context<V extends object = any, I extends object = {}> {
 
     // Content-Type に合わせて読む(JSON / フォーム / テキスト / それ以外は ArrayBuffer。src/body.ts)
     // 一度読んだら覚えておくので、何度呼んでもよい
+    /**
+     * Reads the request body according to its `Content-Type`. The result is cached, so it can be called more than once.
+     * - `application/json` and `*+json`: parsed JSON (invalid JSON throws an {@link HttpError} 400)
+     * - `application/x-www-form-urlencoded` and `multipart/form-data`: a {@link FormBody}
+     * - `text/*`: a string
+     * - anything else: an `ArrayBuffer`
+     *
+     * `T` is not checked at runtime; use a `body` schema to validate.
+     */
     body<T = unknown>(): Promise<T> {
         this.#body ??= readBody(this.req);
         return this.#body as Promise<T>;
     }
 
+    /**
+     * Sets the status for responses built from returned values, {@link Context.json} and {@link Context.text}.
+     * A `Response` returned directly keeps its own status.
+     */
     status(code: number): this {
         this.#status = code;
         return this;
@@ -235,6 +314,11 @@ export class Context<V extends object = any, I extends object = {}> {
 
     // ここで設定したヘッダーは、最後に finalize() で1回だけレスポンスに足される
     // なので、Response を直接返したときも、エラーのときも、next() のあとに設定しても効く
+    /**
+     * Sets a response header. Headers are added to the final response once, so they also apply to a `Response`
+     * returned directly, to error responses, and when set after `next()`.
+     * `Set-Cookie` is appended; other names are overwritten. A `Content-Type` already on the response is kept.
+     */
     header(name: string, value: string): this {
         // Set-Cookie は1つのレスポンスに何個も付けるものなので、上書きせずに足す
         const headers = (this.#headers ??= new Headers());
@@ -248,11 +332,13 @@ export class Context<V extends object = any, I extends object = {}> {
 
     // json() と text() は Content-Type と status だけ決める(ほかのヘッダーは finalize() で足す)
     // 共有の #headers を書き換えないので、json() のあとに text() しても Content-Type が混ざらない
+    /** A JSON response (`application/json`, unless `Content-Type` was set with {@link Context.header}). */
     json(data: unknown, status?: number): Response {
         const init = initOf(status ?? this.#status, this.#headers?.get("content-type"), JSON_HEADERS);
         return new Response(JSON.stringify(data), init);
     }
 
+    /** A text response (`text/plain; charset=utf-8`, unless `Content-Type` was set with {@link Context.header}). */
     text(body: string, status?: number): Response {
         // 明示しないと、Bun は Headers に Content-Type を入れない(Node / Deno は入れる)のでランタイムで差が出る
         const init = initOf(status ?? this.#status, this.#headers?.get("content-type"), TEXT_HEADERS);
@@ -263,6 +349,10 @@ export class Context<V extends object = any, I extends object = {}> {
     // - c.header() の値が優先。ただし Content-Type だけはレスポンス自身のものが優先
     // - Set-Cookie は足す
     // - c.status() は使わない(Response を直接返したなら、その status を尊重する)
+    /**
+     * Adds the headers set with {@link Context.header} to `res`. Called once by the app at the end;
+     * app code does not normally call it. Responses with a status below 200 are returned unchanged.
+     */
     finalize(res: Response): Response {
         const own = this.#headers;
         // 何もなければ作り直さない。101(WebSocket のアップグレード)なども作り直すと壊れる
@@ -284,6 +374,7 @@ export class Context<V extends object = any, I extends object = {}> {
         return new Response(res.body, { status: res.status, statusText: res.statusText, headers });
     }
 
+    /** Converts a {@link HandlerResult} to a `Response`. Used by the app; throws for functions, `undefined` and `null`. */
     toResponse(value: HandlerResult): Response {
         if (value instanceof Response) {
             return value;

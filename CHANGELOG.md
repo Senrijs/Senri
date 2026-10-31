@@ -2,7 +2,7 @@
 
 このプロジェクトの変更点です。書き方は [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) に、バージョンは [Semantic Versioning](https://semver.org/lang/ja/) にならいます。
 
-## [0.2.0] - 未公開
+## [0.2.0] - 2026-10-27
 
 開発用の機能を本体から切り離し、本体を小さくしました。ブラウザ(Service Worker)にも正式に対応します。**破壊的変更が5つあります**(1.0 より前なので、マイナーバージョンを上げています)。
 

@@ -1,3 +1,20 @@
+/**
+ * A small web framework built on the standard `Request` / `Response`.
+ * Runs on Bun, Deno, Node.js, Cloudflare Workers and in the browser (Service Worker).
+ * This entry has the app, router, context, errors, validation and the built-in middleware.
+ *
+ * @example
+ * ```ts
+ * import { createApp } from "@senrijs/senri";
+ *
+ * const app = createApp();
+ * app.get("/hello/:name", ({ name }) => `Hello, ${name}`);
+ *
+ * // Pass app.fetch to your runtime (Bun.serve, Deno.serve), or `export default app` on Cloudflare Workers.
+ * ```
+ *
+ * @module
+ */
 // @senrijs/senri の入口
 // 開発モード(エラーページ・ダッシュボードなど)は @senrijs/senri/dev、Cookie は @senrijs/senri/cookie、接続元の IP は @senrijs/senri/ip
 export {
@@ -33,7 +50,7 @@ export {
 export type { CookieOptions } from "./cookie.ts";
 export type { FormBody, FormValue } from "./body.ts";
 export type { Layer, Timing, Trace } from "./compose.ts";
-export { logger, showRoutes } from "./logger.ts";
+export { logger, showRoutes, type LoggerOptions } from "./logger.ts";
 export { health, type HealthOptions } from "./health.ts";
 export { cors, type CorsOptions } from "./middleware/cors.ts";
 export { secureHeaders, type SecureHeadersOptions } from "./middleware/secure-headers.ts";

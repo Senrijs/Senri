@@ -1,3 +1,18 @@
+/**
+ * Development mode: error pages, a 404 page with suggestions, the `/_senri` dashboard,
+ * `Server-Timing` headers and detailed error messages.
+ * The core never imports this entry, so it stays out of your bundle unless you import it.
+ *
+ * @example
+ * ```ts
+ * import { createApp } from "@senrijs/senri";
+ * import { devtools } from "@senrijs/senri/dev";
+ *
+ * const app = createApp({ dev: devtools() });
+ * ```
+ *
+ * @module
+ */
 // @senrijs/senri/dev の入口。開発モードの機能(エラーページ・404 ページ・/_senri ダッシュボード・Server-Timing・
 // 日本語の詳しいエラー)は、すべてここから入る。本体(@senrijs/senri)はこのファイルを一切 import しない
 //
@@ -36,6 +51,26 @@ const INNER_NAME: Record<Resolved["kind"], string> = {
 
 // 開発モードのフックを作る。本番(NODE_ENV=production)では undefined を返すので、開発モードにならない
 // Deno で NODE_ENV を読む許可がないときは、本番かどうか分からないので、開発モードにしない(案内を1行出す)
+/**
+ * Creates the development-mode hooks to pass to `createApp({ dev: devtools() })`.
+ *
+ * Returns `undefined` (development mode stays off) when `NODE_ENV` is `"production"`, or when `NODE_ENV`
+ * cannot be read (Deno without `--allow-env=NODE_ENV`; a one-line warning is printed).
+ * **If `NODE_ENV` is not set, development mode is on**, so production must run with `NODE_ENV=production`
+ * (or not pass `devtools()` at all).
+ * On Cloudflare Workers and in the browser, where `NODE_ENV` is not available, development output is used
+ * only for requests to a localhost URL (see {@link isLocalUrl}); other requests behave as in production.
+ * The `/_senri` dashboard is not available on Cloudflare Workers.
+ *
+ * @example
+ * ```ts
+ * import { createApp } from "@senrijs/senri";
+ * import { devtools } from "@senrijs/senri/dev";
+ *
+ * const app = createApp({ dev: devtools() });
+ * app.get("/", () => "hi");
+ * ```
+ */
 export function devtools(): DevHooks | undefined {
     if (!runtime.canReadEnv("NODE_ENV")) {
         console.warn(
@@ -52,6 +87,10 @@ export function devtools(): DevHooks | undefined {
 // request.url のホスト名が localhost か(Host や X-Forwarded-Host などのヘッダーは見ない。だれでも付けられるので)
 // - Workers: Cloudflare は登録されたドメインのリクエストしか渡さないので、本番に localhost は来ない。wrangler dev は localhost
 // - ブラウザ: Service Worker が受けるリクエストの URL は、そのサイトのオリジン。開発中だけ localhost になる
+/**
+ * Whether the URL's host is `localhost`, `*.localhost`, `[::1]` or `127.x.x.x`.
+ * Only the URL is checked, not headers such as `Host`. Returns `false` for an invalid URL.
+ */
 export function isLocalUrl(url: string): boolean {
     let host: string;
     try {

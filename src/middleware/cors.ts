@@ -2,25 +2,50 @@
 import type { Context, Middleware } from "../context.ts";
 import { appendVary, editable } from "./response.ts";
 
+/** Options for {@link cors}. */
 export type CorsOptions = {
     // 許可するオリジン。既定は "*"(どこからでも)
     // - 文字列 / 配列: 一致したときだけ返す
     // - 関数: true ならそのオリジンを、文字列ならその値を返す。false / null / undefined なら許可しない
+    /**
+     * Allowed origins. Default `"*"` (any origin).
+     * - A string or an array: allowed only on an exact match
+     * - A function: `true` allows the request's origin, a string is sent as is, and `false` / `null` / `undefined` deny it
+     */
     origin?: string | readonly string[] | ((origin: string, c: Context) => boolean | string | null | undefined);
     // プリフライトで許可するメソッド
+    /** Methods allowed in preflight responses. Default GET, HEAD, PUT, POST, DELETE, PATCH, QUERY. */
     allowMethods?: readonly string[];
     // プリフライトで許可するリクエストヘッダー。指定しなければ、ブラウザが頼んできたものをそのまま許可する
+    /** Request headers allowed in preflight responses. Default: the headers the browser asked for. */
     allowHeaders?: readonly string[];
     // JavaScript から読めるようにするレスポンスヘッダー
+    /** Response headers that JavaScript may read (`Access-Control-Expose-Headers`). */
     exposeHeaders?: readonly string[];
     // Cookie などの資格情報を送らせる。origin: "*" とは一緒に使えない(ブラウザが受け付けない)
+    /** Allow credentials such as cookies. Cannot be used with `origin: "*"` (the default); {@link cors} throws. */
     credentials?: boolean;
     // プリフライトの結果をブラウザがキャッシュする秒数
+    /** How long, in seconds, the browser may cache a preflight response. */
     maxAge?: number;
 };
 
 const DEFAULT_METHODS = ["GET", "HEAD", "PUT", "POST", "DELETE", "PATCH", "QUERY"];
 
+/**
+ * CORS middleware. Answers preflight requests (OPTIONS with `Access-Control-Request-Method`) with 204 itself,
+ * and adds CORS headers to other responses. For origins that are not allowed, no CORS headers are added.
+ * Unless `origin` is `"*"`, `Vary: Origin` is added. Responses with a status below 200 are left unchanged.
+ * Throws if `credentials` is `true` with `origin: "*"`.
+ *
+ * @example
+ * ```ts
+ * import { createApp, cors } from "@senrijs/senri";
+ *
+ * const app = createApp();
+ * app.use(cors({ origin: ["https://example.com"], credentials: true }));
+ * ```
+ */
 export function cors(options: CorsOptions = {}): Middleware {
     const origin = options.origin ?? "*";
     if (options.credentials && origin === "*") {

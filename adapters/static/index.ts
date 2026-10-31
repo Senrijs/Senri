@@ -1,3 +1,18 @@
+/**
+ * Static file middleware for Bun, Deno and Node.js (uses `node:fs`).
+ * Not available on Cloudflare Workers; use Workers Static Assets there.
+ *
+ * @example
+ * ```ts
+ * import { createApp } from "@senrijs/senri";
+ * import { serveStatic } from "@senrijs/senri/static";
+ *
+ * const app = createApp();
+ * app.use(serveStatic({ root: "./public" }));
+ * ```
+ *
+ * @module
+ */
 // 静的ファイル配信(senri/static)。node:fs を使うので本体とは別の入口にしている
 // Bun / Deno / Node で動く。Cloudflare Workers ではファイルを読めないので、wrangler の Static Assets を使う
 import { createReadStream } from "node:fs";
@@ -6,16 +21,22 @@ import { extname, join, relative, resolve, sep } from "node:path";
 import { Readable } from "node:stream";
 import type { Middleware } from "../../src/index.ts";
 
+/** Options for {@link serveStatic}. */
 export type ServeStaticOptions = {
     // 配るディレクトリ。相対パスなら、serveStatic() を呼んだときのカレントディレクトリから
+    /** The directory to serve. A relative path is resolved from the current directory when `serveStatic()` is called. */
     root: string;
     // このパスの下だけで配る。"/static" なら /static/app.js → root/app.js
+    /** Serve only under this URL path: with `"/static"`, `/static/app.js` serves `root/app.js`. Default `"/"`. */
     prefix?: string;
     // ディレクトリを開いたときに返すファイル。false なら返さない
+    /** The file served for a directory. Default `"index.html"`; `false` disables it. */
     index?: string | false;
     // "." で始まるファイルやディレクトリ(.env や .git)を配るか。既定は配らない
+    /** Serve files and directories whose names start with `.` (such as `.env` or `.git`). Default `false`. */
     dotfiles?: boolean;
     // Cache-Control ヘッダー
+    /** The `Cache-Control` header value. Not set by default. */
     cacheControl?: string;
 };
 
@@ -73,6 +94,24 @@ function unsafeSegment(segment: string): boolean {
     return segment.includes("\\") || segment.includes(":") || segment.includes("\0");
 }
 
+/**
+ * Middleware that serves files from a directory for GET and HEAD. When there is no matching file, it calls `next()`.
+ * - Never serves files outside `root`, including through symbolic links. This assumes that people you do not
+ *   trust cannot change the contents of `root` (files and links are checked before they are read)
+ * - Sends a weak `ETag` and `Last-Modified`, and answers 304 to `If-None-Match` / `If-Modified-Since`
+ * - `Content-Type` comes from the file extension (`application/octet-stream` if unknown)
+ *
+ * Throws on Cloudflare Workers, which cannot read files; use Workers Static Assets there.
+ *
+ * @example
+ * ```ts
+ * import { createApp } from "@senrijs/senri";
+ * import { serveStatic } from "@senrijs/senri/static";
+ *
+ * const app = createApp();
+ * app.use(serveStatic({ root: "./public", prefix: "/static", cacheControl: "public, max-age=3600" }));
+ * ```
+ */
 export function serveStatic(options: ServeStaticOptions): Middleware {
     if (isWorkers()) {
         throw new Error(

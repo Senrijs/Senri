@@ -11,7 +11,17 @@ export function toResponseOf(c: Context, value: HandlerResult, origin: Conversio
 }
 
 // order: 登録順(1 から)。ダッシュボードの集計に使う
-export type Layer = { name: string; mw: Middleware; order?: number };
+/**
+ * A middleware in the chain for a request. Used by `@senrijs/senri/dev`; app code does not normally use it.
+ */
+export type Layer = {
+    /** The middleware's name (function name, or `anonymous#N`). */
+    name: string;
+    /** The middleware. */
+    mw: Middleware;
+    /** Registration order, from 1. */
+    order?: number;
+};
 
 // 1つの層(ミドルウェアかハンドラー)にかかった時間。単位はミリ秒
 // - total: その層に入ってから出るまで(下流の時間も含む)
@@ -19,16 +29,37 @@ export type Layer = { name: string; mw: Middleware; order?: number };
 // - failed: この層で例外が起きた(エラーページの「通った順番」で印を付ける)
 // - start: リクエストの開始から、この層に入るまでの時間(ダッシュボードの玉ねぎタイムラインで棒の位置に使う)
 // - stopped: next() を呼ばずに値を返して終わった(認証で 401 を返した、など。ここより内側には届いていない)
-export type Timing = { name: string; total: number; self: number; failed: boolean; start: number; stopped: boolean };
+/** Time spent in one layer (middleware or the handler), in milliseconds. See `c.timings`. */
+export type Timing = {
+    /** The layer's name. */
+    name: string;
+    /** From entering the layer to leaving it, including inner layers. */
+    total: number;
+    /** `total` minus the time spent waiting in `next()`. */
+    self: number;
+    /** An error was thrown in this layer. */
+    failed: boolean;
+    /** From the start of the request to entering this layer. */
+    start: number;
+    /** The layer returned a value without calling `next()`. */
+    stopped: boolean;
+};
 
 // 開発モードの計測のためのフック(@senrijs/senri/dev が実装する)。本番では渡さないので、時計も読まない
 // i は層の番号(0 から。最後がいちばん内側の処理)
+/**
+ * Hooks for measuring each layer, implemented by `@senrijs/senri/dev`. `i` is the layer index, from 0;
+ * the last one is the innermost step. App code does not normally use it.
+ */
 export type Trace = {
     // 層 i に入った
+    /** Layer `i` was entered. */
     enter(i: number): void;
     // 層 i が next() を呼んだ。返した関数は、下流が終わったときに呼ぶ
+    /** Layer `i` called `next()`. The returned function is called when the downstream finishes. */
     down(i: number): () => void;
     // 層 i から出た。failed: この層で例外が起きた / stopped: next() を呼ばずに値を返した
+    /** Layer `i` was left. `failed`: an error was thrown in it. `stopped`: it returned without calling `next()`. */
     leave(i: number, failed: boolean, stopped: boolean): void;
 };
 
