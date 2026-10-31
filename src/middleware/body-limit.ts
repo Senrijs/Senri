@@ -10,7 +10,8 @@ export type BodyLimitOptions = {
     // 超えたときのレスポンス。既定は "413 Content Too Large"
     /**
      * The response when the body is too large. Default: 413 `413 Content Too Large`.
-     * When it returns something other than a `Response`, set the status yourself with `c.status(413)`.
+     * The status is set to 413 before it is called, so a returned string or object is sent with 413;
+     * a returned `Response` keeps its own status.
      */
     onError?: (c: Context) => HandlerResult | Promise<HandlerResult>;
 };
@@ -38,8 +39,9 @@ export function bodyLimit(options: BodyLimitOptions): Middleware {
     if (typeof max !== "number" || !Number.isFinite(max) || max < 0) {
         throw new Error(`bodyLimit(): maxSize には 0 以上のバイト数を指定してください(${String(max)})`);
     }
+    // onError が文字列などを返しても 413 になるよう、先に status を入れておく(Response を返したら、その status のまま)
     const tooLarge = (c: Context) =>
-        options.onError ? options.onError(c) : new Response("413 Content Too Large", { status: 413 });
+        options.onError ? options.onError(c.status(413)) : new Response("413 Content Too Large", { status: 413 });
 
     return async function bodyLimit(c, next) {
         const body = c.req.body;

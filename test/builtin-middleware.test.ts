@@ -260,6 +260,59 @@ describe("bodyLimit()", () => {
         expect(await res.json()).toEqual({ error: "too large" });
     });
 
+    // onError が Response 以外(文字列やオブジェクト)を返しても 413 にする
+    // (以前は Content-Length があると 200、チャンク転送だと 413 で、送り方によって変わっていた)
+    describe("onError が Response 以外を返しても 413", () => {
+        const limited = (onError: () => string | object) => {
+            const app = createApp();
+            app.use(bodyLimit({ maxSize: 3, onError }));
+            app.post("/x", async (_, c) => {
+                await c.req.text();
+                return "ok";
+            });
+            return app;
+        };
+        const chunked = () =>
+            new ReadableStream({
+                start(controller) {
+                    controller.enqueue(new TextEncoder().encode("12345"));
+                    controller.close();
+                },
+            });
+
+        test("Content-Length あり", async () => {
+            const res = await limited(() => "too big").fetch(
+                req("/x", { method: "POST", headers: { "content-length": "5" }, body: "12345" }),
+            );
+            expect(res.status).toBe(413);
+            expect(await res.text()).toBe("too big");
+        });
+
+        test("チャンク転送", async () => {
+            const res = await limited(() => "too big").fetch(
+                req("/x", { method: "POST", body: chunked(), duplex: "half" } as RequestInit),
+            );
+            expect(res.status).toBe(413);
+            expect(await res.text()).toBe("too big");
+        });
+
+        test("オブジェクト(JSON)を返したとき", async () => {
+            const res = await limited(() => ({ error: "too large" })).fetch(
+                req("/x", { method: "POST", headers: { "content-length": "5" }, body: "12345" }),
+            );
+            expect(res.status).toBe(413);
+            expect(await res.json()).toEqual({ error: "too large" });
+        });
+
+        test("Response を返したときは、その status のまま", async () => {
+            const app = createApp();
+            app.use(bodyLimit({ maxSize: 3, onError: () => new Response("no", { status: 400 }) }));
+            app.post("/x", () => "x");
+            const res = await app.fetch(req("/x", { method: "POST", headers: { "content-length": "5" }, body: "12345" }));
+            expect(res.status).toBe(400);
+        });
+    });
+
     test("maxSize が数でなければエラー", () => {
         expect(() => bodyLimit({ maxSize: Number.NaN })).toThrow("maxSize");
         expect(() => bodyLimit({ maxSize: -1 })).toThrow("maxSize");
