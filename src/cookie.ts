@@ -97,6 +97,7 @@ export function serializeCookie(name: string, value: string, options: CookieOpti
 // 消すための Set-Cookie。Path と Domain は、付けたときと同じものを指定する
 /**
  * Builds a `Set-Cookie` header value that deletes the cookie. `path` and `domain` must match those used to set it.
+ * Adds `Secure` for names starting with `__Secure-` or `__Host-`, as browsers ignore it otherwise.
  * Throws a `TypeError` if the name is not a valid cookie name.
  */
 export function deletionCookie(name: string, options: Pick<CookieOptions, "path" | "domain"> = {}): string {
@@ -106,6 +107,8 @@ export function deletionCookie(name: string, options: Pick<CookieOptions, "path"
     const parts = [`${name}=`, "Max-Age=0", "Expires=Thu, 01 Jan 1970 00:00:00 GMT"];
     if (options.domain) parts.push(`Domain=${options.domain}`);
     parts.push(`Path=${options.path ?? "/"}`);
+    // __Secure- / __Host- で始まる名前は、消すときも Secure がないとブラウザに捨てられる(serializeCookie と同じ)
+    if (name.startsWith("__Secure-") || name.startsWith("__Host-")) parts.push("Secure");
     return parts.join("; ");
 }
 
@@ -169,6 +172,7 @@ export function setCookie(c: Context, name: string, value: string, options?: Coo
 // Path と Domain は、付けたときと同じものを指定する
 /**
  * Adds a `Set-Cookie` header that deletes the cookie. `path` and `domain` must match those used to set it.
+ * Adds `Secure` for names starting with `__Secure-` or `__Host-`, as browsers ignore it otherwise.
  * Throws a `TypeError` if the name is not a valid cookie name.
  */
 export function deleteCookie(c: Context, name: string, options?: Pick<CookieOptions, "path" | "domain">): void {

@@ -154,6 +154,25 @@ describe("Cookie", () => {
         expect(res.headers.getSetCookie()[0]).toBe("name=; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Path=/");
     });
 
+    // Secure のない __Host- / __Secure- の Set-Cookie はブラウザに捨てられ、消せない(付けるときと同じにする)
+    test("消す: __Host- / __Secure- で始まる名前には Secure を付ける", async () => {
+        const app = createApp();
+        app.get("/c", (_, c) => {
+            deleteCookie(c, "__Host-id");
+            deleteCookie(c, "__Secure-id");
+            deleteCookie(c, "plain");
+            return "ok";
+        });
+
+        const res = await app.fetch(req("/c"));
+
+        expect(res.headers.getSetCookie()).toEqual([
+            "__Host-id=; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Path=/; Secure",
+            "__Secure-id=; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Path=/; Secure",
+            "plain=; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Path=/",
+        ]);
+    });
+
     test("名前に使えない文字があればエラー(ヘッダーを壊さないように)", () => {
         const app = createApp();
         let error: unknown;
