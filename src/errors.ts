@@ -1,10 +1,37 @@
 import type { Context, HandlerResult } from "./context.ts";
 
 // status 付きで投げられるエラー。message はそのままクライアントに見せる前提のもの
+/**
+ * An error with an HTTP status. Throw it from a handler or middleware to respond with that status.
+ * Its `headers` are added to the response, and the default error handler returns its `message`
+ * to the client, so the message should be safe to show.
+ *
+ * @example
+ * ```ts
+ * import { createApp, HttpError } from "@senrijs/senri";
+ *
+ * const app = createApp();
+ * app.get("/admin", (_, c) => {
+ *     if (!c.req.headers.get("authorization")) {
+ *         throw new HttpError(401, "401 Unauthorized", { headers: { "www-authenticate": "Bearer" } });
+ *     }
+ *     return "welcome";
+ * });
+ * ```
+ */
 export class HttpError extends Error {
+    /** The HTTP status code. */
     status: number;
+    /** Headers to add to the error response. */
     headers: Headers;
 
+    /**
+     * Creates an error with an HTTP status.
+     *
+     * @param status The HTTP status code.
+     * @param message Defaults to `"HTTP <status>"`.
+     * @param options `headers` to add to the response, and the `cause`.
+     */
     constructor(status: number, message?: string, options: { headers?: HeadersInit; cause?: unknown } = {}) {
         super(message ?? `HTTP ${status}`, { cause: options.cause });
         this.name = "HttpError";
@@ -31,7 +58,12 @@ export function conversionOriginOf(err: unknown): ConversionOrigin | null {
     return typeof err === "object" && err !== null ? (conversionOrigins.get(err) ?? null) : null;
 }
 
+/**
+ * Handles an error thrown by middleware or a handler (`app.onError`). The status is already set
+ * from the {@link HttpError}, or to 500. If it throws, a fixed `500 Internal Server Error` is returned.
+ */
 export type ErrorHandler<V extends object = any> = (err: unknown, c: Context<V>) => HandlerResult | Promise<HandlerResult>;
+/** Handles a request that matched no route (`app.notFound`). The status is already set to 404. */
 export type NotFoundHandler<V extends object = any> = (c: Context<V>) => HandlerResult | Promise<HandlerResult>;
 
 // onError を通して、例外をレスポンスに変える

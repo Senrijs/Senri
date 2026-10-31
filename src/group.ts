@@ -18,23 +18,42 @@ type GroupMethod<Prefix extends string, V extends object> = {
     ): void;
 };
 
+/**
+ * A group of routes under a prefix, created by {@link createRouter} and mounted with `app.route(router)`.
+ * Paths are relative to the prefix, and parameters in the prefix are typed in the handlers.
+ */
 export type Router<Prefix extends string = string, V extends object = any> = {
+    /** The prefix given to {@link createRouter}. */
     readonly prefix: Prefix;
     // プレフィックスの下だけで動くミドルウェア。パスを付けると、さらにその下だけ
+    /** Adds middleware that runs only under the prefix. With a path, only under that path (relative to the prefix). */
     use(pathOrMw: string | Middleware<V>, mw?: Middleware<V>): void;
+    /** Adds a GET route. Same arguments as `app.get`, with the path relative to the prefix. */
     get: GroupMethod<Prefix, V>;
+    /** Adds a POST route. */
     post: GroupMethod<Prefix, V>;
+    /** Adds a PUT route. */
     put: GroupMethod<Prefix, V>;
+    /** Adds a PATCH route. */
     patch: GroupMethod<Prefix, V>;
+    /** Adds a DELETE route. */
     delete: GroupMethod<Prefix, V>;
+    /** Adds a route for every method, like `app.all`. */
     all: GroupMethod<Prefix, V>;
+    /** Adds a HEAD route, like `app.head`. */
     head: GroupMethod<Prefix, V>;
+    /** Adds an OPTIONS route, like `app.options`. */
     options: GroupMethod<Prefix, V>;
+    /**
+     * Adds a route for any method name, or several at once, like `app.on`.
+     * Throws right away for `"ALL"`, CONNECT, TRACE, TRACK and invalid names.
+     */
     on<Path extends string>(
         method: string | readonly string[],
         path: Path,
         handler: Handler<GroupParams<Prefix, Path>, V>,
     ): void;
+    /** Adds a route for any method name, with Standard Schema validation, like `app.on`. */
     on<Path extends string, S extends RouteSchemas>(
         method: string | readonly string[],
         path: Path,
@@ -42,6 +61,10 @@ export type Router<Prefix extends string = string, V extends object = any> = {
         handler: Handler<ValidatedParams<S, GroupParams<Prefix, Path>>, V, Validated<S>>,
     ): void;
     // ルーターの中にルーターをつなげる。中のルーターのプレフィックスは、このルーターからの相対パス
+    /**
+     * Nests another router. Its prefix is relative to this router's prefix.
+     * Its routes are read when the outer router is mounted with `app.route`.
+     */
     route(router: Router<string, V>): void;
 };
 
@@ -64,6 +87,24 @@ export function groupEntries(router: Router): GroupEntry[] {
 }
 
 // V は c.set / c.get で使う変数の型。アプリと同じものを指定する: createRouter<"/admin", Vars>("/admin")
+/**
+ * Creates a router for routes under `prefix`. Mount it with `app.route(router)`;
+ * routes are copied into the app at that point, so add them before mounting.
+ *
+ * `V` is the app's type; pass the same one as the app: `createRouter<"/admin", Vars>("/admin")`.
+ *
+ * @example
+ * ```ts
+ * import { createApp, createRouter } from "@senrijs/senri";
+ *
+ * const users = createRouter("/users/:id");
+ * users.get("/", ({ id }) => `user ${id}`);
+ * users.get("/posts", ({ id }) => `posts of ${id}`);
+ *
+ * const app = createApp();
+ * app.route(users);
+ * ```
+ */
 export function createRouter<Prefix extends string, V extends object = Record<string, unknown>>(
     prefix: Prefix,
 ): Router<Prefix, V> {

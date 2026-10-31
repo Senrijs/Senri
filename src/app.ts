@@ -29,6 +29,10 @@ import {
 } from "./errors.ts";
 
 // リクエストをどう処理するかの結論。ミドルウェアより前に1回だけ決める
+/**
+ * How the app will handle a request, decided once before middleware runs.
+ * Part of the contract with `@senrijs/senri/dev` ({@link AppCore}); app code does not normally use it.
+ */
 export type Resolved =
     | { kind: "route"; route: Route; params: Record<string, string> }
     | { kind: "options"; allow: string }
@@ -64,63 +68,150 @@ export type OnMethod<V extends object> = {
 const appEntries = new WeakMap<object, () => GroupEntry[]>();
 
 // app.route(prefix, app) に渡せるもの(createApp() で作ったアプリ)
-export type MountableApp = { routeList(): { method: string; path: string }[] };
+/** An app that can be mounted with `app.route(prefix, app)`. Only apps from {@link createApp} are accepted at runtime. */
+export type MountableApp = {
+    /** The registered routes, in registration order. */
+    routeList(): { method: string; path: string }[];
+};
 
 // createApp() が返すアプリ
+/**
+ * The app returned by {@link createApp}.
+ *
+ * `V` is the app's type: either the variables used with `c.set` / `c.get` (`{ user: User }`),
+ * or `{ Bindings: Env; Variables: { user: User } }` to also type `c.env` on Cloudflare Workers.
+ */
 export type App<V extends object = Record<string, unknown>> = {
+    /**
+     * Adds middleware. Middleware runs in registration order.
+     * With a path (`app.use("/admin", mw)`), it runs only for that path and below, compared by segment
+     * (`/admin` does not match `/administrator`; `:param` segments match any segment).
+     * Throws if the middleware is missing.
+     */
     use(pathOrMw: string | Middleware<V>, mw?: Middleware<V>): void;
+    /**
+     * Replaces the error handler. It receives anything thrown by middleware or handlers.
+     * Before it is called, the status is set from an {@link HttpError} (status and headers) or to 500.
+     * Without development mode, the default returns the `HttpError` message, or `"500 Internal Server Error"` for other errors.
+     */
     onError(handler: ErrorHandler<V>): void;
+    /** Replaces the handler for requests that match no route. The status is already set to 404 when it is called. */
     notFound(handler: NotFoundHandler<V>): void;
+    /**
+     * Adds a GET route: `app.get(path, handler)`, or `app.get(path, { params, query, body }, handler)` to validate
+     * with Standard Schema first. Path parameters (`/users/:id`) are typed from the path.
+     */
     get: RouteMethod<V>;
+    /** Adds a POST route. Same arguments as {@link App.get}. */
     post: RouteMethod<V>;
+    /** Adds a PUT route. Same arguments as {@link App.get}. */
     put: RouteMethod<V>;
+    /** Adds a PATCH route. Same arguments as {@link App.get}. */
     patch: RouteMethod<V>;
+    /** Adds a DELETE route. Same arguments as {@link App.get}. */
     delete: RouteMethod<V>;
+    /**
+     * Adds a HEAD route. Without one, HEAD requests use the GET route.
+     * For HEAD requests, the body of the route's response is dropped.
+     */
     head: RouteMethod<V>;
+    /**
+     * Adds an OPTIONS route. Without one (and without a matching `all` route),
+     * OPTIONS requests to a known path get 204 with an `Allow` header.
+     */
     options: RouteMethod<V>;
+    /**
+     * Adds a route for every method. A route registered for the request's method takes precedence.
+     * CONNECT, TRACE and TRACK are always answered with 501.
+     */
     all: RouteMethod<V>;
+    /**
+     * Adds a route for any method name, or several at once: `app.on(["PUT", "PATCH"], path, handler)`.
+     * Names are upper-cased. Throws for `"ALL"` (use {@link App.all}), CONNECT, TRACE, TRACK and invalid names.
+     */
     on: OnMethod<V>;
+    /** Adds routes from a table keyed by `"METHOD /path"`: `app.routes({ "GET /hello": () => "hi" })`. */
     routes<K extends string>(table: RouteTable<K, V>): void;
+    /**
+     * Mounts a router from {@link createRouter}, or another app under a prefix: `app.route("/api", api)`.
+     * What is registered at this point is copied into this app.
+     * A mounted app's `onError` / `notFound` are not used; this app's are.
+     */
     route(routerOrPrefix: Router<string, V> | string, child?: MountableApp): void;
+    /**
+     * The registered middleware, in registration order.
+     * `name` is the function's name, or `anonymous#N` (with `anonymous: true`) for unnamed functions.
+     */
     middlewareList(): { name: string; path: string | null; anonymous: boolean }[];
+    /** The registered routes, in registration order. */
     routeList(): { method: string; path: string }[];
+    /**
+     * Handles a request. Pass it to your runtime (`Bun.serve({ fetch: app.fetch })`, `Deno.serve(app.fetch)`)
+     * or `export default app` on Cloudflare Workers.
+     *
+     * @param info The runtime's second argument (Bun's server, Deno's info, or `env` on Workers). Used for the client address and `c.env`.
+     * @param ctx Cloudflare Workers' execution context, available as `c.executionCtx`.
+     */
     fetch(req: Request, info?: unknown, ctx?: ExecutionContext): Promise<Response>;
 };
 
+/** Options for {@link createApp}. */
 export type AppOptions = {
     // 開発モード。@senrijs/senri/dev の devtools() を渡す: createApp({ dev: devtools() })
     // 本体は開発用のコード(エラーページ・ダッシュボードなど)を一切 import しない。渡さなければバンドルにも入らない
+    /**
+     * Development mode. Pass `devtools()` from `@senrijs/senri/dev`: `createApp({ dev: devtools() })`.
+     * The core imports no development code, so without it none is bundled.
+     */
     dev?: DevHooks | undefined;
 };
 
 // 開発用のフック。@senrijs/senri/dev の devtools() が作る(本体が知っているのは、この形だけ)
+/**
+ * Development hooks, created by `devtools()` from `@senrijs/senri/dev`.
+ * The core only knows this shape; app code does not normally implement it.
+ */
 export type DevHooks = {
     // createApp() の最後に1回だけ呼ぶ。アプリの中身(core)を受け取って、開発モードの処理を返す
+    /** Called once at the end of {@link createApp} with the app's internals. */
     install(core: AppCore): DevInstalled;
 };
 
 // 開発モードで使う、アプリの中身
+/** The app's internals, passed to {@link DevHooks.install}. Used by `@senrijs/senri/dev`; app code does not normally use it. */
 export type AppCore = {
+    /** The app being created. */
     app: App<any>;
     // ルートを決める / かかるミドルウェアを集める / いちばん内側の処理(本番の fetch と同じもの)
+    /** Decides how the request is handled (route, 404, 405, ...). */
     resolve(c: Context): Resolved;
+    /** The middleware that applies to the request. */
     layers(c: Context): Layer[];
+    /** The innermost step after all middleware (the same as in production). */
     inner(c: Context, resolved: Resolved): Response | Promise<Response>;
     // いまの onError を通して、例外をレスポンスにする
+    /** Turns an error into a response through the current `onError`. */
     fail(err: unknown, c: Context): Promise<Response>;
     // 登録されたルート(登録順)
+    /** The registered routes, in registration order. */
     routes(): readonly Route[];
 };
 
+/** What {@link DevHooks.install} returns. Used by the core; app code does not normally use it. */
 export type DevInstalled = {
     // app.fetch の代わり(計測・エラーページ・ダッシュボードの記録など)
+    /** Used instead of the production `app.fetch`. */
     fetch(req: Request, info?: unknown, ctx?: ExecutionContext): Promise<Response>;
     // 既定の onError / notFound(app.onError / app.notFound で替えたら、そちらを使う)
+    /** The default error handler in development mode. `app.onError` replaces it. */
     onError: ErrorHandler;
+    /** The default not-found handler in development mode. `app.notFound` replaces it. */
     notFound: NotFoundHandler;
     // ルートを登録する前に確かめる(/_senri の予約、スキーマの書き間違い)
+    /** Checks a route before it is registered; throws to reject it. */
     checkRoute(method: string, path: string, schemas: RouteSchemas | undefined): void;
     // 登録時のエラーに、日本語の説明を付ける
+    /** Adds an explanation to an error thrown while registering, and returns the error to throw. */
     explain(err: unknown): unknown;
 };
 
@@ -135,6 +226,27 @@ createApp({ dev: true }) は使えなくなりました。@senrijs/senri/dev の
 
 // V はアプリの型。c.set / c.get で使う変数の型(createApp<{ user: User }>())か、
 // Workers の env も含めた形(createApp<{ Bindings: Env; Variables: { user: User } }>())で指定する(src/context.ts)
+/**
+ * Creates an app.
+ *
+ * `V` is the type of the variables used with `c.set` / `c.get` (`createApp<{ user: User }>()`),
+ * or `{ Bindings: Env; Variables: {...} }` to also type `c.env` on Cloudflare Workers.
+ * Throws if `options.dev` is `true` (0.1 style); pass `devtools()` from `@senrijs/senri/dev` instead.
+ *
+ * @example
+ * ```ts
+ * import { createApp } from "@senrijs/senri";
+ *
+ * const app = createApp<{ user: string }>();
+ *
+ * app.use("/admin", async (c, next) => {
+ *     c.set("user", "alice");
+ *     await next();
+ * });
+ * app.get("/admin/users/:id", ({ id }, c) => ({ id, by: c.get("user") }));
+ * app.post("/echo", async (_, c) => c.json(await c.body(), 201));
+ * ```
+ */
 export function createApp<V extends object = Record<string, unknown>>(options: AppOptions = {}): App<V> {
     if ((options.dev as unknown) === true) throw senriError("dev_true", DEV_TRUE);
     const routes: Route[] = [];
