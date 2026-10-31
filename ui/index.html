@@ -5,13 +5,7 @@
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta name="color-scheme" content="light dark" />
         <title>Senri</title>
-        <!-- オフラインのときは theme.css の等幅のシステムフォントで表示される -->
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-        <link
-            rel="stylesheet"
-            href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&family=Noto+Sans+JP:wght@400;500;700&display=swap"
-        />
+        <!-- フォントは外から読み込まない(開くたびに外へ通信しない。オフラインでも遅れない)。theme.css のとおり、PC に入っているものを使う -->
     </head>
     <body>
         <!-- サーバーがここに簡易表示を入れる。Vue が動けば置き換わる(src/dev/fallback.ts) -->
