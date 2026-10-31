@@ -150,7 +150,8 @@ try {
     // __Host- / __Secure- は Secure のない Set-Cookie をブラウザが捨てるので、消すときにも Secure が要る
     // (Chromium は http://localhost を安全なオリジンとして扱うので、Secure の Cookie も付けられる)
     const cookieApp = createApp();
-    const NAMES = ["__Host-id", "__Secure-id", "plain"];
+    // 接頭辞の大文字小文字を変えたもの(__HOST- / __secure-)も、ブラウザは接頭辞として扱う
+    const NAMES = ["__Host-id", "__Secure-id", "__HOST-upper", "__secure-lower", "plain"];
     cookieApp.get("/set", (_, c) => {
         for (const name of NAMES) setCookie(c, name, "1");
         return "set";

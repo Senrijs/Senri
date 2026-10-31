@@ -228,6 +228,46 @@ describe("Cookie", () => {
     });
 });
 
+// ブラウザは __Host- / __Secure- を大文字小文字を区別せずに判定する(RFC 6265bis。Chromium と Firefox 127 以降)
+// "__HOST-id" も __Host- として扱わないと、Secure が付かずに捨てられ、domain の確認もすり抜ける
+describe("Cookie の接頭辞は大文字小文字を区別しない", () => {
+    const NAMES = ["__HOST-id", "__host-id", "__SECURE-id", "__secure-id"];
+
+    test("付けるときも消すときも Secure を付ける", async () => {
+        const app = createApp();
+        app.get("/c", (_, c) => {
+            for (const name of NAMES) {
+                setCookie(c, name, "1");
+                deleteCookie(c, name);
+            }
+            return "ok";
+        });
+
+        const cookies = (await app.fetch(req("/c"))).headers.getSetCookie();
+        expect(cookies).toHaveLength(NAMES.length * 2);
+        for (const cookie of cookies) expect(cookie).toContain("; Secure");
+    });
+
+    test("__HOST- / __host- にも domain を付けられない", () => {
+        const app = createApp();
+        const errors: unknown[] = [];
+        app.get("/c", (_, c) => {
+            for (const name of ["__HOST-id", "__host-id"]) {
+                try {
+                    setCookie(c, name, "1", { domain: "example.com" });
+                } catch (e) {
+                    errors.push(e);
+                }
+            }
+            return "ok";
+        });
+
+        return app.fetch(req("/c")).then(() => {
+            expect(errors.map((e) => (e as { code?: string }).code)).toEqual(["cookie_host_domain", "cookie_host_domain"]);
+        });
+    });
+});
+
 describe("送る側が決める名前(__proto__ / constructor)", () => {
     test("フォームのフィールド名が、継承したものと混ざらない", async () => {
         const app = createApp();
