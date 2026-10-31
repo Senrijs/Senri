@@ -1,3 +1,18 @@
+/**
+ * Development mode: error pages, a 404 page with suggestions, the `/_senri` dashboard,
+ * `Server-Timing` headers and detailed error messages.
+ * The core never imports this entry, so it stays out of your bundle unless you import it.
+ *
+ * @example
+ * ```ts
+ * import { createApp } from "@senrijs/senri";
+ * import { devtools } from "@senrijs/senri/dev";
+ *
+ * const app = createApp({ dev: devtools() });
+ * ```
+ *
+ * @module
+ */
 // @senrijs/senri/dev の入口。開発モードの機能(エラーページ・404 ページ・/_senri ダッシュボード・Server-Timing・
 // 日本語の詳しいエラー)は、すべてここから入る。本体(@senrijs/senri)はこのファイルを一切 import しない
 //

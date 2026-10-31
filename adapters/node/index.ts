@@ -1,3 +1,19 @@
+/**
+ * Node.js adapter: serves an app with `node:http`.
+ * To start on any runtime with a port from `PORT` and graceful shutdown, use `@senrijs/senri/serve` instead.
+ *
+ * @example
+ * ```ts
+ * import { createApp } from "@senrijs/senri";
+ * import { serve } from "@senrijs/senri/node";
+ *
+ * const app = createApp();
+ * app.get("/", () => "hi");
+ * serve(app, { port: 3927 });
+ * ```
+ *
+ * @module
+ */
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import type { Duplex } from "node:stream";
 import type { TLSSocket } from "node:tls";

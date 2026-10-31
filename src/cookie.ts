@@ -1,3 +1,20 @@
+/**
+ * Reading and writing cookies (RFC 6265).
+ *
+ * @example
+ * ```ts
+ * import { createApp } from "@senrijs/senri";
+ * import { getCookie, setCookie } from "@senrijs/senri/cookie";
+ *
+ * const app = createApp();
+ * app.get("/", (_, c) => {
+ *     setCookie(c, "visited", "1", { maxAge: 60 * 60 });
+ *     return getCookie(c, "visited") ?? "first visit";
+ * });
+ * ```
+ *
+ * @module
+ */
 // Cookie の読み書き(RFC 6265)
 import type { Context } from "./context.ts";
 import { senriError } from "./errors.ts";

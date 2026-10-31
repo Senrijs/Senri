@@ -1,3 +1,18 @@
+/**
+ * The client's IP address, taken from what the runtime passes to `app.fetch`
+ * (or `CF-Connecting-IP` on Cloudflare Workers).
+ *
+ * @example
+ * ```ts
+ * import { createApp } from "@senrijs/senri";
+ * import { getIp } from "@senrijs/senri/ip";
+ *
+ * const app = createApp();
+ * app.get("/ip", (_, c) => getIp(c) ?? "unknown");
+ * ```
+ *
+ * @module
+ */
 // @senrijs/senri/ip の入口
 // Context のメソッドにしないのは、使わないアプリのバンドルに入れないため(0.1 の c.ip)
 import { connectionOf, type Context } from "./context.ts";

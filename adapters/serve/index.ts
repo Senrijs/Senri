@@ -1,3 +1,20 @@
+/**
+ * Starts an app on Bun, Deno or Node.js, detecting the runtime.
+ * Picks the port, prints the route list and shuts down gracefully on SIGTERM / SIGINT.
+ *
+ * @example
+ * ```ts
+ * import { createApp } from "@senrijs/senri";
+ * import { serve } from "@senrijs/senri/serve";
+ *
+ * const app = createApp();
+ * app.get("/", () => "hi");
+ * const server = await serve(app);
+ * console.log(server.url);
+ * ```
+ *
+ * @module
+ */
 import { showRoutes } from "../../src/index.ts";
 import { setDraining } from "../../src/health.ts";
 import * as runtime from "../../src/runtime.ts";

@@ -1,3 +1,18 @@
+/**
+ * Static file middleware for Bun, Deno and Node.js (uses `node:fs`).
+ * Not available on Cloudflare Workers; use Workers Static Assets there.
+ *
+ * @example
+ * ```ts
+ * import { createApp } from "@senrijs/senri";
+ * import { serveStatic } from "@senrijs/senri/static";
+ *
+ * const app = createApp();
+ * app.use(serveStatic({ root: "./public" }));
+ * ```
+ *
+ * @module
+ */
 // 静的ファイル配信(senri/static)。node:fs を使うので本体とは別の入口にしている
 // Bun / Deno / Node で動く。Cloudflare Workers ではファイルを読めないので、wrangler の Static Assets を使う
 import { createReadStream } from "node:fs";
