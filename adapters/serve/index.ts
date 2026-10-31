@@ -236,10 +236,11 @@ export async function serve(app: App, options: ServeOptions = {}): Promise<Serve
     const detach: (() => void)[] = [];
     const stop = () => {
         stopping ??= (async () => {
-            for (const off of detach) off();
             // まず /readyz を 503 にする(ロードバランサーが、新しいリクエストを送ってこないように)
             setDraining(true);
             if (!(await within(drain(), timeout))) force();
+            // シグナルの受け口は、止まり終わってから外す(待っている間の2回目のシグナルで、すぐ終われるように)
+            for (const off of detach) off();
         })();
         return stopping;
     };
