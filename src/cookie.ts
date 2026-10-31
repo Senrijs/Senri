@@ -106,6 +106,8 @@ export function deletionCookie(name: string, options: Pick<CookieOptions, "path"
     const parts = [`${name}=`, "Max-Age=0", "Expires=Thu, 01 Jan 1970 00:00:00 GMT"];
     if (options.domain) parts.push(`Domain=${options.domain}`);
     parts.push(`Path=${options.path ?? "/"}`);
+    // __Secure- / __Host- で始まる名前は、消すときも Secure がないとブラウザに捨てられる(serializeCookie と同じ)
+    if (name.startsWith("__Secure-") || name.startsWith("__Host-")) parts.push("Secure");
     return parts.join("; ");
 }
 

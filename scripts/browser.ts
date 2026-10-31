@@ -10,6 +10,9 @@ import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import { extname, join } from "node:path";
 import { chromium } from "playwright";
+import { createApp } from "../src/index.ts";
+import { deleteCookie, setCookie } from "../src/cookie.ts";
+import { serve as serveNode } from "../adapters/node/index.ts";
 
 const ROOT = join(import.meta.dirname, "..");
 // Service Worker の登録と切り替えを待つ上限(ミリ秒)
@@ -143,6 +146,34 @@ try {
         check("Service Worker: Senri の 404", viaWorker.missing.status === 404 && viaWorker.missing.body === "404 Not Found", JSON.stringify(viaWorker.missing));
     }
 
+    // Cookie: 本物の HTTP のレスポンス(Set-Cookie)で付けて、deleteCookie で消えるか
+    // __Host- / __Secure- は Secure のない Set-Cookie をブラウザが捨てるので、消すときにも Secure が要る
+    // (Chromium は http://localhost を安全なオリジンとして扱うので、Secure の Cookie も付けられる)
+    const cookieApp = createApp();
+    const NAMES = ["__Host-id", "__Secure-id", "plain"];
+    cookieApp.get("/set", (_, c) => {
+        for (const name of NAMES) setCookie(c, name, "1");
+        return "set";
+    });
+    cookieApp.get("/delete", (_, c) => {
+        for (const name of NAMES) deleteCookie(c, name);
+        return "deleted";
+    });
+    const cookieServer = serveNode(cookieApp, { port: 0 });
+    try {
+        await new Promise<void>((resolve) => cookieServer.once("listening", resolve));
+        const cookieAddress = cookieServer.address();
+        const cookieBase = `http://localhost:${typeof cookieAddress === "object" && cookieAddress ? cookieAddress.port : 0}`;
+        const names = async () => (await context.cookies(cookieBase)).map((c) => c.name).sort();
+        await page.goto(`${cookieBase}/set`);
+        const afterSet = await names();
+        check("Cookie: setCookie で付く", JSON.stringify(afterSet) === JSON.stringify([...NAMES].sort()), JSON.stringify(afterSet));
+        await page.goto(`${cookieBase}/delete`);
+        const afterDelete = await names();
+        check("Cookie: deleteCookie で消える(__Host- / __Secure- も)", afterDelete.length === 0, JSON.stringify(afterDelete));
+    } finally {
+        cookieServer.close();
+    }
 } finally {
     await browser.close();
     server.close();
