@@ -38,8 +38,9 @@ export function bodyLimit(options: BodyLimitOptions): Middleware {
     if (typeof max !== "number" || !Number.isFinite(max) || max < 0) {
         throw new Error(`bodyLimit(): maxSize には 0 以上のバイト数を指定してください(${String(max)})`);
     }
+    // onError が文字列などを返しても 413 になるよう、先に status を入れておく(Response を返したら、その status のまま)
     const tooLarge = (c: Context) =>
-        options.onError ? options.onError(c) : new Response("413 Content Too Large", { status: 413 });
+        options.onError ? options.onError(c.status(413)) : new Response("413 Content Too Large", { status: 413 });
 
     return async function bodyLimit(c, next) {
         const body = c.req.body;
