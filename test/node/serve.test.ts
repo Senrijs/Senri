@@ -1,6 +1,7 @@
 // serve() が Node 本体でも動くか(Node では node:http のアダプターを使う)
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
+import net from "node:net";
 import { createApp } from "../../src/index.ts";
 import { serve } from "../../adapters/serve/index.ts";
 
@@ -14,6 +15,26 @@ describe("serve(Node)", () => {
             assert.ok(server.port > 0);
             assert.equal(server.url, `http://localhost:${server.port}`);
             assert.equal(await (await fetch(`${server.url}/hello`)).text(), "hi");
+        } finally {
+            await server.stop();
+        }
+    });
+
+    test("hostname を node:http に渡し、そのアドレスだけで待ち受ける", async () => {
+        const server = await serve(app, { port: 0, hostname: "127.0.0.1", banner: false });
+        try {
+            assert.equal(server.url, `http://127.0.0.1:${server.port}`);
+            assert.equal(await (await fetch(`${server.url}/hello`)).text(), "hi");
+            // ほかのアドレス(IPv6 のループバック)からはつながらない
+            // (以前は hostname を無視して全部のアドレスで待ち受けていたので、つながった)
+            const reached = await new Promise<boolean>((resolve) => {
+                const sock = net.connect(server.port, "::1", () => {
+                    sock.destroy();
+                    resolve(true);
+                });
+                sock.on("error", () => resolve(false));
+            });
+            assert.equal(reached, false);
         } finally {
             await server.stop();
         }
