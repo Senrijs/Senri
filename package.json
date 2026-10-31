@@ -1,7 +1,7 @@
 {
   "name": "@senrijs/senri",
   "version": "0.2.1",
-  "description": "Web 標準の Request / Response で書かれた、小さな Web フレームワーク。Bun・Deno・Node.js・Cloudflare Workers で動く",
+  "description": "A small web framework built on Web standards. Runs on Bun, Deno, Node.js, Cloudflare Workers and browsers.",
   "license": "MIT",
   "author": "ibuki-hum4",
   "repository": {
