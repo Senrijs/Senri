@@ -10,7 +10,8 @@ export type BodyLimitOptions = {
     // 超えたときのレスポンス。既定は "413 Content Too Large"
     /**
      * The response when the body is too large. Default: 413 `413 Content Too Large`.
-     * When it returns something other than a `Response`, set the status yourself with `c.status(413)`.
+     * The status is set to 413 before it is called, so a returned string or object is sent with 413;
+     * a returned `Response` keeps its own status.
      */
     onError?: (c: Context) => HandlerResult | Promise<HandlerResult>;
 };
