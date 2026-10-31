@@ -27,8 +27,9 @@
     --redirect: #0b5e70;
     --live: #0e9f6e;
 
-    --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-    --sans: "Noto Sans JP", system-ui, sans-serif;
+    /* PC に入っていれば JetBrains Mono / Noto Sans JP、なければ OS のフォント(外からは読み込まない) */
+    --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+    --sans: "Noto Sans JP", system-ui, -apple-system, "Hiragino Sans", "Yu Gothic UI", Meiryo, sans-serif;
 }
 
 @media (prefers-color-scheme: dark) {
