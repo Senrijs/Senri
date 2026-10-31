@@ -41,8 +41,17 @@ Pull Request はスカッシュでマージするので、**PR のタイトル�
 
 バージョンと CHANGELOG は [Release Please](https://github.com/googleapis/release-please) が決めます。`package.json` / `jsr.json` の `version` と `CHANGELOG.md` は、手で変えないでください。
 
-1. main にマージされるたびに、Release Please が「chore(main): release x.y.z」の PR を作る・更新する(`fix:` と `feat:` はパッチ、破壊的変更(`feat!:` など)はマイナーが上がる。1.0 より前のあいだ)
-2. その PR をマージすると、タグ(`vx.y.z`)と GitHub Release ができ、同じワークフロー(`.github/workflows/publish.yml`)が JSR と npm に公開する
+このリポジトリには、パッケージが2つあります。
+
+| パッケージ | 場所 | タグ | 公開先 |
+| --- | --- | --- | --- |
+| `@senrijs/senri` | ルート | `vx.y.z` | JSR と npm |
+| `create-senri` | `packages/create-senri` | `create-senri-vx.y.z` | npm だけ |
+
+1. main にマージされるたびに、Release Please がリリースの PR を作る・更新する(`fix:` と `feat:` はパッチ、破壊的変更(`feat!:` など)はマイナーが上がる。1.0 より前のあいだ)。変更があったパッケージが、1つの PR にまとまる
+2. その PR をマージすると、パッケージごとにタグと GitHub Release ができ、同じワークフロー(`.github/workflows/publish.yml`)が公開する
+
+`create-senri` のテンプレートが入れる `@senrijs/senri` の範囲は、`packages/create-senri/version.js` にあります。本体のバージョンがこの範囲の外に出ると、`test/node/create-senri.test.ts` が落ちます。そのときは、テンプレートを新しい API に直してから、範囲を上げてください。
 
 タグを手で push しても公開はされません。
 
@@ -51,9 +60,17 @@ Pull Request はスカッシュでマージするので、**PR のタイトル�
 公開が途中で失敗したときなどは、作り済みのタグを手で公開し直せます。公開済みのもの(JSR・npm それぞれ)は飛ばすので、何度動かしても大丈夫です。
 
 1. GitHub の Actions → Publish → Run workflow を開く
-2. ブランチは main のまま、`tag` に公開するタグ(例: `v0.2.1`)を入れて実行する
+2. ブランチは main のまま、`tag` に公開するタグ(例: `v0.2.1`、`create-senri-v0.1.0`)を入れて実行する
 
 GitHub CLI なら `gh workflow run publish.yml -f tag=v0.2.1` です。そのタグの `package.json` / `jsr.json` の `version` がタグと違うときは、公開せずに失敗します。
+
+### 新しいパッケージを npm に初めて出す
+
+npm の Trusted Publisher(GitHub Actions からの公開)は、パッケージが npm にないと設定できません。なので最初のバージョンだけは、手で公開します(`create-senri` の 0.1.0 がこれにあたります)。
+
+1. Release Please が作ったリリースの PR のブランチを手元に取り、そのパッケージのフォルダで `npm publish --access public` を実行する
+2. npmjs.com のパッケージの設定で、Trusted Publisher を「`Senrijs/Senri` の `publish.yml`」にする
+3. リリースの PR をマージする(npm には公開済みなので、ワークフローは npm を飛ばし、タグと Release だけ作る)
 
 ## ライセンス
 

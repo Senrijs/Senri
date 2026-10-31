@@ -1,7 +1,9 @@
 name: Publish
 
 # - main への push: Release Please がリリースの PR を作る・更新する。その PR をマージしたら、
-#   タグと GitHub Release を作り、同じ実行の中で JSR と npm に公開する
+#   タグと GitHub Release を作り、同じ実行の中で公開する
+#   - @senrijs/senri(タグ vX.Y.Z): JSR と npm
+#   - create-senri(タグ create-senri-vX.Y.Z、packages/create-senri): npm だけ
 # - 手動実行(workflow_dispatch): 作り済みのタグを公開し直す(公開が途中で失敗したときなど。CONTRIBUTING.md)
 # Release Please が作るタグは GITHUB_TOKEN で push されるので、タグの push で動くワークフローは起動しない。
 # なので公開は、別のワークフローにせず、このファイルの中で続けて行う
@@ -13,7 +15,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "公開するタグ(例: v0.2.1)"
+        description: "公開するタグ(例: v0.2.1、create-senri-v0.1.0)"
         required: true
         type: string
 
@@ -34,6 +36,9 @@ jobs:
     outputs:
       release_created: ${{ steps.release.outputs.release_created }}
       tag_name: ${{ steps.release.outputs.tag_name }}
+      # ルート以外のパッケージの出力は「パス--名前」になる
+      create_senri_release_created: ${{ steps.release.outputs['packages/create-senri--release_created'] }}
+      create_senri_tag_name: ${{ steps.release.outputs['packages/create-senri--tag_name'] }}
     steps:
       - uses: googleapis/release-please-action@v4
         id: release
@@ -47,7 +52,7 @@ jobs:
     if: >-
       !cancelled() && (
         (github.event_name == 'push' && needs.release-please.outputs.release_created == 'true') ||
-        github.event_name == 'workflow_dispatch'
+        (github.event_name == 'workflow_dispatch' && startsWith(inputs.tag, 'v'))
       )
     runs-on: ubuntu-latest
     permissions:
@@ -102,6 +107,55 @@ jobs:
             echo "npm には $VERSION が公開済みなので飛ばします"
           else
             bun run build
+            npm --version
+            npm publish --provenance --access public
+          fi
+
+  # create-senri(npm create senri)。npm にだけ公開する(JSR には出さない)
+  # 最初の 0.1.0 だけは手で公開する(npm の Trusted Publisher は、パッケージが npm にないと設定できないため。CONTRIBUTING.md)
+  publish-create-senri:
+    needs: release-please
+    if: >-
+      !cancelled() && (
+        (github.event_name == 'push' && needs.release-please.outputs.create_senri_release_created == 'true') ||
+        (github.event_name == 'workflow_dispatch' && startsWith(inputs.tag, 'create-senri-v'))
+      )
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || needs.release-please.outputs.create_senri_tag_name }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ env.TAG }}
+      - uses: oven-sh/setup-bun@v2
+      - uses: denoland/setup-deno@v2
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+
+      # タグと packages/create-senri/package.json のバージョンがそろっているか(create-senri-v0.1.0 なら 0.1.0)
+      - name: Check versions
+        run: |
+          tag="${TAG#create-senri-v}"
+          npm_version=$(node -p "require('./packages/create-senri/package.json').version")
+          if [ "$tag" != "$npm_version" ]; then
+            echo "タグ ($tag) と packages/create-senri/package.json ($npm_version) のバージョンが違います"
+            exit 1
+          fi
+          echo "VERSION=$tag" >> "$GITHUB_ENV"
+
+      - run: node --test test/node/create-senri.test.ts
+
+      - name: Publish to npm
+        working-directory: packages/create-senri
+        run: |
+          if npm view "create-senri@$VERSION" version >/dev/null 2>&1; then
+            echo "npm には create-senri@$VERSION が公開済みなので飛ばします"
+          else
             npm --version
             npm publish --provenance --access public
           fi

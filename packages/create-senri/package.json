@@ -1,0 +1,38 @@
+{
+  "name": "create-senri",
+  "version": "0.0.0",
+  "description": "Create a new Senri app: npm create senri@latest",
+  "license": "MIT",
+  "author": "ibuki-hum4",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Senrijs/Senri.git",
+    "directory": "packages/create-senri"
+  },
+  "homepage": "https://github.com/Senrijs/Senri/tree/main/packages/create-senri#readme",
+  "bugs": {
+    "url": "https://github.com/Senrijs/Senri/issues"
+  },
+  "keywords": [
+    "senri",
+    "create",
+    "scaffold",
+    "template",
+    "bun",
+    "deno",
+    "node",
+    "cloudflare-workers"
+  ],
+  "type": "module",
+  "bin": {
+    "create-senri": "index.js"
+  },
+  "files": [
+    "index.js",
+    "version.js",
+    "templates"
+  ],
+  "engines": {
+    "node": ">=22"
+  }
+}
