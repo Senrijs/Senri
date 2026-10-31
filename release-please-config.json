@@ -21,9 +21,16 @@
   "packages": {
     ".": {
       "package-name": "@senrijs/senri",
+      "exclude-paths": ["packages/create-senri"],
       "extra-files": [
         { "type": "json", "path": "jsr.json", "jsonpath": "$.version" }
       ]
+    },
+    "packages/create-senri": {
+      "package-name": "create-senri",
+      "component": "create-senri",
+      "include-component-in-tag": true,
+      "release-as": "0.1.0"
     }
   }
 }

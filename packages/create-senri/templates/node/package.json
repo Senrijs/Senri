@@ -1,0 +1,15 @@
+{
+  "name": "{{name}}",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.18"
+  },
+  "scripts": {
+    "dev": "node --watch src/index.ts",
+    "start": "node src/index.ts"
+  },
+  "dependencies": {
+    "@senrijs/senri": "{{senri}}"
+  }
+}

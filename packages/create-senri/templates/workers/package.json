@@ -1,0 +1,15 @@
+{
+  "name": "{{name}}",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy"
+  },
+  "dependencies": {
+    "@senrijs/senri": "{{senri}}"
+  },
+  "devDependencies": {
+    "wrangler": "^4"
+  }
+}
