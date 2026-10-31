@@ -29,7 +29,7 @@ export type CookieOptions = {
     /** `Domain`. Not allowed for names starting with `__Host-` (case-insensitive; throws). */
     domain?: string;
     // 既定は "/"
-    /** `Path`. Default `"/"`. */
+    /** `Path`. Default `"/"`. Must be `"/"` for names starting with `__Host-` (case-insensitive; throws otherwise). */
     path?: string;
     // 既定は true(JavaScript から読めないようにする)
     /** `HttpOnly` (not readable from JavaScript). Default `true`. */
@@ -54,12 +54,18 @@ const isSecurePrefixed = (name: string) => isHostPrefixed(name) || name.slice(0,
 
 // 名前と、名前に合わない指定を確かめる
 // __Host- で始まる Cookie に Domain を付けると、ブラウザに捨てられる(付けるときも消すときも)。黙って効かないより、エラーにする
-function checkName(name: string, domain: string | undefined): void {
+// Path も "/" でないと捨てられる。省略すると "/" になるので、明示して "/" 以外のときだけエラー(空文字も "/" にはならない)
+function checkName(name: string, options: Pick<CookieOptions, "path" | "domain">): void {
     if (!NAME.test(name)) {
         throw senriError("cookie_name", new TypeError(`Invalid cookie name: ${JSON.stringify(name)}`));
     }
-    if (domain && isHostPrefixed(name)) {
-        throw senriError("cookie_host_domain", new TypeError(`__Host- cookies cannot have a Domain: ${name}`));
+    if (isHostPrefixed(name)) {
+        if (options.domain) {
+            throw senriError("cookie_host_domain", new TypeError(`__Host- cookies cannot have a Domain: ${name}`));
+        }
+        if (options.path !== undefined && options.path !== "/") {
+            throw senriError("cookie_host_path", new TypeError(`__Host- cookies must have Path=/: ${name}`));
+        }
     }
 }
 
@@ -94,10 +100,10 @@ export function parseCookies(header: string | null): Record<string, string> {
  * Adds `Secure` for names starting with `__Secure-` or `__Host-` (compared case-insensitively, as browsers do),
  * since browsers ignore such cookies without it.
  * Throws a `TypeError` if the name is not a valid cookie name,
- * or if `domain` is given for a name starting with `__Host-` (case-insensitive).
+ * or if `domain` (or a `path` other than `"/"`) is given for a name starting with `__Host-` (case-insensitive).
  */
 export function serializeCookie(name: string, value: string, options: CookieOptions = {}): string {
-    checkName(name, options.domain);
+    checkName(name, options);
     const parts = [`${name}=${encodeURIComponent(value)}`];
     if (options.maxAge !== undefined) parts.push(`Max-Age=${Math.floor(options.maxAge)}`);
     if (options.expires) parts.push(`Expires=${options.expires.toUTCString()}`);
@@ -117,10 +123,10 @@ export function serializeCookie(name: string, value: string, options: CookieOpti
  * Adds `Secure` for names starting with `__Secure-` or `__Host-` (compared case-insensitively, as browsers do),
  * since browsers ignore such cookies without it.
  * Throws a `TypeError` if the name is not a valid cookie name,
- * or if `domain` is given for a name starting with `__Host-` (case-insensitive).
+ * or if `domain` (or a `path` other than `"/"`) is given for a name starting with `__Host-` (case-insensitive).
  */
 export function deletionCookie(name: string, options: Pick<CookieOptions, "path" | "domain"> = {}): string {
-    checkName(name, options.domain);
+    checkName(name, options);
     const parts = [`${name}=`, "Max-Age=0", "Expires=Thu, 01 Jan 1970 00:00:00 GMT"];
     if (options.domain) parts.push(`Domain=${options.domain}`);
     parts.push(`Path=${options.path ?? "/"}`);
@@ -172,7 +178,7 @@ export function getCookie(c: Context, name?: string): string | undefined | Recor
  * Adds `Secure` for names starting with `__Secure-` or `__Host-` (compared case-insensitively, as browsers do),
  * since browsers ignore such cookies without it.
  * Throws a `TypeError` if the name is not a valid cookie name,
- * or if `domain` is given for a name starting with `__Host-` (case-insensitive).
+ * or if `domain` (or a `path` other than `"/"`) is given for a name starting with `__Host-` (case-insensitive).
  *
  * @example
  * ```ts
@@ -196,7 +202,7 @@ export function setCookie(c: Context, name: string, value: string, options?: Coo
  * Adds `Secure` for names starting with `__Secure-` or `__Host-` (compared case-insensitively, as browsers do),
  * since browsers ignore such cookies without it.
  * Throws a `TypeError` if the name is not a valid cookie name,
- * or if `domain` is given for a name starting with `__Host-` (case-insensitive).
+ * or if `domain` (or a `path` other than `"/"`) is given for a name starting with `__Host-` (case-insensitive).
  */
 export function deleteCookie(c: Context, name: string, options?: Pick<CookieOptions, "path" | "domain">): void {
     c.header("set-cookie", deletionCookie(name, options));

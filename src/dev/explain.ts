@@ -18,6 +18,7 @@ const JA: Record<string, string> = {
     router_cycle: "ルーターが自分自身を含んでいます",
     cookie_name: "Cookie の名前に使えない文字があります",
     cookie_host_domain: "__Host- で始まる Cookie には domain を付けられません(ブラウザに捨てられます)。domain を外してください",
+    cookie_host_path: "__Host- で始まる Cookie の path は \"/\" でなければなりません(ブラウザに捨てられます)。path を外すか \"/\" にしてください",
     no_valid: "c.valid() で読めるのは、ルートに { query } や { body } のスキーマを渡したものだけです",
     no_execution_ctx: "c.executionCtx は Cloudflare Workers で、app.fetch(req, env, ctx) として呼ばれたときだけ使えます",
     returned_function: "ハンドラーが関数を返しました。呼び出し忘れではありませんか？",

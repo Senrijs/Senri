@@ -226,6 +226,48 @@ describe("Cookie", () => {
         const ok = await app.fetch(req("/ok"));
         expect(ok.headers.getSetCookie()).toHaveLength(4);
     });
+
+    // __Host- の Cookie は Path=/ でないと、ブラウザに捨てられる(domain と同じく、エラーにする)
+    test("__Host- の Cookie に \"/\" 以外の path を渡したらエラー(付けるときも消すときも)", async () => {
+        const app = createApp();
+        const errors: unknown[] = [];
+        app.get("/c", (_, c) => {
+            for (const call of [
+                () => setCookie(c, "__Host-id", "1", { path: "/admin" }),
+                () => deleteCookie(c, "__Host-id", { path: "/admin" }),
+                // 空の Path はブラウザが既定のパス(リクエストのディレクトリ)にするので、"/" にはならない
+                () => setCookie(c, "__Host-id", "1", { path: "" }),
+                () => deleteCookie(c, "__Host-id", { path: "" }),
+            ]) {
+                try {
+                    call();
+                } catch (e) {
+                    errors.push(e);
+                }
+            }
+            return "ok";
+        });
+        // path を省略(Path=/ になる)か "/" なら、今までどおり付けられる。__Secure- や普通の名前は path を付けてよい
+        app.get("/ok", (_, c) => {
+            setCookie(c, "__Host-id", "1");
+            setCookie(c, "__Host-id2", "1", { path: "/" });
+            deleteCookie(c, "__Host-id", { path: "/" });
+            setCookie(c, "__Secure-id", "1", { path: "/admin" });
+            setCookie(c, "plain", "1", { path: "/admin" });
+            return "ok";
+        });
+
+        const res = await app.fetch(req("/c"));
+        expect(errors).toHaveLength(4);
+        for (const error of errors) {
+            expect(error).toBeInstanceOf(TypeError);
+            expect((error as { code?: string }).code).toBe("cookie_host_path");
+        }
+        expect(res.headers.getSetCookie()).toEqual([]);
+
+        const ok = await app.fetch(req("/ok"));
+        expect(ok.headers.getSetCookie()).toHaveLength(5);
+    });
 });
 
 // ブラウザは __Host- / __Secure- を大文字小文字を区別せずに判定する(RFC 6265bis。Chromium と Firefox 127 以降)
