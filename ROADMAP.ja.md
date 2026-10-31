@@ -43,6 +43,16 @@ Senri がこれから向かう先です。バージョンは目標であって�
 - [x] 開発機能の分離(`@senrijs/senri/dev` の `devtools()`)
 - [x] 本体の軽量化(minify 後 約 14KB。Cookie と IP は別の入口へ)
 
+## 0.2.1 / 0.2.2 — 公開後の手直し(公開済み)
+
+細かい変更は [CHANGELOG](./CHANGELOG.md) にあります。
+
+- [x] 公開しているすべての API に英語のドキュメント(JSR のスコアのため)
+- [x] Release Please による、バージョン・CHANGELOG・公開の自動化
+- [x] Cookie の `__Host-` / `__Secure-` の扱い: 消すときも Secure を付ける、`__Host-` の domain と path を確かめる、接頭辞の大文字小文字を区別しない
+- [x] `serve()` の修正: Node.js でも `hostname` を使う、止まっている途中の2回目のシグナルですぐに終わる。`bodyLimit` は `onError` が何を返しても 413
+- [x] 開発用のページが外のフォント(Google Fonts)を読み込まない
+
 ## 0.2.x — 日常の開発で困らないように
 
 - [ ] エラーメッセージと開発ページの日英対応
@@ -51,9 +61,12 @@ Senri がこれから向かう先です。バージョンは目標であって�
 - [ ] レスポンスのヘルパー
 - [ ] ファイルアップロード
 - [ ] ミドルウェアの追加: Basic / Bearer 認証、圧縮、ETag、リクエスト ID、タイムアウト
+- [ ] 性能: 文字列を返すときの速い道、oha での HTTP のベンチマーク(ヘルパーのあとに)
 
 ## 0.3.0 — 本番まで届く
 
+- [ ] API の整理: 意図せず公開されているもの(`parseCookies`・`serializeCookie`・`deletionCookie`・`resolvePort`・`DEFAULT_PORT`・`PortSource`・`isLocalUrl`)を隠す。`deno doc --lint` の `private-type-ref`(19 件)をなくす
+- [ ] `serveStatic` のシンボリックリンクへの対策(ファイルを開いたあとで、root の中かを確かめ直す)
 - [ ] 型付きクライアント
 - [ ] OpenAPI の生成
 - [ ] テスト用ヘルパー

@@ -43,6 +43,16 @@ Ideas and requests are welcome in [Issues](https://github.com/Senrijs/Senri/issu
 - [x] Dev tools split out (`devtools()` from `@senrijs/senri/dev`)
 - [x] Smaller core (about 14KB minified; cookies and IP moved to their own entries)
 
+## 0.2.1 / 0.2.2 — Fixes after release (done)
+
+See the [CHANGELOG](./CHANGELOG.md) for details.
+
+- [x] English documentation for every public API (for the JSR score)
+- [x] Automated versions, CHANGELOG and publishing with Release Please
+- [x] `__Host-` / `__Secure-` cookies: `Secure` when deleting, `__Host-` domain and path checks, case-insensitive prefixes
+- [x] `serve()` fixes: `hostname` on Node.js, exit immediately on a second signal during shutdown. `bodyLimit` responds with 413 whatever `onError` returns
+- [x] Dev pages no longer load external fonts (Google Fonts)
+
 ## 0.2.x — Everyday development without friction
 
 - [ ] English / Japanese error messages and dev pages
@@ -51,9 +61,12 @@ Ideas and requests are welcome in [Issues](https://github.com/Senrijs/Senri/issu
 - [ ] Response helpers
 - [ ] File uploads
 - [ ] More middleware: Basic / Bearer auth, compression, ETag, request ID, timeout
+- [ ] Performance: a fast path for returning strings, HTTP benchmarks with oha (after the helpers)
 
 ## 0.3.0 — All the way to production
 
+- [ ] API cleanup: hide what is public by accident (`parseCookies`, `serializeCookie`, `deletionCookie`, `resolvePort`, `DEFAULT_PORT`, `PortSource`, `isLocalUrl`) and fix the 19 `private-type-ref` errors from `deno doc --lint`
+- [ ] `serveStatic`: guard against symbolic links swapped in after the check (re-check that the opened file is inside the root)
 - [ ] Typed client
 - [ ] OpenAPI generation
 - [ ] Testing helpers
