@@ -308,6 +308,34 @@ describe("Cookie の接頭辞は大文字小文字を区別しない", () => {
             expect(errors.map((e) => (e as { code?: string }).code)).toEqual(["cookie_host_domain", "cookie_host_domain"]);
         });
     });
+
+    test("__HOST- / __host- も path が \"/\" 以外ならエラー(付けるときも消すときも)", () => {
+        const app = createApp();
+        const errors: unknown[] = [];
+        app.get("/c", (_, c) => {
+            for (const call of [
+                () => setCookie(c, "__HOST-x", "1", { path: "/admin" }),
+                () => deleteCookie(c, "__HOST-x", { path: "/admin" }),
+                () => setCookie(c, "__host-x", "1", { path: "/admin" }),
+            ]) {
+                try {
+                    call();
+                } catch (e) {
+                    errors.push(e);
+                }
+            }
+            return "ok";
+        });
+
+        return app.fetch(req("/c")).then((res) => {
+            expect(errors.map((e) => (e as { code?: string }).code)).toEqual([
+                "cookie_host_path",
+                "cookie_host_path",
+                "cookie_host_path",
+            ]);
+            expect(res.headers.getSetCookie()).toEqual([]);
+        });
+    });
 });
 
 describe("送る側が決める名前(__proto__ / constructor)", () => {
