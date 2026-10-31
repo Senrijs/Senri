@@ -170,3 +170,101 @@ describe("NODE_ENV が読めない環境(Workers・ブラウザ)", () => {
         expect(isLocalUrl("/relative")).toBe(false);
     });
 });
+
+// NODE_ENV が development / test でないとき(未設定を含む)、Node / Bun / Deno では localhost へのリクエストだけに開発用の出力をする
+// 「localhost へのリクエスト」は、URL のホスト名が localhost で、かつ接続元が loopback のとき
+// (Node / Bun / Deno の request.url のホスト名は Host ヘッダーから作られるので、URL だけでは偽装できてしまう)
+describe("NODE_ENV が development / test でないとき", () => {
+    const original = process.env.NODE_ENV;
+    afterEach(() => {
+        process.env.NODE_ENV = original;
+    });
+    const setNodeEnv = (value: string | undefined) => {
+        if (value === undefined) delete process.env.NODE_ENV;
+        else process.env.NODE_ENV = value;
+    };
+
+    const loopback = { remoteAddr: { hostname: "127.0.0.1" } };
+    const remote = { remoteAddr: { hostname: "203.0.113.5" } };
+
+    // 開発用の出力が出たかを、4つ(500 の本文・HTML のエラーページ・404 のルートの一覧・Server-Timing)で見る
+    async function devOutput(nodeEnv: string | undefined, host: string, info: unknown) {
+        setNodeEnv(nodeEnv);
+        const app = createApp({ dev: devtools() });
+        app.get("/hello", () => "hi");
+        app.get("/boom", () => {
+            throw new Error("secret detail");
+        });
+        const at = (path: string, init?: RequestInit) => app.fetch(new Request(`http://${host}${path}`, init), info);
+        const text = await (await at("/boom")).text();
+        const page = await at("/boom", { headers: { accept: "text/html" } });
+        await page.text();
+        const notFound = await (await at("/helo")).text();
+        const timing = (await at("/hello")).headers.get("server-timing");
+        return {
+            errorBody: text.includes("secret detail"),
+            errorPage: (page.headers.get("content-type") ?? "").includes("text/html"),
+            routeList: notFound.includes("もしかして"),
+            serverTiming: timing !== null,
+        };
+    }
+    const ALL = { errorBody: true, errorPage: true, routeList: true, serverTiming: true };
+    const NONE = { errorBody: false, errorPage: false, routeList: false, serverTiming: false };
+
+    test("未設定: example.com へのリクエストには出さない", async () => {
+        const warn = spyOn(console, "warn").mockImplementation(() => {});
+        try {
+            expect(await devOutput(undefined, "example.com", loopback)).toEqual(NONE);
+        } finally {
+            warn.mockRestore();
+        }
+    });
+
+    test("未設定: localhost へのリクエスト(接続元も loopback)には出す", async () => {
+        expect(await devOutput(undefined, "localhost:3927", loopback)).toEqual(ALL);
+        expect(await devOutput(undefined, "127.0.0.1:3927", loopback)).toEqual(ALL);
+    });
+
+    test("未設定: URL が localhost でも、接続元が loopback でなければ出さない(Host の偽装)", async () => {
+        const warn = spyOn(console, "warn").mockImplementation(() => {});
+        try {
+            expect(await devOutput(undefined, "localhost", remote)).toEqual(NONE);
+            // 接続元が分からない(app.fetch を直接呼んだ)ときも、localhost とはみなさない
+            expect(await devOutput(undefined, "localhost", undefined)).toEqual(NONE);
+        } finally {
+            warn.mockRestore();
+        }
+    });
+
+    test("development / test なら、example.com にも出す", async () => {
+        expect(await devOutput("development", "example.com", remote)).toEqual(ALL);
+        expect(await devOutput("test", "example.com", remote)).toEqual(ALL);
+    });
+
+    test("ほかの値(staging など)は、未設定と同じく localhost だけ", async () => {
+        const warn = spyOn(console, "warn").mockImplementation(() => {});
+        try {
+            expect(await devOutput("staging", "example.com", loopback)).toEqual(NONE);
+            expect(await devOutput("staging", "localhost", loopback)).toEqual(ALL);
+        } finally {
+            warn.mockRestore();
+        }
+    });
+
+    test("localhost でないので出さなかったときは、アプリごとに1回だけ知らせる", async () => {
+        setNodeEnv(undefined);
+        const warn = spyOn(console, "warn").mockImplementation(() => {});
+        try {
+            const app = createApp({ dev: devtools() });
+            app.get("/", () => "ok");
+            await app.fetch(new Request("http://localhost/"), loopback);
+            expect(warn).toHaveBeenCalledTimes(0);
+            await app.fetch(new Request("http://example.com/"), loopback);
+            await app.fetch(new Request("http://example.com/"), loopback);
+            expect(warn).toHaveBeenCalledTimes(1);
+            expect(String(warn.mock.calls[0]![0])).toContain("NODE_ENV=development");
+        } finally {
+            warn.mockRestore();
+        }
+    });
+});
