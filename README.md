@@ -34,12 +34,16 @@ serve(app);   // Bun でも Deno でも Node.js でも
 
 ```bash
 npm create senri@latest my-app
-cd my-app
-npm install
-npm run dev      # → http://localhost:3927
 ```
 
-フォルダ名とランタイム(Bun・Node.js・Deno・Cloudflare Workers)を聞かれます。`devtools()` と `serve(app)`(Workers は `export default app`)が入った、すぐ動く最小のアプリができます。
+フォルダ名や `--template`(ランタイム: Bun・Node.js・Deno・Cloudflare Workers)を省くと、その分を聞かれます(両方渡せば質問なし)。`devtools()` と `serve(app)`(Workers は `export default app`)が入った、すぐ動く最小のアプリができます。作り終わると、そのランタイムで動かすコマンドが表示されます。
+
+| ランタイム | 起動 | URL |
+| --- | --- | --- |
+| Bun | `bun install` → `bun run dev` | http://localhost:3927 |
+| Node.js | `npm install` → `npm run dev` | http://localhost:3927 |
+| Deno | `deno task dev` | http://localhost:3927 |
+| Cloudflare Workers | `npm install` → `npm run dev` | http://localhost:8787 |
 
 ```bash
 bun create senri my-app

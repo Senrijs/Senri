@@ -9,23 +9,18 @@ pnpm create senri my-app
 deno run -A npm:create-senri my-app
 ```
 
-It asks for the folder name (unless you pass it) and the runtime, then creates a small app that runs right away:
-`createApp({ dev: devtools() })` and `serve(app)` (`export default app` on Cloudflare Workers).
-
-```bash
-cd my-app
-npm install
-npm run dev      # → http://localhost:3927
-```
+If you leave out the folder name or `--template`, it asks for them (no questions when you pass both).
+It creates a small app that runs right away: `createApp({ dev: devtools() })` and `serve(app)` (`export default app` on Cloudflare Workers).
+When it is done, it prints the commands to start the app on that runtime.
 
 ## Templates
 
-| `--template` | Runtime | Start with |
-| --- | --- | --- |
-| `bun` | Bun | `bun run dev` |
-| `node` | Node.js 22.18 or later (runs TypeScript directly) | `npm run dev` |
-| `deno` | Deno (uses `jsr:@senrijs/senri`) | `deno task dev` |
-| `workers` | Cloudflare Workers (wrangler) | `npm run dev` → http://localhost:8787 |
+| `--template` | Runtime | Start with | URL |
+| --- | --- | --- | --- |
+| `bun` | Bun | `bun install` → `bun run dev` | http://localhost:3927 |
+| `node` | Node.js 22.18 or later (runs TypeScript directly) | `npm install` → `npm run dev` | http://localhost:3927 |
+| `deno` | Deno (uses `jsr:@senrijs/senri`) | `deno task dev` | http://localhost:3927 |
+| `workers` | Cloudflare Workers (wrangler) | `npm install` → `npm run dev` | http://localhost:8787 |
 
 ## Options
 
