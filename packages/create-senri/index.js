@@ -72,6 +72,19 @@ function packageName(dir) {
     return name || DEFAULT_FOLDER;
 }
 
+// フォルダ名から、Worker の名前(wrangler.jsonc の name)を作る。Cloudflare の決まりで、英小文字・数字・- だけの 63 文字まで
+// (wrangler は大文字・. ・~ をエラーにする。_ は通すが決まりに合わないので、これも - にする。wrangler の toValidWorkerName と同じ考え方)
+/** @param {string} dir */
+function workerName(dir) {
+    const name = basename(dir)
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "")
+        .slice(0, 63)
+        .replace(/-+$/, "");
+    return name || DEFAULT_FOLDER;
+}
+
 // ないか、空のフォルダなら true。中身があれば、上書きしないように false
 /** @param {string} dir */
 function canCreateIn(dir) {
@@ -189,7 +202,7 @@ async function main() {
     const dir = resolve(folder);
     if (!canCreateIn(dir)) throw new UsageError(`${folder} is not empty. Choose another folder, or empty it first.`);
 
-    copyTemplate(join(TEMPLATE_DIR, template), dir, { name: packageName(dir), senri: SENRI_RANGE });
+    copyTemplate(join(TEMPLATE_DIR, template), dir, { name: packageName(dir), worker: workerName(dir), senri: SENRI_RANGE });
     console.log(`\nCreated a Senri app (${TEMPLATES[template].label}) in ${dir}\n\nNext steps:\n${nextSteps(template, dir)}\n`);
 }
 

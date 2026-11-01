@@ -68,6 +68,25 @@ describe("create-senri", () => {
         assert.equal(pkg.name, "my-app");
     });
 
+    // Cloudflare の Worker 名は、英小文字・数字・- だけの 63 文字まで(wrangler は . や ~ をエラーにする)
+    const WORKER_NAME = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
+    function workerNameOf(folder: string): string {
+        assert.equal(run([folder, "-t", "workers"]).status, 0);
+        return JSON.parse(readFileSync(join(work, folder, "wrangler.jsonc"), "utf8")).name;
+    }
+
+    test("wrangler.jsonc の name は、Worker 名に使える形にする(_ . ~ なども - に)", () => {
+        assert.equal(workerNameOf("My_App.v2~x!"), "my-app-v2-x");
+        const pkg = JSON.parse(readFileSync(join(work, "My_App.v2~x!", "package.json"), "utf8"));
+        assert.equal(pkg.name, "my_app.v2~x");
+    });
+
+    test("wrangler.jsonc の name は、63 文字までに切る", () => {
+        const name = workerNameOf(`${"a".repeat(62)}-${"b".repeat(8)}`);
+        assert.ok(name.length <= 63, name);
+        assert.match(name, WORKER_NAME);
+    });
+
     test("--template に知らない値を渡したら、使える値を出してエラー", () => {
         const res = run(["x", "--template", "nope"]);
         assert.equal(res.status, 1);
