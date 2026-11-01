@@ -29,8 +29,7 @@
     "packages/create-senri": {
       "package-name": "create-senri",
       "component": "create-senri",
-      "include-component-in-tag": true,
-      "release-as": "0.1.0"
+      "include-component-in-tag": true
     }
   }
 }
