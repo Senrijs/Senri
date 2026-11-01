@@ -24,12 +24,23 @@ jobs:
       - run: bun test
       - run: bun run test:node
 
+  # create-senri のテンプレートの範囲(SENRI_RANGE)が、本体の version を満たすか。公開前のテストには入れていない
+  # 本体のリリースで範囲から外れると、ここだけ赤くなる(テンプレートを直して範囲を上げる合図。CONTRIBUTING.md)
+  create-senri-range:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - run: npm run test:range
+
   smoke:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        runtime: [bun, deno, node, workers, browser]
+        runtime: [bun, deno, node, workers, browser, create]
     steps:
       - uses: actions/checkout@v6
 
@@ -39,16 +50,19 @@ jobs:
           node-version: 24
       # workers は bun build でまとめてから workerd(devDependencies)で動かすので、Bun と依存も入れる
       # browser も bun build でまとめてから、Playwright(devDependencies)の Chromium で開く
-      - if: matrix.runtime == 'bun' || matrix.runtime == 'workers' || matrix.runtime == 'browser'
+      # create は create-senri の4つのテンプレートを作って起動する(Bun・Deno と、wrangler のための依存が要る)
+      - if: matrix.runtime == 'bun' || matrix.runtime == 'workers' || matrix.runtime == 'browser' || matrix.runtime == 'create'
         uses: oven-sh/setup-bun@v2
-      - if: matrix.runtime == 'workers' || matrix.runtime == 'browser'
+      - if: matrix.runtime == 'workers' || matrix.runtime == 'browser' || matrix.runtime == 'create'
         run: bun install
       - if: matrix.runtime == 'browser'
         run: npx playwright install --with-deps chromium
-      - if: matrix.runtime == 'deno'
+      - if: matrix.runtime == 'deno' || matrix.runtime == 'create'
         uses: denoland/setup-deno@v2
 
-      - if: matrix.runtime != 'browser'
+      - if: matrix.runtime != 'browser' && matrix.runtime != 'create'
         run: node scripts/smoke.ts ${{ matrix.runtime }}
+      - if: matrix.runtime == 'create'
+        run: node scripts/smoke-create.ts
       - if: matrix.runtime == 'browser'
         run: node scripts/browser.ts

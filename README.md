@@ -30,7 +30,29 @@ serve(app);   // Bun でも Deno でも Node.js でも
 - **開発モードが親切。** エラーページ(該当コード・ヒント・エディタで開く)、404 の「もしかして」、リクエストを玉ねぎのように見られるダッシュボード(`/_senri`)、層ごとの `Server-Timing`
 - **どこでも動く。** Web 標準の API だけで書いていて、`eval` も `new Function` も使いません。ブラウザの Service Worker でも動きます
 
-## インストール
+## はじめる
+
+```bash
+npm create senri@latest my-app
+```
+
+フォルダ名や `--template`(ランタイム: Bun・Node.js・Deno・Cloudflare Workers)を省くと、その分を聞かれます(両方渡せば質問なし)。`devtools()` と `serve(app)`(Workers は `export default app`)が入った、すぐ動く最小のアプリができます。作り終わると、そのランタイムで動かすコマンドが表示されます。
+
+| ランタイム | 起動 | URL |
+| --- | --- | --- |
+| Bun | `bun install` → `bun run dev` | http://localhost:3927 |
+| Node.js | `npm install` → `npm run dev` | http://localhost:3927 |
+| Deno | `deno task dev` | http://localhost:3927 |
+| Cloudflare Workers | `npm install` → `npm run dev` | http://localhost:8787 |
+
+```bash
+bun create senri my-app
+pnpm create senri my-app
+deno run -A npm:create-senri my-app
+npm create senri@latest my-app -- --template workers   # 質問なしで作る(bun / node / deno / workers)
+```
+
+### 既存のプロジェクトに入れる
 
 ```bash
 npm install @senrijs/senri   # Node.js / Bun
@@ -38,7 +60,7 @@ bun add @senrijs/senri
 deno add jsr:@senrijs/senri
 ```
 
-Node.js は 22 以降で動きます。
+Node.js は 22 以降で動きます(`create-senri` の Node.js のテンプレートは、TypeScript をそのまま動かすので 22.18 以降)。
 
 ## 起動のしかた
 

@@ -1,0 +1,15 @@
+{
+    // CLI(JS)と、テンプレートの .ts を型チェックする(bun run typecheck)。公開はしない(package.json の files にない)
+    // テンプレートの @senrijs/senri は、このリポジトリの src を見る(本体の API が変わったら、ここで気づける)
+    "extends": "../../tsconfig.json",
+    "compilerOptions": {
+        "types": ["node"],
+        "checkJs": true,
+        "paths": {
+            "@senrijs/senri": ["../../src/index.ts"],
+            "@senrijs/senri/dev": ["../../src/dev/index.ts"],
+            "@senrijs/senri/serve": ["../../adapters/serve/index.ts"]
+        }
+    },
+    "include": ["*.js", "templates/*/src/*.ts"]
+}
