@@ -100,25 +100,12 @@ function unsafeSegment(segment: string): boolean {
 // なので、この2つでは、各セグメントがディスク上の名前と完全に同じかを readdir で確かめる(realpath の挙動には頼らない)
 // Linux は綴りが違えば別のファイルなので、確かめない
 const LOOSE_NAMES = process.platform === "win32" || process.platform === "darwin";
-const NAME_CACHE_SIZE = 256;
 
-type NameCache = Map<string, { mtimeMs: number; names: Set<string> }>;
-
-// dir の中に、name がその綴りのままあるか。一覧はディレクトリの mtime が変わるまで使い回す
-// (足す・消す・名前を変えると mtime が変わるので、古い一覧のまま配ることはない)
-async function hasExactName(cache: NameCache, dir: string, name: string): Promise<boolean> {
-    const info = await stat(dir).catch(() => null);
-    if (!info) return false;
-    let entry = cache.get(dir);
-    if (entry?.mtimeMs !== info.mtimeMs) {
-        const names = await readdir(dir).catch(() => null);
-        if (!names) return false;
-        entry = { mtimeMs: info.mtimeMs, names: new Set(names) };
-        cache.delete(dir);
-        if (cache.size >= NAME_CACHE_SIZE) cache.delete(cache.keys().next().value!);
-        cache.set(dir, entry);
-    }
-    return entry.names.has(name);
+// dir の中に、name がその綴りのままあるか。一覧は毎回読む
+// (ディレクトリの mtime で使い回すと、同じ時計の刻みのうちに続けて名前を変えたとき mtime が変わらず、古い一覧が残る)
+async function hasExactName(dir: string, name: string): Promise<boolean> {
+    const names = await readdir(dir).catch(() => null);
+    return names !== null && names.includes(name);
 }
 
 /**
@@ -129,8 +116,9 @@ async function hasExactName(cache: NameCache, dir: string, name: string): Promis
  * - `Content-Type` comes from the file extension (`application/octet-stream` if unknown)
  * - On Windows and macOS, a path must spell each name exactly as on disk (case, short 8.3 names and trailing dots
  *   do not match). On macOS, write names with two Unicode forms (NFC / NFD, such as Japanese) in the form they are
- *   stored in. Even so, keep files that need protection outside `root` rather than guarding part of `root` with
- *   `app.use(path, ...)`
+ *   stored in. To check this, it reads the directory listings on every request there, so large static directories
+ *   are better served on Linux or from a CDN. Even so, keep files that need protection outside `root` rather than
+ *   guarding part of `root` with `app.use(path, ...)`
  *
  * Throws on Cloudflare Workers, which cannot read files; use Workers Static Assets there.
  *
@@ -155,7 +143,6 @@ export function serveStatic(options: ServeStaticOptions): Middleware {
     const index = options.index ?? "index.html";
     // シンボリックリンクで外に出ていないかを、実体のパスで確かめる(root 自体がリンクでもよいように、root も実体にする)
     const realRoot = realpath(root).catch(() => root);
-    const nameCache: NameCache = new Map();
 
     return async function serveStatic(c, next) {
         const method = c.req.method;
@@ -189,7 +176,7 @@ export function serveStatic(options: ServeStaticOptions): Middleware {
         if (!options.dotfiles && relative(base, real).split(sep).some((s) => s.startsWith("."))) return next();
         if (LOOSE_NAMES) {
             for (let i = 0; i < names.length; i++) {
-                if (!(await hasExactName(nameCache, join(root, ...names.slice(0, i)), names[i]!))) return next();
+                if (!(await hasExactName(join(root, ...names.slice(0, i)), names[i]!))) return next();
             }
         }
 

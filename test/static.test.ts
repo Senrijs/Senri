@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { existsSync } from "node:fs";
-import { mkdir, mkdtemp, rename, rm, symlink, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rename, rm, symlink, utimes, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createApp } from "../src/index.ts";
@@ -263,5 +263,31 @@ describe("serveStatic() は、綴りがディスク上の名前と同じとき�
         await rename(join(root, "cache", "Case.txt"), join(root, "cache", "case.txt"));
         expect(await (await app.fetch(req("/cache/case.txt"))).text()).toBe("case");
         expect((await app.fetch(req("/cache/Case.txt"))).status).toBe(404);
+    });
+
+    // 同じ時計の刻みのうちに続けて名前を変えると、ディレクトリの mtime が変わらないことがある(CI の Windows で起きた)
+    // mtime で一覧を使い回すと、古い綴りが通ってしまう。偶然に頼らず再現するため、名前を変えるたびに mtime を同じ値に戻す
+    // (大文字小文字だけの名前の変更で同じファイルのままになるのは Windows / macOS)
+    test.if(looseOs)("大文字小文字だけの名前の変更を続けても、毎回いまの綴りでだけ配る", async () => {
+        const app = makeApp();
+        const swap = join(root, "swap");
+        const frozen = new Date("2020-01-01T00:00:00Z");
+        await mkdir(swap);
+        await writeFile(join(swap, "Case.txt"), "swap");
+        await utimes(swap, frozen, frozen);
+        let current = "Case.txt";
+        for (let i = 0; i < 30; i++) {
+            const other = current === "Case.txt" ? "case.txt" : "Case.txt";
+            await rename(join(swap, current), join(swap, other));
+            await utimes(swap, frozen, frozen);
+            current = other;
+            const stale = current === "Case.txt" ? "case.txt" : "Case.txt";
+            // 本文は読み切る(開いたままだと、Windows では次の名前の変更を邪魔する)
+            const hit = await app.fetch(req(`/swap/${current}`));
+            expect({ i, path: current, status: hit.status, body: await hit.text() }).toEqual({ i, path: current, status: 200, body: "swap" });
+            const miss = await app.fetch(req(`/swap/${stale}`));
+            expect({ i, path: stale, status: miss.status }).toEqual({ i, path: stale, status: 404 });
+            await miss.body?.cancel();
+        }
     });
 });
