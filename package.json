@@ -70,6 +70,7 @@
     "dev": "bun --watch examples/bun/index.ts",
     "test": "bun test",
     "test:node": "bun run build && node --test --test-timeout=5000 \"test/node/**/*.test.ts\"",
+    "test:range": "node --test test/node/create-senri-range.ci.ts",
     "smoke": "node scripts/smoke.ts",
     "smoke:create": "node scripts/smoke-create.ts",
     "browser": "node scripts/browser.ts",

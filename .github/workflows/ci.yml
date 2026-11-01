@@ -24,6 +24,17 @@ jobs:
       - run: bun test
       - run: bun run test:node
 
+  # create-senri のテンプレートの範囲(SENRI_RANGE)が、本体の version を満たすか。公開前のテストには入れていない
+  # 本体のリリースで範囲から外れると、ここだけ赤くなる(テンプレートを直して範囲を上げる合図。CONTRIBUTING.md)
+  create-senri-range:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - run: npm run test:range
+
   smoke:
     runs-on: ubuntu-latest
     strategy:

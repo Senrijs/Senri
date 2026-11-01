@@ -7,7 +7,6 @@ import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, 
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { SENRI_RANGE } from "../../packages/create-senri/version.js";
 
 const ROOT = fileURLToPath(new URL("../../", import.meta.url));
 const CLI = join(ROOT, "packages/create-senri/index.js");
@@ -21,18 +20,6 @@ function run(args: string[], command = process.execPath, extra: string[] = []) {
     const env = { ...process.env, npm_config_user_agent: "" };
     const result = spawnSync(command, [...extra, CLI, ...args], { cwd: work, encoding: "utf8", input: "", env });
     return { status: result.status, stdout: result.stdout, stderr: result.stderr };
-}
-
-// "^0.2.2" のような範囲が、version を満たすか(0.x では、マイナーが同じで、パッチ以上)
-function satisfiesCaret(range: string, version: string): boolean {
-    const m = /^\^(\d+)\.(\d+)\.(\d+)$/.exec(range);
-    const v = /^(\d+)\.(\d+)\.(\d+)$/.exec(version);
-    if (!m || !v) throw new Error(`Unsupported range or version: ${range} ${version}`);
-    const [a, b, c] = m.slice(1).map(Number) as [number, number, number];
-    const [x, y, z] = v.slice(1).map(Number) as [number, number, number];
-    if (a > 0) return x === a && (y > b || (y === b && z >= c));
-    if (b > 0) return x === 0 && y === b && z >= c;
-    return x === 0 && y === 0 && z === c;
 }
 
 // コマンドがあるか(CI のジョブによっては Bun / Deno がない)
@@ -134,14 +121,8 @@ describe("create-senri", () => {
     });
 });
 
-// テンプレートのコードは SENRI_RANGE の範囲の API で書いてある。本体がその外(0.3.0 など)に上がったら、ここで落ちる
-// (そのときは、テンプレートを新しい API に直してから、packages/create-senri/version.js の範囲を上げる)
+// 範囲が本体の version を満たすかは、test/node/create-senri-range.ci.ts(CI でだけ動かす)
 describe("create-senri のテンプレートの @senrijs/senri のバージョン", () => {
-    test("範囲が、本体の package.json の version を満たす", () => {
-        const { version } = JSON.parse(readFileSync(join(ROOT, "package.json"), "utf8"));
-        assert.ok(satisfiesCaret(SENRI_RANGE, version), `${SENRI_RANGE} は ${version} を満たさない`);
-    });
-
     test("テンプレートは、範囲を埋め込む所を持っている", () => {
         for (const template of TEMPLATES) {
             const file = template === "deno" ? "deno.json" : "package.json";
