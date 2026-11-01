@@ -16,8 +16,9 @@
 // 静的ファイル配信(senri/static)。node:fs を使うので本体とは別の入口にしている
 // Bun / Deno / Node で動く。Cloudflare Workers ではファイルを読めないので、wrangler の Static Assets を使う
 import { createReadStream } from "node:fs";
-import { realpath, stat } from "node:fs/promises";
+import { readdir, realpath, stat } from "node:fs/promises";
 import { extname, join, relative, resolve, sep } from "node:path";
+import process from "node:process";
 import { Readable } from "node:stream";
 import type { Middleware } from "../../src/index.ts";
 
@@ -94,12 +95,30 @@ function unsafeSegment(segment: string): boolean {
     return segment.includes("\\") || segment.includes(":") || segment.includes("\0");
 }
 
+// Windows(NTFS)と macOS(APFS)は、違う綴りでも同じファイルを開く(大文字小文字、8.3 の短い名前、Deno では末尾の . や空白)
+// app.use("/admin", ...) は綴りどおりにしか当たらないので、"/ADMIN/..." でミドルウェアを飛ばして配れてしまう
+// なので、この2つでは、各セグメントがディスク上の名前と完全に同じかを readdir で確かめる(realpath の挙動には頼らない)
+// Linux は綴りが違えば別のファイルなので、確かめない
+const LOOSE_NAMES = process.platform === "win32" || process.platform === "darwin";
+
+// dir の中に、name がその綴りのままあるか。一覧は毎回読む
+// (ディレクトリの mtime で使い回すと、同じ時計の刻みのうちに続けて名前を変えたとき mtime が変わらず、古い一覧が残る)
+async function hasExactName(dir: string, name: string): Promise<boolean> {
+    const names = await readdir(dir).catch(() => null);
+    return names !== null && names.includes(name);
+}
+
 /**
  * Middleware that serves files from a directory for GET and HEAD. When there is no matching file, it calls `next()`.
  * - Never serves files outside `root`, including through symbolic links. This assumes that people you do not
  *   trust cannot change the contents of `root` (files and links are checked before they are read)
  * - Sends a weak `ETag` and `Last-Modified`, and answers 304 to `If-None-Match` / `If-Modified-Since`
  * - `Content-Type` comes from the file extension (`application/octet-stream` if unknown)
+ * - On Windows and macOS, a path must spell each name exactly as on disk (case, short 8.3 names and trailing dots
+ *   do not match). On macOS, write names with two Unicode forms (NFC / NFD, such as Japanese) in the form they are
+ *   stored in. To check this, it reads the directory listings on every request there, so large static directories
+ *   are better served on Linux or from a CDN. Even so, keep files that need protection outside `root` rather than
+ *   guarding part of `root` with `app.use(path, ...)`
  *
  * Throws on Cloudflare Workers, which cannot read files; use Workers Static Assets there.
  *
@@ -140,10 +159,12 @@ export function serveStatic(options: ServeStaticOptions): Middleware {
         const rel = relative(root, file);
         if (rel.startsWith("..") || resolve(root, rel) !== file) return next();
 
+        let names = rest;
         let info = await stat(file).catch(() => null);
         if (info?.isDirectory()) {
             if (index === false) return next();
             file = join(file, index);
+            names = [...rest, ...index.split("/").filter(Boolean)];
             info = await stat(file).catch(() => null);
         }
         if (!info?.isFile()) return next();
@@ -153,6 +174,11 @@ export function serveStatic(options: ServeStaticOptions): Middleware {
         if (real === null || (real !== base && !real.startsWith(base.endsWith(sep) ? base : base + sep))) return next();
         // root の中のシンボリックリンクが .env などを指していることもあるので、実体のパスでもドットファイルを確かめる
         if (!options.dotfiles && relative(base, real).split(sep).some((s) => s.startsWith("."))) return next();
+        if (LOOSE_NAMES) {
+            for (let i = 0; i < names.length; i++) {
+                if (!(await hasExactName(join(root, ...names.slice(0, i)), names[i]!))) return next();
+            }
+        }
 
         const etag = `W/"${info.size.toString(16)}-${Math.floor(info.mtimeMs).toString(16)}"`;
         const lastModified = info.mtime.toUTCString();

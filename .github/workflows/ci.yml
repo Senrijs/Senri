@@ -35,6 +35,24 @@ jobs:
           node-version: 24
       - run: npm run test:range
 
+  # serveStatic のパスの扱いを、綴りが違っても同じファイルを開く Windows / macOS で確かめる(static のテストだけ)
+  # static-paths.ts は Bun / Deno / Node を実際に起動する(Windows の Deno は、末尾の . や空白を取り除く)
+  static-os:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: oven-sh/setup-bun@v2
+      - uses: denoland/setup-deno@v2
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - run: bun test test/static.test.ts
+      - run: node scripts/static-paths.ts
+
   smoke:
     runs-on: ubuntu-latest
     strategy:
