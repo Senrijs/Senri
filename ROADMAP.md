@@ -63,8 +63,10 @@ See the [CHANGELOG](./CHANGELOG.md) for details.
 - [ ] SSE / streaming helpers (`c.stream()` and more)
 - [ ] File uploads: size/type validation, streaming large files
 - [ ] More middleware: Basic / Bearer auth, compression, ETag, request ID, timeout
-- [ ] More middleware: method override, trailing-slash normalization, IP restriction, cache, language detection, pretty JSON
+- [ ] More middleware: method override, trailing-slash normalization, IP restriction, rate limiting, cache, language detection, pretty JSON
 - [ ] Performance: a fast path for string responses, HTTP benchmarks with oha (after the helpers)
+- [ ] Trusted-proxy support for `getIp` (count proxies from the right; never trust the first `X-Forwarded-For` value)
+- [ ] Documentation site (senri.f5.si)
 
 ## 0.3.0 — All the way to production
 
@@ -75,6 +77,8 @@ See the [CHANGELOG](./CHANGELOG.md) for details.
 - [ ] Prometheus metrics
 - [ ] WebSocket
 - [ ] JWT, CSRF protection
+- [ ] Signed cookies
+- [ ] Problem Details (RFC 9457) error responses
 - [ ] Context storage (access `c` anywhere)
 - [ ] API cleanup: hide unintentionally public exports (`parseCookies`, `serializeCookie`, `deletionCookie`, `resolvePort`, `DEFAULT_PORT`, `PortSource`, `isLocalUrl`), and stop public types from referring to private ones
 - [ ] `serveStatic` symlink hardening (re-check that the opened file is inside the root)
