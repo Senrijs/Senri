@@ -74,11 +74,15 @@ GitHub CLI なら `gh workflow run publish.yml -f tag=v0.2.1` です。そのタ
 
 リリースの PR をマージしたのに、Release Please がタグと GitHub Release を作れないことがあります。そのときは Publish の `check-release` が赤くなり、PR のラベルが `autorelease: pending` のまま残ります。このラベルが残っているあいだ、Release Please は新しいリリースの PR も作りません。手で次のように直します(例は #32、`@senrijs/senri` の 0.2.5)。
 
-1. タグと GitHub Release を作る。場所は、その PR のマージコミット。名前は `@senrijs/senri` なら `v0.2.5`、`create-senri` なら `create-senri: v0.1.1` の形。本文(下の例の `notes.md`)は、そのバージョンの CHANGELOG の項目を写したもの
+1. タグと GitHub Release を作る。場所は、その PR のマージコミット。本文(下の例の `notes.md`)は、そのバージョンの CHANGELOG の項目を写したもの
+   - タグ名: `@senrijs/senri` なら `v0.2.5`、`create-senri` なら `create-senri-v0.1.1` の形
+   - Release のタイトル: `@senrijs/senri` なら `v0.2.5`、`create-senri` なら `create-senri: v0.1.1` の形
 
    ```sh
    sha=$(gh pr view 32 --json mergeCommit -q .mergeCommit.oid)
    gh release create v0.2.5 --target "$sha" --title v0.2.5 --notes-file notes.md
+   # create-senri なら
+   gh release create create-senri-v0.1.1 --target "$sha" --title "create-senri: v0.1.1" --notes-file notes.md
    ```
 
 2. PR のラベルを `autorelease: pending` から `autorelease: tagged` に付け替える。`gh pr edit` は GraphQL のエラーで失敗することがあるので、ブラウザ(PR の右側の Labels)か、REST API を使う
