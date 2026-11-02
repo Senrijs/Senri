@@ -1,6 +1,6 @@
 name: Publish
 
-# - main への push: Release Please がリリースの PR を作る・更新する。その PR をマージしたら、
+# - main への push: Release Please がパッケージごとにリリースの PR を作る・更新する。その PR をマージしたら、
 #   タグと GitHub Release を作り、同じ実行の中で公開する
 #   - @senrijs/senri(タグ vX.Y.Z): JSR と npm
 #   - create-senri(タグ create-senri-vX.Y.Z、packages/create-senri): npm だけ
@@ -158,4 +158,26 @@ jobs:
           else
             npm --version
             npm publish --provenance --access public
+          fi
+
+  # リリースの PR をマージしたのに、タグができなかったことに気づくためのジョブ
+  # Release Please は、タグを作ると PR のラベルを autorelease: pending から autorelease: tagged に付け替える。
+  # この実行が終わっても pending のままのマージ済み PR があれば、タグを作れずに止まっている
+  # (Release Please は警告を出すだけで成功扱いにし、以降の実行でもリリースの PR を作らなくなる)
+  check-release:
+    needs: release-please
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    steps:
+      - name: Check for merged release PRs without tags
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          prs=$(gh pr list --repo "$GITHUB_REPOSITORY" --state merged --base main \
+            --label "autorelease: pending" --json number,title --jq '.[] | "#\(.number) \(.title)"')
+          if [ -n "$prs" ]; then
+            echo "::error::マージしたのにタグができていないリリースの PR があります: $prs(CONTRIBUTING.md の「マージしたのにタグができないとき」の手順で直してください)"
+            exit 1
           fi

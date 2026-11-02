@@ -48,8 +48,14 @@ Pull Request はスカッシュでマージするので、**PR のタイトル�
 | `@senrijs/senri` | ルート | `vx.y.z` | JSR と npm |
 | `create-senri` | `packages/create-senri` | `create-senri-vx.y.z` | npm だけ |
 
-1. main にマージされるたびに、Release Please がリリースの PR を作る・更新する(`fix:` と `feat:` はパッチ、破壊的変更(`feat!:` など)はマイナーが上がる。1.0 より前のあいだ)。変更があったパッケージが、1つの PR にまとまる
-2. その PR をマージすると、パッケージごとにタグと GitHub Release ができ、同じワークフロー(`.github/workflows/publish.yml`)が公開する
+1. main にマージされるたびに、Release Please がリリースの PR を作る・更新する(`fix:` と `feat:` はパッチ、破壊的変更(`feat!:` など)はマイナーが上がる。1.0 より前のあいだ)。PR はパッケージごとに別々で、両方に変更があると PR が2つできる
+2. その PR をマージすると、そのパッケージのタグと GitHub Release ができ、同じワークフロー(`.github/workflows/publish.yml`)が公開する
+
+リリースの PR を扱うときの注意です。
+
+- PR が2つあるときは、1つずつマージする。1つ目をマージしたら、その公開の実行(Actions → Publish)が終わるのを待ってから、次をマージする。同時にマージすると、Release Please がどちらのパッケージのリリースかを取り違えることがある
+- リリースの PR の本文は、手で編集しない。Release Please は、マージされた PR の本文を読んで、どのパッケージのどのバージョンかを判断する
+- マージしたのにタグができないと、Publish の `check-release` が赤くなる。直し方は「[マージしたのにタグができないとき](#マージしたのにタグができないとき)」
 
 `create-senri` のテンプレートが入れる `@senrijs/senri` の範囲は、`packages/create-senri/version.js` にあります。本体のバージョンがこの範囲の外に出ると(0.2.x → 0.3.0 など)、CI の `create-senri-range`(`bun run test:range`)が赤くなります。これが、テンプレートを新しい API に追従させる合図です。0.3.0 などが出たら、テンプレートを直して範囲を上げる PR を出してください。公開のワークフローはこのテストを走らせないので、公開は止まりません(公開済みの `create-senri` は、これまでの範囲で動き続けます)。
 
@@ -63,6 +69,26 @@ Pull Request はスカッシュでマージするので、**PR のタイトル�
 2. ブランチは main のまま、`tag` に公開するタグ(例: `v0.2.1`、`create-senri-v0.1.0`)を入れて実行する
 
 GitHub CLI なら `gh workflow run publish.yml -f tag=v0.2.1` です。そのタグの `package.json` / `jsr.json` の `version` がタグと違うときは、公開せずに失敗します。
+
+### マージしたのにタグができないとき
+
+リリースの PR をマージしたのに、Release Please がタグと GitHub Release を作れないことがあります。そのときは Publish の `check-release` が赤くなり、PR のラベルが `autorelease: pending` のまま残ります。このラベルが残っているあいだ、Release Please は新しいリリースの PR も作りません。手で次のように直します(例は #32、`@senrijs/senri` の 0.2.5)。
+
+1. タグと GitHub Release を作る。場所は、その PR のマージコミット。名前は `@senrijs/senri` なら `v0.2.5`、`create-senri` なら `create-senri: v0.1.1` の形。本文(下の例の `notes.md`)は、そのバージョンの CHANGELOG の項目を写したもの
+
+   ```sh
+   sha=$(gh pr view 32 --json mergeCommit -q .mergeCommit.oid)
+   gh release create v0.2.5 --target "$sha" --title v0.2.5 --notes-file notes.md
+   ```
+
+2. PR のラベルを `autorelease: pending` から `autorelease: tagged` に付け替える。`gh pr edit` は GraphQL のエラーで失敗することがあるので、ブラウザ(PR の右側の Labels)か、REST API を使う
+
+   ```sh
+   gh api -X DELETE "repos/Senrijs/Senri/issues/32/labels/autorelease:%20pending"
+   gh api -X POST repos/Senrijs/Senri/issues/32/labels -f "labels[]=autorelease: tagged"
+   ```
+
+3. 「[手で公開し直す](#手で公開し直す)」の手順で、そのタグを公開する(`gh workflow run publish.yml -f tag=v0.2.5`)
 
 ### 新しいパッケージを npm に初めて出す
 
