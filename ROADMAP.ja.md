@@ -63,8 +63,10 @@ Senri がこれから向かう先です。バージョンは目標であって�
 - [ ] SSE / ストリーミングのヘルパー(`c.stream()` など)
 - [ ] ファイルアップロード: サイズ・種類の検証、大きなファイルのストリーム受信
 - [ ] ミドルウェアの追加: Basic / Bearer 認証、圧縮、ETag、リクエスト ID、タイムアウト
-- [ ] ミドルウェアの追加: メソッド上書き、末尾スラッシュの正規化、IP 制限、キャッシュ、言語判定、Pretty JSON
+- [ ] ミドルウェアの追加: メソッド上書き、末尾スラッシュの正規化、IP 制限、レート制限、キャッシュ、言語判定、Pretty JSON
 - [ ] 性能: 文字列を返すときの速い道、oha での HTTP のベンチマーク(ヘルパーのあと)
+- [ ] `getIp` のプロキシ対応(信頼するプロキシの数を指定して、右から数える。`X-Forwarded-For` の先頭は信じない)
+- [ ] ドキュメントサイト(senri.f5.si)
 
 ## 0.3.0 — 本番まで届く
 
@@ -75,6 +77,8 @@ Senri がこれから向かう先です。バージョンは目標であって�
 - [ ] Prometheus メトリクス
 - [ ] WebSocket
 - [ ] JWT、CSRF 対策
+- [ ] 署名付き Cookie
+- [ ] Problem Details(RFC 9457)形式のエラーレスポンス
 - [ ] Context Storage(どこからでも `c` を取れる)
 - [ ] API の整理: 意図せず公開されているもの(`parseCookies`・`serializeCookie`・`deletionCookie`・`resolvePort`・`DEFAULT_PORT`・`PortSource`・`isLocalUrl`)を隠し、公開の型が非公開の型を参照しないようにする
 - [ ] `serveStatic` のシンボリックリンクへの対策(ファイルを開いたあとで、root の中かを確かめ直す)
