@@ -56,8 +56,8 @@ See the [CHANGELOG](./CHANGELOG.md) for details.
 
 ## 0.2.x — Everyday development without friction
 
-- [ ] When `NODE_ENV` is not set, show dev output only for requests to localhost
-- [ ] `create-senri` (`npm create senri`)
+- [x] When `NODE_ENV` is not set, show dev output only for requests to localhost
+- [x] `create-senri` (`npm create senri`)
 - [ ] English / Japanese error messages and dev pages
 - [ ] Response helpers: `c.html()`, `c.redirect()`, `c.notFound()`
 - [ ] SSE / streaming helpers (`c.stream()` and more)
