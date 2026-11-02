@@ -56,8 +56,8 @@ Senri がこれから向かう先です。バージョンは目標であって�
 
 ## 0.2.x — 日常の開発で困らないように
 
-- [ ] `NODE_ENV` が未設定のとき、開発用の出力は localhost へのリクエストだけにする
-- [ ] `create-senri`(`npm create senri`)
+- [x] `NODE_ENV` が未設定のとき、開発用の出力は localhost へのリクエストだけにする
+- [x] `create-senri`(`npm create senri`)
 - [ ] エラーメッセージと開発ページの日英対応
 - [ ] レスポンスのヘルパー: `c.html()`、`c.redirect()`、`c.notFound()`
 - [ ] SSE / ストリーミングのヘルパー(`c.stream()` など)
