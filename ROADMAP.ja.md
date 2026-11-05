@@ -59,7 +59,8 @@ Senri がこれから向かう先です。バージョンは目標であって�
 - [x] `NODE_ENV` が未設定のとき、開発用の出力は localhost へのリクエストだけにする
 - [x] `create-senri`(`npm create senri`)
 - [ ] エラーメッセージと開発ページの日英対応
-- [ ] レスポンスのヘルパー: `c.html()`、`c.redirect()`、`c.notFound()`
+- [x] レスポンスのヘルパー: `c.html()`、`c.redirect()`
+- [ ] レスポンスのヘルパー: `c.notFound()`
 - [ ] SSE / ストリーミングのヘルパー(`c.stream()` など)
 - [ ] ファイルアップロード: サイズ・種類の検証、大きなファイルのストリーム受信
 - [ ] ミドルウェアの追加: Basic / Bearer 認証、圧縮、ETag、リクエスト ID、タイムアウト

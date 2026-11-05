@@ -3,7 +3,7 @@
 import { type } from "arktype";
 import * as v from "valibot";
 import { z } from "zod";
-import { createApp, logger, type ExecutionContext, type Middleware } from "../src/index.ts";
+import { createApp, logger, type ExecutionContext, type Middleware, type RedirectStatus } from "../src/index.ts";
 
 const app = createApp();
 
@@ -26,6 +26,31 @@ app.get("/stream", () => new ReadableStream());
 app.get("/form", () => new FormData());
 app.get("/search", () => new URLSearchParams({ q: "x" }));
 app.get("/async-json", async () => ({ a: 1 }));
+
+// --- レスポンスのヘルパー ---
+
+// c.redirect() の status は5つだけ
+app.get("/r1", (_, c) => c.redirect("/x"));
+app.get("/r2", (_, c) => c.redirect("/x", 301));
+app.get("/r3", (_, c) => c.redirect("/x", 302));
+app.get("/r4", (_, c) => c.redirect("/x", 303));
+app.get("/r5", (_, c) => c.redirect("/x", 307));
+app.get("/r6", (_, c) => c.redirect("/x", 308));
+const redirectStatus: RedirectStatus = 301;
+app.get("/r7", (_, c) => c.redirect("/x", redirectStatus));
+// @ts-expect-error リダイレクトの status ではない
+app.get("/r8", (_, c) => c.redirect("/x", 200));
+// @ts-expect-error 304 はリダイレクトではない
+app.get("/r9", (_, c) => c.redirect("/x", 304));
+// @ts-expect-error ただの number は渡せない
+app.get("/r10", (_, c) => c.redirect("/x", 300 + 2));
+// @ts-expect-error location は文字列
+app.get("/r11", (_, c) => c.redirect(new URL("http://localhost/")));
+
+app.get("/h1", (_, c) => c.html("<p/>"));
+app.get("/h2", (_, c) => c.html("<p/>", 404));
+// @ts-expect-error body は文字列
+app.get("/h3", (_, c) => c.html(new Uint8Array([1])));
 
 // --- app.routes() のテーブル形式(項目14) ---
 

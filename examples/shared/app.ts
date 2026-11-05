@@ -47,6 +47,17 @@ app.get("/cookies", (_, c) => {
     c.header("set-cookie", "b=2");
     return "ok";
 });
+app.get("/page", (_, c) => c.html("<h1>こんにちは!</h1>"));
+// ログインしたら Cookie を付けて、別のページへ
+app.get("/login", (_, c) => {
+    c.header("set-cookie", "session=1");
+    c.header("set-cookie", "seen=1");
+    return c.redirect("/hello", 303);
+});
+// ASCII 以外のリダイレクト先は、どのランタイムでも同じ形にエンコードされる
+app.get("/to/japanese", (_, c) => c.redirect("/users/山田"));
+app.get("/to/idn", (_, c) => c.redirect("https://例え.jp/パス"));
+app.get("/to/surrogate", (_, c) => c.redirect("/\ud800"));
 
 // 認証(ダメなら返り値で弾く)。/admin とその下だけで動く
 // パスは req.url ではなく、正規化済みの c.path を基準に判定されるので //admin でも素通りできない

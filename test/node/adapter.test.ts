@@ -6,6 +6,7 @@ import type { Server } from "node:http";
 import { createApp } from "../../src/index.ts";
 import { serve } from "../../adapters/node/index.ts";
 import { getIp } from "../../src/ip.ts";
+import { setCookie } from "../../src/cookie.ts";
 
 const app = createApp();
 app.get("/hello", () => "hi");
@@ -20,6 +21,16 @@ app.get("/cookies", () => {
     headers.append("set-cookie", "b=2");
     return new Response("ok", { headers });
 });
+app.get("/page", (_, c) => c.html("<h1>こんにちは</h1>"));
+app.get("/login", (_, c) => {
+    setCookie(c, "session", "abc");
+    setCookie(c, "seen", "1");
+    return c.redirect("/hello?from=login", 303);
+});
+app.get("/to/japanese", (_, c) => c.redirect("/日本語?q=あ"));
+app.get("/to/idn", (_, c) => c.redirect("https://例え.jp/パス"));
+app.get("/to/surrogate", (_, c) => c.redirect("/\ud800"));
+app.get("/to/crlf", (_, c) => c.redirect("/a\r\nSet-Cookie: x=1"));
 
 // 1チャンク目を送ったあと、テストが release() を呼ぶまで止まるストリーム
 let release = () => {};
@@ -132,6 +143,43 @@ describe("Node アダプター", () => {
         const res = await fetch(`${base}/echo`, { method: "POST", body: "こんにちは" });
 
         assert.equal(await res.text(), "body=こんにちは");
+    });
+
+    test("c.html() が text/html で届く", async () => {
+        const res = await fetch(`${base}/page`);
+
+        assert.equal(res.status, 200);
+        assert.equal(res.headers.get("content-type"), "text/html; charset=utf-8");
+        assert.equal(await res.text(), "<h1>こんにちは</h1>");
+    });
+
+    test("c.redirect() の相対パスと Cookie がそのまま届く", async () => {
+        const res = await fetch(`${base}/login`, { redirect: "manual" });
+
+        assert.equal(res.status, 303);
+        assert.equal(res.headers.get("location"), "/hello?from=login");
+        assert.deepEqual(res.headers.getSetCookie(), [
+            "session=abc; Path=/; HttpOnly; SameSite=Lax",
+            "seen=1; Path=/; HttpOnly; SameSite=Lax",
+        ]);
+        assert.equal(await res.text(), "");
+    });
+
+    test("c.redirect() の ASCII 以外は、エンコードして届く", async () => {
+        const location = async (path: string) => (await fetch(`${base}${path}`, { redirect: "manual" })).headers.get("location");
+
+        assert.equal(await location("/to/japanese"), "/%E6%97%A5%E6%9C%AC%E8%AA%9E?q=%E3%81%82");
+        assert.equal(await location("/to/idn"), "https://xn--r8jz45g.jp/%E3%83%91%E3%82%B9");
+    });
+
+    test("c.redirect() に使えない値は 500 になり、ヘッダーは足されない", async () => {
+        for (const path of ["/to/surrogate", "/to/crlf"]) {
+            const res = await raw(`GET ${path} HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n`);
+
+            assert.match(res, /^HTTP\/1\.1 500/);
+            assert.doesNotMatch(res, /^location:/im);
+            assert.doesNotMatch(res, /^set-cookie:/im);
+        }
     });
 
     test("Set-Cookie が複数あっても全部届く", async () => {

@@ -42,10 +42,36 @@ function contentTypeOf(value: BodyValue): string | undefined {
     return undefined;
 }
 
-// c.text() / c.json() の既定の Content-Type。Response は渡された Headers をコピーして使うので、共有してよい
+// c.text() / c.json() / c.html() の既定の Content-Type。Response は渡された Headers をコピーして使うので、共有してよい
 // (オブジェクトリテラルを渡すより速い。毎回 Headers に変換しなくて済むため)
 const TEXT_HEADERS = new Headers({ "content-type": "text/plain; charset=utf-8" });
 const JSON_HEADERS = new Headers({ "content-type": "application/json" });
+const HTML_HEADERS = new Headers({ "content-type": "text/html; charset=utf-8" });
+
+/** A status code accepted by {@link Context.redirect}. */
+export type RedirectStatus = 301 | 302 | 303 | 307 | 308;
+
+// c.redirect() の値を、Location ヘッダーに入れる形にする
+// - CR / LF はエラー。Headers は末尾の "\r\n" を黙って消し、new URL() も途中の改行を消すので、先に自分で確かめる
+// - ASCII だけなら、そのまま(相対パスも通す)
+// - ASCII 以外は、Bun / Deno / Node / ブラウザは投げ、workerd はそのまま送る。ランタイムで差が出ないよう、ここでエンコードする
+//   - スキームから始まる絶対 URL は new URL() に任せる(ホスト名は punycode に、パスなどはパーセントエンコードに)
+//   - それ以外は ASCII 以外の部分だけエンコードする(%2F などを二重にエンコードしない)
+function toLocation(location: string): string {
+    let cause: unknown;
+    if (!/[\r\n]/.test(location)) {
+        try {
+            if (!/[^\x00-\x7f]/.test(location)) return location;
+            return /^[a-z][a-z\d+.-]*:/i.test(location)
+                ? new URL(location).href
+                : location.replace(/[^\x00-\x7f]+/g, (s) => encodeURIComponent(s));
+        } catch (err) {
+            // 不正なサロゲート(encodeURIComponent)や、URL にならない値(new URL)
+            cause = err;
+        }
+    }
+    throw senriError("redirect_location", new TypeError(`Invalid redirect location: ${JSON.stringify(location)}`, { cause }));
+}
 
 // init のオブジェクトは毎回作る。Bun.serve では、同じ init を使い回した Response を返すと
 // HTTP のスループットが数分の1に落ちる(プロセス内で fetch を呼ぶだけでは差が出ない。bench/http.ts で確認)
@@ -304,8 +330,8 @@ export class Context<V extends object = any, I extends object = {}> {
     }
 
     /**
-     * Sets the status for responses built from returned values, {@link Context.json} and {@link Context.text}.
-     * A `Response` returned directly keeps its own status.
+     * Sets the status for responses built from returned values, {@link Context.json}, {@link Context.text} and {@link Context.html}.
+     * A `Response` returned directly and {@link Context.redirect} keep their own status.
      */
     status(code: number): this {
         this.#status = code;
@@ -317,7 +343,7 @@ export class Context<V extends object = any, I extends object = {}> {
     /**
      * Sets a response header. Headers are added to the final response once, so they also apply to a `Response`
      * returned directly, to error responses, and when set after `next()`.
-     * `Set-Cookie` is appended; other names are overwritten. A `Content-Type` already on the response is kept.
+     * `Set-Cookie` is appended; other names are overwritten. A `Content-Type` or `Location` already on the response is kept.
      */
     header(name: string, value: string): this {
         // Set-Cookie は1つのレスポンスに何個も付けるものなので、上書きせずに足す
@@ -330,7 +356,7 @@ export class Context<V extends object = any, I extends object = {}> {
         return this;
     }
 
-    // json() と text() は Content-Type と status だけ決める(ほかのヘッダーは finalize() で足す)
+    // json() と text() と html() は Content-Type と status だけ決める(ほかのヘッダーは finalize() で足す)
     // 共有の #headers を書き換えないので、json() のあとに text() しても Content-Type が混ざらない
     /** A JSON response (`application/json`, unless `Content-Type` was set with {@link Context.header}). */
     json(data: unknown, status?: number): Response {
@@ -345,8 +371,60 @@ export class Context<V extends object = any, I extends object = {}> {
         return new Response(body, init);
     }
 
+    /**
+     * An HTML response (`text/html; charset=utf-8`, unless `Content-Type` was set with {@link Context.header}).
+     * `body` is sent as is: escape anything that comes from users yourself.
+     *
+     * @example
+     * ```ts
+     * import { createApp } from "@senrijs/senri";
+     *
+     * const app = createApp();
+     * app.get("/", (_, c) => c.html("<h1>Hello</h1>"));
+     * app.get("/missing", (_, c) => c.html("<h1>Not here</h1>", 404));
+     * ```
+     */
+    html(body: string, status?: number): Response {
+        const init = initOf(status ?? this.#status, this.#headers?.get("content-type"), HTML_HEADERS);
+        return new Response(body, init);
+    }
+
+    // Response.redirect() は絶対 URL しか受けないので使わない(/login のような相対パスも通す)
+    // c.status() は見ない。リダイレクトでない status が混ざらないよう、引数だけで決める
+    /**
+     * A redirect with a `Location` header and no body. `location` can be a relative path or an absolute URL.
+     * Headers set with {@link Context.header} are added as usual (`Set-Cookie` and so on), but `location` wins over a `Location` set there.
+     * The status set with {@link Context.status} is not used.
+     *
+     * Non-ASCII characters are encoded, the same way on every runtime. In an absolute URL, `new URL(location).href` does this
+     * (the host name becomes punycode); elsewhere only the non-ASCII characters are percent-encoded, so `%2F` stays as it is.
+     *
+     * Throws a `TypeError` if `status` is not a {@link RedirectStatus}, if `location` contains CR or LF,
+     * or if it cannot be encoded (a lone surrogate in a relative location, or an absolute URL that `new URL` rejects).
+     * Any other value is accepted, including other sites: check values that come from users (`c.query("next")`, for example) yourself.
+     *
+     * @example
+     * ```ts
+     * import { createApp } from "@senrijs/senri";
+     * import { setCookie } from "@senrijs/senri/cookie";
+     *
+     * const app = createApp();
+     * app.get("/old", (_, c) => c.redirect("/new", 301));
+     * app.post("/login", (_, c) => {
+     *     setCookie(c, "session", "abc");
+     *     return c.redirect("/dashboard", 303);
+     * });
+     * ```
+     */
+    redirect(location: string, status: RedirectStatus = 302): Response {
+        if (![301, 302, 303, 307, 308].includes(status)) {
+            throw senriError("redirect_status", new TypeError(`Invalid redirect status: ${status} (use 301, 302, 303, 307 or 308)`));
+        }
+        return new Response(null, { status, headers: { location: toLocation(location) } });
+    }
+
     // c.header() で設定したヘッダーを res に足す。app が最後に1回だけ呼ぶ
-    // - c.header() の値が優先。ただし Content-Type だけはレスポンス自身のものが優先
+    // - c.header() の値が優先。ただし Content-Type と Location はレスポンス自身のものが優先
     // - Set-Cookie は足す
     // - c.status() は使わない(Response を直接返したなら、その status を尊重する)
     /**
@@ -365,7 +443,7 @@ export class Context<V extends object = any, I extends object = {}> {
         const headers = new Headers(res.headers);
         own.forEach((value, key) => {
             if (key === "set-cookie") return;
-            if (key === "content-type" && headers.has(key)) return;
+            if ((key === "content-type" || key === "location") && headers.has(key)) return;
             headers.set(key, value);
         });
         for (const cookie of own.getSetCookie()) {

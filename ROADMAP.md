@@ -59,7 +59,8 @@ See the [CHANGELOG](./CHANGELOG.md) for details.
 - [x] When `NODE_ENV` is not set, show dev output only for requests to localhost
 - [x] `create-senri` (`npm create senri`)
 - [ ] English / Japanese error messages and dev pages
-- [ ] Response helpers: `c.html()`, `c.redirect()`, `c.notFound()`
+- [x] Response helpers: `c.html()`, `c.redirect()`
+- [ ] Response helper: `c.notFound()`
 - [ ] SSE / streaming helpers (`c.stream()` and more)
 - [ ] File uploads: size/type validation, streaming large files
 - [ ] More middleware: Basic / Bearer auth, compression, ETag, request ID, timeout
