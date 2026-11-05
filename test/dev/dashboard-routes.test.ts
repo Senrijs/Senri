@@ -145,6 +145,34 @@ describe("API", () => {
         expect(row("/hello").middlewares).toEqual([{ name: "auth", applies: "no" }]);
     });
 
+    test("ルート: ワイルドカードのルートは、その先のパスのミドルウェアなら「パスによる」", async () => {
+        const a = createApp({ dev: devtools() });
+        a.use("/files", function files(_c, next) {
+            return next();
+        });
+        a.use("/files/secret", function secret(_c, next) {
+            return next();
+        });
+        a.use("/files/a/b", function deep(_c, next) {
+            return next();
+        });
+        a.use("/other", function other(_c, next) {
+            return next();
+        });
+        a.get("/files/*", () => "x");
+        a.get("/*", () => "y");
+        const data = await pageData(await a.fetch(req("/_senri"), local));
+        const row = (path: string) => data.routes.find((r) => r.path === path)!;
+
+        expect(row("/files/*").middlewares).toEqual([
+            { name: "files", applies: "yes" },
+            { name: "secret", applies: "maybe" },
+            { name: "deep", applies: "maybe" },
+            { name: "other", applies: "no" },
+        ]);
+        expect(row("/*").middlewares.map((m) => m.applies)).toEqual(["maybe", "maybe", "maybe", "maybe"]);
+    });
+
     test("ミドルウェア: 登録順・パス指定・直近の平均時間", async () => {
         const a = app();
         await a.fetch(req("/hello"), local);

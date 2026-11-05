@@ -46,6 +46,7 @@ app.use("/admin/*", (c, next) => {
     return next();
 });
 app.get("/admin/secret", () => "秘密のデータ");
+app.get("/assets/*", ({ "*": rest }) => `assets: ${rest}`);
 
 // 1チャンク目を送ったあと、テストが release() を呼ぶまで止まるストリーム
 let release = () => {};
@@ -195,6 +196,25 @@ describe("Node アダプター", () => {
             assert.doesNotMatch(res, /^location:/im);
             assert.doesNotMatch(res, /^set-cookie:/im);
         }
+    });
+
+    test("ワイルドカードのルート: 残りのパスを受け取れる", async () => {
+        const text = async (path: string) => {
+            const res = await fetch(`${base}${path}`);
+            assert.equal(res.status, 200);
+            return res.text();
+        };
+
+        assert.equal(await text("/assets"), "assets: ");
+        assert.equal(await text("/assets/a/b"), "assets: a/b");
+        assert.equal(await text("/assets/%E3%81%82"), "assets: あ");
+        assert.equal(await text("/assets/%252F"), "assets: %2F");
+    });
+
+    test("ワイルドカードのルート: %2F は 400、メソッドが違えば 404", async () => {
+        assert.equal((await fetch(`${base}/assets/a%2Fb`)).status, 400);
+        assert.equal((await fetch(`${base}/assets/a`, { method: "POST" })).status, 404);
+        assert.equal((await fetch(`${base}/assets/a`, { method: "OPTIONS" })).status, 404);
     });
 
     test('use("/admin/*") の認証が動く', async () => {

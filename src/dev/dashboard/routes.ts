@@ -33,12 +33,13 @@ export function summarize(r: DashboardRecord): RequestSummary {
 }
 
 // パス指定のミドルウェア(prefix)が、ルートのパターンにかかるか
-// セグメントごとに比べ、ルートのほうがパラメーター(":id")なら「パスによる」
+// セグメントごとに比べ、ルートのほうがパラメーター(":id")やワイルドカードなら「パスによる」
 export function applies(prefix: string[] | null, route: string[]): "yes" | "no" | "maybe" {
     if (prefix === null) return "yes";
-    if (route.length < prefix.length) return "no";
     let maybe = false;
     for (let i = 0; i < prefix.length; i++) {
+        if (route[i] === "*") return "maybe";
+        if (i >= route.length) return "no";
         if (route[i]!.startsWith(":")) maybe = true;
         else if (route[i] !== prefix[i]) return "no";
     }

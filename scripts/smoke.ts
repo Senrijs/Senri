@@ -95,6 +95,13 @@ const CHECKS: Check[] = [
         location: "https://xn--r8jz45g.jp/%E3%83%91%E3%82%B9",
     },
     { name: "c.redirect()(不正なサロゲート)", path: "/to/surrogate", init: { redirect: "manual" }, status: 500 },
+    { name: "ワイルドカード", path: "/assets/a/b", status: 200, body: "assets: a/b" },
+    { name: "ワイルドカード(そのパス自体)", path: "/assets", status: 200, body: "assets: " },
+    { name: "ワイルドカード(デコード)", path: "/assets/%E3%81%82/%252F", status: 200, body: "assets: あ/%2F" },
+    { name: "ワイルドカード(%2F)", path: "/assets/a%2Fb", status: 400 },
+    { name: "ワイルドカード(HEAD)", path: "/assets/a", init: { method: "HEAD" }, status: 200, body: "" },
+    { name: "ワイルドカード(メソッドが違う)", path: "/assets/a", init: { method: "POST" }, status: 404 },
+    { name: "ワイルドカード(OPTIONS)", path: "/assets/a", init: { method: "OPTIONS" }, status: 404 },
     // ルートがあるので「もしかして」は出ない
     { name: "c.notFound()", path: "/items/1", status: 404, body: "404 Not Found: GET /items/1", cookies: ["seen=1"] },
     { name: "c.notFound()(HEAD)", path: "/items/1", init: { method: "HEAD" }, status: 404, body: "", cookies: ["seen=1"] },

@@ -135,6 +135,48 @@ describe("404ページ", () => {
     });
 });
 
+describe("ワイルドカードのルート", () => {
+    function withWildcard() {
+        const a = createApp({ dev: devtools() });
+        a.get("/files/*", () => "x");
+        a.get("/hello", () => "hi");
+        return a;
+    }
+
+    test("「もしかして」に出る。リンクにはしない", async () => {
+        const a = withWildcard();
+
+        expect(await (await a.fetch(req("/file/a"))).text()).toBe("404 Not Found: GET /file/a\nもしかして: GET /files/* ?");
+
+        const data = await pageData(await a.fetch(req("/file/a", { headers: html })));
+        expect(data.suggestion).toMatchObject({ method: "GET", path: "/files/*", link: false });
+    });
+
+    test("ルートの一覧でもリンクにしない", async () => {
+        const data = await pageData(await withWildcard().fetch(req("/nope", { headers: html })));
+
+        expect(data.routes).toEqual([
+            { method: "GET", path: "/files/*", link: false },
+            { method: "GET", path: "/hello", link: true },
+        ]);
+    });
+
+    test("メソッドが違うときは 404 ページになる(405 にしない)", async () => {
+        const res = await withWildcard().fetch(req("/files/a", { method: "POST" }));
+
+        expect(res.status).toBe(404);
+        expect(await res.text()).toContain("404 Not Found: POST /files/a");
+    });
+
+    test("/_senri の下には登録できない", () => {
+        expect(() => withWildcard().get("/_senri/*", () => "x")).toThrow("予約");
+    });
+
+    test("開発モードの登録時のエラーには、日本語の説明が付く", () => {
+        expect(() => withWildcard().get("/a/*/c", () => "x")).toThrow("最後のセグメント全体");
+    });
+});
+
 describe("c.notFound() の 404", () => {
     // /hello に近いパスにルートを作って、c.notFound() を呼ぶ。提案があれば /hello が出るはずのパス
     function withNotFound(options?: AppOptions) {

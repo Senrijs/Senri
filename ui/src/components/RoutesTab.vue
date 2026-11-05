@@ -15,8 +15,8 @@ const rows = computed(() => {
         .filter((r) => matched.has(`${r.method} ${r.path}`))
         .sort((a, b) => a.path.localeCompare(b.path) || a.method.localeCompare(b.method));
 });
-// パラメーターのない GET(と all)はブラウザで開ける
-const linkable = (r: RouteRow) => (r.method === "GET" || r.method === "ALL") && !r.path.includes(":");
+// パラメーターもワイルドカードもない GET(と all)はブラウザで開ける
+const linkable = (r: RouteRow) => (r.method === "GET" || r.method === "ALL") && !r.path.includes(":") && !r.path.endsWith("*");
 </script>
 
 <template>

@@ -2,6 +2,7 @@ import { Context, type ExecutionContext, type Handler, type HandlerResult, type 
 import {
     allowedMethods,
     checkParamNames,
+    checkWildcard,
     middlewarePath,
     normalizeMethod,
     routeShape,
@@ -106,6 +107,24 @@ export type App<V extends object = Record<string, unknown>> = {
     /**
      * Adds a GET route: `app.get(path, handler)`, or `app.get(path, { params, query, body }, handler)` to validate
      * with Standard Schema first. Path parameters (`/users/:id`) are typed from the path.
+     *
+     * A `*` as the whole last segment (`/files/*`) matches that path and everything below it: `/files`, `/files/a`, `/files/a/b`.
+     * The rest of the path is in the `"*"` parameter (`"a/b"`, or `""` for `/files`). Any other `*` throws.
+     * - Static routes come first, then parameters, then wildcards, whatever the registration order.
+     * - Wildcard routes do not count for 405 or the automatic OPTIONS response: a request to a path that only a wildcard
+     *   route matches, with a method it does not have, gets 404. Register the method to answer it (`app.options`, `app.all`).
+     * - Each segment of the value is decoded once; do not decode it again. `%2F` is a 400 before routing, so every `/` in the
+     *   value separates segments. It can still contain `\`, `:` or NUL (`..%5C..` gives `..\..`), so it is not safe to use as
+     *   a file path. To serve files, use `serveStatic` from `@senrijs/senri/static`.
+     *
+     * @example
+     * ```ts
+     * import { createApp } from "@senrijs/senri";
+     *
+     * const app = createApp();
+     * app.get("/users/:id", ({ id }) => ({ id }));
+     * app.get("/docs/*", ({ "*": page }) => `page: ${page}`);
+     * ```
      */
     get: RouteMethod<V>;
     /** Adds a POST route. Same arguments as {@link App.get}. */
@@ -288,13 +307,14 @@ export function createApp<V extends object = Record<string, unknown>>(options: A
         devHooks?.checkRoute(method, path, schemas);
         const segments = splitPattern(path);
         checkParamNames(path, segments);
+        checkWildcard(path, segments);
 
         // 同じメソッド + 同じ形のパスがあったら、あとから登録したほうは絶対に呼ばれないのでエラーにする
         const shape = routeShape(segments);
         const dup = routes.find((r) => r.method === method && routeShape(r.segments) === shape);
         if (dup) throw senriError("route_duplicate", `Duplicate route: ${method} ${path} (already: ${dup.method} ${dup.path})`);
 
-        const paramNames = segments.filter((s) => s.startsWith(":")).map((s) => s.slice(1));
+        const paramNames = segments.filter((s) => s.startsWith(":") || s === "*").map((s) => (s === "*" ? s : s.slice(1)));
         const route: Route = { path, segments, paramNames, method, handler };
         // routes は一覧(routeList や 404 の「もしかして」)用で、登録順。探すのは matcher(Trie)で行う
         routes.push(route);
@@ -340,7 +360,7 @@ export function createApp<V extends object = Record<string, unknown>>(options: A
         const hit = find(method) ?? (method === "HEAD" ? find("GET") : undefined) ?? find("ALL");
         if (hit) return hit;
 
-        // どれもなければ、パスが合うルートを全部集めて 404 か 405 かを決める
+        // どれもなければ、パスが合うルートを全部集めて 404 か 405 かを決める(ワイルドカードのルートは数えない)
         const matched = matcher.match(segments);
         if (matched.length === 0) return { kind: "notFound" };
         const allow = allowedMethods(matched.flatMap((x) => x.leaf));

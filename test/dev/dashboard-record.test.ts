@@ -128,6 +128,15 @@ describe("リクエストの記録(開発モード)", () => {
         expect((await lastRecord(a)).query).toBe("?token=***&tab=posts");
     });
 
+    test("ワイルドカードのルートは、パターンと値が記録される", async () => {
+        const a = app();
+        a.get("/files/*", () => "x");
+
+        await a.fetch(req("/files/a/b"));
+
+        expect(await lastRecord(a)).toMatchObject({ status: 200, route: "/files/*", params: { "*": "a/b" } });
+    });
+
     test("デコードできないパスの c.notFound() も、404 として記録される", async () => {
         const a = app();
         a.use(function hide(c) {
