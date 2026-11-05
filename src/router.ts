@@ -41,19 +41,25 @@ export function splitPattern(pattern: string): string[] {
     return pattern.split("/").filter(Boolean);
 }
 
-// * を書けるのは、最後のセグメント全体だけ。それ以外はエラーにする
-// 文字として比べると、どのリクエストにも当たらず、ルートや認証などが黙って動かなくなる
-export function checkWildcard(path: string, segments: readonly string[]) {
+// ほかのフレームワークの書き方のうち、黙って違う動きになるものをエラーにする
+// - * を書けるのは、最後のセグメント全体だけ。文字として比べると、どのリクエストにも当たらず、ルートや認証などが黙って動かなくなる
+// - ":id?" や ":id{[0-9]+}" は、省略も検証もされず、その文字列ごとパラメーターの名前になる(/users/abc も通ってしまう)
+export function checkPathSyntax(path: string, segments: readonly string[]) {
     const last = segments.length - 1;
     if (segments.some((s, i) => s.includes("*") && (s !== "*" || i !== last))) {
         throw senriError("wildcard_position", `"*" must be the whole last segment: ${path}`);
+    }
+    for (const s of segments) {
+        if (s.startsWith(":") && /[?+{}()[\]|:\s]/.test(s.slice(1))) {
+            throw senriError("param_name", `Invalid parameter name: "${s.slice(1)}" in ${path}`);
+        }
     }
 }
 
 // app.use() のパスを確かめて、末尾の "/*" を取る("/admin/*" → "/admin"。どちらも /admin とその下で動く)
 export function middlewarePath(path: string): string {
     const segments = splitPattern(path);
-    checkWildcard(path, segments);
+    checkPathSyntax(path, segments);
     return segments.at(-1) === "*" ? "/" + segments.slice(0, -1).join("/") : path;
 }
 

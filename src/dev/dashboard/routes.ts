@@ -5,6 +5,7 @@ import { errorFallback } from "../fallback.ts";
 import type { DashboardPageData, MiddlewareRow, RequestSummary, RouteRow } from "../page-data.ts";
 import { PAGE_HTML } from "../page.generated.ts";
 import { renderPage } from "../render.ts";
+import { applies, routeWarnings } from "../route-warnings.ts";
 import { sameOrigin } from "./access.ts";
 import type { Dashboard } from "./index.ts";
 import type { DashboardRecord } from "./record.ts";
@@ -30,20 +31,6 @@ export function summarize(r: DashboardRecord): RequestSummary {
         durationMs: r.durationMs,
         hasError: r.error !== null,
     };
-}
-
-// パス指定のミドルウェア(prefix)が、ルートのパターンにかかるか
-// セグメントごとに比べ、ルートのほうがパラメーター(":id")やワイルドカードなら「パスによる」
-export function applies(prefix: string[] | null, route: string[]): "yes" | "no" | "maybe" {
-    if (prefix === null) return "yes";
-    let maybe = false;
-    for (let i = 0; i < prefix.length; i++) {
-        if (route[i] === "*") return "maybe";
-        if (i >= route.length) return "no";
-        if (route[i]!.startsWith(":")) maybe = true;
-        else if (route[i] !== prefix[i]) return "no";
-    }
-    return maybe ? "maybe" : "yes";
 }
 
 function routeRows(d: Dashboard): RouteRow[] {
@@ -85,6 +72,7 @@ export function pageData(d: Dashboard): DashboardPageData {
         requests: d.log.list().map(summarize),
         routes: routeRows(d),
         middlewares: middlewareRows(d),
+        warnings: routeWarnings(d.source.routes(), d.source.middlewares()).map((w) => w.ja),
     };
 }
 

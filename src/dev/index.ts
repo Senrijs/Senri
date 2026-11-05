@@ -37,6 +37,7 @@ import { registerDashboard } from "./registry.ts";
 import { explain } from "./explain.ts";
 import { devNotFound } from "./not-found.ts";
 import { finishErrorPage, withErrorPage } from "./pages.ts";
+import { routeWarnings } from "./route-warnings.ts";
 import { serverTimingHeader, withServerTiming } from "./server-timing.ts";
 import { checkSchemas, describeValidation } from "./validation.ts";
 import { isLoopback, remoteAddress } from "./dashboard/access.ts";
@@ -212,6 +213,24 @@ function install(core: AppCore, scope: Scope, nodeEnv: string | undefined): DevI
     // 一覧は優先順位の順(静的なセグメントが先)。本体は登録順に持っている
     const sortedRoutes = () => [...core.routes()].sort(compareRoutes);
 
+    // ルートが出揃ったあと(最初のリクエスト)に、書き間違いを確かめる
+    // 数が変わったときだけ確かめ直す。同じ警告はアプリごとに1回だけ
+    const warnedRoutes = new Set<string>();
+    let checkedRoutes = -1;
+    let checkedMiddlewares = -1;
+    const warnRoutes = () => {
+        const middlewares = app.middlewareList();
+        const routes = core.routes();
+        if (routes.length === checkedRoutes && middlewares.length === checkedMiddlewares) return;
+        checkedRoutes = routes.length;
+        checkedMiddlewares = middlewares.length;
+        for (const { text, ja } of routeWarnings(sortedRoutes(), middlewares)) {
+            if (warnedRoutes.has(text)) continue;
+            warnedRoutes.add(text);
+            console.warn(`[senri] ${text} / ${ja}`);
+        }
+    };
+
     // ダッシュボード。Cloudflare Workers では作らない(接続元が分からず localhost 制限で開けないうえ、
     // リクエストごとに別の isolate で動くことがあり、記録が残らない)。/_senri はふつうの 404 になる
     const dashboard = runtime.isWorkers()
@@ -231,6 +250,7 @@ function install(core: AppCore, scope: Scope, nodeEnv: string | undefined): DevI
             warnOnce(req);
             return quietFetch(c);
         }
+        warnRoutes();
         // /_senri 以下はダッシュボード。localhost から開いたときだけ、ミドルウェアを通さずに処理する
         // (開けないときは普通の処理に回すので、/_senri はないものとして 404 になる)。どちらも記録はしない
         const dashboardPath = underDashboard(c);

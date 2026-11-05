@@ -104,6 +104,25 @@ describe("devtools(): NODE_ENV=development(Node)", () => {
     });
 });
 
+describe("ルートとミドルウェアの書き間違いの警告(Node)", () => {
+    test("実際のリクエストで、1回だけ出す", async () => {
+        const warn = console.warn;
+        const lines: string[] = [];
+        console.warn = (...args: unknown[]) => void lines.push(String(args[0]));
+        const { server, port } = await start("development", (app) => app.use("/helo", (_c, next) => next()));
+        try {
+            await get(port, `localhost:${port}`, "/hello");
+            await get(port, `localhost:${port}`, "/hello");
+
+            assert.equal(lines.length, 1);
+            assert.match(lines[0]!, /^\[senri\] Middleware "anonymous#1" at "\/helo" matches no route\. Did you mean "\/hello"\?/);
+        } finally {
+            console.warn = warn;
+            server.close();
+        }
+    });
+});
+
 // デコードできないパスでミドルウェアが c.notFound() を呼んだとき、本番と開発モードで同じ固定の 404 になる
 for (const nodeEnv of ["production", "development"]) {
     describe(`デコードできないパスの c.notFound(): NODE_ENV=${nodeEnv}(Node)`, () => {
