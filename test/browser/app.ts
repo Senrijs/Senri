@@ -18,5 +18,6 @@ export function setup(app: App) {
     app.get("/api/go/idn", (_, c) => c.redirect("https://例え.jp/パス"));
     app.get("/api/日本語", () => "日本語のルート");
     app.get("/api/item/nope", (_, c) => c.notFound());
+    app.get("/api/wild/*", ({ "*": rest }) => `wild: ${rest}`);
     return app;
 }

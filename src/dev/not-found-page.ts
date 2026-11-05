@@ -10,8 +10,8 @@ import { explainDifference, suggest } from "./suggest.ts";
 type RouteInfo = { method: string; path: string };
 
 // ブラウザで開けるのは、パラメーターのない GET(と、どのメソッドでも動く all)だけ
-// (":id" に何を入れるかは分からないので、パラメーターのあるものはリンクにしない)
-const linkable = (r: RouteInfo) => (r.method === "GET" || r.method === "ALL") && !r.path.includes(":");
+// (":id" や "*" に何を入れるかは分からないので、それらのあるものはリンクにしない)
+const linkable = (r: RouteInfo) => (r.method === "GET" || r.method === "ALL") && !r.path.includes(":") && !r.path.endsWith("*");
 
 export function notFoundPage(c: Context, routes: RouteInfo[]): Response {
     // devNotFound が先に確かめているので、c.path は読める

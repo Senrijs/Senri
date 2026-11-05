@@ -17,7 +17,8 @@ type Segment<Path extends string> =
 
 // セグメントが ":" で始まるときだけパラメーター(実行時の matchPath と同じ判定)
 // "12:00" のように途中に ":" があるだけのものはパラメーターではない
-type ParamName<S extends string> = S extends `:${infer Name}` ? Name : never;
+// 末尾の "*" は、残りのパスを "*" という名前で受け取る
+type ParamName<S extends string> = S extends `:${infer Name}` ? Name : S extends "*" ? "*" : never;
 
 export type ExtractParams<Path extends string> =
     // パスが string 型(リテラルでない)だと名前が分からないので、どんな名前でも読めるようにする
@@ -40,15 +41,20 @@ export function splitPattern(pattern: string): string[] {
     return pattern.split("/").filter(Boolean);
 }
 
-// app.use() のパスを確かめて、末尾の "/*" を取る("/admin/*" → "/admin"。どちらも /admin とその下で動く)
-// それ以外の * はエラーにする。文字として比べると、どのリクエストにも当たらず、認証などが黙って動かなくなる
-export function middlewarePath(path: string): string {
-    const segments = splitPattern(path);
+// * を書けるのは、最後のセグメント全体だけ。それ以外はエラーにする
+// 文字として比べると、どのリクエストにも当たらず、ルートや認証などが黙って動かなくなる
+export function checkWildcard(path: string, segments: readonly string[]) {
     const last = segments.length - 1;
     if (segments.some((s, i) => s.includes("*") && (s !== "*" || i !== last))) {
         throw senriError("wildcard_position", `"*" must be the whole last segment: ${path}`);
     }
-    return segments[last] === "*" ? "/" + segments.slice(0, last).join("/") : path;
+}
+
+// app.use() のパスを確かめて、末尾の "/*" を取る("/admin/*" → "/admin"。どちらも /admin とその下で動く)
+export function middlewarePath(path: string): string {
+    const segments = splitPattern(path);
+    checkWildcard(path, segments);
+    return segments.at(-1) === "*" ? "/" + segments.slice(0, -1).join("/") : path;
 }
 
 // リクエストのパス(URL の pathname)を分割して、セグメントごとにデコードする
@@ -121,15 +127,20 @@ export function requestPathname(req: Request): string {
 }
 
 export function matchPath(pattern: readonly string[], path: readonly string[]): Record<string, string> | null {
+    // 末尾の "*" は、残りのセグメント全部に合う(0個でもよい)
+    const wild = pattern.at(-1) === "*";
+    const fixed = wild ? pattern.length - 1 : pattern.length;
+
     // 個数が違ったら一致しない
-    if (pattern.length !== path.length) {
+    if (wild ? path.length < fixed : pattern.length !== path.length) {
         return null;
     }
 
     // 1個ずつ比較する
     const params: Record<string, string> = {};
+    if (wild) params["*"] = path.slice(fixed).join("/");
 
-    for (let i = 0; i < pattern.length; i++) {
+    for (let i = 0; i < fixed; i++) {
         const p = pattern[i]!;
         const actual = path[i]!;
 
@@ -204,21 +215,16 @@ export function compareRoutes(a: Route, b: Route): number {
     const aParts = a.segments;
     const bParts = b.segments;
 
-    // まずセグメント数で分ける。数が違うルート同士はそもそも同じパスにマッチしないので、
-    // ここで順番を決めてしまっても優先順位には影響しない
-    // (以前はここで 0 = 「同じ」と答えていたため、sort の結果が登録順に左右されていた)
-    if (aParts.length !== bParts.length) {
-        return aParts.length - bParts.length;
+    // 前から見て最初に種類が違うところで決める。静的 → パラメーター → ワイルドカードの順
+    // ワイルドカードがあると、セグメント数が違うルート同士も同じパスにマッチするので、数は最後に比べる
+    const shorter = Math.min(aParts.length, bParts.length);
+    for (let i = 0; i < shorter; i++) {
+        const diff = segmentRank(aParts[i]!) - segmentRank(bParts[i]!);
+        if (diff !== 0) return diff;
     }
+    return aParts.length - bParts.length;
+}
 
-    for (let i = 0; i < aParts.length; i++) {
-        const aIsParam = aParts[i]!.startsWith(":");
-        const bIsParam = bParts[i]!.startsWith(":");
-
-        // aがパラメータでbがパラメータでない場合、bを優先する
-        if (aIsParam && !bIsParam) return 1;
-        // aがパラメータでなくbがパラメータの場合、aを優先する
-        if (!aIsParam && bIsParam) return -1;
-    }
-    return 0;
+function segmentRank(segment: string): number {
+    return segment === "*" ? 2 : segment.startsWith(":") ? 1 : 0;
 }

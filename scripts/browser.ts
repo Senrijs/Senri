@@ -102,6 +102,8 @@ try {
             bytes: await call("/api/bytes"),
             missing: await call("/nope"),
             notFound: await call("/api/item/nope"),
+            wild: await call("/api/wild/a/%E3%81%82"),
+            wildPost: await call("/api/wild/a", { method: "POST" }),
         };
     });
     check("ページ: 文字列 → text/plain", inPage.text.body === "こんにちは" && inPage.text.type === "text/plain; charset=utf-8", JSON.stringify(inPage.text));
@@ -110,6 +112,8 @@ try {
     check("ページ: Uint8Array → そのままボディ", inPage.bytes.body === "\u0001\u0002\u0003", JSON.stringify(inPage.bytes));
     check("ページ: ミドルウェア", inPage.text.mark === "browser", JSON.stringify(inPage.text));
     check("ページ: 404", inPage.missing.status === 404 && inPage.missing.body === "404 Not Found", JSON.stringify(inPage.missing));
+    check("ページ: ワイルドカード", inPage.wild.status === 200 && inPage.wild.body === "wild: a/あ", JSON.stringify(inPage.wild));
+    check("ページ: ワイルドカード(メソッドが違えば 404)", inPage.wildPost.status === 404, JSON.stringify(inPage.wildPost));
     check("ページ: c.notFound()", inPage.notFound.status === 404 && inPage.notFound.body === "404 Not Found" && inPage.notFound.mark === "browser", JSON.stringify(inPage.notFound));
     check("ページ: c.html()", inPage.page.body === "<h1>こんにちは</h1>" && inPage.page.type === "text/html; charset=utf-8", JSON.stringify(inPage.page));
     check("ページ: c.redirect() の相対パス", inPage.go.status === 302 && inPage.go.location === "/api/hello" && inPage.go.body === "", JSON.stringify(inPage.go));
@@ -136,6 +140,7 @@ try {
         const post = await fetch("/api/echo", { method: "POST", headers: { "content-type": "application/json" }, body: `{"b":2}` });
         const missing = await fetch("/api/nope");
         const notFound = await fetch("/api/item/nope");
+        const wild = await fetch("/api/wild/a/b");
         // redirect: "manual" だと中身の見えない opaqueredirect になるので、たどった結果で確かめる
         const follow = async (path: string) => {
             const r = await fetch(path);
@@ -148,6 +153,7 @@ try {
             post: await post.text(),
             missing: { status: missing.status, body: await missing.text() },
             notFound: { status: notFound.status, mark: notFound.headers.get("x-senri"), body: await notFound.text() },
+            wild: await wild.text(),
             go: await follow("/api/go"),
             japanese: await follow("/api/go/japanese"),
         };
@@ -162,6 +168,7 @@ try {
         check("Service Worker: ボディを読む", viaWorker.post === `{"body":{"b":2}}`, viaWorker.post);
         // 静的サーバーの 404("static 404")ではなく、Senri の 404 が返る
         check("Service Worker: Senri の 404", viaWorker.missing.status === 404 && viaWorker.missing.body === "404 Not Found", JSON.stringify(viaWorker.missing));
+        check("Service Worker: ワイルドカード", viaWorker.wild === "wild: a/b", viaWorker.wild);
         check("Service Worker: c.notFound()", viaWorker.notFound.status === 404 && viaWorker.notFound.body === "404 Not Found" && viaWorker.notFound.mark === "browser", JSON.stringify(viaWorker.notFound));
         check("Service Worker: c.redirect() の相対パス", viaWorker.go.redirected && viaWorker.go.path === "/api/hello" && viaWorker.go.body === "こんにちは", JSON.stringify(viaWorker.go));
         check("Service Worker: c.redirect() の日本語のパス", viaWorker.japanese.redirected && viaWorker.japanese.body === "日本語のルート", JSON.stringify(viaWorker.japanese));

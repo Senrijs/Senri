@@ -10,12 +10,15 @@ function oracle(routes: Route[], segments: string[]) {
         .filter((x): x is { route: Route; params: Record<string, string> } => x.params !== null);
 }
 
+// match() は 405 と自動の OPTIONS を決めるためのものなので、ワイルドカードのルートを含まない
+const withoutWild = <T extends { route: Route }>(list: T[]) => list.filter((x) => x.route.segments.at(-1) !== "*");
+
 function route(method: string, path: string): Route {
     const segments = splitPattern(path);
     return {
         path,
         segments,
-        paramNames: segments.filter((s) => s.startsWith(":")).map((s) => s.slice(1)),
+        paramNames: segments.filter((s) => s.startsWith(":") || s === "*").map((s) => (s === "*" ? s : s.slice(1))),
         method,
         handler: () => "",
     };
@@ -61,11 +64,37 @@ describe("matcher(Trie)", () => {
         expect(matcher.staticLeaf("/a/c")).toBeUndefined();
     });
 
+    test("ワイルドカードは Map に入らず、静的 → パラメーター → ワイルドカードの順に当たる", () => {
+        const matcher = createMatcher();
+        const wild = route("GET", "/a/*");
+        const param = route("GET", "/a/:x");
+        const exact = route("GET", "/a/b");
+        for (const r of [wild, param, exact]) matcher.add(r);
+
+        expect(matcher.staticLeaf("/a/*")).toBeUndefined();
+        expect(matcher.first(["a", "b"], "GET")).toEqual({ route: exact, values: [] });
+        expect(matcher.first(["a", "c"], "GET")).toEqual({ route: param, values: ["c"] });
+        expect(matcher.first(["a", "c", "d"], "GET")).toEqual({ route: wild, values: ["c/d"] });
+        expect(matcher.first(["a"], "GET")).toEqual({ route: wild, values: [""] });
+        expect(matcher.first(["a"], "POST")).toBeNull();
+    });
+
+    test("match() はワイルドカードのルートを返さない", () => {
+        const matcher = createMatcher();
+        const exact = route("POST", "/a/b");
+        matcher.add(route("GET", "/a/*"));
+        matcher.add(exact);
+
+        expect(matcher.match(["a", "b"]).flatMap((m) => m.leaf)).toEqual([exact]);
+        expect(matcher.match(["a", "c"])).toEqual([]);
+    });
+
     test("ランダムなルートとパスで、以前のやり方と同じ順番・同じパラメーターになる", () => {
         const rand = random(42);
         const pick = <T,>(xs: T[]) => xs[Math.floor(rand() * xs.length)]!;
         const words = ["a", "b", "c", "me"];
         const methods = ["GET", "POST", "ALL"];
+        let wildHits = 0;
 
         for (let round = 0; round < 300; round++) {
             // 形とメソッドが重ならないルートを作る(アプリでは重なると登録時にエラーになる)
@@ -74,6 +103,7 @@ describe("matcher(Trie)", () => {
             for (let i = 0; i < 12; i++) {
                 const length = 1 + Math.floor(rand() * 3);
                 const segments = Array.from({ length }, (_, j) => (rand() < 0.4 ? `:p${j}${pick(words)}` : pick(words)));
+                if (rand() < 0.3) segments[length - 1] = "*";
                 const method = pick(methods);
                 const shape = method + " " + segments.map((s) => (s.startsWith(":") ? ":" : s)).join("/");
                 if (seen.has(shape)) continue;
@@ -81,8 +111,10 @@ describe("matcher(Trie)", () => {
                 routes.push(route(method, "/" + segments.join("/")));
             }
             for (let k = 0; k < 10; k++) {
-                const path = Array.from({ length: 1 + Math.floor(rand() * 3) }, () => pick(words));
-                const expected = oracle(routes, path).map((x) => [x.route.method, x.route.path, x.params]);
+                const path = Array.from({ length: Math.floor(rand() * 5) }, () => pick(words));
+                const all = oracle(routes, path);
+                wildHits += all.length - withoutWild(all).length;
+                const expected = withoutWild(all).map((x) => [x.route.method, x.route.path, x.params]);
                 const actual = viaMatcher(routes, path).map((x) => [x.route.method, x.route.path, x.params]);
                 // 同じ形(同じ葉)の中の順番は登録順。以前のやり方も安定ソートなので登録順になる
                 expect(actual).toEqual(expected);
@@ -91,7 +123,7 @@ describe("matcher(Trie)", () => {
                 const matcher = createMatcher();
                 for (const r of routes) matcher.add(r);
                 for (const method of methods) {
-                    const want = oracle(routes, path).find((x) => x.route.method === method);
+                    const want = all.find((x) => x.route.method === method);
                     const got = matcher.first(path, method);
                     expect(got && [got.route.path, paramsOf(got.route, got.values)]).toEqual(
                         want ? [want.route.path, want.params] : null,
@@ -99,5 +131,7 @@ describe("matcher(Trie)", () => {
                 }
             }
         }
+        // ワイルドカードに当たる場合を、ちゃんと試している
+        expect(wildHits).toBeGreaterThan(1000);
     });
 });

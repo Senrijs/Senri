@@ -145,11 +145,11 @@ export function showRoutes(
         (a, b) => a.path.localeCompare(b.path) || a.method.localeCompare(b.method),
     );
 
-    // ":id" みたいなパラメーター部分だけ色を付ける
+    // ":id" や "*" みたいなパラメーター部分だけ色を付ける
     const highlight = (path: string) =>
         path
             .split("/")
-            .map((seg) => (seg.startsWith(":") ? paint(C.cyan, seg) : seg))
+            .map((seg) => (seg.startsWith(":") || seg === "*" ? paint(C.cyan, seg) : seg))
             .join("/");
 
     console.log("");

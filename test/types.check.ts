@@ -3,7 +3,15 @@
 import { type } from "arktype";
 import * as v from "valibot";
 import { z } from "zod";
-import { createApp, logger, type Context, type ExecutionContext, type Middleware, type RedirectStatus } from "../src/index.ts";
+import {
+    createApp,
+    logger,
+    type Context,
+    type ExecutionContext,
+    type Middleware,
+    type RedirectStatus,
+    type StandardSchemaV1,
+} from "../src/index.ts";
 
 const app = createApp();
 
@@ -97,6 +105,38 @@ app.get("/nf6", (_, c) => {
 app.get("/nf7", async (_, c) => {
     c.notFound();
 });
+
+// --- ワイルドカード ---
+
+// 残りのパスは "*" で、string として受け取れる
+app.get("/w1/*", ({ "*": rest }) => {
+    const value: string = rest;
+    return value;
+});
+app.get("/w2/:id/*", ({ id, "*": rest }) => `${id} ${rest}`);
+app.get("/*", (params) => params["*"]);
+app.on(["GET", "POST"], "/w3/*", ({ "*": rest }) => rest);
+app.routes({ "GET /w4/*": ({ "*": rest }) => rest });
+
+const wildRouter = createRouter("/w5/:id");
+wildRouter.get("/*", ({ id, "*": rest }) => `${id} ${rest}`);
+wildRouter.get("*", ({ "*": rest }) => rest);
+
+// ワイルドカードがなければ読めない
+// @ts-expect-error
+app.get("/w6", ({ "*": rest }) => rest);
+// @ts-expect-error
+app.get("/w7/:id", ({ "*": rest }) => rest);
+
+// スキーマを渡せば、その型になる
+const wildSchema: StandardSchemaV1<unknown, { "*": string; n: number }> = {
+    "~standard": { version: 1, vendor: "test", validate: () => ({ value: { "*": "a", n: 1 } }) },
+};
+app.get("/w8/:n/*", { params: wildSchema }, ({ n, "*": rest }) => `${n + 1} ${rest}`);
+
+// 途中の * は型では止めない(登録時のエラーになる。test/wildcard.test.ts)
+const midWildcard = () => app.get("/w9/*/c", ({ "*": rest }) => rest);
+void midWildcard;
 
 // c に型を明示すれば、c.notFound() だけでも「止まる」と扱われる
 app.get("/nf8/:id", ({ id }, c: Context) => {

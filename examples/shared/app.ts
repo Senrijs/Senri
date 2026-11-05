@@ -58,6 +58,8 @@ app.get("/login", (_, c) => {
 app.get("/to/japanese", (_, c) => c.redirect("/users/山田"));
 app.get("/to/idn", (_, c) => c.redirect("https://例え.jp/パス"));
 app.get("/to/surrogate", (_, c) => c.redirect("/\ud800"));
+// /assets とその下のすべてに当たる。残りのパスは "*" で受け取る
+app.get("/assets/*", ({ "*": rest }) => `assets: ${rest}`);
 // ルートはあるけれど、中身が見つからないとき
 app.get("/items/:id", (_, c) => {
     c.header("set-cookie", "seen=1");

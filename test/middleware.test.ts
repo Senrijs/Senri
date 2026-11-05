@@ -307,13 +307,6 @@ describe('app.use("/x/*", mw)', () => {
 
         expect(() => app.use("/a/*/c", (_c, next) => next())).toThrow("最後のセグメント全体");
     });
-
-    test("ルートの * はまだ文字のまま(ミドルウェアだけの変更)", async () => {
-        const app = createApp();
-        app.get("/files/*", () => "ok");
-
-        expect((await app.fetch(req("/files/a"))).status).toBe(404);
-    });
 });
 
 describe("next() の呼び方", () => {
