@@ -210,13 +210,55 @@ describe("c.notFound() の 404", () => {
         expect(await res.text()).toBe("404 Not Found");
     });
 
-    test("デコードできないパスでミドルウェアが呼んだとき: 本番は 404、開発モードは 400(パスを読めないので)", async () => {
-        const setup = (a: ReturnType<typeof app>) => {
-            a.use((c) => c.notFound());
-            return a;
-        };
+    describe.each(["/%E0%A4%A", "/a%2Fb"])("デコードできないパス %s", (path) => {
+        const modes: [string, AppOptions][] = [
+            ["本番", {}],
+            ["開発モード", { dev: devtools() }],
+        ];
 
-        expect((await setup(app({})).fetch(req("/%E0%A4%A"))).status).toBe(404);
-        expect((await setup(app()).fetch(req("/%E0%A4%A"))).status).toBe(400);
+        describe.each(modes)("%s", (_, options) => {
+            test.each([
+                ["テキスト", {}],
+                ["HTML", html],
+            ])("ミドルウェアが呼ぶと、固定の 404(%s)", async (_, headers) => {
+                const a = app(options);
+                a.use((c) => c.notFound());
+
+                const res = await a.fetch(req(path, { headers }));
+
+                expect(res.status).toBe(404);
+                expect(res.headers.get("content-type")).toBe("text/plain; charset=utf-8");
+                expect(await res.text()).toBe("404 Not Found");
+            });
+
+            test("HEAD でも 404", async () => {
+                const a = app(options);
+                a.use((c) => c.notFound());
+
+                expect((await a.fetch(req(path, { method: "HEAD" }))).status).toBe(404);
+            });
+
+            test("c.header() のヘッダーも付く", async () => {
+                const a = app(options);
+                a.use((c) => {
+                    c.header("x-mark", "1");
+                    return c.notFound();
+                });
+
+                expect((await a.fetch(req(path))).headers.get("x-mark")).toBe("1");
+            });
+
+            test("c.notFound() を呼ばなければ、今までどおり 400", async () => {
+                expect((await app(options).fetch(req(path))).status).toBe(400);
+            });
+
+            test("自分の notFound が c.path を読むと、今までどおり 400", async () => {
+                const a = app(options);
+                a.notFound((c) => `ありません: ${c.path}`);
+                a.use((c) => c.notFound());
+
+                expect((await a.fetch(req(path))).status).toBe(400);
+            });
+        });
     });
 });

@@ -131,7 +131,7 @@ body{margin:0}
     </section>
 
     <footer style="padding-top: 20px; border-top: 1px solid {{t.border}}; font-size: 13px; color: {{t.muted}}">
-      このページは開発モード(<code style="font-family: 'JetBrains Mono', monospace">createApp({ dev: true })</code>)でのみ表示されます。本番では「500 Internal Server Error」だけが返ります。
+      このページは開発モード(<code style="font-family: 'JetBrains Mono', monospace">import { devtools } from "@senrijs/senri/dev"</code> と <code style="font-family: 'JetBrains Mono', monospace">createApp({ dev: devtools() })</code>)でのみ表示されます。本番では「500 Internal Server Error」だけが返ります。
     </footer>
   </main>
 </div>

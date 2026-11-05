@@ -85,7 +85,7 @@ const list = computed(() => visibleRoutes(d.routes, query.value, LIMIT));
         </section>
 
         <footer class="page-footer">
-            このページは開発モード(<code>createApp({ dev: true })</code>)でのみ表示されます。本番では「404 Not
+            このページは開発モード(<code>import { devtools } from "@senrijs/senri/dev"</code> と <code>createApp({ dev: devtools() })</code>)でのみ表示されます。本番では「404 Not
             Found」だけが返り、ルートの一覧は出ません。
         </footer>
     </main>

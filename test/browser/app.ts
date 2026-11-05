@@ -1,5 +1,5 @@
 // ブラウザ(ページと Service Worker)で動かすアプリ。どちらも同じルートを持つ
-// createApp はページでは @senrijs/senri、Service Worker では @senrijs/senri/tiny のものを渡す
+// createApp は、ページでも Service Worker でも @senrijs/senri のものを渡す
 import type { App } from "../../src/index.ts";
 
 export function setup(app: App) {

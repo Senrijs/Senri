@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import http from "node:http";
 import type { AddressInfo } from "node:net";
 import type { Server } from "node:http";
-import { createApp } from "../../src/index.ts";
+import { createApp, type App } from "../../src/index.ts";
 import { devtools } from "../../src/dev/index.ts";
 import { serve } from "../../adapters/node/index.ts";
 
@@ -32,7 +32,7 @@ function get(port: number, host: string, path: string, accept = "*/*"): Promise<
 }
 
 // NODE_ENV を入れてから devtools() を呼び、アプリを起動する(devtools() は呼んだときに NODE_ENV を読む)
-async function start(nodeEnv: string | undefined): Promise<{ server: Server; port: number }> {
+async function start(nodeEnv: string | undefined, setup?: (app: App) => void): Promise<{ server: Server; port: number }> {
     const original = process.env.NODE_ENV;
     if (nodeEnv === undefined) delete process.env.NODE_ENV;
     else process.env.NODE_ENV = nodeEnv;
@@ -48,6 +48,7 @@ async function start(nodeEnv: string | undefined): Promise<{ server: Server; por
     app.get("/boom", () => {
         throw new Error("secret detail");
     });
+    setup?.(app);
     const server = serve(app, { port: 0, hostname: "127.0.0.1" });
     await new Promise<void>((resolve) => server.once("listening", resolve));
     return { server, port: (server.address() as AddressInfo).port };
@@ -102,3 +103,25 @@ describe("devtools(): NODE_ENV=development(Node)", () => {
         assert.deepEqual(await devOutput(port, "example.com"), ALL);
     });
 });
+
+// デコードできないパスでミドルウェアが c.notFound() を呼んだとき、本番と開発モードで同じ固定の 404 になる
+for (const nodeEnv of ["production", "development"]) {
+    describe(`デコードできないパスの c.notFound(): NODE_ENV=${nodeEnv}(Node)`, () => {
+        let server: Server;
+        let port: number;
+        before(async () => {
+            ({ server, port } = await start(nodeEnv, (app) => app.use((c) => c.notFound())));
+        });
+        after(() => server.close());
+
+        for (const accept of ["*/*", "text/html"]) {
+            test(`Accept: ${accept}`, async () => {
+                const res = await get(port, `localhost:${port}`, "/%E0%A4%A", accept);
+
+                assert.equal(res.status, 404);
+                assert.equal(res.type, "text/plain; charset=utf-8");
+                assert.equal(res.body, "404 Not Found");
+            });
+        }
+    });
+}

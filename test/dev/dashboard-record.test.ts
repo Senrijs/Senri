@@ -128,6 +128,20 @@ describe("リクエストの記録(開発モード)", () => {
         expect((await lastRecord(a)).query).toBe("?token=***&tab=posts");
     });
 
+    test("デコードできないパスの c.notFound() も、404 として記録される", async () => {
+        const a = app();
+        a.use(function hide(c) {
+            return c.notFound();
+        });
+
+        const res = await a.fetch(req("/%E0%A4%A"));
+        const r = await lastRecord(a);
+
+        expect(res.status).toBe(404);
+        expect(r).toMatchObject({ status: 404, route: null, error: null });
+        expect(r.path).toContain("/%E0%A4%A");
+    });
+
     test("c.notFound() は 404 として記録され、ルートも残る(呼んだ層の印は HttpError と同じ)", async () => {
         const a = app();
         a.get("/items/:id", (_, c) => c.notFound());
