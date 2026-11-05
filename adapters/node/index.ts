@@ -21,7 +21,7 @@ import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import { nodeCoreOf, type AppCore, type Resolved } from "../../src/app.ts";
 import { compose } from "../../src/compose.ts";
-import { lazyContext, type Context, type LazyRequest } from "../../src/context.ts";
+import { lazyContext, plainOf, type Context, type LazyRequest, type PlainResponse } from "../../src/context.ts";
 import { HttpError } from "../../src/errors.ts";
 
 type App = {
@@ -221,15 +221,31 @@ function lazyRequest(req: IncomingMessage, res: ServerResponse, url: string): La
     };
 }
 
-async function respondLazily(core: AppCore, c: Context, resolved: Resolved, method: string): Promise<Response> {
+// Response を作らずに書く。ヘッダーの扱いは c.text() / c.json() と c.finalize() を通したときと同じにする
+function writePlain(res: ServerResponse, plain: PlainResponse) {
+    res.statusCode = plain.status;
+    res.setHeader("content-type", plain.type);
+    if (plain.headers) {
+        plain.headers.forEach((value, key) => {
+            if (key !== "set-cookie" && key !== "content-type") res.setHeader(key, value);
+        });
+        const cookies = plain.headers.getSetCookie();
+        if (cookies.length > 0) res.setHeader("set-cookie", cookies);
+    }
+    res.end(plain.body);
+}
+
+async function respondLazily(core: AppCore, c: Context, resolved: Resolved, method: string): Promise<Response | PlainResponse> {
     const fail = (err: unknown) => core.fail(err, c);
     const layers = core.layers(c);
     if (layers.length > 0) return compose(layers, c, () => core.inner(c, resolved), fail);
     try {
         // ハンドラーを直接呼ぶ。HEAD の本文を捨てる処理と QUERY の確認は core.inner に任せる(c.req を読む)
         if (resolved.kind === "route" && method !== "HEAD" && resolved.route.method !== "QUERY") {
-            const value = resolved.route.handler(c.params, c);
-            return c.toResponse(value instanceof Promise ? await value : value);
+            const handled = resolved.route.handler(c.params, c);
+            const value = handled instanceof Promise ? await handled : handled;
+            // ミドルウェアがいないので、Response を見る人はいない
+            return plainOf(c, value) ?? c.toResponse(value);
         }
         return await core.inner(c, resolved);
     } catch (err) {
@@ -258,7 +274,9 @@ async function serveLazily(core: AppCore, req: IncomingMessage, res: ServerRespo
             c.route = resolved.route.path;
             c.params = resolved.params;
         }
-        await writeResponse(res, c.finalize(await respondLazily(core, c, resolved, method)));
+        const answer = await respondLazily(core, c, resolved, method);
+        if (answer instanceof Response) await writeResponse(res, c.finalize(answer));
+        else writePlain(res, answer);
     } catch (err) {
         // クライアントが途中で切っただけならエラーではない
         if (!res.destroyed || res.writableFinished) writeFailure(res, err);

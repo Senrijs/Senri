@@ -321,6 +321,56 @@ describe("c.req は、読んだときに作られる本物の Request", () => {
         }),
     );
 
+    test(
+        "文字列と素のオブジェクトを返すハンドラーでは、Response を作らない。ほかは今までどおり本物を使う",
+        counting(async (counts) => {
+            const app = createApp();
+            app.get("/text", () => "Hello");
+            app.get("/json", () => ({ a: 1 }));
+            app.get("/array", () => [1]);
+            app.get("/async", async () => "Hello");
+            app.get("/headers", (_, c) => {
+                c.status(201).header("x-mark", "1");
+                return "Hello";
+            });
+            app.get("/c-text", (_, c) => c.text("Hello"));
+            app.get("/c-json", (_, c) => c.json({ a: 1 }));
+            app.get("/response", () => new Response("Hello"));
+            app.get("/bytes", () => new Uint8Array([1]));
+            app.get("/class", () => new (class A {
+                x = 1;
+            })());
+            app.get("/status-204", (_, c) => {
+                c.status(204);
+                return "Hello";
+            });
+            const port = await listen(app);
+
+            for (const path of ["/text", "/json", "/array", "/async", "/headers"]) {
+                counts.Response = 0;
+                await raw(port, GET(path));
+                assert.equal(counts.Response, 0, path);
+            }
+            for (const path of ["/c-text", "/c-json", "/response", "/bytes", "/class", "/missing"]) {
+                counts.Response = 0;
+                await raw(port, GET(path));
+                assert.equal(counts.Response, 1, path);
+            }
+            // HEAD とミドルウェアのあるルートは、今までの道を通る
+            counts.Response = 0;
+            await raw(port, GET("/text", "", "HEAD"));
+            assert.ok(counts.Response >= 1, "HEAD");
+
+            const withMiddleware = createApp();
+            withMiddleware.use((_c, next) => next());
+            withMiddleware.get("/", () => "Hello");
+            const middlewarePort = await listen(withMiddleware);
+            counts.Response = 0;
+            await raw(middlewarePort, GET("/"));
+            assert.equal(counts.Response, 1, "ミドルウェア");
+        }),
+    );
+
     test("本物の Request で、Request のサブクラスではない", async () => {
         let proto: unknown;
         let brand = false;

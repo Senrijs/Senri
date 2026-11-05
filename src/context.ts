@@ -143,6 +143,11 @@ export type LazyRequest = { url: string; create(): Request };
 // c.req を最初に読んだときに本物の Request を作る Context(Node のアダプターだけが使う)
 export let lazyContext: (source: LazyRequest, info: unknown) => Context;
 
+// ミドルウェアのないハンドラーの戻り値を、Response を作らずに書くための中身(Node のアダプターだけが使う)
+export type PlainResponse = { status: number; type: string; body: string; headers: Headers | undefined };
+// 文字列と、素のオブジェクト・配列だけ。それ以外と、Response なら投げる status は null(今までどおり Response にする)
+export let plainOf: (c: Context, value: unknown) => PlainResponse | null;
+
 /**
  * The per-request context passed to handlers and middleware as `c`.
  * Holds the request, path parameters, variables, and the status and headers to add to the response.
@@ -193,6 +198,22 @@ export class Context<V extends object = any, I extends object = {}> {
             // Request を作らなくても、ルーティングできるようにしておく
             c.#pathname = pathnameOf(source.url);
             return c;
+        };
+        plainOf = (c, value) => {
+            const status = c.#status;
+            if (status < 200 || status > 599 || status === 204 || status === 205 || status === 304) return null;
+            let body: string;
+            let type: string;
+            if (typeof value === "string") {
+                body = value;
+                type = "text/plain; charset=utf-8";
+            } else if (Array.isArray(value) || (typeof value === "object" && value !== null && Object.getPrototypeOf(value) === Object.prototype)) {
+                body = JSON.stringify(value);
+                type = "application/json";
+            } else {
+                return null;
+            }
+            return { status, type: c.#headers?.get("content-type") ?? type, body, headers: c.#headers };
         };
     }
 
