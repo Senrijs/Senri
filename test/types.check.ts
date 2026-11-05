@@ -3,7 +3,7 @@
 import { type } from "arktype";
 import * as v from "valibot";
 import { z } from "zod";
-import { createApp, logger, type ExecutionContext, type Middleware, type RedirectStatus } from "../src/index.ts";
+import { createApp, logger, type Context, type ExecutionContext, type Middleware, type RedirectStatus } from "../src/index.ts";
 
 const app = createApp();
 
@@ -51,6 +51,75 @@ app.get("/h1", (_, c) => c.html("<p/>"));
 app.get("/h2", (_, c) => c.html("<p/>", 404));
 // @ts-expect-error body は文字列
 app.get("/h3", (_, c) => c.html(new Uint8Array([1])));
+
+// --- c.notFound() ---
+
+const stock = new Map<string, { name: string }>();
+
+// 標準の書き方は return c.notFound()。そのあとは undefined が消える
+app.get("/nf1/:id", ({ id }, c) => {
+    const item = stock.get(id);
+    if (!item) return c.notFound();
+    return item.name;
+});
+app.get("/nf2", (_, c) => c.notFound());
+app.get("/nf3", async (_, c) => c.notFound());
+app.get("/nf4/:id", ({ id }, c) => {
+    const item = stock.get(id);
+    if (!item) throw c.notFound();
+    return item.name;
+});
+app.use((c, next) => {
+    if (c.path === "/hidden") return c.notFound();
+    return next();
+});
+
+// 戻り値は never
+function notFoundIsNever(c: Context) {
+    const value: never = c.notFound();
+    return value;
+}
+void notFoundIsNever;
+
+// TypeScript の制限: c に型を明示していないと(ふつうの書き方)、c.notFound() だけでは「止まる」と扱われない
+// never の呼び出しで処理の流れが変わるのは、呼び出す先の名前すべてに型の明示があるときだけ。Senri の側では直せない
+app.get("/nf5/:id", ({ id }, c) => {
+    const item = stock.get(id);
+    if (!item) c.notFound();
+    // @ts-expect-error item が undefined のままになる
+    return item.name;
+});
+// @ts-expect-error 最後まで流れるとみなされて、戻り値が void になる
+app.get("/nf6", (_, c) => {
+    c.notFound();
+});
+// @ts-expect-error async でも同じ
+app.get("/nf7", async (_, c) => {
+    c.notFound();
+});
+
+// c に型を明示すれば、c.notFound() だけでも「止まる」と扱われる
+app.get("/nf8/:id", ({ id }, c: Context) => {
+    const item = stock.get(id);
+    if (!item) c.notFound();
+    return item.name;
+});
+app.get("/nf9", (_, c: Context) => {
+    c.notFound();
+});
+
+// 絞り込みが要らなければ、c.notFound() だけでも問題ない
+app.get("/nf10/:id", ({ id }, c) => {
+    if (!stock.has(id)) c.notFound();
+    return "ok";
+});
+app.use((c, next) => {
+    if (c.path === "/hidden") c.notFound();
+    return next();
+});
+app.use((c) => {
+    c.notFound();
+});
 
 // --- app.routes() のテーブル形式(項目14) ---
 

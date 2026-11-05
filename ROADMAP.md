@@ -60,7 +60,7 @@ See the [CHANGELOG](./CHANGELOG.md) for details.
 - [x] `create-senri` (`npm create senri`)
 - [ ] English / Japanese error messages and dev pages
 - [x] Response helpers: `c.html()`, `c.redirect()`
-- [ ] Response helper: `c.notFound()`
+- [x] Response helper: `c.notFound()`
 - [ ] SSE / streaming helpers (`c.stream()` and more)
 - [ ] File uploads: size/type validation, streaming large files
 - [ ] More middleware: Basic / Bearer auth, compression, ETag, request ID, timeout

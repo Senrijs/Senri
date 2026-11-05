@@ -23,7 +23,7 @@ app.get("/users/:id", ({ id }) => ({ id }));    // オブジェクト → JSON(i
 serve(app);   // Bun でも Deno でも Node.js でも
 ```
 
-本番のビルドでは `dev: devtools()` を外すと、開発用のコードがバンドルに入らず、本体だけ(minify して約 14KB)になります([開発モード](#開発モード))。
+本番のビルドでは `dev: devtools()` を外すと、開発用のコードがバンドルに入らず、本体だけ(minify して約 15KB)になります([開発モード](#開発モード))。
 
 - **返した値がレスポンスになる。** 文字列はテキスト、オブジェクトは JSON。`Response` もそのまま返せます
 - **型はパスから。** `/users/:id` と書けば、ハンドラーの `id` に型が付きます。[Standard Schema](https://standardschema.dev)(Zod・Valibot・ArkType など)で、パラメーター・クエリ・ボディも確かめられます
@@ -321,6 +321,27 @@ app.get("/secret", () => {
 app.onError((err, c) => ({ error: "something went wrong" }));
 app.notFound((c) => `ありません: ${c.path}`);
 ```
+
+### 見つからないとき(`c.notFound()`)
+
+ルートはあるけれど中身がないときは、`c.notFound()` で `app.notFound` のハンドラー(なければ既定のもの)に回せます。ミドルウェアからも呼べます。
+
+```ts
+app.get("/items/:id", ({ id }, c) => {
+    const item = items.get(id);
+    if (!item) return c.notFound();
+    return item;
+});
+```
+
+- **`return c.notFound()` と書いてください。** 例外で止まるので `c.notFound();` だけでも以降は動きませんが、`(_, c) =>` のように `c` の型を明示していないと、TypeScript は「止まる」と扱いません(`item` が `undefined` のままになり、最後に書くと戻り値が型エラーになります)
+- `new HttpError(404)` とほぼ同じ動きです。違うのは行き先で、`onError` ではなく `app.notFound` のハンドラーに回ります
+  - 外側のミドルウェアの `await next()` は投げずに、404 のレスポンスを返します。`res.status` で判定してください
+  - 同じ関数の `try/catch` には捕まります。`if (err instanceof HttpError) throw err` で投げ直してください
+- `c.header()` で設定したヘッダー(`Set-Cookie`・CORS など)は 404 にも付きます。ロガーとダッシュボードには 404 として記録されます
+- `app.notFound` のハンドラーの中で呼ぶと、既定の 404 になります。`onError` の中で呼ぶと、ほかのエラーを投げたときと同じく、固定の 500 になります
+- `app.route()` でつないだアプリから呼んでも、親のハンドラーが使われます
+- 開発モードの 404 に「もしかして」が出るのは、ルートがなかったときだけです
 
 ## 開発モード
 

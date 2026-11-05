@@ -220,6 +220,22 @@ describe("NODE_ENV が development / test でないとき", () => {
         }
     });
 
+    test("未設定: example.com へのリクエストの c.notFound() は、固定の文言だけ", async () => {
+        const warn = spyOn(console, "warn").mockImplementation(() => {});
+        try {
+            setNodeEnv(undefined);
+            const app = createApp({ dev: devtools() });
+            app.get("/items/:id", (_, c) => c.notFound());
+
+            const res = await app.fetch(new Request("http://example.com/items/1", { headers: { accept: "text/html" } }), loopback);
+
+            expect(res.status).toBe(404);
+            expect(await res.text()).toBe("404 Not Found");
+        } finally {
+            warn.mockRestore();
+        }
+    });
+
     test("未設定: localhost へのリクエスト(接続元も loopback)には出す", async () => {
         expect(await devOutput(undefined, "localhost:3927", loopback)).toEqual(ALL);
         expect(await devOutput(undefined, "127.0.0.1:3927", loopback)).toEqual(ALL);

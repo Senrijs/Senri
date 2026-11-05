@@ -31,6 +31,13 @@ app.get("/to/japanese", (_, c) => c.redirect("/日本語?q=あ"));
 app.get("/to/idn", (_, c) => c.redirect("https://例え.jp/パス"));
 app.get("/to/surrogate", (_, c) => c.redirect("/\ud800"));
 app.get("/to/crlf", (_, c) => c.redirect("/a\r\nSet-Cookie: x=1"));
+app.get("/items/:id", (_, c) => {
+    setCookie(c, "session", "abc");
+    setCookie(c, "seen", "1");
+    return c.notFound();
+});
+app.use("/hidden", (c) => c.notFound());
+app.get("/hidden", () => "ここには来ない");
 
 // 1チャンク目を送ったあと、テストが release() を呼ぶまで止まるストリーム
 let release = () => {};
@@ -180,6 +187,49 @@ describe("Node アダプター", () => {
             assert.doesNotMatch(res, /^location:/im);
             assert.doesNotMatch(res, /^set-cookie:/im);
         }
+    });
+
+    test("c.notFound() が 404 で届き、Cookie も付く", async () => {
+        const res = await fetch(`${base}/items/1`);
+
+        assert.equal(res.status, 404);
+        assert.equal(await res.text(), "404 Not Found");
+        assert.deepEqual(res.headers.getSetCookie(), [
+            "session=abc; Path=/; HttpOnly; SameSite=Lax",
+            "seen=1; Path=/; HttpOnly; SameSite=Lax",
+        ]);
+    });
+
+    test("ミドルウェアの c.notFound() も 404 で届く", async () => {
+        const res = await fetch(`${base}/hidden`);
+
+        assert.equal(res.status, 404);
+        assert.equal(await res.text(), "404 Not Found");
+    });
+
+    test("c.notFound() は app.notFound のハンドラーに回る", async () => {
+        const custom = createApp();
+        custom.notFound((c) => c.json({ error: "ありません", path: c.path }));
+        custom.get("/items/:id", (_, c) => c.notFound());
+        const s = serve(custom, { port: 0 });
+        try {
+            await new Promise<void>((resolve) => s.once("listening", resolve));
+            const res = await fetch(`http://localhost:${(s.address() as AddressInfo).port}/items/1`);
+
+            assert.equal(res.status, 404);
+            assert.deepEqual(await res.json(), { error: "ありません", path: "/items/1" });
+        } finally {
+            s.close();
+        }
+    });
+
+    test("c.notFound() の HEAD は本文を送らない", async () => {
+        const res = await raw("HEAD /items/1 HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n");
+        const [head, body] = res.split("\r\n\r\n");
+
+        assert.match(head!, /^HTTP\/1\.1 404/);
+        assert.match(head!, /^set-cookie: session=abc/im);
+        assert.equal(body, "");
     });
 
     test("Set-Cookie が複数あっても全部届く", async () => {

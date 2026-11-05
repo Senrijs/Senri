@@ -134,3 +134,89 @@ describe("404ページ", () => {
         expect(await res.text()).toBe("");
     });
 });
+
+describe("c.notFound() の 404", () => {
+    // /hello に近いパスにルートを作って、c.notFound() を呼ぶ。提案があれば /hello が出るはずのパス
+    function withNotFound(options?: AppOptions) {
+        const a = app(options);
+        a.get("/helo", (_, c) => c.notFound());
+        a.use("/hallo", (c) => c.notFound());
+        a.get("/hallo", () => "ここには来ない");
+        return a;
+    }
+
+    test.each(["/helo", "/hallo"])("%s: ルートがあるので、HTML のページに「もしかして」は出ない", async (path) => {
+        const res = await withNotFound().fetch(req(path, { headers: html }));
+        const data = await pageData(res);
+
+        expect(res.status).toBe(404);
+        expect(data.kind).toBe("notFound");
+        expect(data.path).toBe(path);
+        expect(data.suggestion).toBeNull();
+    });
+
+    test.each(["/helo", "/hallo"])("%s: テキストにも「もしかして」は出ない", async (path) => {
+        const res = await withNotFound().fetch(req(path));
+
+        expect(res.status).toBe(404);
+        expect(await res.text()).toBe(`404 Not Found: GET ${path}`);
+    });
+
+    test("簡易表示にも「もしかして」は出ない", async () => {
+        const body = await (await withNotFound().fetch(req("/helo", { headers: html }))).text();
+        const content = /<div id="app">([\s\S]*?)<\/div>/.exec(body)?.[1] ?? "";
+
+        expect(content).toContain("GET /helo");
+        expect(content).not.toContain("もしかして");
+    });
+
+    test("ルートがなければ、今までどおり「もしかして」が出る", async () => {
+        const a = withNotFound();
+        const text = await (await a.fetch(req("/hell"))).text();
+        const data = await pageData(await a.fetch(req("/hell", { headers: html })));
+
+        expect(text).toContain("もしかして");
+        expect(data.suggestion).not.toBeNull();
+    });
+
+    test("ルートのないパスでミドルウェアが呼んだら、「もしかして」が出る", async () => {
+        const a = app();
+        a.use((c) => c.notFound());
+
+        expect(await (await a.fetch(req("/helo"))).text()).toBe("404 Not Found: GET /helo\nもしかして: GET /hello ?");
+    });
+
+    test("HEAD ではボディを返さない", async () => {
+        const res = await withNotFound().fetch(req("/helo", { method: "HEAD", headers: html }));
+
+        expect(res.status).toBe(404);
+        expect(await res.text()).toBe("");
+    });
+
+    test("自分で notFound を書いたら、そちらが使われる", async () => {
+        const a = withNotFound();
+        a.notFound(() => "ないよ");
+
+        const res = await a.fetch(req("/helo", { headers: html }));
+
+        expect(res.status).toBe(404);
+        expect(await res.text()).toBe("ないよ");
+    });
+
+    test("本番では、固定の文言だけ", async () => {
+        const res = await withNotFound({}).fetch(req("/helo", { headers: html }));
+
+        expect(res.status).toBe(404);
+        expect(await res.text()).toBe("404 Not Found");
+    });
+
+    test("デコードできないパスでミドルウェアが呼んだとき: 本番は 404、開発モードは 400(パスを読めないので)", async () => {
+        const setup = (a: ReturnType<typeof app>) => {
+            a.use((c) => c.notFound());
+            return a;
+        };
+
+        expect((await setup(app({})).fetch(req("/%E0%A4%A"))).status).toBe(404);
+        expect((await setup(app()).fetch(req("/%E0%A4%A"))).status).toBe(400);
+    });
+});

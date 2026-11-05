@@ -58,6 +58,11 @@ app.get("/login", (_, c) => {
 app.get("/to/japanese", (_, c) => c.redirect("/users/山田"));
 app.get("/to/idn", (_, c) => c.redirect("https://例え.jp/パス"));
 app.get("/to/surrogate", (_, c) => c.redirect("/\ud800"));
+// ルートはあるけれど、中身が見つからないとき
+app.get("/items/:id", (_, c) => {
+    c.header("set-cookie", "seen=1");
+    return c.notFound();
+});
 
 // 認証(ダメなら返り値で弾く)。/admin とその下だけで動く
 // パスは req.url ではなく、正規化済みの c.path を基準に判定されるので //admin でも素通りできない

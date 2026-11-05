@@ -95,6 +95,9 @@ const CHECKS: Check[] = [
         location: "https://xn--r8jz45g.jp/%E3%83%91%E3%82%B9",
     },
     { name: "c.redirect()(不正なサロゲート)", path: "/to/surrogate", init: { redirect: "manual" }, status: 500 },
+    // ルートがあるので「もしかして」は出ない
+    { name: "c.notFound()", path: "/items/1", status: 404, body: "404 Not Found: GET /items/1", cookies: ["seen=1"] },
+    { name: "c.notFound()(HEAD)", path: "/items/1", init: { method: "HEAD" }, status: 404, body: "", cookies: ["seen=1"] },
     { name: "HEAD", path: "/hello", init: { method: "HEAD" }, status: 200, body: "" },
     {
         name: "QUERY",
