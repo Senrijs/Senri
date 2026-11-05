@@ -40,6 +40,17 @@ export function splitPattern(pattern: string): string[] {
     return pattern.split("/").filter(Boolean);
 }
 
+// app.use() のパスを確かめて、末尾の "/*" を取る("/admin/*" → "/admin"。どちらも /admin とその下で動く)
+// それ以外の * はエラーにする。文字として比べると、どのリクエストにも当たらず、認証などが黙って動かなくなる
+export function middlewarePath(path: string): string {
+    const segments = splitPattern(path);
+    const last = segments.length - 1;
+    if (segments.some((s, i) => s.includes("*") && (s !== "*" || i !== last))) {
+        throw senriError("wildcard_position", `"*" must be the whole last segment: ${path}`);
+    }
+    return segments[last] === "*" ? "/" + segments.slice(0, last).join("/") : path;
+}
+
 // リクエストのパス(URL の pathname)を分割して、セグメントごとにデコードする
 // - 末尾スラッシュや連続スラッシュは無視する("/a//b/" は "/a/b" と同じ)
 // - "/" ごとに分割してからデコードするので、%2F が区切りと混ざることはないが、

@@ -76,6 +76,17 @@ app.use("/admin", (c, next) => {
 
 app.get("/admin", () => "ようこそ管理者さん");
 
+// "/members/*" は "/members" と同じ意味(/members とその下で動く)
+app.use("/members/*", (c, next) => {
+    if (c.req.headers.get("authorization") !== "secret") {
+        c.status(401);
+        return "ログインしてね";
+    }
+    return next();
+});
+
+app.get("/members/page", () => "会員のページ");
+
 app.get("/boom", () => {
     throw new Error("わざと壊した");
 });

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { createApp, createRouter } from "../src/index.ts";
+import { createApp, createRouter, type Context, type Next } from "../src/index.ts";
 
 const req = (path: string, init?: RequestInit) => new Request(`http://localhost${path}`, init);
 
@@ -128,6 +128,63 @@ describe("app.route(prefix, app)", () => {
             { name: "guard", path: "/admin", anonymous: false },
             { name: "deep", path: "/admin/secret", anonymous: false },
         ]);
+    });
+
+    test('use("/x/*") は use("/x") と同じ(createRouter とつないだ app)', async () => {
+        const guard = (seen: string[]) => (c: Context, next: Next) => {
+            seen.push(c.path);
+            return next();
+        };
+
+        const viaRouter: string[] = [];
+        const router = createRouter("/r/:id");
+        router.use("/x/*", guard(viaRouter));
+        router.get("/x", () => "x");
+        router.get("/x/y", () => "y");
+        router.get("/z", () => "z");
+
+        const viaChild: string[] = [];
+        const child = createApp();
+        child.use("/x/*", guard(viaChild));
+        child.get("/x", () => "x");
+        child.get("/x/y", () => "y");
+        child.get("/z", () => "z");
+
+        const app = createApp();
+        app.route(router);
+        app.route("/c", child);
+
+        for (const base of ["/r/1", "/c"]) {
+            for (const path of ["/x", "/x/y", "/z"]) await app.fetch(req(base + path));
+        }
+
+        expect(viaRouter).toEqual(["/r/1/x", "/r/1/x/y"]);
+        expect(viaChild).toEqual(["/c/x", "/c/x/y"]);
+    });
+
+    test('createRouter の use("/*") は、プレフィックスの下だけで動く', async () => {
+        const seen: string[] = [];
+        const router = createRouter("/admin");
+        router.use("/*", (c, next) => {
+            seen.push(c.path);
+            return next();
+        });
+        router.get("/", () => "top");
+        const app = createApp();
+        app.route(router);
+        app.get("/other", () => "other");
+
+        await app.fetch(req("/admin"));
+        await app.fetch(req("/other"));
+
+        expect(seen).toEqual(["/admin"]);
+    });
+
+    test("createRouter の use の途中の * は、app.route のときにエラー", () => {
+        const router = createRouter("/r");
+        router.use("/a/*/c", (_c, next) => next());
+
+        expect(() => createApp().route(router)).toThrow('"*" must be the whole last segment: /r/a/*/c');
     });
 
     test("エラーと 404 は、つなぐ側(親)の onError / notFound を使う", async () => {

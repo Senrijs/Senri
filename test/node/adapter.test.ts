@@ -38,6 +38,14 @@ app.get("/items/:id", (_, c) => {
 });
 app.use("/hidden", (c) => c.notFound());
 app.get("/hidden", () => "ここには来ない");
+app.use("/admin/*", (c, next) => {
+    if (c.req.headers.get("authorization") !== "secret") {
+        c.status(401);
+        return "ログインしてね";
+    }
+    return next();
+});
+app.get("/admin/secret", () => "秘密のデータ");
 
 // 1チャンク目を送ったあと、テストが release() を呼ぶまで止まるストリーム
 let release = () => {};
@@ -187,6 +195,16 @@ describe("Node アダプター", () => {
             assert.doesNotMatch(res, /^location:/im);
             assert.doesNotMatch(res, /^set-cookie:/im);
         }
+    });
+
+    test('use("/admin/*") の認証が動く', async () => {
+        const denied = await fetch(`${base}/admin/secret`);
+        assert.equal(denied.status, 401);
+        assert.equal(await denied.text(), "ログインしてね");
+
+        const allowed = await fetch(`${base}/admin/secret`, { headers: { authorization: "secret" } });
+        assert.equal(allowed.status, 200);
+        assert.equal(await allowed.text(), "秘密のデータ");
     });
 
     test("c.notFound() が 404 で届き、Cookie も付く", async () => {

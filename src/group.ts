@@ -26,7 +26,10 @@ export type Router<Prefix extends string = string, V extends object = any> = {
     /** The prefix given to {@link createRouter}. */
     readonly prefix: Prefix;
     // プレフィックスの下だけで動くミドルウェア。パスを付けると、さらにその下だけ
-    /** Adds middleware that runs only under the prefix. With a path, only under that path (relative to the prefix). */
+    /**
+     * Adds middleware that runs only under the prefix. With a path, only under that path (relative to the prefix).
+     * `use("/x/*", mw)` means the same as `use("/x", mw)`. Any other `*` in the path throws when the router is mounted.
+     */
     use(pathOrMw: string | Middleware<V>, mw?: Middleware<V>): void;
     /** Adds a GET route. Same arguments as `app.get`, with the path relative to the prefix. */
     get: GroupMethod<Prefix, V>;

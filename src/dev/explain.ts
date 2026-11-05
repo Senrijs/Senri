@@ -4,6 +4,7 @@ import { errorCode } from "../errors.ts";
 
 const JA: Record<string, string> = {
     route_duplicate: "同じメソッド・同じ形のパスが、すでに登録されています(パラメーター名だけが違うものも同じとみなします)。あとから登録したほうは呼ばれません",
+    wildcard_position: "* は、パスの最後のセグメント全体にだけ書けます(\"/admin/*\")。途中の * や、\"*.js\" のような一部の * は使えません",
     param_empty: "パラメーター名が空です(\":\" のあとに名前を書いてください)",
     param_twice: "1つのパスで、同じパラメーター名が2回使われています",
     method_invalid: "メソッド名に使えない文字があります",

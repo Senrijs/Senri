@@ -131,6 +131,20 @@ describe("API", () => {
         expect(row("/:page").middlewares[1]).toEqual({ name: "auth", applies: "maybe" });
     });
 
+    test('ルート: use("/x/*") も、use("/x") と同じように「かかる」と出る', async () => {
+        const a = createApp({ dev: devtools() });
+        a.use("/admin/*", function auth(_c, next) {
+            return next();
+        });
+        a.get("/admin/users", () => "users");
+        a.get("/hello", () => "hi");
+        const data = await pageData(await a.fetch(req("/_senri"), local));
+        const row = (path: string) => data.routes.find((r) => r.path === path)!;
+
+        expect(row("/admin/users").middlewares).toEqual([{ name: "auth", applies: "yes" }]);
+        expect(row("/hello").middlewares).toEqual([{ name: "auth", applies: "no" }]);
+    });
+
     test("ミドルウェア: 登録順・パス指定・直近の平均時間", async () => {
         const a = app();
         await a.fetch(req("/hello"), local);
