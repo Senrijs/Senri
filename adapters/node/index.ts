@@ -19,6 +19,10 @@ import type { Duplex } from "node:stream";
 import type { TLSSocket } from "node:tls";
 import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
+import { nodeCoreOf, type AppCore, type Resolved } from "../../src/app.ts";
+import { compose } from "../../src/compose.ts";
+import { lazyContext, type Context, type LazyRequest } from "../../src/context.ts";
+import { HttpError } from "../../src/errors.ts";
 
 type App = {
     // 2つ目の引数には、接続元のアドレスを Deno の info と同じ形で渡す(ダッシュボードの localhost 制限で使う)
@@ -149,6 +153,118 @@ function notImplemented(socket: Duplex) {
     );
 }
 
+function connectionInfo(req: IncomingMessage) {
+    return {
+        remoteAddr: { hostname: req.socket.remoteAddress ?? "", port: req.socket.remotePort ?? 0, transport: "tcp" as const },
+    };
+}
+
+function writeFailure(res: ServerResponse, err: unknown) {
+    // ここで投げ直すと unhandled rejection でプロセスごと落ちるので、必ず握る
+    console.error(err);
+    if (res.headersSent) {
+        res.destroy();
+    } else {
+        // 本文の最初の読み取りで失敗したときは、失敗したレスポンスのヘッダーが残っている(Content-Type、Set-Cookie など)
+        for (const name of res.getHeaderNames()) res.removeHeader(name);
+        res.statusCode = 500;
+        res.end("500 Internal Server Error");
+    }
+}
+
+// app.fetch を通す道。開発モードのアプリと、app.fetch を包んだものはこちら
+async function serveWithFetch(app: App, req: IncomingMessage, res: ServerResponse) {
+    // レスポンスを送り終える前に接続が切れたら、アプリに c.req.signal で知らせる
+    const controller = new AbortController();
+    res.once("close", () => {
+        if (!res.writableFinished) controller.abort();
+    });
+
+    let request: Request;
+    try {
+        request = toRequest(req, controller.signal);
+    } catch {
+        res.statusCode = 400;
+        res.end("400 Bad Request");
+        return;
+    }
+
+    try {
+        await writeResponse(res, await app.fetch(request, connectionInfo(req)));
+    } catch (err) {
+        // クライアントが途中で切っただけならエラーではない
+        if (!controller.signal.aborted) writeFailure(res, err);
+    }
+}
+
+// c.req を最初に読んだときに、本物の Request を作る
+function lazyRequest(req: IncomingMessage, res: ServerResponse, url: string): LazyRequest {
+    return {
+        url,
+        create() {
+            const controller = new AbortController();
+            // 読む前に切断されていたら、abort 済みの signal にする
+            if (res.destroyed && !res.writableFinished) {
+                controller.abort();
+            } else {
+                res.once("close", () => {
+                    if (!res.writableFinished) controller.abort();
+                });
+            }
+            try {
+                return toRequest(req, controller.signal);
+            } catch (cause) {
+                // Node が通したのに Request にできないもの。Request を先に作っていたときと同じく 400 にする
+                throw new HttpError(400, "400 Bad Request", { cause });
+            }
+        },
+    };
+}
+
+async function respondLazily(core: AppCore, c: Context, resolved: Resolved, method: string): Promise<Response> {
+    const fail = (err: unknown) => core.fail(err, c);
+    const layers = core.layers(c);
+    if (layers.length > 0) return compose(layers, c, () => core.inner(c, resolved), fail);
+    try {
+        // ハンドラーを直接呼ぶ。HEAD の本文を捨てる処理と QUERY の確認は core.inner に任せる(c.req を読む)
+        if (resolved.kind === "route" && method !== "HEAD" && resolved.route.method !== "QUERY") {
+            const value = resolved.route.handler(c.params, c);
+            return c.toResponse(value instanceof Promise ? await value : value);
+        }
+        return await core.inner(c, resolved);
+    } catch (err) {
+        return fail(err);
+    }
+}
+
+// Request を作らずに答える道。app.fetch と同じ流れで、c.req を読まれたときだけ Request を作る
+async function serveLazily(core: AppCore, req: IncomingMessage, res: ServerResponse) {
+    const method = req.method!;
+    let url: string;
+    try {
+        url = toUrl(req);
+        // Request を作らないこともあるので、Request なら投げる URL をここで 400 にする
+        if (!URL.canParse(url)) throw new TypeError(`不正な URL です: ${url}`);
+    } catch {
+        res.statusCode = 400;
+        res.end("400 Bad Request");
+        return;
+    }
+
+    const c = lazyContext(lazyRequest(req, res, url), connectionInfo(req));
+    try {
+        const resolved = core.resolve(c, method);
+        if (resolved.kind === "route") {
+            c.route = resolved.route.path;
+            c.params = resolved.params;
+        }
+        await writeResponse(res, c.finalize(await respondLazily(core, c, resolved, method)));
+    } catch (err) {
+        // クライアントが途中で切っただけならエラーではない
+        if (!res.destroyed || res.writableFinished) writeFailure(res, err);
+    }
+}
+
 // hostname: 待ち受けるアドレス。省略すると全部のアドレス(node:http の既定)
 /**
  * Serves an app with `node:http` on `options.port` and returns the `http.Server`.
@@ -160,6 +276,7 @@ function notImplemented(socket: Duplex) {
  * - CONNECT, TRACE, TRACK and methods Node.js does not know get 501; an invalid `Host` or request target gets 400
  * - If `app.fetch` throws, or the response body fails before anything is sent, the error is logged and 500 is returned
  * - A body that ends after one chunk (a string or JSON) is sent with `Content-Length`; other bodies are streamed as chunks arrive
+ * - `c.req` is a real `Request`, created the first time it is read, so a handler that does not read it costs less
  *
  * Unlike `serve()` from `@senrijs/senri/serve`, it does not read `PORT`, print routes or handle graceful shutdown.
  *
@@ -175,47 +292,14 @@ function notImplemented(socket: Duplex) {
  * ```
  */
 export function serve(app: App, options: { port: number; hostname?: string | undefined }): Server {
-    const server = createServer(async (req, res) => {
+    const core = nodeCoreOf(app);
+    const server = createServer((req, res) => {
         if (NOT_IMPLEMENTED.has(req.method ?? "")) {
             res.writeHead(501, { "content-type": "text/plain; charset=utf-8", connection: "close" });
             res.end("501 Not Implemented");
             return;
         }
-
-        // レスポンスを送り終える前に接続が切れたら、アプリに c.req.signal で知らせる
-        const controller = new AbortController();
-        res.once("close", () => {
-            if (!res.writableFinished) controller.abort();
-        });
-
-        let request: Request;
-        try {
-            request = toRequest(req, controller.signal);
-        } catch {
-            res.statusCode = 400;
-            res.end("400 Bad Request");
-            return;
-        }
-
-        try {
-            const info = {
-                remoteAddr: { hostname: req.socket.remoteAddress ?? "", port: req.socket.remotePort ?? 0, transport: "tcp" as const },
-            };
-            await writeResponse(res, await app.fetch(request, info));
-        } catch (err) {
-            // クライアントが途中で切っただけならエラーではない
-            if (controller.signal.aborted) return;
-            // ここで投げ直すと unhandled rejection でプロセスごと落ちるので、必ず握る
-            console.error(err);
-            if (res.headersSent) {
-                res.destroy();
-            } else {
-                // 本文の最初の読み取りで失敗したときは、失敗したレスポンスのヘッダーが残っている(Content-Type、Set-Cookie など)
-                for (const name of res.getHeaderNames()) res.removeHeader(name);
-                res.statusCode = 500;
-                res.end("500 Internal Server Error");
-            }
-        }
+        return core ? serveLazily(core, req, res) : serveWithFetch(app, req, res);
     });
 
     // CONNECT は request ではなく connect イベントで来る(聞いていないと、何も返さずに切ってしまう)

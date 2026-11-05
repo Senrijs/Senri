@@ -199,6 +199,27 @@ describe("ハンドラーの戻り値", () => {
     });
 });
 
+describe("c.req", () => {
+    test("Bun / Deno / Workers / ブラウザの Context では、ふつうのプロパティ(getter にしない)", () => {
+        const request = req("/");
+        const descriptor = Object.getOwnPropertyDescriptor(new Context(request), "req");
+
+        expect(descriptor?.value).toBe(request);
+        expect(descriptor?.writable).toBe(true);
+    });
+
+    test("ミドルウェアから差し替えられる", async () => {
+        const app = createApp();
+        app.use((c, next) => {
+            c.req = new Request("http://replaced/x");
+            return next();
+        });
+        app.get("/", (_, c) => c.req.url);
+
+        expect(await (await app.fetch(req("/"))).text()).toBe("http://replaced/x");
+    });
+});
+
 describe("c.json() と c.text()", () => {
     test("文字列を返すと text/plain; charset=utf-8 になる(どのランタイムでも同じ)", async () => {
         const app = createApp();

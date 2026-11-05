@@ -108,7 +108,11 @@ export function requestPathname(req: Request): string {
     if (host !== null && BAD_HOST.test(host)) {
         throw new HttpError(400, "400 Bad Request");
     }
-    const url = req.url;
+    return pathnameOf(req.url);
+}
+
+// URL の文字列から pathname を取り出す。Node のアダプターは Host を確かめ、Request を作らずにこちらを呼ぶ
+export function pathnameOf(url: string): string {
     const scheme = url.indexOf("://");
     if (scheme !== -1) {
         const start = url.indexOf("/", scheme + 3);

@@ -70,6 +70,10 @@ export type OnMethod<V extends object> = {
 // app.route(prefix, app) でつなげるように、アプリに登録されたものを横に置いておく
 const appEntries = new WeakMap<object, () => GroupEntry[]>();
 
+// Node のアダプターに渡す、アプリの中身。開発モードのアプリは持たない(app.fetch の道を通す)
+const nodeCores = new WeakMap<object, AppCore>();
+export const nodeCoreOf = (app: object): AppCore | undefined => nodeCores.get(app);
+
 // app.route(prefix, app) に渡せるもの(createApp() で作ったアプリ)
 /** An app that can be mounted with `app.route(prefix, app)`. Only apps from {@link createApp} are accepted at runtime. */
 export type MountableApp = {
@@ -210,8 +214,8 @@ export type AppCore = {
     /** The app being created. */
     app: App<any>;
     // ルートを決める / かかるミドルウェアを集める / いちばん内側の処理(本番の fetch と同じもの)
-    /** Decides how the request is handled (route, 404, 405, ...). */
-    resolve(c: Context): Resolved;
+    /** Decides how the request is handled (route, 404, 405, ...). `method` defaults to `c.req.method`. */
+    resolve(c: Context, method?: string): Resolved;
     /** The middleware that applies to the request. */
     layers(c: Context): Layer[];
     /** The innermost step after all middleware (the same as in production). */
@@ -331,7 +335,8 @@ export function createApp<V extends object = Record<string, unknown>>(options: A
         return params;
     }
 
-    function resolve(c: Context): Resolved {
+    // method: Node のアダプターは、Request を作らずに渡す
+    function resolve(c: Context, method: string = c.req.method): Resolved {
         let path: string;
         try {
             path = c.path;
@@ -339,7 +344,6 @@ export function createApp<V extends object = Record<string, unknown>>(options: A
             // エンコードが不正(HttpError 400)。ミドルウェアは動かしてから返す
             return { kind: "badRequest", error };
         }
-        const method = c.req.method;
         if (NOT_IMPLEMENTED.has(method)) return { kind: "notImplemented" };
 
         // 近道: パラメーターのないルートにぴったり合い、メソッドも合えば、それがいちばん優先される
@@ -569,16 +573,20 @@ export function createApp<V extends object = Record<string, unknown>>(options: A
         ...routes.map((r): GroupEntry => ({ kind: "route", method: r.method, path: r.path, handler: r.handler })),
     ]);
 
+    const core: AppCore = {
+        app,
+        resolve,
+        layers: applicableMiddlewares,
+        inner: inner as AppCore["inner"],
+        fail: (err, c) => handleError(err, c, onError, notFound),
+        routes: () => routes,
+    };
+
     // 開発モード: 中身を渡して、開発用の fetch と既定の onError / notFound を受け取る
-    if (options.dev) {
-        devHooks = options.dev.install({
-            app,
-            resolve,
-            layers: applicableMiddlewares,
-            inner: inner as AppCore["inner"],
-            fail: (err, c) => handleError(err, c, onError, notFound),
-            routes: () => routes,
-        });
+    if (!options.dev) {
+        nodeCores.set(app, core);
+    } else {
+        devHooks = options.dev.install(core);
         onError = devHooks.onError;
         notFound = devHooks.notFound;
     }
