@@ -2,7 +2,7 @@ import { Context, type ExecutionContext, type Handler, type HandlerResult, type 
 import {
     allowedMethods,
     checkParamNames,
-    checkWildcard,
+    checkPathSyntax,
     middlewarePath,
     normalizeMethod,
     routeShape,
@@ -107,6 +107,8 @@ export type App<V extends object = Record<string, unknown>> = {
     /**
      * Adds a GET route: `app.get(path, handler)`, or `app.get(path, { params, query, body }, handler)` to validate
      * with Standard Schema first. Path parameters (`/users/:id`) are typed from the path.
+     * There are no optional or regular expression parameters: a name containing `?`, `+`, `{`, `}`, `(`, `)`, `[`, `]`, `|`, `:`
+     * or a space throws (`:id?`, `:id{[0-9]+}`). Check the value in the handler or with a schema.
      *
      * A `*` as the whole last segment (`/files/*`) matches that path and everything below it: `/files`, `/files/a`, `/files/a/b`.
      * The rest of the path is in the `"*"` parameter (`"a/b"`, or `""` for `/files`). Any other `*` throws.
@@ -307,7 +309,7 @@ export function createApp<V extends object = Record<string, unknown>>(options: A
         devHooks?.checkRoute(method, path, schemas);
         const segments = splitPattern(path);
         checkParamNames(path, segments);
-        checkWildcard(path, segments);
+        checkPathSyntax(path, segments);
 
         // 同じメソッド + 同じ形のパスがあったら、あとから登録したほうは絶対に呼ばれないのでエラーにする
         const shape = routeShape(segments);
