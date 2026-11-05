@@ -194,6 +194,128 @@ describe("app.use(path, mw)", () => {
     });
 });
 
+describe('app.use("/x/*", mw)', () => {
+    // 認証のミドルウェアが付いたアプリ。* を文字として比べていたころは、認証が動かず 200 で本文が返っていた
+    function guarded(path: string) {
+        const app = createApp();
+        let ran = 0;
+        app.use(path, (c, next) => {
+            ran++;
+            if (c.req.headers.get("authorization") !== "secret") {
+                c.status(401);
+                return "ログインしてね";
+            }
+            return next();
+        });
+        for (const route of ["/admin", "/admin/secret", "/admin/a/b", "/administrator", "/other"]) {
+            app.get(route, () => "秘密のデータ");
+        }
+        return { app, ran: () => ran };
+    }
+
+    test("認証が動く: 認証なしの /admin/secret は 401", async () => {
+        const { app, ran } = guarded("/admin/*");
+
+        const res = await app.fetch(req("/admin/secret"));
+
+        expect(res.status).toBe(401);
+        expect(await res.text()).toBe("ログインしてね");
+        expect(ran()).toBe(1);
+    });
+
+    test("認証を通れば、ハンドラーまで届く", async () => {
+        const { app } = guarded("/admin/*");
+
+        const res = await app.fetch(req("/admin/secret", { headers: { authorization: "secret" } }));
+
+        expect(res.status).toBe(200);
+        expect(await res.text()).toBe("秘密のデータ");
+    });
+
+    test.each([
+        ["/admin", 401],
+        ["/admin/", 401],
+        ["//admin", 401],
+        ["/%61dmin/secret", 401],
+        ["/admin/secret", 401],
+        ["/admin/a/b", 401],
+        ["/administrator", 200],
+        ["/other", 200],
+    ])("%s は %d(/admin と同じ)", async (path, status) => {
+        expect((await guarded("/admin/*").app.fetch(req(path))).status).toBe(status);
+        expect((await guarded("/admin").app.fetch(req(path))).status).toBe(status);
+    });
+
+    test("末尾のスラッシュがあっても同じ", async () => {
+        expect((await guarded("/admin/*/").app.fetch(req("/admin/secret"))).status).toBe(401);
+    });
+
+    test('"/*" は "/" と同じで、すべてのパスで動く', async () => {
+        for (const path of ["/*", "/"]) {
+            const { app } = guarded(path);
+            for (const target of ["/admin", "/other", "/missing/path"]) {
+                expect((await app.fetch(req(target))).status).toBe(401);
+            }
+        }
+    });
+
+    test("プレフィックスのパラメーターにも使える", async () => {
+        const app = createApp();
+        const seen: string[] = [];
+        app.use("/users/:id/*", (c, next) => {
+            seen.push(c.path);
+            return next();
+        });
+        app.get("/users/:id", () => "user");
+        app.get("/users/:id/posts", () => "posts");
+        app.get("/users", () => "list");
+
+        for (const path of ["/users", "/users/1", "/users/1/posts"]) await app.fetch(req(path));
+
+        expect(seen).toEqual(["/users/1", "/users/1/posts"]);
+    });
+
+    test("middlewareList には、取ったあとのパスが出る", () => {
+        const app = createApp();
+        app.use("/admin/*", function auth(_c, next) {
+            return next();
+        });
+        app.use("/*", function all(_c, next) {
+            return next();
+        });
+
+        expect(app.middlewareList()).toEqual([
+            { name: "auth", path: "/admin", anonymous: false },
+            { name: "all", path: "/", anonymous: false },
+        ]);
+    });
+
+    test.each(["/a/*/c", "/*/a", "/a/*/*", "/files/*.js", "/*.js", "/admin*", "/*splat", "/a/**", "/:id*"])("%s は登録時のエラー", (path) => {
+        let error: (Error & { code?: string }) | undefined;
+        try {
+            createApp().use(path, (_c, next) => next());
+        } catch (err) {
+            error = err as Error & { code?: string };
+        }
+
+        expect(error?.code).toBe("wildcard_position");
+        expect(error?.message).toBe(`"*" must be the whole last segment: ${path}`);
+    });
+
+    test("開発モードの登録時のエラーには、日本語の説明が付く", () => {
+        const app = createApp({ dev: devtools() });
+
+        expect(() => app.use("/a/*/c", (_c, next) => next())).toThrow("最後のセグメント全体");
+    });
+
+    test("ルートの * はまだ文字のまま(ミドルウェアだけの変更)", async () => {
+        const app = createApp();
+        app.get("/files/*", () => "ok");
+
+        expect((await app.fetch(req("/files/a"))).status).toBe(404);
+    });
+});
+
 describe("next() の呼び方", () => {
     test("何も返さず next() 済みなら、下流のレスポンスを使う", async () => {
         const app = createApp();

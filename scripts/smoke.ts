@@ -140,6 +140,8 @@ const CHECKS: Check[] = [
     { name: "認証", path: "/admin", status: 401 },
     { name: "認証(//admin)", path: "//admin", status: 401 },
     { name: "認証OK", path: "/admin", init: { headers: { authorization: "secret" } }, status: 200 },
+    { name: 'use("/members/*") の認証', path: "/members/page", status: 401, body: "ログインしてね" },
+    { name: 'use("/members/*") の認証OK', path: "/members/page", init: { headers: { authorization: "secret" } }, status: 200, body: "会員のページ" },
     { name: "400", path: "/users/%E0%A4%A", status: 400 },
     { name: "404", path: "/nope", status: 404 },
     { name: "500", path: "/boom", status: 500 },

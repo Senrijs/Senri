@@ -2,6 +2,7 @@ import { Context, type ExecutionContext, type Handler, type HandlerResult, type 
 import {
     allowedMethods,
     checkParamNames,
+    middlewarePath,
     normalizeMethod,
     routeShape,
     splitPattern,
@@ -87,7 +88,8 @@ export type App<V extends object = Record<string, unknown>> = {
      * Adds middleware. Middleware runs in registration order.
      * With a path (`app.use("/admin", mw)`), it runs only for that path and below, compared by segment
      * (`/admin` does not match `/administrator`; `:param` segments match any segment).
-     * Throws if the middleware is missing.
+     * `app.use("/admin/*", mw)` means the same as `app.use("/admin", mw)`, so it also runs for `/admin` itself.
+     * Throws if the middleware is missing, or if the path has a `*` anywhere other than as the whole last segment.
      */
     use(pathOrMw: string | Middleware<V>, mw?: Middleware<V>): void;
     /**
@@ -371,9 +373,10 @@ export function createApp<V extends object = Record<string, unknown>>(options: A
 
     const app: App<V> = {
         use: guard((pathOrMw: string | Middleware<V>, mw?: Middleware<V>) => {
-            const path = typeof pathOrMw === "string" ? pathOrMw : null;
+            const written = typeof pathOrMw === "string" ? pathOrMw : null;
             const fn = typeof pathOrMw === "string" ? mw : pathOrMw;
-            if (!fn) throw senriError("no_middleware", `Missing middleware: ${path}`);
+            if (!fn) throw senriError("no_middleware", `Missing middleware: ${written}`);
+            const path = written === null ? null : middlewarePath(written);
 
             middlewares.push({
                 // 関数の名前を使う。無名の関数(その場で書いたアロー関数など)は登録順の番号で呼ぶ
