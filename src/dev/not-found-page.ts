@@ -14,7 +14,7 @@ type RouteInfo = { method: string; path: string };
 const linkable = (r: RouteInfo) => (r.method === "GET" || r.method === "ALL") && !r.path.includes(":");
 
 export function notFoundPage(c: Context, routes: RouteInfo[]): Response {
-    // デコードできないパスでミドルウェアが c.notFound() を呼ぶと、ここで HttpError 400 が投げられて onError に回る
+    // devNotFound が先に確かめているので、c.path は読める
     const path = c.path;
     // ルートがあるのに c.notFound() を呼んだときは、提案しない(c.route はミドルウェアより先に決まる)
     const closest = c.route === undefined ? suggest(routes, path) : null;

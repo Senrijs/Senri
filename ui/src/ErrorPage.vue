@@ -171,7 +171,7 @@ const duration = formatMs(d.durationMs);
         </section>
 
         <footer class="page-footer">
-            このページは開発モード(<code>createApp({ dev: true })</code>)でのみ表示されます。本番では「{{
+            このページは開発モード(<code>import { devtools } from "@senrijs/senri/dev"</code> と <code>createApp({ dev: devtools() })</code>)でのみ表示されます。本番では「{{
                 d.production
             }}」だけが返ります。
         </footer>

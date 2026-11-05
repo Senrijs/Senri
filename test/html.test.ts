@@ -25,6 +25,14 @@ describe("escapeHtml", () => {
     });
 });
 
+describe("開発用のページの案内", () => {
+    test("今の開発モードの書き方を案内する(0.1 の createApp({ dev: true }) は使えない)", () => {
+        expect(PAGE_HTML).not.toContain("dev: true");
+        expect(PAGE_HTML).toContain("createApp({ dev: devtools() })");
+        expect(PAGE_HTML).toContain(`import { devtools } from "@senrijs/senri/dev"`);
+    });
+});
+
 // 開発用のページは、開くたびに外へ通信しない(オフラインでも遅れずに出る。どこを開いたかを外に知らせない)
 describe("開発用のページが外のものを読み込まない", () => {
     // http(s) の URL として残してよいもの。どれも Vue のランタイムの中の文字列で、読み込むものではない
