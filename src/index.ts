@@ -36,6 +36,7 @@ export {
     type HandlerResult,
     type Middleware,
     type Next,
+    type RedirectStatus,
     type VariablesOf,
 } from "./context.ts";
 export { HttpError, type ErrorHandler, type NotFoundHandler } from "./errors.ts";

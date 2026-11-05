@@ -44,6 +44,8 @@ type Check = {
     status: number;
     body?: string;
     cookies?: string[];
+    type?: string;
+    location?: string;
     // 開発モードの HTML ページ。埋め込まれた JSON を確かめて、だめなら理由を返す
     page?: (data: any, runtime: string) => string | null;
     // JSON のレスポンス。中身を確かめて、だめなら理由を返す
@@ -59,6 +61,40 @@ const CHECKS: Check[] = [
     { name: "POST のボディ", path: "/echo", init: { method: "POST", body: "こんにちは" }, status: 200, body: "body=こんにちは" },
     { name: "Set-Cookie 2つ", path: "/cookies", status: 200, cookies: ["a=1", "b=2"] },
     { name: "日本語パラメーター", path: "/users/山田", status: 200, body: "user 山田" },
+    { name: "c.html()", path: "/page", status: 200, body: "<h1>こんにちは!</h1>", type: "text/html; charset=utf-8" },
+    {
+        name: "c.redirect() と Cookie",
+        path: "/login",
+        init: { redirect: "manual" },
+        status: 303,
+        body: "",
+        location: "/hello",
+        cookies: ["session=1", "seen=1"],
+    },
+    {
+        name: "c.redirect()(HEAD)",
+        path: "/login",
+        init: { method: "HEAD", redirect: "manual" },
+        status: 303,
+        location: "/hello",
+        cookies: ["session=1", "seen=1"],
+    },
+    {
+        name: "c.redirect()(日本語のパス)",
+        path: "/to/japanese",
+        init: { redirect: "manual" },
+        status: 302,
+        location: "/users/%E5%B1%B1%E7%94%B0",
+    },
+    { name: "c.redirect()(日本語のパスをたどる)", path: "/to/japanese", status: 200, body: "user 山田" },
+    {
+        name: "c.redirect()(日本語ドメイン)",
+        path: "/to/idn",
+        init: { redirect: "manual" },
+        status: 302,
+        location: "https://xn--r8jz45g.jp/%E3%83%91%E3%82%B9",
+    },
+    { name: "c.redirect()(不正なサロゲート)", path: "/to/surrogate", init: { redirect: "manual" }, status: 500 },
     { name: "HEAD", path: "/hello", init: { method: "HEAD" }, status: 200, body: "" },
     {
         name: "QUERY",
@@ -320,6 +356,8 @@ async function smoke(runtime: string): Promise<boolean> {
                 res.status === check.status &&
                 reason === null &&
                 (check.body === undefined || body === check.body) &&
+                (check.type === undefined || res.headers.get("content-type") === check.type) &&
+                (check.location === undefined || res.headers.get("location") === check.location) &&
                 (check.cookies === undefined || JSON.stringify(cookies) === JSON.stringify(check.cookies));
             if (!pass) ok = false;
             const shown = check.page || check.json ? (reason ?? (check.page ? "HTML ページ" : "JSON")) : JSON.stringify(body.slice(0, 60));

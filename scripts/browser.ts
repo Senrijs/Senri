@@ -88,10 +88,14 @@ try {
                 status: res.status,
                 type: res.headers.get("content-type"),
                 mark: res.headers.get("x-senri"),
+                location: res.headers.get("location"),
                 body: await res.text(),
             };
         };
         return {
+            page: await call("/api/page"),
+            go: await call("/api/go"),
+            idn: await call("/api/go/idn"),
             text: await call("/api/hello"),
             params: await call("/api/users/42"),
             post: await call("/api/echo", { method: "POST", headers: { "content-type": "application/json" }, body: `{"a":1}` }),
@@ -105,6 +109,9 @@ try {
     check("ページ: Uint8Array → そのままボディ", inPage.bytes.body === "\u0001\u0002\u0003", JSON.stringify(inPage.bytes));
     check("ページ: ミドルウェア", inPage.text.mark === "browser", JSON.stringify(inPage.text));
     check("ページ: 404", inPage.missing.status === 404 && inPage.missing.body === "404 Not Found", JSON.stringify(inPage.missing));
+    check("ページ: c.html()", inPage.page.body === "<h1>こんにちは</h1>" && inPage.page.type === "text/html; charset=utf-8", JSON.stringify(inPage.page));
+    check("ページ: c.redirect() の相対パス", inPage.go.status === 302 && inPage.go.location === "/api/hello" && inPage.go.body === "", JSON.stringify(inPage.go));
+    check("ページ: c.redirect() の日本語ドメイン", inPage.idn.location === "https://xn--r8jz45g.jp/%E3%83%91%E3%82%B9", JSON.stringify(inPage.idn));
 
     // Service Worker で fetch イベントに答える
     // 登録や切り替えが終わらないときに永遠に待たないよう、待ちには上限を付ける(どちらで止まったかを出して失敗にする)
@@ -126,12 +133,19 @@ try {
         const res = await fetch("/api/users/7");
         const post = await fetch("/api/echo", { method: "POST", headers: { "content-type": "application/json" }, body: `{"b":2}` });
         const missing = await fetch("/api/nope");
+        // redirect: "manual" だと中身の見えない opaqueredirect になるので、たどった結果で確かめる
+        const follow = async (path: string) => {
+            const r = await fetch(path);
+            return { redirected: r.redirected, path: new URL(r.url).pathname, body: await r.text() };
+        };
         return {
             status: res.status,
             mark: res.headers.get("x-senri"),
             body: await res.text(),
             post: await post.text(),
             missing: { status: missing.status, body: await missing.text() },
+            go: await follow("/api/go"),
+            japanese: await follow("/api/go/japanese"),
         };
     }, SW_TIMEOUT).catch((err: Error) => {
         // 時間切れ(ほかの失敗も)は、ここで1件の失敗にして、残りの確認は飛ばす
@@ -144,6 +158,8 @@ try {
         check("Service Worker: ボディを読む", viaWorker.post === `{"body":{"b":2}}`, viaWorker.post);
         // 静的サーバーの 404("static 404")ではなく、Senri の 404 が返る
         check("Service Worker: Senri の 404", viaWorker.missing.status === 404 && viaWorker.missing.body === "404 Not Found", JSON.stringify(viaWorker.missing));
+        check("Service Worker: c.redirect() の相対パス", viaWorker.go.redirected && viaWorker.go.path === "/api/hello" && viaWorker.go.body === "こんにちは", JSON.stringify(viaWorker.go));
+        check("Service Worker: c.redirect() の日本語のパス", viaWorker.japanese.redirected && viaWorker.japanese.body === "日本語のルート", JSON.stringify(viaWorker.japanese));
     }
 
     // Cookie: 本物の HTTP のレスポンス(Set-Cookie)で付けて、deleteCookie で消えるか
@@ -160,6 +176,11 @@ try {
         for (const name of NAMES) deleteCookie(c, name);
         return "deleted";
     });
+    cookieApp.get("/login", (_, c) => {
+        setCookie(c, "session", "1");
+        return c.redirect("/after-login", 303);
+    });
+    cookieApp.get("/after-login", () => "ログインしました");
     const cookieServer = serveNode(cookieApp, { port: 0 });
     try {
         await new Promise<void>((resolve) => cookieServer.once("listening", resolve));
@@ -172,6 +193,9 @@ try {
         await page.goto(`${cookieBase}/delete`);
         const afterDelete = await names();
         check("Cookie: deleteCookie で消える(__Host- / __Secure- も)", afterDelete.length === 0, JSON.stringify(afterDelete));
+        await page.goto(`${cookieBase}/login`);
+        const afterLogin = await names();
+        check("Cookie: ログイン後のリダイレクトで付く", page.url() === `${cookieBase}/after-login` && JSON.stringify(afterLogin) === `["session"]`, `${page.url()} ${JSON.stringify(afterLogin)}`);
     } finally {
         cookieServer.close();
     }

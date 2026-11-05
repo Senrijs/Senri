@@ -181,6 +181,26 @@ app.routes({ "GET /ping": () => "pong" });        // 表の形でもまとめて
 
 関数を返す(呼び忘れ)のは型エラーで、実行時も 500 になります。
 
+### レスポンスのヘルパー
+
+```ts
+import { setCookie } from "@senrijs/senri/cookie";
+
+app.get("/", (_, c) => c.html("<h1>こんにちは</h1>"));   // text/html; charset=utf-8
+app.get("/old", (_, c) => c.redirect("/new", 301));      // 既定は 302
+app.post("/login", (_, c) => {
+    setCookie(c, "session", "abc");                      // c.header() で設定したものも付く
+    return c.redirect("/dashboard", 303);
+});
+```
+
+- `c.html()` は本文をそのまま返します。利用者の入力を入れるときは、自分でエスケープしてください
+- `c.redirect()` の status は 301 / 302 / 303 / 307 / 308 だけです。`c.status()` は見ません。`/login` のような相対パスも渡せます
+- `c.header("location", ...)` より `c.redirect()` の値が優先です
+- ASCII 以外はどのランタイムでも同じ形にエンコードします。絶対 URL は `new URL()` に任せ(`https://例え.jp/` → `https://xn--r8jz45g.jp/`)、相対パスは ASCII 以外の部分だけパーセントエンコードします(`%2F` などは二重にしません)
+- CR / LF を含む値と、エンコードできない値はエラーになります。ただし、ほかのサイトへの URL は通すので、`c.query("next")` のような外からの値は、行き先を確かめてから渡してください(オープンリダイレクトの対策)
+- ブラウザの Service Worker とページの中の `app.fetch()` では、`Response` から `Set-Cookie` が消えるので、Cookie は付きません(ブラウザの制限です)
+
 ### グループ化
 
 ```ts
@@ -267,7 +287,7 @@ app.use("/admin", (c, next) => {
 ```
 
 - ルートはミドルウェアより先にマッチするので、`next()` の前から `c.route`(`"/users/:id"` のようなパターン)と `c.params` が読めます
-- `c.header()` で設定したヘッダーは、最後に1回だけレスポンスに足されます。`Response` を直接返したときも、エラーのときも効きます
+- `c.header()` で設定したヘッダーは、最後に1回だけレスポンスに足されます。`Response` を直接返したときも、エラーのときも効きます。ただし、`Content-Type` と `Location` は、レスポンス自身にあればそちらが優先です
 - ミドルウェアからハンドラーへ値を渡すには `c.set` / `c.get` を使います。型は `createApp<{ user: User }>()` で決めます
 
 ### 標準のミドルウェア

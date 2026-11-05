@@ -21,6 +21,8 @@ const JA: Record<string, string> = {
     cookie_host_path: "__Host- で始まる Cookie の path は \"/\" でなければなりません(ブラウザに捨てられます)。path を外すか \"/\" にしてください",
     no_valid: "c.valid() で読めるのは、ルートに { query } や { body } のスキーマを渡したものだけです",
     no_execution_ctx: "c.executionCtx は Cloudflare Workers で、app.fetch(req, env, ctx) として呼ばれたときだけ使えます",
+    redirect_status: "c.redirect() の status に使えるのは 301 / 302 / 303 / 307 / 308 だけです",
+    redirect_location: "リダイレクト先に使えない値です。改行(ヘッダー注入の対策)や、URL にできない文字は入れられません。外から受け取った値をそのまま渡していませんか？",
     returned_function: "ハンドラーが関数を返しました。呼び出し忘れではありませんか？",
     returned_nothing: "ハンドラーが何も返していません(undefined / null)",
     next_twice: "next() が2回呼ばれました。1つのミドルウェアで呼べるのは1回だけです",
