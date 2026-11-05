@@ -128,6 +128,44 @@ describe("リクエストの記録(開発モード)", () => {
         expect((await lastRecord(a)).query).toBe("?token=***&tab=posts");
     });
 
+    test("c.notFound() は 404 として記録され、ルートも残る(呼んだ層の印は HttpError と同じ)", async () => {
+        const a = app();
+        a.get("/items/:id", (_, c) => c.notFound());
+        a.get("/http/:id", () => {
+            throw new HttpError(404, "x");
+        });
+
+        await a.fetch(req("/items/1"));
+        const called = await lastRecord(a);
+        await a.fetch(req("/http/1"));
+        const thrown = await lastRecord(a);
+
+        expect(called).toMatchObject({ status: 404, route: "/items/:id", params: { id: "1" }, error: null });
+        expect(called.layers.map((l) => [l.name, l.state])).toEqual([
+            ["logger", "ok"],
+            ["handler", "failed"],
+        ]);
+        expect(thrown.layers.map((l) => l.state)).toEqual(called.layers.map((l) => l.state));
+    });
+
+    test("ミドルウェアの c.notFound() は、内側を未到達として記録する", async () => {
+        const a = app();
+        a.use("/hidden", function hide(c) {
+            return c.notFound();
+        });
+        a.get("/hidden", () => "ここには来ない");
+
+        await a.fetch(req("/hidden"));
+        const r = await lastRecord(a);
+
+        expect(r).toMatchObject({ status: 404, route: "/hidden", error: null });
+        expect(r.layers.map((l) => [l.name, l.state])).toEqual([
+            ["logger", "ok"],
+            ["hide", "failed"],
+            ["handler", "skipped"],
+        ]);
+    });
+
     test("記録した順に id が振られる", async () => {
         const a = app();
 

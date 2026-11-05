@@ -23,6 +23,7 @@ import {
     HttpError,
     markConversionError,
     methodNotAllowed,
+    notFoundResponse,
     senriError,
     type ErrorHandler,
     type NotFoundHandler,
@@ -90,12 +91,15 @@ export type App<V extends object = Record<string, unknown>> = {
      */
     use(pathOrMw: string | Middleware<V>, mw?: Middleware<V>): void;
     /**
-     * Replaces the error handler. It receives anything thrown by middleware or handlers.
+     * Replaces the error handler. It receives anything thrown by middleware or handlers, except `c.notFound()`.
      * Before it is called, the status is set from an {@link HttpError} (status and headers) or to 500.
      * Without development mode, the default returns the `HttpError` message, or `"500 Internal Server Error"` for other errors.
      */
     onError(handler: ErrorHandler<V>): void;
-    /** Replaces the handler for requests that match no route. The status is already set to 404 when it is called. */
+    /**
+     * Replaces the handler for requests that match no route, and for `c.notFound()`.
+     * The status is already set to 404 when it is called.
+     */
     notFound(handler: NotFoundHandler<V>): void;
     /**
      * Adds a GET route: `app.get(path, handler)`, or `app.get(path, { params, query, body }, handler)` to validate
@@ -464,7 +468,7 @@ export function createApp<V extends object = Record<string, unknown>>(options: A
                     c.route = resolved.route.path;
                     c.params = resolved.params;
                 }
-                const fail = (err: unknown) => handleError(err, c, onError);
+                const fail = (err: unknown) => handleError(err, c, onError, notFound);
                 const layers = applicableMiddlewares(c);
                 if (layers.length > 0) {
                     return compose(layers, c, () => inner(c, resolved), fail).then((res) => c.finalize(res));
@@ -508,8 +512,7 @@ export function createApp<V extends object = Record<string, unknown>>(options: A
             case "notImplemented":
                 throw new HttpError(501, "501 Not Implemented");
             case "notFound":
-                c.status(404);
-                return Promise.resolve(notFound(c)).then((value) => c.toResponse(value));
+                return notFoundResponse(c, notFound);
         }
     }
 
@@ -548,7 +551,7 @@ export function createApp<V extends object = Record<string, unknown>>(options: A
             resolve,
             layers: applicableMiddlewares,
             inner: inner as AppCore["inner"],
-            fail: (err, c) => handleError(err, c, onError),
+            fail: (err, c) => handleError(err, c, onError, notFound),
             routes: () => routes,
         });
         onError = devHooks.onError;

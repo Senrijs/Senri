@@ -67,12 +67,20 @@ export function conversionOriginOf(err: unknown): ConversionOrigin | null {
  * from the {@link HttpError}, or to 500. If it throws, a fixed `500 Internal Server Error` is returned.
  */
 export type ErrorHandler<V extends object = any> = (err: unknown, c: Context<V>) => HandlerResult | Promise<HandlerResult>;
-/** Handles a request that matched no route (`app.notFound`). The status is already set to 404. */
+/** Handles a request that matched no route, or that called `c.notFound()` (`app.notFound`). The status is already set to 404. */
 export type NotFoundHandler<V extends object = any> = (c: Context<V>) => HandlerResult | Promise<HandlerResult>;
 
 // onError を通して、例外をレスポンスに変える
 // HttpError なら status と headers を先に c に入れておくので、onError が文字列を返すだけでも正しい status になる
-export async function handleError(err: unknown, c: Context, onError: ErrorHandler): Promise<Response> {
+// c.notFound() は onError ではなく notFound ハンドラーに回す。ハンドラーが普通のエラーを投げたら、それを onError に渡す
+export async function handleError(err: unknown, c: Context, onError: ErrorHandler, notFound: NotFoundHandler): Promise<Response> {
+    if (errorCode(err) === "not_found") {
+        try {
+            return await notFoundResponse(c, notFound);
+        } catch (failed) {
+            err = failed;
+        }
+    }
     if (err instanceof HttpError) {
         c.status(err.status);
         err.headers.forEach((value, key) => c.header(key, value));
@@ -111,7 +119,23 @@ export function errorCode(err: unknown): string | undefined {
 export const defaultOnError: ErrorHandler = (err, c) =>
     c.text(err instanceof HttpError ? err.message : "500 Internal Server Error");
 
-export const defaultNotFound: NotFoundHandler = (c) => c.text("404 Not Found");
+export const defaultNotFound = (c: Context): Response => c.text("404 Not Found", 404);
+
+// notFound ハンドラーを呼んで、404 のレスポンスにする
+// ハンドラーの中の c.notFound() は、もう一度ハンドラーを呼ばずに既定の 404 にする(無限ループにしない)
+// ルートがないリクエストも毎回ここを通るので、async にしない(async にすると、わずかに遅くなる)
+export function notFoundResponse(c: Context, notFound: NotFoundHandler): Promise<Response> | Response {
+    const fallback = (err: unknown) => {
+        if (errorCode(err) !== "not_found") throw err;
+        return defaultNotFound(c);
+    };
+    c.status(404);
+    try {
+        return Promise.resolve(notFound(c)).then((value) => c.toResponse(value), fallback);
+    } catch (err) {
+        return fallback(err);
+    }
+}
 
 export function methodNotAllowed(methods: string): HttpError {
     return senriError("method_not_allowed", new HttpError(405, "405 Method Not Allowed", { headers: { allow: methods } }));

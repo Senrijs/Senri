@@ -2,7 +2,7 @@ import { requestPathname, splitPath } from "./router.ts";
 import { isConnectionInfo } from "./connection.ts";
 import type { Timing } from "./compose.ts";
 import { readBody } from "./body.ts";
-import { senriError } from "./errors.ts";
+import { HttpError, senriError } from "./errors.ts";
 
 // そのままレスポンスのボディにできるもの(JSON にはしない)
 // TypedArray は SharedArrayBuffer のもの以外(Response のボディにできないので)
@@ -421,6 +421,44 @@ export class Context<V extends object = any, I extends object = {}> {
             throw senriError("redirect_status", new TypeError(`Invalid redirect status: ${status} (use 301, 302, 303, 307 or 308)`));
         }
         return new Response(null, { status, headers: { location: toLocation(location) } });
+    }
+
+    // 例外で止めて、app の handleError(src/errors.ts)で notFound ハンドラーに回す
+    // Context にハンドラーを持たせないので、使わないリクエストのコストは増えない
+    /**
+     * Stops here and responds with the app's 404: the handler set with `app.notFound`, or the default one.
+     * Status 404 is set first, and headers set with {@link Context.header} are added to the response.
+     * In a mounted app or router, this app's handler is used.
+     *
+     * Write `return c.notFound()`. It throws, so code after a bare `c.notFound();` does not run either,
+     * but TypeScript only treats that form as stopping when `c` has an explicit type annotation.
+     * With the usual `(_, c) =>`, a variable is not narrowed after it, and a handler that ends with it is a type error.
+     *
+     * It works like throwing an {@link HttpError} 404, except that it goes to the `notFound` handler and not to `onError`:
+     * - An outer middleware's `await next()` does not throw; it returns the 404 response. Check `res.status`.
+     * - A `try/catch` in the same function catches it. Rethrow it with `if (err instanceof HttpError) throw err`.
+     *   To check for a 404, use `err instanceof HttpError && err.status === 404`.
+     *
+     * Inside the `notFound` handler, it responds with the default 404 instead of calling the handler again.
+     * Inside `onError`, it gives the fixed 500, as any error thrown there does.
+     *
+     * @example
+     * ```ts
+     * import { createApp } from "@senrijs/senri";
+     *
+     * const items = new Map([["1", { name: "apple" }]]);
+     *
+     * const app = createApp();
+     * app.notFound((c) => c.json({ error: "not found", path: c.path }));
+     * app.get("/items/:id", ({ id }, c) => {
+     *     const item = items.get(id);
+     *     if (!item) return c.notFound();
+     *     return item;
+     * });
+     * ```
+     */
+    notFound(): never {
+        throw senriError("not_found", new HttpError(404, "404 Not Found"));
     }
 
     // c.header() で設定したヘッダーを res に足す。app が最後に1回だけ呼ぶ
