@@ -333,7 +333,7 @@ app.use(serveStatic({ root: "./public" }));            // Bun・Deno・Node.js �
 - `health()`: `/healthz` は応答できれば 200。`/readyz` は `ready()` が true なら 200、false・例外・止まり始めたあとは 503
 - `logger()`: 色は既定でオンです。ファイルや CI に流すときは `color: false` にしてください
 - `secureHeaders()`: Content-Security-Policy と Cross-Origin-Embedder-Policy は既定でオフです(アプリによって壊れやすいので)
-- `serveStatic()`: ドットファイルは既定で配りません。root の外(シンボリックリンクを含む)には出ません
+- `serveStatic()`: ドットファイルは既定で配りません。root の外(シンボリックリンクを含む)には出ません。`prefix: "/static/*"` は `prefix: "/static"` と同じ意味です
 
 ## エラー
 

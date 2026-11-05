@@ -143,6 +143,30 @@ describe("serveStatic()", () => {
         expect((await app.fetch(req("/app.js"))).status).toBe(404);
     });
 
+    test.each(["/static/*", "/static/*/", "static/*"])('prefix の %s は "/static" と同じ', async (prefix) => {
+        const app = makeApp({ prefix });
+        expect(await (await app.fetch(req("/static/app.js"))).text()).toBe("console.log(1)");
+        expect((await app.fetch(req("/app.js"))).status).toBe(404);
+        // 文字の * のパスで配らない
+        expect((await app.fetch(req("/static/*/app.js"))).status).toBe(404);
+    });
+
+    test.each(["/*", "*"])('prefix の %s は "/" と同じ', async (prefix) => {
+        const app = makeApp({ prefix });
+        expect(await (await app.fetch(req("/app.js"))).text()).toBe("console.log(1)");
+    });
+
+    test.each(["/a/*/b", "/*.js", "/static*", "/*/static"])("prefix の %s は wildcard_position", (prefix) => {
+        let error: (Error & { code?: string }) | undefined;
+        try {
+            serveStatic({ root: ".", prefix });
+        } catch (err) {
+            error = err as Error & { code?: string };
+        }
+
+        expect(error?.code).toBe("wildcard_position");
+    });
+
     test("cacheControl を付けられる", async () => {
         const res = await makeApp({ cacheControl: "public, max-age=3600" }).fetch(req("/app.js"));
         expect(res.headers.get("cache-control")).toBe("public, max-age=3600");

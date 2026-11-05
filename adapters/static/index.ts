@@ -21,6 +21,7 @@ import { extname, join, relative, resolve, sep } from "node:path";
 import process from "node:process";
 import { Readable } from "node:stream";
 import type { Middleware } from "../../src/index.ts";
+import { middlewarePath, splitPattern } from "../../src/router.ts";
 
 /** Options for {@link serveStatic}. */
 export type ServeStaticOptions = {
@@ -28,7 +29,10 @@ export type ServeStaticOptions = {
     /** The directory to serve. A relative path is resolved from the current directory when `serveStatic()` is called. */
     root: string;
     // このパスの下だけで配る。"/static" なら /static/app.js → root/app.js
-    /** Serve only under this URL path: with `"/static"`, `/static/app.js` serves `root/app.js`. Default `"/"`. */
+    /**
+     * Serve only under this URL path: with `"/static"`, `/static/app.js` serves `root/app.js`. Default `"/"`.
+     * `"/static/*"` means the same as `"/static"`, as in `app.use`. Any other `*` throws.
+     */
     prefix?: string;
     // ディレクトリを開いたときに返すファイル。false なら返さない
     /** The file served for a directory. Default `"index.html"`; `false` disables it. */
@@ -139,7 +143,8 @@ export function serveStatic(options: ServeStaticOptions): Middleware {
         );
     }
     const root = resolve(options.root);
-    const prefix = (options.prefix ?? "/").split("/").filter(Boolean);
+    // app.use("/x/*") と同じく、末尾の "/*" は取り、ほかの * はエラーにする(文字のまま比べると、何も配らない)
+    const prefix = splitPattern(middlewarePath(options.prefix ?? "/"));
     const index = options.index ?? "index.html";
     // シンボリックリンクで外に出ていないかを、実体のパスで確かめる(root 自体がリンクでもよいように、root も実体にする)
     const realRoot = realpath(root).catch(() => root);
