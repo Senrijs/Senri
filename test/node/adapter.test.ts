@@ -67,6 +67,109 @@ app.get("/wait", (_, c) => {
     return sawAbort.then(() => "aborted");
 });
 
+const encoder = new TextEncoder();
+const bytes = (text: string) => encoder.encode(text);
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+app.get("/one/text", () => "hello");
+app.get("/one/json", () => ({ a: 1 }));
+app.get("/one/bytes", () => new Uint8Array([1, 2, 3]));
+app.get("/one/empty", () => new Response(""));
+app.get("/no-content", () => new Response(null, { status: 204 }));
+app.get("/not-modified", () => new Response(null, { status: 304, headers: { etag: '"a"' } }));
+app.get("/one/length", () => new Response("hello", { headers: { "content-length": "5" } }));
+app.get("/one/cookies", (_, c) => {
+    setCookie(c, "a", "1");
+    setCookie(c, "b", "2");
+    return "ok";
+});
+
+// SSE: 2つ目のイベントは、テストが release2() を呼ぶまで送らない
+let release2 = () => {};
+app.get("/sse", () => {
+    const body = new ReadableStream({
+        start(controller) {
+            controller.enqueue(bytes("data: 1\n\n"));
+            release2 = () => {
+                controller.enqueue(bytes("data: 2\n\n"));
+                controller.close();
+            };
+        },
+    });
+    return new Response(body, { headers: { "content-type": "text/event-stream" } });
+});
+
+// 2つ目のチャンクが、最初の読み取りから何ティックかあとに届く。判定の境目でチャンクが欠けないことを確かめる
+app.get("/late/:ticks", ({ ticks }) => {
+    const body = new ReadableStream({
+        async start(controller) {
+            controller.enqueue(bytes("a"));
+            for (let i = 0; i < Number(ticks); i++) await null;
+            controller.enqueue(bytes("b"));
+            for (let i = 0; i < Number(ticks); i++) await null;
+            controller.enqueue(bytes("c"));
+            controller.close();
+        },
+    });
+    return new Response(body);
+});
+app.get("/many", () => {
+    const body = new ReadableStream({
+        start(controller) {
+            for (let i = 0; i < 2000; i++) controller.enqueue(bytes(`${i},`));
+            controller.close();
+        },
+    });
+    return new Response(body);
+});
+
+// どこまで引かれたかを見る、大きな本文
+let pulled = 0;
+app.get("/big", () => {
+    pulled = 0;
+    const body = new ReadableStream(
+        {
+            pull(controller) {
+                pulled++;
+                controller.enqueue(new Uint8Array(64 * 1024));
+                if (pulled >= 3000) controller.close();
+            },
+        },
+        { highWaterMark: 0 },
+    );
+    return new Response(body);
+});
+
+// 切断したら、本文の cancel が呼ばれるか(c.req.signal を読まなくても)
+let cancelled: Promise<void> = Promise.resolve();
+app.get("/forever", () => {
+    let done = () => {};
+    cancelled = new Promise((resolve) => (done = resolve));
+    const body = new ReadableStream({
+        start: (controller) => controller.enqueue(bytes("data: 1\n\n")),
+        cancel: () => done(),
+    });
+    return new Response(body);
+});
+
+app.get("/fail/first", (_, c) => {
+    setCookie(c, "session", "abc");
+    const body = new ReadableStream({ start: (controller) => controller.error(new Error("本文の失敗")) });
+    return new Response(body, { headers: { "content-type": "text/event-stream", "x-mark": "1" } });
+});
+app.get("/fail/later", () => {
+    const body = new ReadableStream({
+        async start(controller) {
+            controller.enqueue(bytes("part"));
+            await sleep(20);
+            controller.error(new Error("本文の失敗"));
+        },
+    });
+    return new Response(body);
+});
+
+app.get("/headers", (_, c) => ({ ...Object.fromEntries(c.req.headers), cookies: c.req.headers.getSetCookie() }));
+
 let server: Server;
 let port: number;
 let base: string;
@@ -285,6 +388,170 @@ describe("Node アダプター", () => {
 
         release();
         assert.equal((await reader.read()).done, true);
+    });
+
+    // ヘッダーと本文に分ける(生の HTTP)
+    async function rawResponse(method: string, path: string, extra = "") {
+        const text = await raw(`${method} ${path} HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n${extra}\r\n`);
+        const end = text.indexOf("\r\n\r\n");
+        return { head: text.slice(0, end), body: text.slice(end + 4) };
+    }
+    const silently = async <T>(run: () => Promise<T>): Promise<T> => {
+        const original = console.error;
+        console.error = () => {};
+        try {
+            return await run();
+        } finally {
+            console.error = original;
+        }
+    };
+
+    for (const [path, length] of [
+        ["/one/text", 5],
+        ["/one/json", 7],
+        ["/one/bytes", 3],
+        ["/one/length", 5],
+        ["/nope", 13],
+    ] as const) {
+        test(`1チャンクの本文(${path})は Content-Length で送る`, async () => {
+            const { head, body } = await rawResponse("GET", path);
+
+            assert.match(head, new RegExp(`^content-length: ${length}$`, "im"));
+            assert.doesNotMatch(head, /^transfer-encoding/im);
+            assert.equal(body.length, length);
+        });
+    }
+
+    test("空の本文でも応答が終わる", async () => {
+        const { head, body } = await rawResponse("GET", "/one/empty");
+
+        assert.match(head, /^HTTP\/1\.1 200/);
+        assert.match(head, /^content-length: 0$/im);
+        assert.equal(body, "");
+    });
+
+    test("Set-Cookie が複数あっても、Content-Length で送れる", async () => {
+        const { head } = await rawResponse("GET", "/one/cookies");
+
+        assert.equal(head.match(/^set-cookie: /gim)?.length, 2);
+        assert.match(head, /^content-length: 2$/im);
+    });
+
+    test("HEAD は本文を送らない", async () => {
+        for (const path of ["/one/text", "/nope"]) {
+            const { head, body } = await rawResponse("HEAD", path);
+
+            assert.equal(body, "", path);
+            assert.doesNotMatch(head, /^transfer-encoding/im, path);
+        }
+    });
+
+    test("204 と 304 は本文を送らない", async () => {
+        const noContent = await rawResponse("GET", "/no-content");
+        assert.match(noContent.head, /^HTTP\/1\.1 204/);
+        assert.equal(noContent.body, "");
+
+        const notModified = await rawResponse("GET", "/not-modified");
+        assert.match(notModified.head, /^HTTP\/1\.1 304/);
+        assert.match(notModified.head, /^etag: "a"$/im);
+        assert.equal(notModified.body, "");
+    });
+
+    test("SSE: 最初のイベントは、次のイベントを待たずに届く", async () => {
+        const res = await fetch(`${base}/sse`);
+        const reader = res.body!.getReader();
+        const decoder = new TextDecoder();
+
+        assert.equal(res.headers.get("content-type"), "text/event-stream");
+        assert.equal(res.headers.get("content-length"), null);
+        // release2() を呼ぶ前に届く
+        assert.equal(decoder.decode((await reader.read()).value), "data: 1\n\n");
+
+        release2();
+        assert.equal(decoder.decode((await reader.read()).value), "data: 2\n\n");
+        assert.equal((await reader.read()).done, true);
+    });
+
+    test("チャンクがいつ届いても、欠けず、順番も変わらない", async () => {
+        for (let ticks = 0; ticks <= 16; ticks++) {
+            for (let n = 0; n < 5; n++) {
+                assert.equal(await (await fetch(`${base}/late/${ticks}`)).text(), "abc", `ticks=${ticks}`);
+            }
+        }
+    });
+
+    test("同じティックの大量のチャンクも、欠けず、順番も変わらない", async () => {
+        const nums = (await (await fetch(`${base}/many`)).text()).split(",").filter(Boolean).map(Number);
+
+        assert.equal(nums.length, 2000);
+        assert.ok(nums.every((n, i) => n === i));
+    });
+
+    test("バックプレッシャー: 読まないクライアントには、本文を引き続けない", async () => {
+        const socket = net.connect(port, "localhost", () => socket.write("GET /big HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n"));
+        socket.pause();
+        try {
+            await sleep(300);
+            // 全部で 3000 個。ソケットのバッファに入る分しか引かない
+            assert.ok(pulled > 0 && pulled < 100, `pulled=${pulled}`);
+        } finally {
+            socket.destroy();
+        }
+    });
+
+    test("切断すると、c.req.signal を読まなくても本文の cancel が呼ばれる", async () => {
+        const controller = new AbortController();
+        const res = await fetch(`${base}/forever`, { signal: controller.signal });
+        await res.body!.getReader().read();
+
+        controller.abort();
+
+        await Promise.race([
+            cancelled,
+            sleep(2000).then(() => {
+                throw new Error("cancel が呼ばれなかった");
+            }),
+        ]);
+    });
+
+    test("本文の最初の読み取りで失敗したら 500 で、失敗したレスポンスのヘッダーは残さない", async () => {
+        const { head, body } = await silently(() => rawResponse("GET", "/fail/first"));
+
+        assert.match(head, /^HTTP\/1\.1 500/);
+        assert.equal(body, "500 Internal Server Error");
+        assert.doesNotMatch(head, /^content-type/im);
+        assert.doesNotMatch(head, /^set-cookie/im);
+        assert.doesNotMatch(head, /^x-mark/im);
+        // サーバーはまだ生きている
+        assert.equal((await fetch(`${base}/hello`)).status, 200);
+    });
+
+    test("本文の途中で失敗したら、接続を切る(完了したように見せない)", async () => {
+        const text = await silently(() => raw("GET /fail/later HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n"));
+
+        assert.match(text, /^HTTP\/1\.1 200/);
+        assert.match(text, /part/);
+        // チャンク形式の終わり("0\r\n\r\n")が来ていない
+        assert.doesNotMatch(text, /\r\n0\r\n\r\n$/);
+        assert.equal((await fetch(`${base}/hello`)).status, 200);
+    });
+
+    test("リクエストのヘッダー: 同じ名前は Node と同じようにまとめ、Set-Cookie も届く", async () => {
+        const { body } = await rawResponse("GET", "/headers", "X-A: 1\r\nX-A: 2\r\nSet-Cookie: a=1\r\nSet-Cookie: b=2\r\nCookie: c=3\r\nCookie: d=4\r\n");
+        const seen = JSON.parse(body);
+
+        assert.equal(seen["x-a"], "1, 2");
+        assert.deepEqual(seen.cookies, ["a=1", "b=2"]);
+        assert.equal(seen.cookie, "c=3; d=4");
+    });
+
+    test("リクエストのヘッダー: Set-Cookie がないときも、ふつうに読める", async () => {
+        const { body } = await rawResponse("GET", "/headers", "X-A: 1\r\nAuthorization: Bearer abc\r\n");
+        const seen = JSON.parse(body);
+
+        assert.equal(seen["x-a"], "1");
+        assert.equal(seen.authorization, "Bearer abc");
+        assert.equal(seen.host, "localhost");
     });
 
     test("クライアントが切断すると c.req.signal が abort される", async () => {

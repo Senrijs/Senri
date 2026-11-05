@@ -51,6 +51,34 @@ describe("senri/static(Node)", () => {
         }
     });
 
+    test("大きなファイルも小さなファイルも、実際の HTTP で中身が欠けない(ビルド済みの dist/)", async () => {
+        const { createApp } = await import("@senrijs/senri");
+        const { serveStatic } = await import("@senrijs/senri/static");
+        const { serve } = await import("@senrijs/senri/node");
+        const large = Buffer.alloc(5 * 1024 * 1024);
+        for (let i = 0; i < large.length; i++) large[i] = i % 251;
+        await writeFile(join(root, "large.bin"), large);
+        await writeFile(join(root, "small.bin"), large.subarray(0, 1000));
+        const app = createApp();
+        app.use(serveStatic({ root }));
+        const server = serve(app, { port: 0 });
+        try {
+            await new Promise<void>((resolve) => server.once("listening", resolve));
+            const base = `http://localhost:${(server.address() as AddressInfo).port}`;
+
+            for (const [name, size] of [["large.bin", large.length], ["small.bin", 1000]] as const) {
+                const res = await fetch(`${base}/${name}`);
+                const body = Buffer.from(await res.arrayBuffer());
+
+                assert.equal(res.headers.get("content-length"), String(size));
+                assert.equal(body.length, size);
+                assert.ok(body.equals(large.subarray(0, size)), name);
+            }
+        } finally {
+            server.close();
+        }
+    });
+
     test("prefix の途中の * は、呼び出したときのエラー", async () => {
         const { serveStatic } = await import("@senrijs/senri/static");
 

@@ -27,7 +27,8 @@ type App = {
         | Promise<Response>;
 };
 
-function toUrl(req: IncomingMessage): URL {
+// Request が解析するので、ここでは文字列のまま渡す(new URL すると2回解析することになる)
+function toUrl(req: IncomingMessage): string {
     const protocol = (req.socket as TLSSocket).encrypted ? "https" : "http";
     // HTTP/1.0 などで Host がないこともある
     const host = req.headers.host ?? "localhost";
@@ -39,7 +40,7 @@ function toUrl(req: IncomingMessage): URL {
     const target = req.url ?? "/";
     // absolute-form("GET http://host/path HTTP/1.1")ならそのまま使う
     if (/^https?:\/\//i.test(target)) {
-        return new URL(target);
+        return target;
     }
     // "/" で始まらないもの("@evil.com/x" や "*")は、つなぐとホスト名などに化けるので受け付けない
     // (Node の HTTP パーサーがたいてい先に 400 にするが、念のため)
@@ -47,12 +48,14 @@ function toUrl(req: IncomingMessage): URL {
         throw new TypeError(`不正なリクエストターゲットです: ${target}`);
     }
     // new URL(target, base) にすると "//admin" が「プロトコル相対 URL」として
-    // ホスト名 admin と解釈されてしまうので、文字列でつないでから URL にする
-    // Host が "a b" のように不正だとここで TypeError になる
-    return new URL(`${protocol}://${host}${target}`);
+    // ホスト名 admin と解釈されてしまうので、文字列でつなぐ
+    // Host が "a b" のように不正だと、new Request で TypeError になる
+    return `${protocol}://${host}${target}`;
 }
 
-function toRequest(req: IncomingMessage, signal: AbortSignal): Request {
+function toHeaders(req: IncomingMessage): HeadersInit {
+    // Node が配列にするのは Set-Cookie だけ。それ以外は文字列なので、そのまま渡せる(Request がコピーする)
+    if (!req.headers["set-cookie"]) return req.headers as Record<string, string>;
     const headers = new Headers();
     for (const [key, value] of Object.entries(req.headers)) {
         if (value === undefined) continue;
@@ -62,7 +65,10 @@ function toRequest(req: IncomingMessage, signal: AbortSignal): Request {
             headers.set(key, value);
         }
     }
+    return headers;
+}
 
+function toRequest(req: IncomingMessage, signal: AbortSignal): Request {
     // GET / HEAD はボディを持てない(渡すと Request が TypeError を投げる)
     // ボディがない(Content-Length も Transfer-Encoding もない)ときは、空のストリームではなく null にする
     // (Bun / Deno と同じ。QUERY の「ボディがない」を見分けるのに使う)
@@ -73,7 +79,7 @@ function toRequest(req: IncomingMessage, signal: AbortSignal): Request {
 
     return new Request(toUrl(req), {
         method: req.method,
-        headers,
+        headers: toHeaders(req),
         body: hasBody ? (Readable.toWeb(req) as unknown as ReadableStream<Uint8Array>) : undefined,
         // ストリームをボディにするときに必要(読みながら送る「半二重」の指定)
         duplex: "half",
@@ -94,7 +100,34 @@ async function writeResponse(res: ServerResponse, response: Response) {
         res.end();
         return;
     }
-    // 全部ためてから送るのではなく、届いたチャンクから順に流す
+
+    // 文字列や JSON の本文は1チャンクで終わる。そのときは res.end() で直接書く(速く、Content-Length も付く)
+    const reader = response.body.getReader();
+    const first = await reader.read();
+    if (first.done) {
+        res.end();
+        return;
+    }
+    // 次のチャンクを待つと、SSE の最初のイベントが届かなくなるので、ほんの少しだけ様子を見る
+    // 1チャンクの本文なら2ティックで終わりが分かる(Node 22 / 24)。間に合わなくても、下で流すだけで壊れない
+    let second: Awaited<ReturnType<typeof reader.read>> | undefined;
+    const next = reader.read().then(
+        (result) => (second = result),
+        // 読み取りの失敗は、下の pipeline でも同じように分かる。読み取り待ちを外したときも、ここに来る
+        () => {},
+    );
+    for (let i = 0; i < 4 && !second; i++) await null;
+    reader.releaseLock();
+    // 外す直前に届いていたチャンクは、ここで受け取る(捨てない)
+    await next;
+    if (second?.done) {
+        res.end(first.value);
+        return;
+    }
+    res.write(first.value);
+    if (second) res.write(second.value);
+
+    // 残りは、届いたチャンクから順に流す
     // pipeline は書き込みが詰まったら読むのを待ってくれる(バックプレッシャー)
     await pipeline(Readable.fromWeb(response.body as unknown as import("node:stream/web").ReadableStream), res);
 }
@@ -125,7 +158,8 @@ function notImplemented(socket: Duplex) {
  * - The client address is passed to `app.fetch` (for `getIp` and the dev dashboard)
  * - If the client disconnects before the response is sent, `c.req.signal` is aborted
  * - CONNECT, TRACE, TRACK and methods Node.js does not know get 501; an invalid `Host` or request target gets 400
- * - If `app.fetch` throws, the error is logged and 500 is returned
+ * - If `app.fetch` throws, or the response body fails before anything is sent, the error is logged and 500 is returned
+ * - A body that ends after one chunk (a string or JSON) is sent with `Content-Length`; other bodies are streamed as chunks arrive
  *
  * Unlike `serve()` from `@senrijs/senri/serve`, it does not read `PORT`, print routes or handle graceful shutdown.
  *
@@ -176,6 +210,8 @@ export function serve(app: App, options: { port: number; hostname?: string | und
             if (res.headersSent) {
                 res.destroy();
             } else {
+                // 本文の最初の読み取りで失敗したときは、失敗したレスポンスのヘッダーが残っている(Content-Type、Set-Cookie など)
+                for (const name of res.getHeaderNames()) res.removeHeader(name);
                 res.statusCode = 500;
                 res.end("500 Internal Server Error");
             }
