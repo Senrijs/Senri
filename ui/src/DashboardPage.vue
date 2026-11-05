@@ -133,6 +133,13 @@ onUnmounted(() => {
         </div>
     </header>
 
+    <section v-if="data.warnings.length > 0" class="route-warnings" aria-label="ルートとミドルウェアの警告">
+        <h2 class="mono">書き間違いの可能性({{ data.warnings.length }})</h2>
+        <ul>
+            <li v-for="w in data.warnings" :key="w">{{ w }}</li>
+        </ul>
+    </section>
+
     <main v-if="tab === 'requests'" class="dash-main requests">
         <section class="list" aria-label="リクエスト一覧">
             <div class="mono toolbar">
@@ -264,6 +271,22 @@ nav a[aria-current="page"] {
 }
 
 /* theme.css の main(エラーページ用の、幅を絞った縦並び)を、ダッシュボードでは全幅にする */
+.route-warnings {
+    padding: 12px 32px;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+    color: var(--warn-text);
+    overflow-wrap: anywhere;
+}
+.route-warnings h2 {
+    margin: 0 0 6px;
+    font-size: 13px;
+    font-weight: 700;
+}
+.route-warnings ul {
+    margin: 0;
+    padding-left: 20px;
+}
 .dash-main {
     max-width: none;
     margin: 0;

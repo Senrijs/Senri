@@ -99,6 +99,8 @@ export type DashboardPageData = {
     requests: RequestSummary[];
     routes: RouteRow[];
     middlewares: MiddlewareRow[];
+    // ルートとミドルウェアの書き間違いの警告(日本語)
+    warnings: string[];
 };
 
 export type PageData = ErrorPageData | NotFoundPageData | DashboardPageData;
