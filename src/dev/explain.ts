@@ -29,6 +29,7 @@ const JA: Record<string, string> = {
     returned_nothing: "ハンドラーが何も返していません(undefined / null)",
     next_twice: "next() が2回呼ばれました。1つのミドルウェアで呼べるのは1回だけです",
     no_response: "ミドルウェアが何も返さず、next() も呼んでいません",
+    pretty_json_options: "prettyJSON() の space は 1〜10 の整数、query は空でない文字列で指定してください",
     language_detector_options: "languageDetector() の設定が正しくありません。supportedLanguages は空にできず、fallbackLanguage はその中のどれかです。order に使えるのは querystring / cookie / header です",
     cache_options: "cache() の cacheControl には、ヘッダーに使える文字の文字列を指定してください。vary はヘッダー名の配列です",
     trailing_slash_options: "trailingSlash() の mode は \"remove\" か \"add\"、status は 301 か 308 で指定してください",

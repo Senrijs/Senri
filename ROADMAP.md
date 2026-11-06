@@ -74,7 +74,7 @@ See the [CHANGELOG](./CHANGELOG.md) for details.
 - [x] Middleware: trailing-slash normalization (`trailingSlash()`)
 - [x] Middleware: cache headers (`cache()`)
 - [x] Middleware: language detection (`languageDetector()`)
-- [ ] More middleware: pretty JSON
+- [x] Middleware: pretty JSON (`prettyJSON()`)
 - [ ] Performance: a fast path for string responses, HTTP benchmarks with oha (after the helpers)
 - [x] Trusted-proxy support (`trustProxy()`; counts proxies from the right and never trusts the first `X-Forwarded-For` value)
 - [ ] Documentation site (senri.skyia.jp)
