@@ -60,3 +60,4 @@ export { requestId, type RequestIdOptions, type RequestIdVariables } from "./mid
 export { timeout, type TimeoutOptions } from "./middleware/timeout.ts";
 export { basicAuth, bearerAuth, type BasicAuthOptions, type BearerAuthOptions } from "./middleware/auth.ts";
 export { etag, type EtagOptions } from "./middleware/etag.ts";
+export { compress, type CompressOptions } from "./middleware/compress.ts";

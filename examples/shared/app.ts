@@ -1,4 +1,4 @@
-import { createApp, health, logger, type StandardSchemaV1 } from "../../src/index.ts";
+import { compress, createApp, health, logger, type StandardSchemaV1 } from "../../src/index.ts";
 import { devtools } from "../../src/dev/index.ts";
 import { getIp } from "../../src/ip.ts";
 
@@ -8,6 +8,9 @@ export const app = createApp({ dev: devtools() });
 // ヘルスチェックはロガーより先に置く(probe のたびにログが出ないように)
 app.use(health());
 app.use(logger({ format: "json" }));
+
+app.use("/compressed", compress());
+app.get("/compressed", () => "こんにちは!".repeat(100));
 
 app.get("/hello", () => "こんにちは!");
 app.get("/user", () => ({ name: "yahari" }));

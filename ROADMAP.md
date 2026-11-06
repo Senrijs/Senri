@@ -67,7 +67,7 @@ See the [CHANGELOG](./CHANGELOG.md) for details.
 - [x] Middleware: timeout (`timeout()`)
 - [x] Middleware: Basic / Bearer auth (`basicAuth()`, `bearerAuth()`)
 - [x] Middleware: ETag (`etag()`)
-- [ ] More middleware: compression
+- [x] Middleware: compression (`compress()`)
 - [ ] More middleware: method override, trailing-slash normalization, IP restriction, rate limiting, cache, language detection, pretty JSON
 - [ ] Performance: a fast path for string responses, HTTP benchmarks with oha (after the helpers)
 - [ ] Trusted-proxy support for `getIp` (count proxies from the right; never trust the first `X-Forwarded-For` value)
