@@ -319,7 +319,7 @@ app.use("/admin", (c, next) => {
 ### 標準のミドルウェア
 
 ```ts
-import { bodyLimit, cors, health, logger, requestId, secureHeaders, timeout } from "@senrijs/senri";
+import { basicAuth, bearerAuth, bodyLimit, cors, health, logger, requestId, secureHeaders, timeout } from "@senrijs/senri";
 import { serveStatic } from "@senrijs/senri/static";
 
 app.use(health({ ready: () => db.isConnected() }));   // /healthz と /readyz
@@ -330,10 +330,13 @@ app.use(bodyLimit({ maxSize: 1024 * 1024 }));          // 超えたら 413
 app.use(serveStatic({ root: "./public" }));            // Bun・Deno・Node.js で静的ファイルを配る
 app.use(requestId());                                  // c.get("requestId") と X-Request-Id
 app.use(timeout(5000));                                // 5 秒で終わらなければ 504
+app.use("/admin", basicAuth({ username: "admin", password: env.ADMIN_PASSWORD }));
+app.use("/api", bearerAuth({ token: env.API_TOKEN }));
 ```
 
 - `requestId()`: 受け取った `X-Request-Id` は既定で使いません。信頼できるプロキシの後ろでは `trustIncoming: true` にしてください(128 文字までの `A-Z a-z 0-9 . _ = + / -` だけを受け付け、それ以外は作り直します)
 - `timeout()`: 時間切れでも処理そのものは止まりません。同期のループ中はタイマーも動きません。`c.req.signal` は切断だけを表すので、外部への呼び出しを止めるには `AbortSignal.timeout()` と組み合わせてください
+- `basicAuth()` / `bearerAuth()`: 失敗すると 401 と `WWW-Authenticate` を返します。固定の値の代わりに `verifyUser` / `verifyToken` で検証することもできます(`true` を返したときだけ通します)。`cors()` と一緒に使うときは `cors()` を先に登録してください
 - `health()`: `/healthz` は応答できれば 200。`/readyz` は `ready()` が true なら 200、false・例外・止まり始めたあとは 503
 - `logger()`: 色は既定でオンです。ファイルや CI に流すときは `color: false` にしてください
 - `secureHeaders()`: Content-Security-Policy と Cross-Origin-Embedder-Policy は既定でオフです(アプリによって壊れやすいので)

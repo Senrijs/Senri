@@ -65,7 +65,8 @@ See the [CHANGELOG](./CHANGELOG.md) for details.
 - [ ] File uploads: size/type validation, streaming large files
 - [x] Middleware: request ID (`requestId()`)
 - [x] Middleware: timeout (`timeout()`)
-- [ ] More middleware: Basic / Bearer auth, compression, ETag
+- [x] Middleware: Basic / Bearer auth (`basicAuth()`, `bearerAuth()`)
+- [ ] More middleware: compression, ETag
 - [ ] More middleware: method override, trailing-slash normalization, IP restriction, rate limiting, cache, language detection, pretty JSON
 - [ ] Performance: a fast path for string responses, HTTP benchmarks with oha (after the helpers)
 - [ ] Trusted-proxy support for `getIp` (count proxies from the right; never trust the first `X-Forwarded-For` value)

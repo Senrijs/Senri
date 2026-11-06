@@ -32,6 +32,8 @@ const JA: Record<string, string> = {
     request_id_header: "requestId() の headerName に、ヘッダー名に使えない文字があります",
     timeout_ms: "timeout() の時間は、0 より大きいミリ秒の数で指定してください",
     timeout_status: "timeout() の status には 400〜599 のステータスを指定してください",
+    auth_options: "basicAuth() / bearerAuth() の設定が正しくありません。空の値は使えません(環境変数の読み忘れではありませんか？)。ユーザー名に : は使えません。トークンに使えるのは A-Z a-z 0-9 - . _ ~ + / と末尾の = だけです",
+    auth_realm: "realm に使えるのは、ASCII の印字できる文字だけです",
 };
 
 // 日本語の説明(なければ null)

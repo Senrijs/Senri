@@ -58,3 +58,4 @@ export { secureHeaders, type SecureHeadersOptions } from "./middleware/secure-he
 export { bodyLimit, type BodyLimitOptions } from "./middleware/body-limit.ts";
 export { requestId, type RequestIdOptions, type RequestIdVariables } from "./middleware/request-id.ts";
 export { timeout, type TimeoutOptions } from "./middleware/timeout.ts";
+export { basicAuth, bearerAuth, type BasicAuthOptions, type BearerAuthOptions } from "./middleware/auth.ts";
