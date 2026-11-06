@@ -61,7 +61,7 @@ See the [CHANGELOG](./CHANGELOG.md) for details.
 - [ ] English / Japanese error messages and dev pages
 - [x] Response helpers: `c.html()`, `c.redirect()`
 - [x] Response helper: `c.notFound()`
-- [ ] SSE / streaming helpers (`c.stream()` and more)
+- [x] SSE / streaming helpers (`stream()`, `streamText()` and `streamSSE()` from `@senrijs/senri/streaming`; not Context methods, so apps that do not use them stay small)
 - [ ] File uploads: size/type validation, streaming large files
 - [x] Middleware: request ID (`requestId()`)
 - [x] Middleware: timeout (`timeout()`)

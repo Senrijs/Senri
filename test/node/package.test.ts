@@ -10,6 +10,13 @@ describe("パッケージ", () => {
         assert.match(import.meta.resolve("@senrijs/senri"), /\/dist\/src\/index\.js$/);
     });
 
+    test('"@senrijs/senri/streaming" でストリーミングのヘルパーが使える', async () => {
+        assert.match(import.meta.resolve("@senrijs/senri/streaming"), /\/dist\/src\/streaming\.js$/);
+        const { stream, streamSSE, streamText } = await import("@senrijs/senri/streaming");
+
+        assert.deepEqual([typeof stream, typeof streamText, typeof streamSSE], ["function", "function", "function"]);
+    });
+
     test('"@senrijs/senri/node" で Node アダプターが使える', async () => {
         assert.match(import.meta.resolve("@senrijs/senri/node"), /\/dist\/adapters\/node\/index\.js$/);
         const { serve } = await import("@senrijs/senri/node");

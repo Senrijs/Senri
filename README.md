@@ -202,6 +202,28 @@ app.post("/login", (_, c) => {
 - CR / LF を含む値と、エンコードできない値はエラーになります。ただし、ほかのサイトへの URL は通すので、`c.query("next")` のような外からの値は、行き先を確かめてから渡してください(オープンリダイレクトの対策)
 - ブラウザの Service Worker とページの中の `app.fetch()` では、`Response` から `Set-Cookie` が消えるので、Cookie は付きません(ブラウザの制限です)
 
+### ストリーミング(SSE)
+
+```ts
+import { stream, streamSSE, streamText } from "@senrijs/senri/streaming";
+
+app.get("/events", (_, c) =>
+    streamSSE(c, async (s) => {
+        s.onAbort(() => console.log("切断されました"));
+        for (let i = 0; !s.aborted; i++) {
+            await s.writeSSE({ event: "tick", id: String(i), data: String(i) });
+            await s.sleep(1000);
+        }
+    }, { heartbeat: 15_000 }),
+);
+```
+
+- `stream()` はバイト列、`streamText()` はテキスト、`streamSSE()` は Server-Sent Events を少しずつ送ります
+- クライアントが切断すると `s.aborted` が `true` になり、`s.onAbort()` で登録した関数が動きます。`s.write()` は読み手が追いつくまで待ちます
+- 途中のエラーで 500 は返せません。`onError` を渡すと最後に書き込めて、正常に閉じます。渡さなければ、ログに出して接続を切ります(途中までのダウンロードが完了に見えないように)
+- `streamSSE()` は最初に `: connected` のコメントを送るので、ヘッダーはすぐ届きます。`compress()` は SSE を圧縮しません
+- 静かな接続はプロキシに切られることがあります。`heartbeat` で定期的にコメントを送れます。Bun の `Bun.serve` は既定で 10 秒静かな接続を閉じるので、`idleTimeout` を上げるか、それより短い `heartbeat` を指定してください
+
 ### グループ化
 
 ```ts
