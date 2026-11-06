@@ -70,7 +70,8 @@ See the [CHANGELOG](./CHANGELOG.md) for details.
 - [x] Middleware: compression (`compress()`)
 - [x] Middleware: IP restriction (`ipRestriction()`)
 - [x] Middleware: rate limiting (`rateLimit()`)
-- [ ] More middleware: method override, trailing-slash normalization, cache, language detection, pretty JSON
+- [x] Middleware: method override (`methodOverride()`)
+- [ ] More middleware: trailing-slash normalization, cache, language detection, pretty JSON
 - [ ] Performance: a fast path for string responses, HTTP benchmarks with oha (after the helpers)
 - [x] Trusted-proxy support (`trustProxy()`; counts proxies from the right and never trusts the first `X-Forwarded-For` value)
 - [ ] Documentation site (senri.skyia.jp)
