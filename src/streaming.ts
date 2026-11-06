@@ -236,6 +236,9 @@ function setDefault(res: Response, name: string, value: string): void {
  *   long loops should check `s.aborted`
  * - **Errors:** the response has already started, so 500 is not possible. See `onError` in {@link StreamOptions}
  * - **On Node.js**, the headers are sent with the first chunk. Write something soon if the client is waiting for them
+ * - **On Cloudflare Workers** (checked on workerd), `onAbort` did not run when the client disconnected, with or without
+ *   `enable_request_signal` and `waitUntil`, so do not rely on it there to release anything. An error without `onError`
+ *   also ends the response as if it were complete, since the runtime finishes it
  * - `compress()` and `etag()` wait up to 5 ms to read the start of the body. A stream that sends a lot at once can be compressed, which holds its data back
  *
  * @param c The context.
