@@ -265,7 +265,8 @@ app.post("/search", async (_, c) => {
 
 - `c.body()` は何度呼んでも同じ結果です(ミドルウェアとハンドラーの両方から読めます)
 - Cookie と IP は、使わないアプリのバンドルに入らないよう、別の入口(`@senrijs/senri/cookie`・`@senrijs/senri/ip`)にしています
-- `getIp(c)` はランタイムが渡す接続元を使います。`X-Forwarded-For` などのヘッダーは偽装できるので読みません。プロキシの後ろでは、プロキシが付けるヘッダーを自分で読んでください
+- `getIp(c)` はランタイムが渡す接続元を使います。`X-Forwarded-For` などのヘッダーは偽装できるので読みません
+- プロキシの後ろでは `trustProxy()` を使います。`const clientIp = trustProxy({ hops: 1 })` や `trustProxy({ proxies: ["10.0.0.0/8"] })` で作った関数が、クライアントの IP を返します。`X-Forwarded-For` の先頭は信じず、右から数えます。`hops` は、プロキシを通らずにアプリへ届く環境では偽装できるので、その場合は `proxies` を使ってください
 - `setCookie(c, name, value, options)` の既定は `Path=/`・`HttpOnly`・`SameSite=Lax` です
 
 ## バリデーション
