@@ -21,6 +21,7 @@ import { extname, join, relative, resolve, sep } from "node:path";
 import process from "node:process";
 import { Readable } from "node:stream";
 import type { Middleware } from "../../src/index.ts";
+import { matchesEtag } from "../../src/middleware/response.ts";
 import { headerOf, markPlainSafe, methodOf } from "../../src/plain.ts";
 import { middlewarePath, splitPattern } from "../../src/router.ts";
 
@@ -83,15 +84,6 @@ const MIME: Record<string, string> = {
 
 function isWorkers(): boolean {
     return (globalThis as { navigator?: { userAgent?: string } }).navigator?.userAgent === "Cloudflare-Workers";
-}
-
-// If-None-Match に、この ETag が入っているか(W/ は比べない = 弱い比較)
-function matchesEtag(header: string, etag: string): boolean {
-    const bare = etag.replace(/^W\//, "");
-    return header.split(",").some((t) => {
-        const tag = t.trim();
-        return tag === "*" || tag.replace(/^W\//, "") === bare;
-    });
 }
 
 // ファイルの場所として使ってはいけないセグメント

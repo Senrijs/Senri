@@ -24,3 +24,12 @@ export function appendVary(headers: Headers, ...names: string[]) {
     }
     if (list.length > 0) headers.set("vary", list.join(", "));
 }
+
+// If-None-Match に、この ETag が入っているか(W/ は比べない = 弱い比較)
+export function matchesEtag(header: string, etag: string): boolean {
+    const bare = etag.replace(/^W\//, "");
+    return header.split(",").some((t) => {
+        const tag = t.trim();
+        return tag === "*" || tag.replace(/^W\//, "") === bare;
+    });
+}
