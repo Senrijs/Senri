@@ -1,4 +1,4 @@
-import { requestPathname, splitPath } from "./router.ts";
+import { pathnameOf, requestPathname, splitPath } from "./router.ts";
 import { isConnectionInfo } from "./connection.ts";
 import type { Timing } from "./compose.ts";
 import { readBody } from "./body.ts";
@@ -138,13 +138,24 @@ export function setValidated(c: Context, target: string, value: unknown): void {
 // Context のメソッドにしないのは、使わないアプリのバンドルに入れないため
 export let connectionOf: (c: Context) => { req: Request; info: unknown };
 
+// Node のアダプターから来たリクエスト。create() は本物の Request(new Request で作ったもの)を返す
+export type LazyRequest = { url: string; create(): Request };
+// c.req を最初に読んだときに本物の Request を作る Context(Node のアダプターだけが使う)
+export let lazyContext: (source: LazyRequest, info: unknown) => Context;
+
+// ミドルウェアのないハンドラーの戻り値を、Response を作らずに書くための中身(Node のアダプターだけが使う)
+export type PlainResponse = { status: number; type: string; body: string; headers: Headers | undefined };
+// 文字列と、素のオブジェクト・配列だけ。それ以外と、Response なら投げる status は null(今までどおり Response にする)
+export let plainOf: (c: Context, value: unknown) => PlainResponse | null;
+
 /**
  * The per-request context passed to handlers and middleware as `c`.
  * Holds the request, path parameters, variables, and the status and headers to add to the response.
  */
 export class Context<V extends object = any, I extends object = {}> {
+    // ふつうのプロパティ(ここでは定義だけ)。Bun / Deno / Workers / ブラウザでは、読み方が速さに影響しないように getter にしない
     /** The request. Middleware may replace it (for example, with a body that has a size limit). */
-    req: Request;
+    declare req: Request;
     #status = 200;
     // c.header() で初めて作る(ほとんどのリクエストでは使わないので、毎回作らない)
     #headers: Headers | undefined;
@@ -176,11 +187,34 @@ export class Context<V extends object = any, I extends object = {}> {
 
     // app.fetch に渡された元のリクエストと2つ目の引数(@senrijs/senri/ip の getIp で使う)
     // Bun の requestIP は元のリクエストでしか答えないので、c.req が差し替えられても元のほうで聞く
+    // (Node のアダプターから来たときは、接続元は info にあるので req は読まれない)
     #original: Request;
     #info: unknown;
 
     static {
         connectionOf = (c) => ({ req: c.#original, info: c.#info });
+        lazyContext = (source, info) => {
+            const c = new LazyContext(source, info);
+            // Request を作らなくても、ルーティングできるようにしておく
+            c.#pathname = pathnameOf(source.url);
+            return c;
+        };
+        plainOf = (c, value) => {
+            const status = c.#status;
+            if (status < 200 || status > 599 || status === 204 || status === 205 || status === 304) return null;
+            let body: string;
+            let type: string;
+            if (typeof value === "string") {
+                body = value;
+                type = "text/plain; charset=utf-8";
+            } else if (Array.isArray(value) || (typeof value === "object" && value !== null && Object.getPrototypeOf(value) === Object.prototype)) {
+                body = JSON.stringify(value);
+                type = "application/json";
+            } else {
+                return null;
+            }
+            return { status, type: c.#headers?.get("content-type") ?? type, body, headers: c.#headers };
+        };
     }
 
     #ctx: ExecutionContext | undefined;
@@ -514,5 +548,27 @@ export class Context<V extends object = any, I extends object = {}> {
             throw senriError("returned_nothing", new TypeError("Handler returned undefined or null"));
         }
         return this.json(value);
+    }
+}
+
+// Node のアダプターから来たリクエストの Context。c.req を読まないハンドラーでは、Request を作らない
+// 渡すのは常に本物の Request。c.req.signal、new Request(c.req)、fetch(c.req)、c.req.clone() はそのまま動く
+class LazyContext extends Context {
+    #source: LazyRequest;
+    #req: Request | undefined;
+
+    constructor(source: LazyRequest, info: unknown) {
+        super(undefined as never, info);
+        this.#source = source;
+    }
+
+    // @ts-expect-error 親ではプロパティ。ここだけ、最初に読んだときに作る
+    override get req(): Request {
+        return (this.#req ??= this.#source.create());
+    }
+
+    override set req(value: Request) {
+        // 親のコンストラクターの代入は、#req を初期化する前にここへ来るので、受け流す
+        if (#req in this) this.#req = value;
     }
 }
