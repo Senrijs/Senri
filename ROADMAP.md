@@ -73,7 +73,8 @@ See the [CHANGELOG](./CHANGELOG.md) for details.
 - [x] Middleware: method override (`methodOverride()`)
 - [x] Middleware: trailing-slash normalization (`trailingSlash()`)
 - [x] Middleware: cache headers (`cache()`)
-- [ ] More middleware: language detection, pretty JSON
+- [x] Middleware: language detection (`languageDetector()`)
+- [ ] More middleware: pretty JSON
 - [ ] Performance: a fast path for string responses, HTTP benchmarks with oha (after the helpers)
 - [x] Trusted-proxy support (`trustProxy()`; counts proxies from the right and never trusts the first `X-Forwarded-For` value)
 - [ ] Documentation site (senri.skyia.jp)

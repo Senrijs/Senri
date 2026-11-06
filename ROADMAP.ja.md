@@ -73,7 +73,8 @@ Senri がこれから向かう先です。バージョンは目標であって�
 - [x] ミドルウェア: メソッド上書き(`methodOverride()`)
 - [x] ミドルウェア: 末尾スラッシュの正規化(`trailingSlash()`)
 - [x] ミドルウェア: キャッシュのヘッダー(`cache()`)
-- [ ] ミドルウェアの追加: 言語判定、Pretty JSON
+- [x] ミドルウェア: 言語判定(`languageDetector()`)
+- [ ] ミドルウェアの追加: Pretty JSON
 - [ ] 性能: 文字列を返すときの速い道、oha での HTTP のベンチマーク(ヘルパーのあと)
 - [x] プロキシ対応(`trustProxy()`。右から数えて、`X-Forwarded-For` の先頭は信じない)
 - [ ] ドキュメントサイト(senri.skyia.jp)
