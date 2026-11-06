@@ -46,6 +46,7 @@ type Check = {
     cookies?: string[];
     type?: string;
     location?: string;
+    encoding?: string;
     // 開発モードの HTML ページ。埋め込まれた JSON を確かめて、だめなら理由を返す
     page?: (data: any, runtime: string) => string | null;
     // JSON のレスポンス。中身を確かめて、だめなら理由を返す
@@ -56,6 +57,8 @@ const browser = { accept: "text/html,application/xhtml+xml,*/*;q=0.8" };
 
 const CHECKS: Check[] = [
     { name: "テキスト", path: "/hello", status: 200, body: "こんにちは!" },
+    // fetch が1回だけ展開する。二重に圧縮していたら、本文が合わない
+    { name: "compress()", path: "/compressed", status: 200, body: "こんにちは!".repeat(100), encoding: "gzip" },
     { name: "パスパラメーター", path: "/users/42", status: 200, body: "user 42" },
     { name: "POST", path: "/users", init: { method: "POST" }, status: 200 },
     { name: "POST のボディ", path: "/echo", init: { method: "POST", body: "こんにちは" }, status: 200, body: "body=こんにちは" },
@@ -370,6 +373,7 @@ async function smoke(runtime: string): Promise<boolean> {
                 (check.body === undefined || body === check.body) &&
                 (check.type === undefined || res.headers.get("content-type") === check.type) &&
                 (check.location === undefined || res.headers.get("location") === check.location) &&
+                (check.encoding === undefined || res.headers.get("content-encoding") === check.encoding) &&
                 (check.cookies === undefined || JSON.stringify(cookies) === JSON.stringify(check.cookies));
             if (!pass) ok = false;
             const shown = check.page || check.json ? (reason ?? (check.page ? "HTML ページ" : "JSON")) : JSON.stringify(body.slice(0, 60));

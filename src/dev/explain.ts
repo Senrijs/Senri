@@ -34,6 +34,8 @@ const JA: Record<string, string> = {
     timeout_status: "timeout() の status には 400〜599 のステータスを指定してください",
     auth_options: "basicAuth() / bearerAuth() の設定が正しくありません。空の値は使えません(環境変数の読み忘れではありませんか？)。ユーザー名に : は使えません。トークンに使えるのは A-Z a-z 0-9 - . _ ~ + / と末尾の = だけです",
     auth_realm: "realm に使えるのは、ASCII の印字できる文字だけです",
+    compress_encoding: "compress() の encoding に使えるのは gzip と deflate だけです",
+    compress_threshold: "compress() の threshold は 0 以上の数で指定してください",
 };
 
 // 日本語の説明(なければ null)
