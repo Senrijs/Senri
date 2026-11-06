@@ -265,7 +265,8 @@ app.post("/search", async (_, c) => {
 
 - `c.body()` は何度呼んでも同じ結果です(ミドルウェアとハンドラーの両方から読めます)
 - Cookie と IP は、使わないアプリのバンドルに入らないよう、別の入口(`@senrijs/senri/cookie`・`@senrijs/senri/ip`)にしています
-- `getIp(c)` はランタイムが渡す接続元を使います。`X-Forwarded-For` などのヘッダーは偽装できるので読みません。プロキシの後ろでは、プロキシが付けるヘッダーを自分で読んでください
+- `getIp(c)` はランタイムが渡す接続元を使います。`X-Forwarded-For` などのヘッダーは偽装できるので読みません
+- プロキシの後ろでは `trustProxy()` を使います。`const clientIp = trustProxy({ hops: 1 })` や `trustProxy({ proxies: ["10.0.0.0/8"] })` で作った関数が、クライアントの IP を返します。`X-Forwarded-For` の先頭は信じず、右から数えます。`hops` は、プロキシを通らずにアプリへ届く環境では偽装できるので、その場合は `proxies` を使ってください
 - `setCookie(c, name, value, options)` の既定は `Path=/`・`HttpOnly`・`SameSite=Lax` です
 
 ## バリデーション
@@ -319,7 +320,7 @@ app.use("/admin", (c, next) => {
 ### 標準のミドルウェア
 
 ```ts
-import { basicAuth, bearerAuth, bodyLimit, compress, cors, etag, health, logger, requestId, secureHeaders, timeout } from "@senrijs/senri";
+import { basicAuth, bearerAuth, bodyLimit, compress, cors, etag, health, ipRestriction, logger, rateLimit, requestId, secureHeaders, timeout } from "@senrijs/senri";
 import { serveStatic } from "@senrijs/senri/static";
 
 app.use(health({ ready: () => db.isConnected() }));   // /healthz と /readyz
@@ -334,6 +335,8 @@ app.use("/admin", basicAuth({ username: "admin", password: env.ADMIN_PASSWORD })
 app.use("/api", bearerAuth({ token: env.API_TOKEN }));
 app.use(compress());                                   // gzip / deflate(1KB より小さい本文はそのまま)
 app.use(etag());                                       // ETag を付けて、変わっていなければ 304
+app.use(rateLimit({ windowMs: 60_000, limit: 100 }));  // 超えたら 429 と Retry-After
+app.use("/admin", ipRestriction({ allow: ["192.0.2.0/24"], deny: ["192.0.2.13"] }));
 ```
 
 - `requestId()`: 受け取った `X-Request-Id` は既定で使いません。信頼できるプロキシの後ろでは `trustIncoming: true` にしてください(128 文字までの `A-Z a-z 0-9 . _ = + / -` だけを受け付け、それ以外は作り直します)
@@ -341,6 +344,8 @@ app.use(etag());                                       // ETag を付けて、�
 - `basicAuth()` / `bearerAuth()`: 失敗すると 401 と `WWW-Authenticate` を返します。固定の値の代わりに `verifyUser` / `verifyToken` で検証することもできます(`true` を返したときだけ通します)。`cors()` と一緒に使うときは `cors()` を先に登録してください
 - `compress()`: `etag()` と一緒に使うときは `compress()` を先に登録してください。少しずつ流すストリームは、途中で止まって見えないように圧縮しません
 - `etag()`: GET の 2xx に弱い ETag を付けます。ハンドラーは毎回動きます。ストリームの本文と HEAD には付けません
+- `ipRestriction()`: `deny` を先に見ます。拒否は 403 です。IP が分からないときも 403 にします(テストでは `allowUnknown: true`)。プロキシの後ろでは `ip: trustProxy({ hops: 1 })` のように渡してください
+- `rateLimit()`: 固定ウィンドウで、既定のキーは IP です(IPv6 は /64 ごと)。IP が分からないリクエストは制限せず、最初の 1 回だけ警告します。既定の保存先はプロセスのメモリなので、Workers では isolate ごとの制限になり、全体の制限にはなりません。`store` で Redis などに差し替えられます
 - `health()`: `/healthz` は応答できれば 200。`/readyz` は `ready()` が true なら 200、false・例外・止まり始めたあとは 503
 - `logger()`: 色は既定でオンです。ファイルや CI に流すときは `color: false` にしてください
 - `secureHeaders()`: Content-Security-Policy と Cross-Origin-Embedder-Policy は既定でオフです(アプリによって壊れやすいので)
