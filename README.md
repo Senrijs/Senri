@@ -320,7 +320,7 @@ app.use("/admin", (c, next) => {
 ### 標準のミドルウェア
 
 ```ts
-import { basicAuth, bearerAuth, bodyLimit, compress, cors, etag, health, ipRestriction, logger, requestId, secureHeaders, timeout } from "@senrijs/senri";
+import { basicAuth, bearerAuth, bodyLimit, compress, cors, etag, health, ipRestriction, logger, rateLimit, requestId, secureHeaders, timeout } from "@senrijs/senri";
 import { serveStatic } from "@senrijs/senri/static";
 
 app.use(health({ ready: () => db.isConnected() }));   // /healthz と /readyz
@@ -335,6 +335,7 @@ app.use("/admin", basicAuth({ username: "admin", password: env.ADMIN_PASSWORD })
 app.use("/api", bearerAuth({ token: env.API_TOKEN }));
 app.use(compress());                                   // gzip / deflate(1KB より小さい本文はそのまま)
 app.use(etag());                                       // ETag を付けて、変わっていなければ 304
+app.use(rateLimit({ windowMs: 60_000, limit: 100 }));  // 超えたら 429 と Retry-After
 app.use("/admin", ipRestriction({ allow: ["192.0.2.0/24"], deny: ["192.0.2.13"] }));
 ```
 
@@ -344,6 +345,7 @@ app.use("/admin", ipRestriction({ allow: ["192.0.2.0/24"], deny: ["192.0.2.13"] 
 - `compress()`: `etag()` と一緒に使うときは `compress()` を先に登録してください。少しずつ流すストリームは、途中で止まって見えないように圧縮しません
 - `etag()`: GET の 2xx に弱い ETag を付けます。ハンドラーは毎回動きます。ストリームの本文と HEAD には付けません
 - `ipRestriction()`: `deny` を先に見ます。拒否は 403 です。IP が分からないときも 403 にします(テストでは `allowUnknown: true`)。プロキシの後ろでは `ip: trustProxy({ hops: 1 })` のように渡してください
+- `rateLimit()`: 固定ウィンドウで、既定のキーは IP です(IPv6 は /64 ごと)。IP が分からないリクエストは制限せず、最初の 1 回だけ警告します。既定の保存先はプロセスのメモリなので、Workers では isolate ごとの制限になり、全体の制限にはなりません。`store` で Redis などに差し替えられます
 - `health()`: `/healthz` は応答できれば 200。`/readyz` は `ready()` が true なら 200、false・例外・止まり始めたあとは 503
 - `logger()`: 色は既定でオンです。ファイルや CI に流すときは `color: false` にしてください
 - `secureHeaders()`: Content-Security-Policy と Cross-Origin-Embedder-Policy は既定でオフです(アプリによって壊れやすいので)
