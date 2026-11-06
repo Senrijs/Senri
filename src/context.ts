@@ -3,6 +3,7 @@ import { isConnectionInfo } from "./connection.ts";
 import type { Timing } from "./compose.ts";
 import { readBody } from "./body.ts";
 import { HttpError, senriError } from "./errors.ts";
+import { PlainResponse, setLazySourceOf, type LazyRequest } from "./plain.ts";
 
 // そのままレスポンスのボディにできるもの(JSON にはしない)
 // TypedArray は SharedArrayBuffer のもの以外(Response のボディにできないので)
@@ -138,13 +139,10 @@ export function setValidated(c: Context, target: string, value: unknown): void {
 // Context のメソッドにしないのは、使わないアプリのバンドルに入れないため
 export let connectionOf: (c: Context) => { req: Request; info: unknown };
 
-// Node のアダプターから来たリクエスト。create() は本物の Request(new Request で作ったもの)を返す
-export type LazyRequest = { url: string; create(): Request };
 // c.req を最初に読んだときに本物の Request を作る Context(Node のアダプターだけが使う)
 export let lazyContext: (source: LazyRequest, info: unknown) => Context;
 
-// ミドルウェアのないハンドラーの戻り値を、Response を作らずに書くための中身(Node のアダプターだけが使う)
-export type PlainResponse = { status: number; type: string; body: string; headers: Headers | undefined };
+// ハンドラーの戻り値を、Response を作らずに書くための中身にする(Node のアダプターだけが使う)
 // 文字列と、素のオブジェクト・配列だけ。それ以外と、Response なら投げる status は null(今までどおり Response にする)
 export let plainOf: (c: Context, value: unknown) => PlainResponse | null;
 
@@ -213,7 +211,7 @@ export class Context<V extends object = any, I extends object = {}> {
             } else {
                 return null;
             }
-            return { status, type: c.#headers?.get("content-type") ?? type, body, headers: c.#headers };
+            return new PlainResponse(status, c.#headers?.get("content-type") ?? type, body, c.#headers);
         };
     }
 
@@ -556,6 +554,10 @@ export class Context<V extends object = any, I extends object = {}> {
 class LazyContext extends Context {
     #source: LazyRequest;
     #req: Request | undefined;
+
+    static {
+        setLazySourceOf((c) => (#req in c && c.#req === undefined ? c.#source : null));
+    }
 
     constructor(source: LazyRequest, info: unknown) {
         super(undefined as never, info);

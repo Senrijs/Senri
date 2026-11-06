@@ -21,8 +21,9 @@ import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import { nodeCoreOf, type AppCore, type Resolved } from "../../src/app.ts";
 import { compose } from "../../src/compose.ts";
-import { lazyContext, plainOf, type Context, type LazyRequest, type PlainResponse } from "../../src/context.ts";
+import { lazyContext, plainOf, type Context, type HandlerResult } from "../../src/context.ts";
 import { HttpError } from "../../src/errors.ts";
+import { isPlainSafe, PlainResponse, type LazyRequest } from "../../src/plain.ts";
 
 type App = {
     // 2つ目の引数には、接続元のアドレスを Deno の info と同じ形で渡す(ダッシュボードの localhost 制限で使う)
@@ -72,19 +73,22 @@ function toHeaders(req: IncomingMessage): HeadersInit {
     return headers;
 }
 
-function toRequest(req: IncomingMessage, signal: AbortSignal): Request {
-    // GET / HEAD はボディを持てない(渡すと Request が TypeError を投げる)
-    // ボディがない(Content-Length も Transfer-Encoding もない)ときは、空のストリームではなく null にする
-    // (Bun / Deno と同じ。QUERY の「ボディがない」を見分けるのに使う)
-    const hasBody =
+// GET / HEAD はボディを持てない(渡すと Request が TypeError を投げる)
+// ボディがない(Content-Length も Transfer-Encoding もない)ときは、空のストリームではなく null にする
+// (Bun / Deno と同じ。QUERY の「ボディがない」を見分けるのに使う)
+function hasBody(req: IncomingMessage): boolean {
+    return (
         req.method !== "GET" &&
         req.method !== "HEAD" &&
-        (req.headers["content-length"] !== undefined || req.headers["transfer-encoding"] !== undefined);
+        (req.headers["content-length"] !== undefined || req.headers["transfer-encoding"] !== undefined)
+    );
+}
 
+function toRequest(req: IncomingMessage, signal: AbortSignal): Request {
     return new Request(toUrl(req), {
         method: req.method,
         headers: toHeaders(req),
-        body: hasBody ? (Readable.toWeb(req) as unknown as ReadableStream<Uint8Array>) : undefined,
+        body: hasBody(req) ? (Readable.toWeb(req) as unknown as ReadableStream<Uint8Array>) : undefined,
         // ストリームをボディにするときに必要(読みながら送る「半二重」の指定)
         duplex: "half",
         signal,
@@ -200,7 +204,10 @@ async function serveWithFetch(app: App, req: IncomingMessage, res: ServerRespons
 // c.req を最初に読んだときに、本物の Request を作る
 function lazyRequest(req: IncomingMessage, res: ServerResponse, url: string): LazyRequest {
     return {
+        method: req.method!,
         url,
+        headers: req.headers,
+        hasBody: hasBody(req),
         create() {
             const controller = new AbortController();
             // 読む前に切断されていたら、abort 済みの signal にする
@@ -224,28 +231,56 @@ function lazyRequest(req: IncomingMessage, res: ServerResponse, url: string): La
 // Response を作らずに書く。ヘッダーの扱いは c.text() / c.json() と c.finalize() を通したときと同じにする
 function writePlain(res: ServerResponse, plain: PlainResponse) {
     res.statusCode = plain.status;
-    res.setHeader("content-type", plain.type);
-    if (plain.headers) {
-        plain.headers.forEach((value, key) => {
-            if (key !== "set-cookie" && key !== "content-type") res.setHeader(key, value);
+    const own = plain.own;
+    const added = plain.added;
+    if (added) {
+        // 純正のミドルウェアが足したものに、c.finalize() と同じ規則で c.header() の分を重ねる
+        own?.forEach((value, key) => {
+            if (key === "set-cookie") return;
+            if ((key === "content-type" || key === "location") && added.has(key)) return;
+            added.set(key, value);
         });
-        const cookies = plain.headers.getSetCookie();
+        for (const cookie of own?.getSetCookie() ?? []) added.append("set-cookie", cookie);
+        added.forEach((value, key) => {
+            if (key !== "set-cookie") res.setHeader(key, value);
+        });
+        const cookies = added.getSetCookie();
         if (cookies.length > 0) res.setHeader("set-cookie", cookies);
+    } else {
+        res.setHeader("content-type", plain.type);
+        if (own) {
+            own.forEach((value, key) => {
+                if (key !== "set-cookie" && key !== "content-type") res.setHeader(key, value);
+            });
+            const cookies = own.getSetCookie();
+            if (cookies.length > 0) res.setHeader("set-cookie", cookies);
+        }
     }
     res.end(plain.body);
+}
+
+// ハンドラーの戻り値を、Response を見る人がいないときの形にする
+function answerOf(c: Context, value: HandlerResult): Response | PlainResponse {
+    return plainOf(c, value) ?? c.toResponse(value);
 }
 
 async function respondLazily(core: AppCore, c: Context, resolved: Resolved, method: string): Promise<Response | PlainResponse> {
     const fail = (err: unknown) => core.fail(err, c);
     const layers = core.layers(c);
-    if (layers.length > 0) return compose(layers, c, () => core.inner(c, resolved), fail);
+    // ハンドラーを直接呼ぶ。HEAD の本文を捨てる処理と QUERY の確認は core.inner に任せる(c.req を読む)
+    const route = resolved.kind === "route" && method !== "HEAD" && resolved.route.method !== "QUERY" ? resolved.route : null;
+    if (layers.length > 0) {
+        // 純正のミドルウェアだけなら、Response を見る人はいない。利用者のものが1つでもあれば、本物の Response を渡す
+        if (!route || !layers.every((layer) => isPlainSafe(layer.mw))) {
+            return compose(layers, c, () => core.inner(c, resolved), fail);
+        }
+        const inner = async () => answerOf(c, await route.handler(c.params, c));
+        return compose(layers, c, inner as unknown as () => Promise<Response>, fail);
+    }
     try {
-        // ハンドラーを直接呼ぶ。HEAD の本文を捨てる処理と QUERY の確認は core.inner に任せる(c.req を読む)
-        if (resolved.kind === "route" && method !== "HEAD" && resolved.route.method !== "QUERY") {
-            const handled = resolved.route.handler(c.params, c);
-            const value = handled instanceof Promise ? await handled : handled;
-            // ミドルウェアがいないので、Response を見る人はいない
-            return plainOf(c, value) ?? c.toResponse(value);
+        if (route) {
+            const handled = route.handler(c.params, c);
+            return answerOf(c, handled instanceof Promise ? await handled : handled);
         }
         return await core.inner(c, resolved);
     } catch (err) {
@@ -275,8 +310,8 @@ async function serveLazily(core: AppCore, req: IncomingMessage, res: ServerRespo
             c.params = resolved.params;
         }
         const answer = await respondLazily(core, c, resolved, method);
-        if (answer instanceof Response) await writeResponse(res, c.finalize(answer));
-        else writePlain(res, answer);
+        if (answer instanceof PlainResponse) writePlain(res, answer);
+        else await writeResponse(res, c.finalize(answer));
     } catch (err) {
         // クライアントが途中で切っただけならエラーではない
         if (!res.destroyed || res.writableFinished) writeFailure(res, err);

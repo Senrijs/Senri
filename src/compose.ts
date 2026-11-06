@@ -1,9 +1,12 @@
 import type { Context, HandlerResult, Middleware } from "./context.ts";
 import { markConversionError, senriError, type ConversionOrigin } from "./errors.ts";
+import { PlainResponse } from "./plain.ts";
 
 // 返した値をレスポンスにする。失敗したら、どこが返した値だったかをエラーに覚えさせてから投げ直す
 export function toResponseOf(c: Context, value: HandlerResult, origin: ConversionOrigin): Response {
     try {
+        // 純正のミドルウェアが、next() の結果をそのまま返したとき(src/plain.ts)
+        if (value instanceof PlainResponse) return value as unknown as Response;
         return c.toResponse(value);
     } catch (err) {
         throw markConversionError(err, origin);

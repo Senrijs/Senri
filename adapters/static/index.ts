@@ -21,6 +21,7 @@ import { extname, join, relative, resolve, sep } from "node:path";
 import process from "node:process";
 import { Readable } from "node:stream";
 import type { Middleware } from "../../src/index.ts";
+import { headerOf, markPlainSafe, methodOf } from "../../src/plain.ts";
 import { middlewarePath, splitPattern } from "../../src/router.ts";
 
 /** Options for {@link serveStatic}. */
@@ -149,8 +150,8 @@ export function serveStatic(options: ServeStaticOptions): Middleware {
     // シンボリックリンクで外に出ていないかを、実体のパスで確かめる(root 自体がリンクでもよいように、root も実体にする)
     const realRoot = realpath(root).catch(() => root);
 
-    return async function serveStatic(c, next) {
-        const method = c.req.method;
+    return markPlainSafe<Middleware>(async function serveStatic(c, next) {
+        const method = methodOf(c);
         if (method !== "GET" && method !== "HEAD") return next();
 
         const segments = c.segments;
@@ -191,8 +192,8 @@ export function serveStatic(options: ServeStaticOptions): Middleware {
         if (options.cacheControl) headers.set("cache-control", options.cacheControl);
 
         // 変わっていなければ 304(If-None-Match があれば、If-Modified-Since より優先する)
-        const ifNoneMatch = c.req.headers.get("if-none-match");
-        const ifModifiedSince = c.req.headers.get("if-modified-since");
+        const ifNoneMatch = headerOf(c, "if-none-match");
+        const ifModifiedSince = headerOf(c, "if-modified-since");
         const notModified =
             ifNoneMatch !== null
                 ? matchesEtag(ifNoneMatch, etag)
@@ -205,5 +206,5 @@ export function serveStatic(options: ServeStaticOptions): Middleware {
 
         const body = Readable.toWeb(createReadStream(file)) as unknown as ReadableStream<Uint8Array>;
         return new Response(body, { status: 200, headers });
-    };
+    });
 }

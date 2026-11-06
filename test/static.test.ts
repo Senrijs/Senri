@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createApp } from "../src/index.ts";
 import { serveStatic } from "../adapters/static/index.ts";
+import { isPlainSafe } from "../src/plain.ts";
 
 let dir: string;
 let root: string;
@@ -230,6 +231,10 @@ describe("serveStatic()", () => {
 
 // Windows と macOS は、綴りが違っても同じファイルを開く。app.use(path, ...) は綴りどおりにしか当たらないので、
 // 綴りが違えば配らないことで、ミドルウェアを飛ばせないようにしている(Linux では、もともと別のファイル)
+test("serveStatic() は純正のミドルウェアの印が付いている", () => {
+    expect(isPlainSafe(serveStatic({ root: "." }))).toBe(true);
+});
+
 describe("serveStatic() は、綴りがディスク上の名前と同じときだけ配る", () => {
     const looseOs = process.platform === "win32" || process.platform === "darwin";
 
