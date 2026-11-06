@@ -63,4 +63,5 @@ export { etag, type EtagOptions } from "./middleware/etag.ts";
 export { compress, type CompressOptions } from "./middleware/compress.ts";
 export { rateLimit, type RateLimitEntry, type RateLimitOptions, type RateLimitStore } from "./middleware/rate-limit.ts";
 export { ipRestriction, type IpRestrictionOptions } from "./middleware/ip-restriction.ts";
+export { trailingSlash, type TrailingSlashOptions } from "./middleware/trailing-slash.ts";
 export { methodOverride, type MethodOverrideOptions } from "./middleware/method-override.ts";

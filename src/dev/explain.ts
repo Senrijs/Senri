@@ -29,6 +29,7 @@ const JA: Record<string, string> = {
     returned_nothing: "ハンドラーが何も返していません(undefined / null)",
     next_twice: "next() が2回呼ばれました。1つのミドルウェアで呼べるのは1回だけです",
     no_response: "ミドルウェアが何も返さず、next() も呼んでいません",
+    trailing_slash_options: "trailingSlash() の mode は \"remove\" か \"add\"、status は 301 か 308 で指定してください",
     method_override_options: "methodOverride() の設定が正しくありません。form と header の両方を false にはできません。allow に GET / HEAD / CONNECT / TRACE は指定できません",
     ip_restriction_options: "ipRestriction() には allow か deny の、少なくとも一方を指定してください",
     ip_restriction_range: "ipRestriction() の allow と deny には、IP アドレスか CIDR(10.0.0.0/8 など)の配列を指定してください",
