@@ -62,7 +62,8 @@ Senri がこれから向かう先です。バージョンは目標であって�
 - [x] レスポンスのヘルパー: `c.html()`、`c.redirect()`
 - [x] レスポンスのヘルパー: `c.notFound()`
 - [x] SSE / ストリーミングのヘルパー(`@senrijs/senri/streaming` の `stream()`、`streamText()`、`streamSSE()`。Context のメソッドにせず、使わないアプリを太らせない)
-- [ ] ファイルアップロード: サイズ・種類の検証、大きなファイルのストリーム受信
+- [x] ファイルアップロード: サイズと種類の検証(`uploadLimit()`)
+- [ ] ファイルアップロード: 大きなファイルをメモリに載せず、ストリームで受信する
 - [x] ミドルウェア: リクエスト ID(`requestId()`)
 - [x] ミドルウェア: タイムアウト(`timeout()`)
 - [x] ミドルウェア: Basic / Bearer 認証(`basicAuth()`、`bearerAuth()`)

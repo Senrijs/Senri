@@ -342,7 +342,7 @@ app.use("/admin", (c, next) => {
 ### 標準のミドルウェア
 
 ```ts
-import { basicAuth, bearerAuth, bodyLimit, cache, compress, cors, etag, health, ipRestriction, languageDetector, logger, methodOverride, prettyJSON, rateLimit, requestId, secureHeaders, timeout, trailingSlash } from "@senrijs/senri";
+import { basicAuth, bearerAuth, bodyLimit, cache, compress, cors, etag, health, ipRestriction, languageDetector, logger, methodOverride, prettyJSON, rateLimit, requestId, secureHeaders, timeout, trailingSlash, uploadLimit } from "@senrijs/senri";
 import { serveStatic } from "@senrijs/senri/static";
 
 app.use(health({ ready: () => db.isConnected() }));   // /healthz と /readyz
@@ -363,6 +363,7 @@ app.use(trailingSlash());                              // /a/ → /a に 301
 app.use("/assets", cache({ cacheControl: "public, max-age=3600" }));
 app.use(languageDetector({ supportedLanguages: ["ja", "en"], fallbackLanguage: "en" }));  // c.get("language")
 app.use(prettyJSON());                                 // ?pretty で JSON を整形
+app.use("/photos", uploadLimit({ maxTotalSize: 20 * 1024 * 1024, types: ["image/png"] }));
 ```
 
 - `requestId()`: 受け取った `X-Request-Id` は既定で使いません。信頼できるプロキシの後ろでは `trustIncoming: true` にしてください(128 文字までの `A-Z a-z 0-9 . _ = + / -` だけを受け付け、それ以外は作り直します)
@@ -377,6 +378,7 @@ app.use(prettyJSON());                                 // ?pretty で JSON を�
 - `cache()`: GET / HEAD の 2xx と 304 に `Cache-Control` と `Vary` を付けるだけで、保存はブラウザや CDN に任せます。`etag()` より先に登録してください。`setCookie()` の Cookie はミドルウェアから見えないので、個人のページがあるパスに `public` を付けないでください
 - `languageDetector()`: クエリ(`lang`)、Cookie(`language`)、`Accept-Language` の順に見ます。`c.get("language")` は必ず `supportedLanguages` のどれかです。Cookie には書き込みません
 - `prettyJSON()`: `compress()` と `etag()` のあとに登録してください。1 MiB を超える本文とストリームは整形しません
+- `uploadLimit()`: multipart のファイルの大きさ(`maxTotalSize` は必須、`maxFileSize`)、数(`maxFiles`)、種類(`types`、`extensions`)を確かめます。超えたら 413、種類が違えば 415 です。PNG、JPEG、GIF、WebP、PDF は中身の先頭のバイトも確かめます。読んだ結果は `c.body()` で受け取れて、ルートのスキーマも検証のあとに動きます。`c.body()` は全部メモリに読むので、使うメモリは `maxTotalSize` までです。送られたファイル名(`file.name`)は `../../etc/passwd` のようなものかもしれないので、保存先に使わないでください(`crypto.randomUUID()` などで自分で決めるか、`safeFileName()` を通してください)
 - `health()`: `/healthz` は応答できれば 200。`/readyz` は `ready()` が true なら 200、false・例外・止まり始めたあとは 503
 - `logger()`: 色は既定でオンです。ファイルや CI に流すときは `color: false` にしてください
 - `secureHeaders()`: Content-Security-Policy と Cross-Origin-Embedder-Policy は既定でオフです(アプリによって壊れやすいので)

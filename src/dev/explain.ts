@@ -29,6 +29,7 @@ const JA: Record<string, string> = {
     returned_nothing: "ハンドラーが何も返していません(undefined / null)",
     next_twice: "next() が2回呼ばれました。1つのミドルウェアで呼べるのは1回だけです",
     no_response: "ミドルウェアが何も返さず、next() も呼んでいません",
+    upload_limit_options: "uploadLimit() の設定が正しくありません。maxTotalSize は必須です(c.body() が全部メモリに読むので、これが使うメモリの上限になります)。extensions は . で始めてください",
     sse_message: "writeSSE() の値が正しくありません。event と id に改行は使えません(別のフィールドを注入できてしまうため)。retry は 0 以上の整数、data は文字列です",
     sse_heartbeat: "streamSSE() の heartbeat は、0 より大きいミリ秒の数で指定してください",
     pretty_json_options: "prettyJSON() の space は 1〜10 の整数、query は空でない文字列で指定してください",

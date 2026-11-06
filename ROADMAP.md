@@ -62,7 +62,8 @@ See the [CHANGELOG](./CHANGELOG.md) for details.
 - [x] Response helpers: `c.html()`, `c.redirect()`
 - [x] Response helper: `c.notFound()`
 - [x] SSE / streaming helpers (`stream()`, `streamText()` and `streamSSE()` from `@senrijs/senri/streaming`; not Context methods, so apps that do not use them stay small)
-- [ ] File uploads: size/type validation, streaming large files
+- [x] File uploads: size and type validation (`uploadLimit()`)
+- [ ] File uploads: receiving large files as a stream, without holding them in memory
 - [x] Middleware: request ID (`requestId()`)
 - [x] Middleware: timeout (`timeout()`)
 - [x] Middleware: Basic / Bearer auth (`basicAuth()`, `bearerAuth()`)
