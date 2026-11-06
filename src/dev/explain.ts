@@ -29,6 +29,7 @@ const JA: Record<string, string> = {
     returned_nothing: "ハンドラーが何も返していません(undefined / null)",
     next_twice: "next() が2回呼ばれました。1つのミドルウェアで呼べるのは1回だけです",
     no_response: "ミドルウェアが何も返さず、next() も呼んでいません",
+    request_id_header: "requestId() の headerName に、ヘッダー名に使えない文字があります",
 };
 
 // 日本語の説明(なければ null)
