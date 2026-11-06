@@ -70,7 +70,11 @@ Senri がこれから向かう先です。バージョンは目標であって�
 - [x] ミドルウェア: 圧縮(`compress()`)
 - [x] ミドルウェア: IP 制限(`ipRestriction()`)
 - [x] ミドルウェア: レート制限(`rateLimit()`)
-- [ ] ミドルウェアの追加: メソッド上書き、末尾スラッシュの正規化、キャッシュ、言語判定、Pretty JSON
+- [x] ミドルウェア: メソッド上書き(`methodOverride()`)
+- [x] ミドルウェア: 末尾スラッシュの正規化(`trailingSlash()`)
+- [x] ミドルウェア: キャッシュのヘッダー(`cache()`)
+- [x] ミドルウェア: 言語判定(`languageDetector()`)
+- [x] ミドルウェア: Pretty JSON(`prettyJSON()`)
 - [ ] 性能: 文字列を返すときの速い道、oha での HTTP のベンチマーク(ヘルパーのあと)
 - [x] プロキシ対応(`trustProxy()`。右から数えて、`X-Forwarded-For` の先頭は信じない)
 - [ ] ドキュメントサイト(senri.skyia.jp)

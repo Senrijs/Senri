@@ -16,7 +16,8 @@ export type LazyRequest = {
 export class PlainResponse {
     readonly status: number;
     readonly type: string;
-    readonly body: string;
+    // prettyJSON() が差し替える
+    body: string;
     // c.header() で設定したヘッダー
     readonly own: Headers | undefined;
     #headers: Headers | undefined;
