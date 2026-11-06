@@ -16,8 +16,11 @@ export type MethodOverrideOptions = {
     allow?: readonly string[];
 };
 
-type Target = {
+/** What {@link methodOverride} wraps: an app, from `createApp()`. */
+export type MethodOverrideTarget = {
+    /** Handles a request. */
     fetch(req: Request, info?: unknown, ctx?: ExecutionContext): Promise<Response>;
+    /** Lists the routes, for the banner of `serve()`. */
     routeList(): { method: string; path: string }[];
 };
 
@@ -87,7 +90,7 @@ async function readForm(req: Request, name: string): Promise<string | null> {
  * // On Cloudflare Workers: export default methodOverride(app);
  * ```
  */
-export function methodOverride<T extends Target>(app: T, options: MethodOverrideOptions = {}): Pick<T, "fetch" | "routeList"> {
+export function methodOverride<T extends MethodOverrideTarget>(app: T, options: MethodOverrideOptions = {}): Pick<T, "fetch" | "routeList"> {
     const form = options.form ?? "_method";
     const header = options.header ?? "X-HTTP-Method-Override";
     const allow = options.allow ?? ["PUT", "PATCH", "DELETE"];
@@ -102,7 +105,7 @@ export function methodOverride<T extends Target>(app: T, options: MethodOverride
     const allowed = new Set(allow.map((method) => method.toUpperCase()));
     const accepts = (method: string | null | undefined): method is string => typeof method === "string" && allowed.has(method.toUpperCase());
 
-    const wrapped: Target = {
+    const wrapped: MethodOverrideTarget = {
         async fetch(req, info, ctx) {
             if (req.method !== "POST") return app.fetch(req, info, ctx);
             let method = header === false ? null : req.headers.get(header);

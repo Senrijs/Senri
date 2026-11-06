@@ -67,4 +67,4 @@ export { prettyJSON, type PrettyJSONOptions } from "./middleware/pretty-json.ts"
 export { languageDetector, type LanguageDetectorOptions, type LanguageSource, type LanguageVariables } from "./middleware/language-detector.ts";
 export { cache, type CacheOptions } from "./middleware/cache.ts";
 export { trailingSlash, type TrailingSlashOptions } from "./middleware/trailing-slash.ts";
-export { methodOverride, type MethodOverrideOptions } from "./middleware/method-override.ts";
+export { methodOverride, type MethodOverrideOptions, type MethodOverrideTarget } from "./middleware/method-override.ts";

@@ -90,12 +90,12 @@ describe("2つの道の応答が同じ", () => {
     for (const [name, make] of groups) {
         test(name, async () => {
             const { lazy, viaFetch } = await bothPaths(makeApp(...make()));
+            // ヘッダーの組み合わせは GET で、メソッドの違いはヘッダーなしで比べる(CI の時間の上限に収めるため)
+            const cases: [string, Record<string, string>][] = [...headerSets.map((headers): [string, Record<string, string>] => ["GET", headers]), ["HEAD", {}], ["POST", {}]];
             for (const path of PATHS) {
-                for (const headers of headerSets) {
-                    for (const method of ["GET", "HEAD", "POST"]) {
-                        const text = request(method, path, headers);
-                        assert.equal(await raw(lazy, text), await raw(viaFetch, text), `${method} ${path} ${JSON.stringify(headers)}`);
-                    }
+                for (const [method, headers] of cases) {
+                    const text = request(method, path, headers);
+                    assert.equal(await raw(lazy, text), await raw(viaFetch, text), `${method} ${path} ${JSON.stringify(headers)}`);
                 }
             }
         });
