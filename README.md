@@ -352,7 +352,7 @@ app.use(prettyJSON());                                 // ?pretty で JSON を�
 - `rateLimit()`: 固定ウィンドウで、既定のキーは IP です(IPv6 は /64 ごと)。IP が分からないリクエストは制限せず、最初の 1 回だけ警告します。既定の保存先はプロセスのメモリなので、Workers では isolate ごとの制限になり、全体の制限にはなりません。`store` で Redis などに差し替えられます
 - `methodOverride(app)`: HTML のフォームから PUT / PATCH / DELETE を送れるようにします。ルートはミドルウェアより先に決まるので、ミドルウェアではなく `app.fetch` を包みます(`serve(methodOverride(app))`、Workers では `export default methodOverride(app)`)。上書きできるのは POST だけです。`multipart/form-data` のフォームは読まないので、その場合は `X-HTTP-Method-Override` ヘッダーを使ってください。使うと Node では全リクエストが、`Request` と `Response` を作らない道を外れます
 - `trailingSlash()`: `/a` と `/a/` は同じルートなので、正規の形にそろえたいとき(SEO)に使います。GET / HEAD で、ルートに一致したパスだけをリダイレクトします
-- `cache()`: `Cache-Control` と `Vary` を付けるだけで、保存はブラウザや CDN に任せます。`setCookie()` の Cookie はミドルウェアから見えないので、個人のページがあるパスに `public` を付けないでください
+- `cache()`: GET / HEAD の 2xx と 304 に `Cache-Control` と `Vary` を付けるだけで、保存はブラウザや CDN に任せます。`etag()` より先に登録してください。`setCookie()` の Cookie はミドルウェアから見えないので、個人のページがあるパスに `public` を付けないでください
 - `languageDetector()`: クエリ(`lang`)、Cookie(`language`)、`Accept-Language` の順に見ます。`c.get("language")` は必ず `supportedLanguages` のどれかです。Cookie には書き込みません
 - `prettyJSON()`: `compress()` と `etag()` のあとに登録してください。1 MiB を超える本文とストリームは整形しません
 - `health()`: `/healthz` は応答できれば 200。`/readyz` は `ready()` が true なら 200、false・例外・止まり始めたあとは 503

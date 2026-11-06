@@ -15,8 +15,8 @@ export type CacheOptions = {
 const HEADER_NAME = /^[!#$%&'*+.^_`|~0-9A-Za-z-]+$/;
 
 /**
- * Middleware that adds `Cache-Control`, and `Vary` if given, to `GET` and `HEAD` responses with a 2xx status. It only sets
- * these headers: browsers and CDNs do the caching.
+ * Middleware that adds `Cache-Control`, and `Vary` if given, to `GET` and `HEAD` responses with a 2xx or 304 status. It only
+ * sets these headers: browsers and CDNs do the caching. Register it before `etag()`, so that `304` responses get them too.
  *
  * - A `Cache-Control` already on the `Response` is kept, and one set with `c.header()` wins, so a route can use its own
  * - **Be careful with `public`:** a shared cache could give one user's page to another. This middleware cannot see cookies
@@ -45,7 +45,8 @@ export function cache(options: CacheOptions): Middleware {
     return markPlainSafe<Middleware>(async function cache(c, next) {
         const method = methodOf(c);
         const res = await next();
-        if ((method !== "GET" && method !== "HEAD") || res.status < 200 || res.status > 299) return res;
+        // 304 にも、200 と同じ Cache-Control を付ける(RFC 9110)
+        if ((method !== "GET" && method !== "HEAD") || ((res.status < 200 || res.status > 299) && res.status !== 304)) return res;
         const out = editable(res);
         if (!out.headers.has("cache-control")) out.headers.set("cache-control", cacheControl);
         if (vary.length > 0) appendVary(out.headers, ...vary);

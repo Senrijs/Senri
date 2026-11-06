@@ -77,17 +77,18 @@ describe("cache()", () => {
         expect(await res.text()).toBe("x");
     });
 
-    test("etag() の 304 にも付く", async () => {
+    test("先に登録すれば、etag() の 304 にも付く", async () => {
         const app = createApp();
-        app.use(cache({ cacheControl: CC }));
+        app.use(cache({ cacheControl: CC, vary: ["X-A"] }));
         app.use(etag());
         app.get("/", () => "x");
         const tag = (await app.fetch(new Request("http://localhost/"))).headers.get("etag")!;
         const res = await app.fetch(new Request("http://localhost/", { headers: { "if-none-match": tag } }));
 
-        // 304 は 2xx ではないので、内側に置くと付かない。外側に置いて、etag() より先に登録する形を確かめる
         expect(res.status).toBe(304);
         expect(res.headers.get("etag")).toBe(tag);
+        expect(res.headers.get("cache-control")).toBe(CC);
+        expect(res.headers.get("vary")).toBe("X-A");
     });
 
     test("パス指定で、その下だけに付ける", async () => {
