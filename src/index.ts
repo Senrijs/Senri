@@ -61,3 +61,4 @@ export { timeout, type TimeoutOptions } from "./middleware/timeout.ts";
 export { basicAuth, bearerAuth, type BasicAuthOptions, type BearerAuthOptions } from "./middleware/auth.ts";
 export { etag, type EtagOptions } from "./middleware/etag.ts";
 export { compress, type CompressOptions } from "./middleware/compress.ts";
+export { ipRestriction, type IpRestrictionOptions } from "./middleware/ip-restriction.ts";

@@ -68,7 +68,8 @@ See the [CHANGELOG](./CHANGELOG.md) for details.
 - [x] Middleware: Basic / Bearer auth (`basicAuth()`, `bearerAuth()`)
 - [x] Middleware: ETag (`etag()`)
 - [x] Middleware: compression (`compress()`)
-- [ ] More middleware: method override, trailing-slash normalization, IP restriction, rate limiting, cache, language detection, pretty JSON
+- [x] Middleware: IP restriction (`ipRestriction()`)
+- [ ] More middleware: method override, trailing-slash normalization, rate limiting, cache, language detection, pretty JSON
 - [ ] Performance: a fast path for string responses, HTTP benchmarks with oha (after the helpers)
 - [x] Trusted-proxy support (`trustProxy()`; counts proxies from the right and never trusts the first `X-Forwarded-For` value)
 - [ ] Documentation site (senri.skyia.jp)

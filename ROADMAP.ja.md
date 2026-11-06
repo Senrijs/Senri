@@ -68,7 +68,8 @@ Senri がこれから向かう先です。バージョンは目標であって�
 - [x] ミドルウェア: Basic / Bearer 認証(`basicAuth()`、`bearerAuth()`)
 - [x] ミドルウェア: ETag(`etag()`)
 - [x] ミドルウェア: 圧縮(`compress()`)
-- [ ] ミドルウェアの追加: メソッド上書き、末尾スラッシュの正規化、IP 制限、レート制限、キャッシュ、言語判定、Pretty JSON
+- [x] ミドルウェア: IP 制限(`ipRestriction()`)
+- [ ] ミドルウェアの追加: メソッド上書き、末尾スラッシュの正規化、レート制限、キャッシュ、言語判定、Pretty JSON
 - [ ] 性能: 文字列を返すときの速い道、oha での HTTP のベンチマーク(ヘルパーのあと)
 - [x] プロキシ対応(`trustProxy()`。右から数えて、`X-Forwarded-For` の先頭は信じない)
 - [ ] ドキュメントサイト(senri.skyia.jp)

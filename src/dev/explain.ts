@@ -29,6 +29,8 @@ const JA: Record<string, string> = {
     returned_nothing: "ハンドラーが何も返していません(undefined / null)",
     next_twice: "next() が2回呼ばれました。1つのミドルウェアで呼べるのは1回だけです",
     no_response: "ミドルウェアが何も返さず、next() も呼んでいません",
+    ip_restriction_options: "ipRestriction() には allow か deny の、少なくとも一方を指定してください",
+    ip_restriction_range: "ipRestriction() の allow と deny には、IP アドレスか CIDR(10.0.0.0/8 など)の配列を指定してください",
     trust_proxy_options: "trustProxy() には hops(1 以上の整数)か proxies(IP アドレスや CIDR の配列)の、どちらか一方を指定してください。header はヘッダー名に使える文字だけです",
     request_id_header: "requestId() の headerName に、ヘッダー名に使えない文字があります",
     timeout_ms: "timeout() の時間は、0 より大きいミリ秒の数で指定してください",
