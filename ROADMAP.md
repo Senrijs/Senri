@@ -64,7 +64,8 @@ See the [CHANGELOG](./CHANGELOG.md) for details.
 - [ ] SSE / streaming helpers (`c.stream()` and more)
 - [ ] File uploads: size/type validation, streaming large files
 - [x] Middleware: request ID (`requestId()`)
-- [ ] More middleware: Basic / Bearer auth, compression, ETag, timeout
+- [x] Middleware: timeout (`timeout()`)
+- [ ] More middleware: Basic / Bearer auth, compression, ETag
 - [ ] More middleware: method override, trailing-slash normalization, IP restriction, rate limiting, cache, language detection, pretty JSON
 - [ ] Performance: a fast path for string responses, HTTP benchmarks with oha (after the helpers)
 - [ ] Trusted-proxy support for `getIp` (count proxies from the right; never trust the first `X-Forwarded-For` value)
