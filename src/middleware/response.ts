@@ -1,6 +1,7 @@
 // 標準ミドルウェアが、next() のあとでレスポンスのヘッダーを足すときに使う
 
 // ヘッダーを変更できるレスポンスにする
+// (Node では、Response の代わりに src/plain.ts の PlainResponse が来ることがある。status と headers は同じように使える)
 // fetch() や Response.redirect() の Response はヘッダーを変更できないので、そのときだけ作り直す
 export function editable(res: Response): Response {
     try {

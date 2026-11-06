@@ -1,5 +1,6 @@
 // CORS(よそのオリジンのページから、このサーバーを呼べるようにする)
 import type { Context, Middleware } from "../context.ts";
+import { headerOf, markPlainSafe, methodOf } from "../plain.ts";
 import { appendVary, editable } from "./response.ts";
 
 /** Options for {@link cors}. */
@@ -66,8 +67,8 @@ export function cors(options: CorsOptions = {}): Middleware {
         return origin.includes(requestOrigin) ? requestOrigin : null;
     };
 
-    return async function cors(c, next) {
-        const requestOrigin = c.req.headers.get("origin");
+    return markPlainSafe<Middleware>(async function cors(c, next) {
+        const requestOrigin = headerOf(c, "origin");
         if (requestOrigin === null) {
             if (!varies) return next();
             // 許可するオリジンがリクエストで変わるなら、Origin のないレスポンスにも Vary: Origin を付ける
@@ -81,8 +82,8 @@ export function cors(options: CorsOptions = {}): Middleware {
         const allowed = allowOrigin(requestOrigin, c);
 
         // プリフライト(本番のリクエストの前に、ブラウザが「送ってよいか」を OPTIONS で聞いてくるもの)には、ここで答える
-        const requestMethod = c.req.headers.get("access-control-request-method");
-        if (c.req.method === "OPTIONS" && requestMethod !== null) {
+        const requestMethod = headerOf(c, "access-control-request-method");
+        if (methodOf(c) === "OPTIONS" && requestMethod !== null) {
             const headers = new Headers();
             if (varies) appendVary(headers, "Origin");
             if (allowed !== null) {
@@ -91,7 +92,7 @@ export function cors(options: CorsOptions = {}): Middleware {
                 if (options.allowHeaders) {
                     headers.set("access-control-allow-headers", options.allowHeaders.join(", "));
                 } else {
-                    const requested = c.req.headers.get("access-control-request-headers");
+                    const requested = headerOf(c, "access-control-request-headers");
                     if (requested) headers.set("access-control-allow-headers", requested);
                     appendVary(headers, "Access-Control-Request-Headers");
                 }
@@ -112,5 +113,5 @@ export function cors(options: CorsOptions = {}): Middleware {
             if (expose) res.headers.set("access-control-expose-headers", expose);
         }
         return res;
-    };
+    });
 }

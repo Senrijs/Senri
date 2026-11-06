@@ -1,4 +1,5 @@
 import type { Middleware } from "./context.ts";
+import { markPlainSafe, methodOf, urlOf } from "./plain.ts";
 
 const C = {
     reset: "\x1b[0m",
@@ -32,11 +33,11 @@ export type LoggerOptions = {
 
 // ログには、届いたままのパスを出す(c.path はデコード済みで、不正なリクエストだと 400 を投げるため)
 // Bun は不正な Host のとき req.url を相対 URL にするので、URL として読めなければそのまま出す
-function rawPath(req: Request): string {
+function rawPath(url: string): string {
     try {
-        return new URL(req.url).pathname;
+        return new URL(url).pathname;
     } catch {
-        return req.url;
+        return url;
     }
 }
 
@@ -76,12 +77,12 @@ export function logger(options: LoggerOptions = {}): Middleware {
     }
 
     // 名前付きの関数にしておくと、ダッシュボードなどで "logger" と表示できる
-    return async function logger(c, next) {
+    return markPlainSafe<Middleware>(async function logger(c, next) {
         const start = Date.now();
         const res = await next();
         const ms = Date.now() - start;
-        const method = c.req.method;
-        const path = rawPath(c.req);
+        const method = methodOf(c);
+        const path = rawPath(urlOf(c));
 
         // pino 形式のエラー(エラーがなければ undefined)
         const err = c.error instanceof Error
@@ -117,7 +118,7 @@ export function logger(options: LoggerOptions = {}): Middleware {
         if (err) {
             console.log(paint(C.red, `  ${err.stack ?? err.message}`));
         }
-    };
+    });
 }
 
 type RouteInfo = { method: string; path: string };

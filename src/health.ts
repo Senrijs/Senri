@@ -6,6 +6,7 @@
 //   ready() が false を返したとき・例外を投げたとき・serve() が止まり始めたあとは 503
 // どちらも、ほかのミドルウェア(認証など)より先に app.use() すると、そちらを通らずに答えられる
 import type { Middleware } from "./context.ts";
+import { markPlainSafe, methodOf } from "./plain.ts";
 
 /** Options for {@link health}. */
 export type HealthOptions = {
@@ -59,8 +60,8 @@ export function health(options: HealthOptions = {}): Middleware {
     const live = options.path === undefined ? "/healthz" : options.path;
     const ready = options.readyPath === undefined ? "/readyz" : options.readyPath;
 
-    return async function health(c, next) {
-        const method = c.req.method;
+    return markPlainSafe<Middleware>(async function health(c, next) {
+        const method = methodOf(c);
         if (method !== "GET" && method !== "HEAD") return next();
         let path: string;
         try {
@@ -79,5 +80,5 @@ export function health(options: HealthOptions = {}): Middleware {
             return plain("not ready", 503);
         }
         return plain("ready", 200);
-    };
+    });
 }

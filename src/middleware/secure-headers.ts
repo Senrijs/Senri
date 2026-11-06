@@ -1,5 +1,6 @@
 // よく使われるセキュリティ系のレスポンスヘッダーをまとめて付ける
 import type { Middleware } from "../context.ts";
+import { markPlainSafe } from "../plain.ts";
 import { editable } from "./response.ts";
 
 // 文字列: その値にする / true: 既定の値 / false: 付けない
@@ -83,7 +84,7 @@ export function secureHeaders(options: SecureHeadersOptions = {}): Middleware {
         }
     }
 
-    return async function secureHeaders(c, next) {
+    return markPlainSafe<Middleware>(async function secureHeaders(c, next) {
         // next() のあとでレスポンスに足す。ハンドラーが Response に付けたものは上書きしない
         // (c.header() で付けたものは、このあと finalize() で入るので、そちらが勝つ)
         const downstream = await next();
@@ -94,5 +95,5 @@ export function secureHeaders(options: SecureHeadersOptions = {}): Middleware {
             if (!res.headers.has(name)) res.headers.set(name, value);
         }
         return res;
-    };
+    });
 }

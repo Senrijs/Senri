@@ -4,7 +4,7 @@ import { after, before, describe, test } from "node:test";
 import assert from "node:assert/strict";
 import net, { type AddressInfo } from "node:net";
 import { createServer, type Server } from "node:http";
-import { bodyLimit, cors, createApp, HttpError, logger, secureHeaders, type App } from "../../src/index.ts";
+import { bodyLimit, cors, createApp, health, HttpError, logger, secureHeaders, type App, type Middleware } from "../../src/index.ts";
 import { serve } from "../../adapters/node/index.ts";
 import { setCookie } from "../../src/cookie.ts";
 import { getIp } from "../../src/ip.ts";
@@ -16,6 +16,20 @@ let upstreamPort = 0;
 
 function addRoutes(app: App<any>) {
     app.get("/", () => "Hello");
+    // 純正のミドルウェアが足すものと、c.header() がぶつかるとき
+    app.get("/own-acao", (_, c) => {
+        c.header("access-control-allow-origin", "https://own.example");
+        return "x";
+    });
+    app.get("/own-xfo", (_, c) => {
+        c.header("x-frame-options", "DENY");
+        return { a: 1 };
+    });
+    app.get("/own-type", (_, c) => {
+        c.header("content-type", "text/html");
+        c.header("x-frame-options", "DENY");
+        return "<p/>";
+    });
     app.get("/json", () => ({ a: 1 }));
     app.get("/array", () => [1, 2]);
     app.get("/async", async () => "async");
@@ -117,6 +131,17 @@ const REQUESTS: [string, string][] = [
         "/ip", "/copy", "/replace", "/fetch", "/fetch-req", "/missing",
     ].map((p): [string, string] => [`GET ${p}`, GET(p)]),
     ["GET /headers(x-a)", GET("/headers", "X-A: 1\r\nX-A: 2\r\n")],
+    ...["/", "/json", "/cookies", "/location", "/type", "/boom", "/text", "/response", "/redirect"].flatMap((p): [string, string][] => [
+        [`GET ${p}(許可された Origin)`, GET(p, "Origin: https://ok.example\r\n")],
+        [`GET ${p}(許可されない Origin)`, GET(p, "Origin: https://ng.example\r\n")],
+    ]),
+    ["プリフライト", GET("/", "Origin: https://ok.example\r\nAccess-Control-Request-Method: POST\r\nAccess-Control-Request-Headers: x-a\r\n", "OPTIONS")],
+    ["/healthz", GET("/healthz")],
+    ["/readyz", GET("/readyz")],
+    ["上書き: c.header と cors", GET("/own-acao", "Origin: https://ok.example\r\n")],
+    ["上書き: c.header と secureHeaders", GET("/own-xfo")],
+    ["上書き: Content-Type と secureHeaders", GET("/own-type")],
+    ["POST chunked 超過", "POST /echo HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\nTransfer-Encoding: chunked\r\n\r\n8\r\nabcdefgh\r\n0\r\n\r\n"],
     ...["/", "/json", "/boom", "/missing", "/status", "/cookies"].map((p): [string, string] => [`HEAD ${p}`, GET(p, "", "HEAD")]),
     ["POST /both", GET("/both", "Content-Length: 0\r\n", "POST")],
     ["DELETE /both(405)", GET("/both", "", "DELETE")],
@@ -142,9 +167,17 @@ const REQUESTS: [string, string][] = [
     ].map((p): [string, string] => [`path ${p}`, GET(p)]),
 ];
 
+// ヘッダーの順番は HTTP の意味を変えないので、並べ替えてから比べる
+function sortHeaders(text: string): string {
+    const end = text.indexOf("\r\n\r\n");
+    if (end === -1) return text;
+    const [status, ...headers] = text.slice(0, end).split("\r\n");
+    return [status, ...headers.sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()))].join("\r\n") + text.slice(end);
+}
+
 // 日付や、起動ごとに変わるものをそろえる
 const normalize = (text: string) =>
-    text
+    sortHeaders(text)
         .replace(/^date: .*$/gim, "date: X")
         .replace(/^server-timing: .*$/gim, "server-timing: X")
         .replace(/localhost:\d+/g, "localhost:P")
@@ -233,6 +266,46 @@ describe("Request を作らない道と app.fetch の道で、応答が同じ", 
                 return app;
             },
         ],
+        ...(
+            [
+                ["secureHeaders", (app) => app.use(secureHeaders())],
+                ["cors(*)", (app) => app.use(cors())],
+                ["cors(許可リスト)", (app) => app.use(cors({ origin: ["https://ok.example"], credentials: true, exposeHeaders: ["x-mark"] }))],
+                ["logger", (app) => app.use(logger({ format: "json" }))],
+                ["health", (app) => app.use(health())],
+                ["bodyLimit", (app) => app.use(bodyLimit({ maxSize: 5 }))],
+                [
+                    "全部",
+                    (app) => {
+                        app.use(health());
+                        app.use(logger({ format: "json" }));
+                        app.use(secureHeaders());
+                        app.use(cors({ origin: ["https://ok.example"] }));
+                        app.use(bodyLimit({ maxSize: 5 }));
+                    },
+                ],
+                [
+                    "全部 + 利用者のミドルウェア",
+                    (app) => {
+                        app.use(secureHeaders());
+                        app.use(async (c, next) => {
+                            const res = await next();
+                            c.header("x-seen-status", String(res.status));
+                            return res;
+                        });
+                        app.use(cors({ origin: ["https://ok.example"] }));
+                    },
+                ],
+            ] as [string, (app: App<any>) => void][]
+        ).map(([name, install]): [string, () => App<any>] => [
+            `純正のミドルウェア: ${name}`,
+            () => {
+                const app = createApp<any>();
+                install(app);
+                addRoutes(app);
+                return app;
+            },
+        ]),
         [
             "開発モードのアプリ",
             () => {
@@ -252,8 +325,8 @@ describe("Request を作らない道と app.fetch の道で、応答が同じ", 
         });
     }
 
-    test("比べているリクエストは 90 種類ある(4グループで 360 件)", () => {
-        assert.equal(REQUESTS.length, 90);
+    test("比べているリクエストの数(減っていないこと)", () => {
+        assert.equal(REQUESTS.length, 115);
     });
 
     test("読まれない本文のあとも、同じ接続で次のリクエストが通る", async () => {
@@ -370,6 +443,130 @@ describe("c.req は、読んだときに作られる本物の Request", () => {
             assert.equal(counts.Response, 1, "ミドルウェア");
         }),
     );
+
+    test(
+        "純正のミドルウェアだけなら、Request も Response も作らない",
+        counting(async (counts) => {
+            const app = createApp();
+            app.use(health());
+            app.use(logger({ format: "json" }));
+            app.use(secureHeaders());
+            app.use(cors());
+            app.use(bodyLimit({ maxSize: 5 }));
+            app.get("/", () => "Hello");
+            app.get("/json", () => ({ a: 1 }));
+            const port = await listen(app);
+
+            for (const path of ["/", "/json"]) {
+                counts.Request = 0;
+                counts.Response = 0;
+                assert.match(await raw(port, GET(path, "Origin: https://ok.example\r\n")), /^HTTP\/1\.1 200/, path);
+                assert.equal(counts.Request, 0, `${path} Request`);
+                assert.equal(counts.Response, 0, `${path} Response`);
+            }
+        }),
+    );
+
+    test(
+        "利用者のミドルウェアが混ざると、本物の Response を作る",
+        counting(async (counts) => {
+            const app = createApp();
+            app.use(secureHeaders());
+            app.use((_c, next) => next());
+            app.use(cors());
+            app.get("/", () => "Hello");
+            const port = await listen(app);
+
+            counts.Response = 0;
+            await raw(port, GET("/"));
+            assert.ok(counts.Response >= 1);
+        }),
+    );
+
+    test("利用者のミドルウェアに渡るのは、いつも本物の Response", async () => {
+        const seen: [string, boolean][] = [];
+        const look =
+            (name: string): Middleware =>
+            async (_c, next) => {
+                const res = await next();
+                seen.push([name, Object.getPrototypeOf(res) === Response.prototype]);
+                return res;
+            };
+        const app = createApp();
+        app.use(look("外側"));
+        app.use(secureHeaders());
+        app.use(cors());
+        app.use(look("内側"));
+        app.get("/", () => "Hello");
+        app.get("/json", () => ({ a: 1 }));
+        const port = await listen(app);
+
+        await raw(port, GET("/"));
+        await raw(port, GET("/json"));
+
+        assert.deepEqual(seen, [
+            ["内側", true],
+            ["外側", true],
+            ["内側", true],
+            ["外側", true],
+        ]);
+    });
+
+    test("純正のミドルウェアを包むと、利用者のミドルウェアとして扱う", async () => {
+        let real = false;
+        const inner = secureHeaders();
+        const app = createApp();
+        app.use(async (c, next) => {
+            const res = await inner(c, next);
+            real = Object.getPrototypeOf(res) === Response.prototype;
+            return res;
+        });
+        app.get("/", () => "Hello");
+        const text = await raw(await listen(app), GET("/"));
+
+        assert.equal(real, true);
+        assert.match(text, /^x-frame-options: SAMEORIGIN$/im);
+    });
+
+    test("cors の origin の関数は、本物の c.req を読める", async () => {
+        let proto: unknown;
+        const app = createApp();
+        app.use(
+            cors({
+                origin: (origin, c) => {
+                    proto = Object.getPrototypeOf(c.req);
+                    return origin;
+                },
+            }),
+        );
+        app.get("/", () => "Hello");
+        const text = await raw(await listen(app), GET("/", "Origin: https://a.example\r\n"));
+
+        assert.equal(proto, Request.prototype);
+        assert.match(text, /^access-control-allow-origin: https:\/\/a\.example$/im);
+    });
+
+    test("logger は、Response を作らない道でも status と URL を記録する", async () => {
+        const lines: string[] = [];
+        const original = console.log;
+        console.log = (line: unknown) => void lines.push(String(line));
+        try {
+            const app = createApp();
+            app.use(logger({ format: "json" }));
+            app.get("/created", (_, c) => {
+                c.status(201);
+                return "x";
+            });
+            await raw(await listen(app), GET("/created?a=1"));
+        } finally {
+            console.log = original;
+        }
+        const entry = JSON.parse(lines.at(-1)!);
+
+        assert.equal(entry.req.method, "GET");
+        assert.equal(entry.req.url, "/created");
+        assert.equal(entry.res.statusCode, 201);
+    });
 
     test("本物の Request で、Request のサブクラスではない", async () => {
         let proto: unknown;

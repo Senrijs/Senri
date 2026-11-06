@@ -1,6 +1,7 @@
 // リクエストのボディの大きさを制限する。超えたら 413
 import type { Context, HandlerResult, Middleware } from "../context.ts";
 import { HttpError } from "../errors.ts";
+import { hasNoBody, markPlainSafe } from "../plain.ts";
 
 /** Options for {@link bodyLimit}. */
 export type BodyLimitOptions = {
@@ -43,7 +44,9 @@ export function bodyLimit(options: BodyLimitOptions): Middleware {
     const tooLarge = (c: Context) =>
         options.onError ? options.onError(c.status(413)) : new Response("413 Content Too Large", { status: 413 });
 
-    return async function bodyLimit(c, next) {
+    return markPlainSafe<Middleware>(async function bodyLimit(c, next) {
+        // 本文がないと分かっていれば、Request を作らずに済ませる
+        if (hasNoBody(c)) return next();
         const body = c.req.body;
         if (body === null) return next();
 
@@ -81,5 +84,5 @@ export function bodyLimit(options: BodyLimitOptions): Middleware {
         const res = await next();
         // ハンドラーがエラーを握りつぶしていても、超えていたら 413 にする
         return exceeded ? tooLarge(c) : res;
-    };
+    });
 }
