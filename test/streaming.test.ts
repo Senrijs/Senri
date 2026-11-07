@@ -413,6 +413,48 @@ describe("streamSSE()", () => {
         expect(text.match(/: ping\n\n/g)?.length ?? 0).toBeGreaterThanOrEqual(1);
     });
 
+    test("heartbeat: 既定で、5秒ごとに流れる", async () => {
+        const interval = spyOn(globalThis, "setInterval");
+        try {
+            const res = await appWith((c) => streamSSE(c, () => {})).fetch(req());
+            await res.text();
+
+            expect(interval.mock.calls.map((call) => call[1])).toEqual([5000]);
+        } finally {
+            interval.mockRestore();
+        }
+    });
+
+    test("heartbeat: false なら流れない。最初のコメントは残る", async () => {
+        const interval = spyOn(globalThis, "setInterval");
+        try {
+            const res = await appWith((c) => streamSSE(c, (s) => s.sleep(30), { heartbeat: false })).fetch(req());
+
+            expect(await res.text()).toBe(CONNECTED);
+            expect(interval).not.toHaveBeenCalled();
+        } finally {
+            interval.mockRestore();
+        }
+    });
+
+    test("heartbeat: 間隔は設定どおり", async () => {
+        const res = await appWith((c) => streamSSE(c, (s) => s.sleep(130), { heartbeat: 40 })).fetch(req());
+        const pings = (await res.text()).match(/: ping\n\n/g)?.length ?? 0;
+
+        // 130ms の間に 40ms ごとなら3回(タイマーの遅れで1回減ることはある)
+        expect(pings).toBeGreaterThanOrEqual(2);
+        expect(pings).toBeLessThanOrEqual(3);
+    });
+
+    test("heartbeat: 読み手が止まっている間は、たまらない", async () => {
+        const res = await appWith((c) => streamSSE(c, (s) => s.sleep(60), { heartbeat: 5 })).fetch(req());
+        await sleep(100);
+        const text = await res.text();
+
+        // 読んでいない間のコメント(5ms ごとなら 10 回以上)は、ためない
+        expect(text.match(/: ping\n\n/g)?.length ?? 0).toBeLessThanOrEqual(1);
+    });
+
     test("heartbeat: 切断したら止まる", async () => {
         let api: StreamingApi | undefined;
         const res = await appWith((c) =>

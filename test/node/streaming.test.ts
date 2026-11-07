@@ -200,3 +200,37 @@ describe("streamText() と Node", () => {
         assert.equal(await (await fetch(`http://127.0.0.1:${port}/`)).text(), "one\ntwo\n");
     });
 });
+
+describe("SSE の heartbeat と Node", () => {
+    test("既定で、5秒ごとに届く", { timeout: 9000 }, async () => {
+        const app = createApp();
+        app.get("/", (_, c) => streamSSE(c, (s) => s.sleep(10_000)));
+        const state = connect(await listen(app), request("GET", "/"));
+
+        await sleep(5300);
+        state.socket.destroy();
+        assert.equal(state.data.match(/: ping\n\n/g)?.length, 1, state.data);
+    });
+
+    test("heartbeat: false なら届かない", { timeout: 2000 }, async () => {
+        const app = createApp();
+        app.get("/", (_, c) => streamSSE(c, (s) => s.sleep(10_000), { heartbeat: false }));
+        const state = connect(await listen(app), request("GET", "/"));
+
+        await sleep(300);
+        state.socket.destroy();
+        assert.match(state.data, /: connected/);
+        assert.doesNotMatch(state.data, /: ping/);
+    });
+
+    test("間隔は設定どおり", { timeout: 2000 }, async () => {
+        const app = createApp();
+        app.get("/", (_, c) => streamSSE(c, (s) => s.sleep(10_000), { heartbeat: 100 }));
+        const state = connect(await listen(app), request("GET", "/"));
+
+        await sleep(350);
+        state.socket.destroy();
+        const pings = state.data.match(/: ping\n\n/g)?.length ?? 0;
+        assert.ok(pings === 2 || pings === 3, `${pings} 回`);
+    });
+});
