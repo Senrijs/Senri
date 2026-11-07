@@ -50,7 +50,7 @@ const DEFAULT_METHODS = ["GET", "HEAD", "PUT", "POST", "DELETE", "PATCH", "QUERY
 export function cors(options: CorsOptions = {}): Middleware {
     const origin = options.origin ?? "*";
     if (options.credentials && origin === "*") {
-        throw new Error('cors(): credentials: true のときは origin: "*" は使えません。許可するオリジンを指定してください');
+        throw new Error('cors(): origin: "*" cannot be used with credentials: true. Specify the allowed origins');
     }
     const methods = (options.allowMethods ?? DEFAULT_METHODS).join(", ");
     const expose = options.exposeHeaders?.join(", ");

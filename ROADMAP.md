@@ -59,7 +59,7 @@ See the [CHANGELOG](./CHANGELOG.md) for details.
 - [x] When `NODE_ENV` is not set, show dev output only for requests to localhost
 - [x] `create-senri` (`npm create senri`)
 - [x] English / Japanese dev pages and terminal messages (`devtools({ lang })`, or automatic from `Accept-Language` and `LANG`)
-- [ ] Error messages that also appear in production: all in English
+- [x] Error messages that also appear in production: all in English
 - [x] Response helpers: `c.html()`, `c.redirect()`
 - [x] Response helper: `c.notFound()`
 - [x] SSE / streaming helpers (`stream()`, `streamText()` and `streamSSE()` from `@senrijs/senri/streaming`; not Context methods, so apps that do not use them stay small)

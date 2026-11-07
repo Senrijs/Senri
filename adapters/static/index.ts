@@ -131,8 +131,8 @@ async function hasExactName(dir: string, name: string): Promise<boolean> {
 export function serveStatic(options: ServeStaticOptions): Middleware {
     if (isWorkers()) {
         throw new Error(
-            "serveStatic() は Cloudflare Workers では使えません(ファイルを読めないため)。\n" +
-                "wrangler.jsonc の assets(Static Assets)で配ってください: https://developers.cloudflare.com/workers/static-assets/",
+            "serveStatic() cannot be used on Cloudflare Workers (it cannot read files).\n" +
+                "Serve files with assets (Static Assets) in wrangler.jsonc: https://developers.cloudflare.com/workers/static-assets/",
         );
     }
     const root = resolve(options.root);

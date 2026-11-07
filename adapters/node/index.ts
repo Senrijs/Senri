@@ -40,7 +40,7 @@ function toUrl(req: IncomingMessage): string {
     // Host は下で URL の文字列につなぐので、区切り文字が入っているとパスやホストが化ける
     // (例: "x/admin#" → http://x/admin#/path となり、パスが /admin になる)
     if (/[\s/?#@\\]/.test(host)) {
-        throw new TypeError(`不正な Host ヘッダーです: ${host}`);
+        throw new TypeError(`Invalid Host header: ${host}`);
     }
     const target = req.url ?? "/";
     // absolute-form("GET http://host/path HTTP/1.1")ならそのまま使う
@@ -50,7 +50,7 @@ function toUrl(req: IncomingMessage): string {
     // "/" で始まらないもの("@evil.com/x" や "*")は、つなぐとホスト名などに化けるので受け付けない
     // (Node の HTTP パーサーがたいてい先に 400 にするが、念のため)
     if (!target.startsWith("/")) {
-        throw new TypeError(`不正なリクエストターゲットです: ${target}`);
+        throw new TypeError(`Invalid request target: ${target}`);
     }
     // new URL(target, base) にすると "//admin" が「プロトコル相対 URL」として
     // ホスト名 admin と解釈されてしまうので、文字列でつなぐ
@@ -295,7 +295,7 @@ async function serveLazily(core: AppCore, req: IncomingMessage, res: ServerRespo
     try {
         url = toUrl(req);
         // Request を作らないこともあるので、Request なら投げる URL をここで 400 にする
-        if (!URL.canParse(url)) throw new TypeError(`不正な URL です: ${url}`);
+        if (!URL.canParse(url)) throw new TypeError(`Invalid URL: ${url}`);
     } catch {
         res.statusCode = 400;
         res.end("400 Bad Request");
