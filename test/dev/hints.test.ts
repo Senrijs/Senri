@@ -1,7 +1,14 @@
 import { describe, expect, test } from "bun:test";
 import { HttpError } from "../../src/index.ts";
-import { hintFor } from "../../src/dev/hints.ts";
+import { hintFor as rawHintFor } from "../../src/dev/hints.ts";
+import { hintCode, hintText } from "../../src/dev/messages.ts";
 import { senriError } from "../../src/errors.ts";
+
+// ヒントはキーで返る。ここでは日本語にして確かめる
+const hintFor = (...args: Parameters<typeof rawHintFor>) => {
+    const hint = rawHintFor(...args);
+    return hint && { text: hintText(hint, "ja"), code: hintCode(hint, "ja") };
+};
 
 // 3ランタイムで実際に出るメッセージ(Bun と、V8 の Node / Deno で書き方が違う)
 const typeError = (message: string) => new TypeError(message);

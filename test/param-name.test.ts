@@ -55,7 +55,7 @@ describe("パラメーター名に使えない文字", () => {
     });
 
     test("開発モードでは、日本語の説明が付く", () => {
-        const app = createApp({ dev: devtools() });
+        const app = createApp({ dev: devtools({ lang: "ja" }) });
 
         expect(() => app.get("/users/:id?", () => "x")).toThrow("省略できるパラメーター");
     });

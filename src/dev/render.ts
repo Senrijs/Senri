@@ -1,4 +1,6 @@
 // ページの HTML(ビルド済みの1枚)に、エラー情報の JSON を埋め込む
+import type { Lang } from "../lang.ts";
+
 //
 // JSON は <script type="application/json"> の中に入れる。HTML の解析では、script の中身は
 // "</script" が出てくるまで続くので、エラーメッセージに "</script><script>alert(1)</script>" が
@@ -7,6 +9,9 @@
 
 // テンプレートの中の置き場所。ここを JSON に置き換える
 export const DATA_PLACEHOLDER = "<!--senri:data-->";
+
+// ビルド済みのページの <html> の開始タグ(ページの言語に置き換える)
+export const HTML_TAG = '<html lang="en">';
 
 // JSON では使えるが、古い JavaScript では改行扱いになる2文字(U+2028 / U+2029)
 // ソースに直接書くと見えない文字になってしまうので、コードポイントから作る
@@ -39,11 +44,16 @@ export const FALLBACK_PLACEHOLDER = "<!--senri:fallback-->";
 
 export function renderPage(template: string, data: unknown, fallbackHtml = ""): string {
     if (!template.includes(DATA_PLACEHOLDER)) {
-        throw new Error(`ページのテンプレートに ${DATA_PLACEHOLDER} がありません`);
+        throw new Error(`The page template has no ${DATA_PLACEHOLDER}`);
     }
     // 置き換え後の文字列を関数で返すのは、"$&" や "$1" が replace の特殊なパターンとして
     // 解釈されないようにするため(エラーメッセージに $ が入っていても、そのまま出る)
     // JSON の "<" も簡易表示の "<" もエスケープ済みなので、片方の中にもう片方の置き場所ができることはない
     const json = embedJson(data);
-    return template.replace(DATA_PLACEHOLDER, () => json).replace(FALLBACK_PLACEHOLDER, () => fallbackHtml);
+    // lang はサーバーが決めた値("ja" か "en")で、ページのデータはどれも持っている
+    const lang = (data as { lang?: Lang } | null)?.lang;
+    return template
+        .replace(HTML_TAG, () => (lang ? `<html lang="${lang}">` : HTML_TAG))
+        .replace(DATA_PLACEHOLDER, () => json)
+        .replace(FALLBACK_PLACEHOLDER, () => fallbackHtml);
 }

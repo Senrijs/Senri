@@ -1,11 +1,14 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import type { NotFoundPageData } from "../../src/dev/page-data.ts";
+import RichText from "./components/RichText.vue";
 import SiteHeader from "./components/SiteHeader.vue";
+import { useI18n } from "./i18n.ts";
 import { methodColor, visibleRoutes } from "./view.ts";
 
 const props = defineProps<{ data: NotFoundPageData }>();
 const d = props.data;
+const { t } = useI18n();
 
 // 絞り込んでいないときに出す件数
 const LIMIT = 20;
@@ -22,13 +25,13 @@ const list = computed(() => visibleRoutes(d.routes, query.value, LIMIT));
         <section class="head">
             <div class="mono status">404 Not Found</div>
             <h1>
-                <code class="target">{{ d.method }} {{ d.path }}</code> は見つかりませんでした
+                <code class="target">{{ d.method }} {{ d.path }}</code> {{ t("notFound.notFound") }}
             </h1>
         </section>
 
         <!-- もしかして(コンパイラのエラー表示風) -->
         <section v-if="d.suggestion" class="mono suggestion">
-            <span class="help-label">= もしかして:</span>
+            <span class="help-label">= {{ t("notFound.didYouMean") }}</span>
             <span />
             <span />
             <component
@@ -67,7 +70,7 @@ const list = computed(() => visibleRoutes(d.routes, query.value, LIMIT));
         <!-- 登録されているルート -->
         <section class="routes">
             <div class="mono routes-head">
-                <h2 class="section">// 登録されているルート({{ d.routes.length }})</h2>
+                <h2 class="section">{{ t("routes.title", { count: d.routes.length }) }}</h2>
                 <div class="filter">
                     <label for="filter">filter</label>
                     <input id="filter" v-model="query" type="search" placeholder="/users" />
@@ -79,14 +82,13 @@ const list = computed(() => visibleRoutes(d.routes, query.value, LIMIT));
                     <a v-if="r.link" :href="r.path">{{ r.path }}</a>
                     <span v-else>{{ r.path }}</span>
                 </li>
-                <li v-if="list.shown.length === 0" class="more">一致するルートはありません</li>
-                <li v-if="list.rest > 0" class="more">… ほか {{ list.rest }} 件(filter で絞り込めます)</li>
+                <li v-if="list.shown.length === 0" class="more">{{ t("routes.empty") }}</li>
+                <li v-if="list.rest > 0" class="more">{{ t("notFound.more", { count: list.rest }) }}</li>
             </ul>
         </section>
 
         <footer class="page-footer">
-            このページは開発モード(<code>import { devtools } from "@senrijs/senri/dev"</code> と <code>createApp({ dev: devtools() })</code>)でのみ表示されます。本番では「404 Not
-            Found」だけが返り、ルートの一覧は出ません。
+            <RichText :text="t('notFound.footer')" />
         </footer>
     </main>
 </template>

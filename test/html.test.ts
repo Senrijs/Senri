@@ -55,7 +55,7 @@ describe("開発用のページが外のものを読み込まない", () => {
     });
 
     test("エラーページ・404 ページ・ダッシュボードのレスポンスも、外のものを読み込まない", async () => {
-        const app = createApp({ dev: devtools() });
+        const app = createApp({ dev: devtools({ lang: "ja" }) });
         app.get("/boom", () => {
             throw new Error("boom");
         });

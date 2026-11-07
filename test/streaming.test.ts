@@ -388,7 +388,7 @@ describe("streamSSE()", () => {
         ).fetch(req());
 
         expect(await res.text()).toBe(CONNECTED);
-        expect(explainText(caught)).toContain("writeSSE()");
+        expect(explainText(caught, "ja")).toContain("writeSSE()");
     });
 
     test("onError から最後のイベントを送れる", async () => {
@@ -445,7 +445,8 @@ describe("streamSSE()", () => {
         });
         await app.fetch(req());
 
-        expect(explainText(err)).toContain("heartbeat");
+        expect(explainText(err, "ja")).toContain("heartbeat");
+        expect(explainText(err, "en")).toContain("heartbeat");
     });
 
     test("compress() と etag() は触らない。イベントはすぐ届く", async () => {
@@ -465,7 +466,7 @@ describe("streamSSE()", () => {
     });
 
     test("開発モードでも流れる", async () => {
-        const app = createApp({ dev: devtools() });
+        const app = createApp({ dev: devtools({ lang: "ja" }) });
         app.get("/", (_, c) => streamSSE(c, (s) => s.writeSSE({ data: "x" })));
         const res = await app.fetch(req("/", { headers: { host: "localhost" } }));
 

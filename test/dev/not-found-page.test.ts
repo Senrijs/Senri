@@ -14,7 +14,7 @@ async function pageData(res: Response): Promise<NotFoundPageData> {
     return JSON.parse(m[1]!);
 }
 
-function app(options: AppOptions = { dev: devtools() }) {
+function app(options: AppOptions = { dev: devtools({ lang: "ja" }) }) {
     const a = createApp(options);
     a.get("/users/:id", ({ id }) => id);
     a.get("/hello", () => "hi");
@@ -49,7 +49,7 @@ describe("404ページ", () => {
     });
 
     test("候補にパラメーターがあればリンクにしない", async () => {
-        const a = createApp({ dev: devtools() });
+        const a = createApp({ dev: devtools({ lang: "ja" }) });
         a.get("/user/:id", () => "x");
 
         const data = await pageData(await a.fetch(req("/usr/:id", { headers: html })));
@@ -137,7 +137,7 @@ describe("404ページ", () => {
 
 describe("ワイルドカードのルート", () => {
     function withWildcard() {
-        const a = createApp({ dev: devtools() });
+        const a = createApp({ dev: devtools({ lang: "ja" }) });
         a.get("/files/*", () => "x");
         a.get("/hello", () => "hi");
         return a;
@@ -255,7 +255,7 @@ describe("c.notFound() の 404", () => {
     describe.each(["/%E0%A4%A", "/a%2Fb"])("デコードできないパス %s", (path) => {
         const modes: [string, AppOptions][] = [
             ["本番", {}],
-            ["開発モード", { dev: devtools() }],
+            ["開発モード", { dev: devtools({ lang: "ja" }) }],
         ];
 
         describe.each(modes)("%s", (_, options) => {

@@ -118,7 +118,7 @@ describe("エディタの選択", () => {
     });
 
     test("選択肢: 推測できたものに(自動判別)、WebStorm に(実験的)", () => {
-        const options = editorOptions({ id: "vscode", detected: true });
+        const options = editorOptions({ id: "vscode", detected: true }, "ja");
 
         expect(options.map((o) => o.label)).toEqual([
             "VS Code(自動判別)",
@@ -127,13 +127,13 @@ describe("エディタの選択", () => {
             "Zed",
             "コピーのみ",
         ]);
-        expect(editorOptions({ id: "vscode", detected: false })[0]!.label).toBe("VS Code");
+        expect(editorOptions({ id: "vscode", detected: false }, "ja")[0]!.label).toBe("VS Code");
     });
 
     test("開くボタンの文言", () => {
-        expect(openLabel("vscode")).toBe("VS Code で開く");
-        expect(openLabel("webstorm")).toBe("WebStorm で開く(実験的)");
-        expect(openLabel("copy")).toBeNull();
+        expect(openLabel("vscode", "ja")).toBe("VS Code で開く");
+        expect(openLabel("webstorm", "ja")).toBe("WebStorm で開く(実験的)");
+        expect(openLabel("copy", "ja")).toBeNull();
     });
 });
 
@@ -171,10 +171,10 @@ describe("404ページのルート一覧", () => {
 
 describe("originText: 返した値をレスポンスにできなかったときの説明", () => {
     test("ハンドラーとミドルウェア", () => {
-        expect(originText({ kind: "handler", name: "GET /big" })).toBe(
+        expect(originText({ kind: "handler", name: "GET /big" }, "ja")).toBe(
             "GET /big のハンドラーが返した値を、レスポンスにできませんでした",
         );
-        expect(originText({ kind: "middleware", name: "cache" })).toBe(
+        expect(originText({ kind: "middleware", name: "cache" }, "ja")).toBe(
             "ミドルウェア cache が返した値を、レスポンスにできませんでした",
         );
     });

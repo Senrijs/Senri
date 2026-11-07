@@ -1,13 +1,16 @@
 // よくあるエラーに、直し方のヒントを付ける(ルールベース。当てはまらなければ何も出さない)
 // エラーメッセージの書き方はランタイムで違う(Bun と、V8 の Node / Deno)ので、両方を見る
 import { errorCode } from "../errors.ts";
+import type { MessageKey, Params } from "./messages.ts";
 import type { StackFrame } from "./stack.ts";
 
+// 文章ではなくキーで持つ。ダッシュボードの記録は、あとから別の言語で見ることがあるので(文言は messages.ts)
 export type Hint = {
-    // `...` で囲んだところはコードとして表示する
-    text: string;
-    // 下に添える例
+    key: MessageKey;
+    params?: Params;
+    // 下に添える例。言語で変わるものだけ codeKey
     code?: string;
+    codeKey?: MessageKey;
 };
 
 type Rule = (err: Error, frames: StackFrame[] | undefined) => Hint | null;
@@ -33,18 +36,15 @@ const rules: Rule[] = [
     // Senri 自身が投げるエラー
     (err) =>
         errorCode(err) === "next_twice"
-            ? {
-                  text: "1つのミドルウェアで `next()` を2回呼んでいます。`await next()` は1回だけにして、結果を変数に入れて使ってください。",
-                  code: "const res = await next();",
-              }
+            ? { key: "hint.nextTwice", code: "const res = await next();" }
             : null,
     (err) =>
         errorCode(err) === "returned_function"
-            ? { text: "関数を呼び出さずに返しています。`()` を付けて呼び出した結果を返してください。", code: "return getUser();" }
+            ? { key: "hint.returnedFunction", code: "return getUser();" }
             : null,
     (err) =>
         errorCode(err) === "returned_nothing"
-            ? { text: "ハンドラーが値を返していません。`return` を忘れていないか確かめてください。", code: 'return "ok";' }
+            ? { key: "hint.returnedNothing", code: 'return "ok";' }
             : null,
 
     // undefined / null のプロパティを読んだ
@@ -52,36 +52,27 @@ const rules: Rule[] = [
         if (!(err instanceof TypeError)) return null;
         const prop = propertyOfNothing(err.message);
         if (!prop) return null;
-        return {
-            text: `\`undefined\` か \`null\` の値から \`${prop}\` を読もうとしました。\`await\` のし忘れや、\`c.get()\` で値が入っていない場合がよくあります。なくてもよい値なら \`?.\` で読めます。`,
-            code: `value?.${prop}`,
-        };
+        return { key: "hint.readNothing", params: { prop }, code: `value?.${prop}` };
     },
 
     // 関数でないものを呼んだ
     (err) =>
         err instanceof TypeError && / is not a function/.test(err.message)
-            ? { text: "呼び出そうとしたものが関数ではありません。名前のつづりや、import しているものを確かめてください。" }
+            ? { key: "hint.notFunction" }
             : null,
 
     // BigInt を JSON にしようとした
     // V8: Do not know how to serialize a BigInt / Bun: JSON.stringify cannot serialize BigInt.
     (err) =>
         err instanceof TypeError && /serialize (?:a )?BigInt/.test(err.message)
-            ? {
-                  text: "`BigInt` は JSON にできません。文字列や数値に変換してから返してください。",
-                  code: "String(value)",
-              }
+            ? { key: "hint.bigint", code: "String(value)" }
             : null,
 
     // リクエストのボディが JSON として読めない(c.req.json())
     // V8: ... in JSON at position 1 / ... is not valid JSON、Bun: JSON Parse error: ...
     (err) =>
         err instanceof SyntaxError && /JSON/.test(err.message)
-            ? {
-                  text: "JSON として読めませんでした。`c.req.json()` なら、送られてきたボディが壊れています。受け取った側の問題なので、400 で返すのがおすすめです。",
-                  code: 'const body = await c.req.json().catch(() => {\n    throw new HttpError(400, "JSON が正しくありません");\n});',
-              }
+            ? { key: "hint.json", codeKey: "hint.jsonCode" }
             : null,
 
     // 普通の Error を投げた(意図したエラーなら HttpError でステータスを決められる)
@@ -89,10 +80,7 @@ const rules: Rule[] = [
     // - ライブラリ(node_modules)が投げたものも案内しない(DB のエラーを 400 にするのは、たいてい間違い)
     (err, frames) =>
         Object.getPrototypeOf(err) === Error.prototype && thrownByUser(frames)
-            ? {
-                  text: "ハンドラーやミドルウェアで投げたエラーが、どこでもキャッチされませんでした。意図したエラーなら `HttpError` でステータスコードを指定できます。",
-                  code: `throw new HttpError(400, ${JSON.stringify(err.message)})`,
-              }
+            ? { key: "hint.uncaught", code: `throw new HttpError(400, ${JSON.stringify(err.message)})` }
             : null,
 ];
 

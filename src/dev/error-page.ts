@@ -1,6 +1,7 @@
 // エラーページに埋め込むデータを組み立てる
 import type { Context } from "../context.ts";
 import { conversionOriginOf, HttpError } from "../errors.ts";
+import type { Lang } from "../lang.ts";
 import { guessEditor } from "./editor.ts";
 import { hintFor } from "./hints.ts";
 import type { ErrorPageData, PageFrame } from "./page-data.ts";
@@ -39,7 +40,7 @@ function requestPath(c: Context): string {
     }
 }
 
-export async function buildErrorPageData(err: unknown, c: Context, res: Response): Promise<ErrorPageData> {
+export async function buildErrorPageData(err: unknown, c: Context, res: Response, lang: Lang): Promise<ErrorPageData> {
     const root = runtime.cwd();
     const error =
         err instanceof Error ? { name: err.name, message: err.message } : { name: "throw", message: String(err) };
@@ -52,6 +53,7 @@ export async function buildErrorPageData(err: unknown, c: Context, res: Response
 
     return {
         kind: "error",
+        lang,
         status: res.status,
         statusText: res.statusText || STATUS_TEXT[res.status] || "",
         // いちばん外側の層の total が、リクエスト全体の時間

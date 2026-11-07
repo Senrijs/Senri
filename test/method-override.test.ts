@@ -231,7 +231,7 @@ describe("methodOverride()", () => {
         } catch (e) {
             err = e;
         }
-        expect(explainText(err)).toContain("methodOverride()");
+        expect(explainText(err, "ja")).toContain("methodOverride()");
     });
 
     test("使わなければ、本体に入らない", async () => {

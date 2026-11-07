@@ -346,7 +346,7 @@ describe("rateLimit()", () => {
         } catch (e) {
             err = e;
         }
-        expect(explainText(err)).toContain("rateLimit()");
+        expect(explainText(err, "ja")).toContain("rateLimit()");
     });
 
     test("名前と印", () => {

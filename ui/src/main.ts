@@ -11,7 +11,8 @@ async function readData(): Promise<PageData> {
     // (置き場所の文字列そのものを書くと、ビルド結果に置き場所が2つできかねないので書かない)
     if (import.meta.env.DEV && text.trim().startsWith("<!--")) {
         const { sample } = await import("./sample.ts");
-        return sample(new URLSearchParams(location.search).get("page"));
+        const params = new URLSearchParams(location.search);
+        return sample(params.get("page"), params.get("lang") === "ja" ? "ja" : "en");
     }
     return JSON.parse(text) as PageData;
 }

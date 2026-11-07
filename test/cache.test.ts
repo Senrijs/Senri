@@ -116,7 +116,7 @@ describe("cache()", () => {
         } catch (e) {
             err = e;
         }
-        expect(explainText(err)).toContain("cache()");
+        expect(explainText(err, "ja")).toContain("cache()");
     });
 
     test("名前と印", () => {

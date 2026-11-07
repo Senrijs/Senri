@@ -179,7 +179,7 @@ describe("ハンドラーの戻り値", () => {
     });
 
     test("関数を返したら、呼び忘れとして 500 になる", async () => {
-        const app = createApp({ dev: devtools() });
+        const app = createApp({ dev: devtools({ lang: "ja" }) });
         app.get("/f", () => (() => 1) as never);
 
         const res = await app.fetch(req("/f"));
@@ -189,7 +189,7 @@ describe("ハンドラーの戻り値", () => {
     });
 
     test("undefined を返したら 500 になる(JS から使ったときなど)", async () => {
-        const app = createApp({ dev: devtools() });
+        const app = createApp({ dev: devtools({ lang: "ja" }) });
         app.get("/u", () => undefined as never);
 
         const res = await app.fetch(req("/u"));
@@ -543,7 +543,7 @@ describe("c.redirect()", () => {
         });
 
         test("開発モードでは日本語の説明が付く", async () => {
-            const app = createApp({ dev: devtools() });
+            const app = createApp({ dev: devtools({ lang: "ja" }) });
             app.get("/crlf", (_, c) => c.redirect("/a\r\n"));
             app.get("/surrogate", (_, c) => c.redirect("/\ud800"));
             app.get("/status", (_, c) => c.redirect("/a", 200 as never));

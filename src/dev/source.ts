@@ -11,7 +11,8 @@ export type CodeFrame = {
     lines: CodeLine[];
     // 問題の行の下に出す "    ^^^^"
     caret: string;
-    label: string;
+    // エラーの位置が throw そのものか(画面の「ここで throw」と「ここでエラー」を分ける)
+    thrown: boolean;
 };
 
 export type ReadOptions = {
@@ -125,6 +126,6 @@ export async function readCodeFrame(frame: StackFrame, options: ReadOptions = {}
         col: frame.col,
         lines,
         caret: makeCaret(hitLine, frame.col),
-        label: thrownHere ? "ここで throw" : "ここでエラー",
+        thrown: thrownHere,
     };
 }

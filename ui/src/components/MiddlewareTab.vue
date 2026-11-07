@@ -4,10 +4,13 @@
 import { computed, onMounted, ref } from "vue";
 import type { MiddlewareRow } from "../../../src/dev/page-data.ts";
 import { anonymousHint, formatAverage, middlewareScope } from "../dashboard.ts";
+import { useI18n } from "../i18n.ts";
+import RichText from "./RichText.vue";
 
 const props = defineProps<{ initial: MiddlewareRow[] }>();
+const { t, lang } = useI18n();
 const rows = ref<MiddlewareRow[]>(props.initial);
-const hint = computed(() => anonymousHint(rows.value));
+const hint = computed(() => anonymousHint(rows.value, lang));
 
 // 開いたときに、最新の平均時間を取り直す
 onMounted(async () => {
@@ -17,27 +20,26 @@ onMounted(async () => {
 </script>
 
 <template>
-    <section class="middleware" aria-label="ミドルウェア">
-        <h2 class="section">// ミドルウェア({{ rows.length }})</h2>
+    <section class="middleware" :aria-label="t('mw.label')">
+        <h2 class="section">{{ t("mw.title", { count: rows.length }) }}</h2>
         <p class="lead">
-            <code>app.use()</code> で登録した順に、外側から内側へ通ります。<code>next()</code>
-            を呼ぶと次の行へ進み、ハンドラーまで行ったら、逆の順に戻ってきます。
+            <RichText :text="t('mw.lead')" />
         </p>
         <ol class="mono onion">
             <li v-for="(m, i) in rows" :key="m.order" :style="{ paddingLeft: `${i * 20}px` }">
                 <span class="order">{{ m.order }}</span>
                 <span class="name">{{ m.name }}</span>
-                <span class="scope">{{ middlewareScope(m.path) }}</span>
-                <span class="avg">{{ formatAverage(m) }}</span>
+                <span class="scope">{{ middlewareScope(m.path, lang) }}</span>
+                <span class="avg">{{ formatAverage(m, lang) }}</span>
             </li>
             <li class="handler" :style="{ paddingLeft: `${rows.length * 20}px` }">
                 <span class="order">→</span>
                 <span class="name">handler</span>
-                <span class="scope">マッチしたルートのハンドラー</span>
+                <span class="scope">{{ t("mw.handler") }}</span>
                 <span class="avg" />
             </li>
         </ol>
-        <p v-if="rows.length === 0" class="lead">まだミドルウェアは登録されていません。</p>
+        <p v-if="rows.length === 0" class="lead">{{ t("mw.none") }}</p>
         <p v-if="hint" class="lead hint">{{ hint }}</p>
     </section>
 </template>

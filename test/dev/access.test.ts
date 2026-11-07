@@ -86,7 +86,7 @@ describe("sameOrigin: 状態を変える POST の保護", () => {
 
 describe("app.fetch の2つ目以降の引数", () => {
     test("何が来ても、普通のリクエストはそのまま動く(Cloudflare の env, ctx も)", async () => {
-        const app = createApp({ dev: devtools() });
+        const app = createApp({ dev: devtools({ lang: "ja" }) });
         app.get("/hello", () => "hi");
         const ctx = { waitUntil() {}, passThroughOnException() {} };
 

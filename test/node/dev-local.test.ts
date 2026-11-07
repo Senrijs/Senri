@@ -38,7 +38,7 @@ async function start(nodeEnv: string | undefined, setup?: (app: App) => void): P
     else process.env.NODE_ENV = nodeEnv;
     const app = (() => {
         try {
-            return createApp({ dev: devtools() });
+            return createApp({ dev: devtools({ lang: "ja" }) });
         } finally {
             if (original === undefined) delete process.env.NODE_ENV;
             else process.env.NODE_ENV = original;
@@ -115,7 +115,7 @@ describe("ルートとミドルウェアの書き間違いの警告(Node)", () =
             await get(port, `localhost:${port}`, "/hello");
 
             assert.equal(lines.length, 1);
-            assert.match(lines[0]!, /^\[senri\] Middleware "anonymous#1" at "\/helo" matches no route\. Did you mean "\/hello"\?/);
+            assert.match(lines[0]!, /^\[senri\] "\/helo" のミドルウェア\(anonymous#1\)は、どのルートにも当たりません。"\/hello" の打ち間違いではありませんか/);
         } finally {
             console.warn = warn;
             server.close();

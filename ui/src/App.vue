@@ -1,10 +1,13 @@
 <script setup lang="ts">
+import { provide } from "vue";
 import type { PageData } from "../../src/dev/page-data.ts";
+import { LANG } from "./i18n.ts";
 import ErrorPage from "./ErrorPage.vue";
 import NotFoundPage from "./NotFoundPage.vue";
 import DashboardPage from "./DashboardPage.vue";
 
-defineProps<{ data: PageData }>();
+const props = defineProps<{ data: PageData }>();
+provide(LANG, props.data.lang);
 </script>
 
 <template>

@@ -20,11 +20,13 @@ async function workerdPath(): Promise<string> {
 }
 
 // note: serve() のバナーに出る「ポートをどこから決めたか」。null ならバナーはない(workerd は serve() を使わない)
-const RUNTIMES: Record<string, { command: string[]; port: number; note: string | null; build?: string[] }> = {
-    bun: { command: ["bun", "run", "examples/bun/index.ts"], port: ENV_PORT, note: "環境変数 PORT" },
+// 言語は環境で変わる(LANG や OS の言語)ので、どちらでもよい
+const ENV_NOTE = /環境変数 PORT|PORT environment variable/;
+const RUNTIMES: Record<string, { command: string[]; port: number; note: RegExp | null; build?: string[] }> = {
+    bun: { command: ["bun", "run", "examples/bun/index.ts"], port: ENV_PORT, note: ENV_NOTE },
     // NODE_ENV だけ読めるようにする(devtools() が本番かどうかを見るため)。PORT は読めないので、デフォルトのポートになる
-    deno: { command: ["deno", "run", "--allow-net", "--allow-env=NODE_ENV", "examples/deno/index.ts"], port: DEFAULT_PORT, note: "デフォルト" },
-    node: { command: ["node", "examples/node/index.ts"], port: ENV_PORT, note: "環境変数 PORT" },
+    deno: { command: ["deno", "run", "--allow-net", "--allow-env=NODE_ENV", "examples/deno/index.ts"], port: DEFAULT_PORT, note: /デフォルト|default/ },
+    node: { command: ["node", "examples/node/index.ts"], port: ENV_PORT, note: ENV_NOTE },
     // ポートは examples/workers/config.capnp で決めている
     workers: {
         build: ["bun", "build", "examples/workers/index.ts", "--target", "browser", "--format", "esm", "--outfile", "examples/workers/dist/worker.js"],
@@ -142,7 +144,8 @@ const CHECKS: Check[] = [
         name: "バリデーション(失敗)",
         path: "/double/x",
         status: 400,
-        body: "400 Bad Request: パスパラメーターが、スキーマに合いません\n- n: 正の整数ではありません",
+        // Accept-Language がないので英語(スキーマの文言は利用者のもの)
+        body: "400 Bad Request: The path parameters failed schema validation\n- n: 正の整数ではありません",
     },
     { name: "/healthz", path: "/healthz", status: 200, body: "ok" },
     { name: "/readyz", path: "/readyz", status: 200, body: "ready" },
@@ -339,9 +342,9 @@ async function smoke(runtime: string): Promise<boolean> {
         await waitForServer(base, () => exited);
         // バナーに、待ち受けている URL と、ポートをどこから決めたかが出ているか
         if (note !== null) {
-            const banner = stdout.includes(`${base}`) && stdout.includes(note);
+            const banner = stdout.includes(`${base}`) && note.test(stdout);
             if (!banner) ok = false;
-            console.log(`  ${banner ? "ok  " : "FAIL"} ポート: ${port}(${note})`);
+            console.log(`  ${banner ? "ok  " : "FAIL"} ポート: ${port}(${note.source})`);
         }
         for (const check of CHECKS) {
             if (check.only && !check.only.includes(runtime)) continue;

@@ -10,7 +10,7 @@ const remote = { requestIP: () => ({ address: "192.168.1.10", family: "IPv4", po
 const req = (path: string, init: RequestInit = {}, host = "localhost:3927") =>
     new Request(`http://${host}${path}`, { ...init, headers: { host, ...(init.headers as Record<string, string>) } });
 
-function app(options: AppOptions = { dev: devtools() }) {
+function app(options: AppOptions = { dev: devtools({ lang: "ja" }) }) {
     const a = createApp(options);
     a.use(async function logger(c, next) {
         await next();
@@ -132,7 +132,7 @@ describe("API", () => {
     });
 
     test('ルート: use("/x/*") も、use("/x") と同じように「かかる」と出る', async () => {
-        const a = createApp({ dev: devtools() });
+        const a = createApp({ dev: devtools({ lang: "ja" }) });
         a.use("/admin/*", function auth(_c, next) {
             return next();
         });
@@ -146,7 +146,7 @@ describe("API", () => {
     });
 
     test("ルート: ワイルドカードのルートは、その先のパスのミドルウェアなら「パスによる」", async () => {
-        const a = createApp({ dev: devtools() });
+        const a = createApp({ dev: devtools({ lang: "ja" }) });
         a.use("/files", function files(_c, next) {
             return next();
         });
@@ -189,7 +189,7 @@ describe("API", () => {
     });
 
     test("ミドルウェア: 同じ名前が2つあっても、登録順で別々に集計する", async () => {
-        const a = createApp({ dev: devtools() });
+        const a = createApp({ dev: devtools({ lang: "ja" }) });
         const named = (label: string) =>
             async function timer(_c: unknown, next: () => Promise<Response>) {
                 await next();
@@ -217,7 +217,7 @@ describe("API", () => {
             ["auth", false],
         ]);
 
-        const b = createApp({ dev: devtools() });
+        const b = createApp({ dev: devtools({ lang: "ja" }) });
         b.use((_c, next) => next());
         const anon = await pageData(await b.fetch(req("/_senri"), local));
         expect(anon.middlewares[0]).toMatchObject({ name: "anonymous#1", anonymous: true });

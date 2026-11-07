@@ -185,7 +185,7 @@ describe("QUERY メソッド", () => {
     });
 
     test("開発モードでは、理由と直し方を返す", async () => {
-        const app = createApp({ dev: devtools() });
+        const app = createApp({ dev: devtools({ lang: "ja" }) });
         app.on("QUERY", "/search", () => "x");
 
         const noType = await (await app.fetch(req("/search", json(`{"q":1}`, {})))).text();

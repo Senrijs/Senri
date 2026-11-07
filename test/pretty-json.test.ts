@@ -180,7 +180,7 @@ describe("prettyJSON()", () => {
         } catch (e) {
             err = e;
         }
-        expect(explainText(err)).toContain("prettyJSON()");
+        expect(explainText(err, "ja")).toContain("prettyJSON()");
     });
 
     test("名前と印", () => {

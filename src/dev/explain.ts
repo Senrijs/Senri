@@ -1,8 +1,57 @@
-// 本体が投げるエラー(短い英語 + code)に、開発モードで日本語の説明を付ける
+// 本体が投げるエラー(短い英語 + code)に、開発モードで詳しい説明を付ける
 // 本体を小さくするため、長い説明はこちらに置いている(src/errors.ts の senriError)
 import { errorCode } from "../errors.ts";
+import type { Lang } from "../lang.ts";
 
-const JA: Record<string, string> = {
+const EN = {
+    route_duplicate: "This method and path shape is already registered (paths that differ only in parameter names count as the same). The later one is never called",
+    wildcard_position: '* can only be a whole last segment of a path ("/files/*"). A * in the middle, or as part of a segment such as "*.js", cannot be used',
+    param_name: "The parameter name has a character that cannot be used. Senri has no optional parameters (:id?) or regular expressions (:id{[0-9]+}). Check the value in the handler or with a schema",
+    param_empty: 'The parameter name is empty (write a name after ":")',
+    param_twice: "The same parameter name is used twice in one path",
+    method_invalid: "The method name has a character that cannot be used",
+    method_unsupported: "CONNECT, TRACE and TRACK are not supported (they cannot be registered)",
+    no_handler: "There is no handler. Pass one after the schemas, as in app.get(path, { params, query, body }, handler)",
+    no_middleware: "There is no middleware",
+    no_method: "There is no method",
+    on_all: "Use app.all() to run on every method",
+    route_key: 'The route is not written correctly. Put a space between the method and the path, as in "GET /hello"',
+    not_app: "app.route(prefix, app) takes an app made with createApp()",
+    not_router: "Pass a router made with createRouter()",
+    router_cycle: "The router contains itself",
+    cookie_name: "The cookie name has a character that cannot be used",
+    cookie_host_domain: "A cookie starting with __Host- cannot have a domain (browsers discard it). Remove the domain",
+    cookie_host_path: 'The path of a cookie starting with __Host- must be "/" (browsers discard it otherwise). Remove the path or make it "/"',
+    no_valid: "c.valid() can only read what the route has a schema for, such as { query } or { body }",
+    no_execution_ctx: "c.executionCtx is only available on Cloudflare Workers, when called as app.fetch(req, env, ctx)",
+    redirect_status: "The status of c.redirect() can only be 301, 302, 303, 307 or 308",
+    redirect_location: "This value cannot be a redirect target. It cannot contain line breaks (to prevent header injection) or characters that cannot be in a URL. Is a value from outside being passed as is?",
+    returned_function: "The handler returned a function. Did you forget to call it?",
+    returned_nothing: "The handler returned nothing (undefined or null)",
+    next_twice: "next() was called twice. One middleware can call it only once",
+    no_response: "The middleware returned nothing and did not call next()",
+    upload_limit_options: "The options of uploadLimit() are not valid. maxTotalSize is required (c.body() reads everything into memory, so this is the limit on the memory used). extensions must start with .",
+    sse_message: "The value given to writeSSE() is not valid. event and id cannot contain line breaks (they could inject other fields). retry is an integer of 0 or more, and data is a string",
+    sse_heartbeat: "The heartbeat of streamSSE() must be a number of milliseconds greater than 0",
+    pretty_json_options: "The space of prettyJSON() must be an integer from 1 to 10, and query a non-empty string",
+    language_detector_options: "The options of languageDetector() are not valid. supportedLanguages cannot be empty, and fallbackLanguage must be one of them. order can contain querystring, cookie and header",
+    cache_options: "The cacheControl of cache() must be a string with characters allowed in a header. vary is an array of header names",
+    trailing_slash_options: 'The mode of trailingSlash() must be "remove" or "add", and status 301 or 308',
+    method_override_options: "The options of methodOverride() are not valid. form and header cannot both be false. allow cannot contain GET, HEAD, CONNECT or TRACE",
+    ip_restriction_options: "ipRestriction() needs at least one of allow and deny",
+    ip_restriction_range: "allow and deny of ipRestriction() must be arrays of IP addresses or CIDRs (such as 10.0.0.0/8)",
+    rate_limit_options: "The windowMs of rateLimit() must be a number greater than 0, and limit and maxKeys integers of 1 or more. store needs increment()",
+    trust_proxy_options: "trustProxy() takes exactly one of hops (an integer of 1 or more) and proxies (an array of IP addresses or CIDRs). header can only have characters allowed in a header name",
+    request_id_header: "The headerName of requestId() has a character that cannot be used in a header name",
+    timeout_ms: "The time of timeout() must be a number of milliseconds greater than 0",
+    timeout_status: "The status of timeout() must be from 400 to 599",
+    auth_options: "The options of basicAuth() or bearerAuth() are not valid. Empty values cannot be used (did reading an environment variable fail?). A user name cannot contain :. A token can only contain A-Z a-z 0-9 - . _ ~ + / and a trailing =",
+    auth_realm: "realm can only contain printable ASCII characters",
+    compress_encoding: "The encoding of compress() can only be gzip or deflate",
+    compress_threshold: "The threshold of compress() must be a number of 0 or more",
+};
+
+const JA: Record<keyof typeof EN, string> = {
     route_duplicate: "同じメソッド・同じ形のパスが、すでに登録されています(パラメーター名だけが違うものも同じとみなします)。あとから登録したほうは呼ばれません",
     wildcard_position: "* は、パスの最後のセグメント全体にだけ書けます(\"/files/*\")。途中の * や、\"*.js\" のような一部の * は使えません",
     param_name: "パラメーター名に使えない文字があります。Senri に省略できるパラメーター(:id?)や正規表現(:id{[0-9]+})はありません。ハンドラーかスキーマで確かめてください",
@@ -50,15 +99,23 @@ const JA: Record<string, string> = {
     compress_threshold: "compress() の threshold は 0 以上の数で指定してください",
 };
 
-// 日本語の説明(なければ null)
-export function explainText(err: unknown): string | null {
+export const EXPLANATIONS: Record<Lang, Record<string, string>> = { en: EN, ja: JA };
+
+// すでに説明を付けたエラー(同じエラーを別の言語で2回説明しないように)
+const explained = new WeakSet<Error>();
+
+// 説明(なければ null)
+export function explainText(err: unknown, lang: Lang): string | null {
     const code = errorCode(err);
-    return code ? (JA[code] ?? null) : null;
+    return code ? (EXPLANATIONS[lang][code] ?? null) : null;
 }
 
-// エラーの message の前に、日本語の説明を付ける(code や種類はそのまま)
-export function explain(err: unknown): unknown {
-    const ja = explainText(err);
-    if (ja && err instanceof Error && !err.message.startsWith(ja)) err.message = `${ja}\n${err.message}`;
+// エラーの message の前に、説明を付ける(code や種類はそのまま)
+export function explain(err: unknown, lang: Lang): unknown {
+    const text = explainText(err, lang);
+    if (text && err instanceof Error && !explained.has(err)) {
+        explained.add(err);
+        err.message = `${text}\n${err.message}`;
+    }
     return err;
 }

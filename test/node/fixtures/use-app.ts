@@ -6,7 +6,7 @@ const ext = from === "dist" ? ".js" : ".ts";
 const { createApp, HttpError } = (await import(`${base}index${ext}`)) as typeof import("../../../src/index.ts");
 // 開発モードのときだけ @senrijs/senri/dev を import する(使う側の書き方と同じ)
 const dev =
-    mode === "dev" ? ((await import(`${base}dev/index${ext}`)) as typeof import("../../../src/dev/index.ts")).devtools() : undefined;
+    mode === "dev" ? ((await import(`${base}dev/index${ext}`)) as typeof import("../../../src/dev/index.ts")).devtools({ lang: "ja" }) : undefined;
 
 const app = createApp({ dev });
 app.use(async (_c, next) => next());

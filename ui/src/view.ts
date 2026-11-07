@@ -1,9 +1,11 @@
 // 画面の計算・判断だけを集めたもの(DOM も Vue も使わないので、bun test でそのまま試せる)
 import { EDITORS, type EditorId } from "../../src/dev/editor-url.ts";
 import type { EditorGuess } from "../../src/dev/editor.ts";
+import type { Lang } from "../../src/lang.ts";
+import { message } from "../../src/dev/messages.ts";
 import type { ErrorPageData, NotFoundPageData, PageFrame } from "../../src/dev/page-data.ts";
 
-// ヒントの文の `...` をコードとして表示するために分ける
+// 文言の `...` をコードとして表示するために分ける
 export function inlineCode(text: string): { text: string; code: boolean }[] {
     return text
         .split("`")
@@ -16,7 +18,7 @@ export function formatMs(ms: number | null): string | null {
 }
 
 // 返した値をレスポンスにできなかったときの説明(サーバーの簡易表示と共通)
-export { originText } from "../../src/dev/messages.ts";
+export { hintCode, hintText, originText } from "../../src/dev/messages.ts";
 
 // 「通った順番」のバー。幅は self(その層だけの時間)の割合
 export function layerBars(layers: ErrorPageData["layers"]) {
@@ -83,15 +85,17 @@ export function saveEditor(storage: StorageLike | undefined, id: EditorId) {
     }
 }
 
-export function editorOptions(guess: EditorGuess) {
+const editorLabel = (id: EditorId, label: string, lang: Lang) => (id === "copy" ? message(lang, "editor.copyOnly") : label);
+
+export function editorOptions(guess: EditorGuess, lang: Lang) {
     return EDITORS.map((e) => ({
         id: e.id,
-        label: `${e.label}${guess.detected && e.id === guess.id ? "(自動判別)" : ""}${e.experimental ? "(実験的)" : ""}`,
+        label: `${editorLabel(e.id, e.label, lang)}${guess.detected && e.id === guess.id ? message(lang, "editor.detected") : ""}${e.experimental ? message(lang, "editor.experimental") : ""}`,
     }));
 }
 
-export function openLabel(id: EditorId): string | null {
+export function openLabel(id: EditorId, lang: Lang): string | null {
     const editor = EDITORS.find((e) => e.id === id)!;
     if (id === "copy") return null;
-    return `${editor.label} で開く${editor.experimental ? "(実験的)" : ""}`;
+    return `${message(lang, "editor.open", { editor: editor.label })}${editor.experimental ? message(lang, "editor.experimental") : ""}`;
 }

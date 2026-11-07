@@ -62,7 +62,7 @@ describe("登録のチェック", () => {
     });
 
     test("開発モードでは、登録時のエラーに日本語の説明が付く", () => {
-        const app = createApp({ dev: devtools() });
+        const app = createApp({ dev: devtools({ lang: "ja" }) });
         app.get("/users/:id", () => "1");
         expect(() => app.get("/users/:name", () => "2")).toThrow("同じメソッド・同じ形のパスが、すでに登録されています");
         expect(() => app.get("/a/:x/:x", () => "2")).toThrow("同じパラメーター名が2回");

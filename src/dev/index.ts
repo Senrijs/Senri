@@ -14,7 +14,7 @@
  * @module
  */
 // @senrijs/senri/dev の入口。開発モードの機能(エラーページ・404 ページ・/_senri ダッシュボード・Server-Timing・
-// 日本語の詳しいエラー)は、すべてここから入る。本体(@senrijs/senri)はこのファイルを一切 import しない
+// 詳しいエラー)は、すべてここから入る。本体(@senrijs/senri)はこのファイルを一切 import しない
 //
 //   import { createApp } from "@senrijs/senri";
 //   import { devtools } from "@senrijs/senri/dev";
@@ -31,6 +31,8 @@ import { compose, type Layer, type Trace } from "../compose.ts";
 import { defaultNotFound, defaultOnError, errorCode, HttpError, type ErrorHandler } from "../errors.ts";
 import { compareRoutes } from "../router.ts";
 import * as runtime from "../runtime.ts";
+import { isLang, requestLang, terminalLang, type Lang } from "../lang.ts";
+import { appendVary, editable } from "../middleware/response.ts";
 import { ValidationError } from "../validate.ts";
 import { createDashboard } from "./dashboard/index.ts";
 import { registerDashboard } from "./registry.ts";
@@ -38,6 +40,7 @@ import { explain } from "./explain.ts";
 import { devNotFound } from "./not-found.ts";
 import { finishErrorPage, withErrorPage } from "./pages.ts";
 import { routeWarnings } from "./route-warnings.ts";
+import { serverMessage } from "./server-messages.ts";
 import { serverTimingHeader, withServerTiming } from "./server-timing.ts";
 import { checkSchemas, describeValidation } from "./validation.ts";
 import { isLoopback, remoteAddress } from "./dashboard/access.ts";
@@ -59,6 +62,20 @@ const INNER_NAME: Record<Resolved["kind"], string> = {
 // - localUrl: URL のホスト名が localhost のときだけ(Workers とブラウザ。URL はプラットフォームが決めるので偽装できない)
 type Scope = "all" | "local" | "localUrl";
 
+/** Options for {@link devtools}. */
+export type DevtoolsOptions = {
+    /**
+     * Fixes the language of the development pages and terminal messages, instead of choosing it automatically.
+     *
+     * Without it, pages follow the request's `Accept-Language`, and terminal messages follow `LC_ALL`, `LC_MESSAGES`, `LANG`
+     * and then the OS language. English is used when no language can be decided. Bun on Windows does not report the OS
+     * language, so set this or `LANG` there to get Japanese. Errors that also appear in production are not translated.
+     */
+    lang?: Lang;
+};
+
+export type { Lang };
+
 // 開発モードのフックを作る。本番(NODE_ENV=production)では undefined を返すので、開発モードにならない
 // Deno で NODE_ENV を読む許可がないときは、本番かどうか分からないので、開発モードにしない(案内を1行出す)
 /**
@@ -75,6 +92,8 @@ type Scope = "all" | "local" | "localUrl";
  * On Cloudflare Workers and in the browser, where `NODE_ENV` is not available, development output is used
  * only for requests to a localhost URL (see {@link isLocalUrl}). The `/_senri` dashboard is not available on Cloudflare Workers.
  *
+ * Throws a `TypeError` when `lang` is not `"ja"` or `"en"`.
+ *
  * @example
  * ```ts
  * import { createApp } from "@senrijs/senri";
@@ -84,11 +103,11 @@ type Scope = "all" | "local" | "localUrl";
  * app.get("/", () => "hi");
  * ```
  */
-export function devtools(): DevHooks | undefined {
+export function devtools(options: DevtoolsOptions = {}): DevHooks | undefined {
+    const fixed = options.lang;
+    if (fixed !== undefined && !isLang(fixed)) throw new TypeError('devtools(): lang must be "ja" or "en"');
     if (!runtime.canReadEnv("NODE_ENV")) {
-        console.warn(
-            "[senri] devtools() is off: NODE_ENV is not readable. Run with --allow-env=NODE_ENV to enable it. / NODE_ENV を読めないので devtools() は無効です。--allow-env=NODE_ENV を付けると使えます",
-        );
+        console.warn(`[senri] ${serverMessage(fixed ?? terminalLang(), "warn.envUnreadable")}`);
         return undefined;
     }
     const nodeEnv = runtime.env("NODE_ENV");
@@ -101,7 +120,7 @@ export function devtools(): DevHooks | undefined {
             : nodeEnv === "development" || nodeEnv === "test"
               ? "all"
               : "local";
-    return { install: (core) => install(core, scope, nodeEnv) };
+    return { install: (core) => install(core, scope, nodeEnv, fixed) };
 }
 
 // 開発用の出力をしてよい、localhost へのリクエストか(scope は "all" 以外)
@@ -170,28 +189,37 @@ function measure(c: Context, origin: number, layers: Layer[], innerName: string)
 
 // 開発モードの既定の onError。本番の固定の文言の代わりに、詳しい文言を返す
 // (ブラウザから開いた 5xx は、withErrorPage がエラーページにする)
-const devOnError: ErrorHandler = (err, c) => {
-    if (err instanceof ValidationError) return c.text(describeValidation(err));
-    if (err instanceof HttpError) {
-        switch (errorCode(err)) {
-            case "method_not_allowed":
-                return c.text(`405 Method Not Allowed: ${c.req.method} ${c.path}\n${err.headers.get("allow")} ならあります`);
-            case "query_no_body":
-                return c.text("400 Bad Request: QUERY リクエストにボディがありません\nQUERY は、検索の条件をボディに入れて送るメソッドです");
-            case "query_no_type":
-                return c.text(
-                    "415 Unsupported Media Type: QUERY リクエストに Content-Type がありません\nボディの形式を指定してください(例: Content-Type: application/json)",
-                );
+const devOnError =
+    (langOf: (c: Context) => Lang): ErrorHandler =>
+    (err, c) => {
+        if (err instanceof ValidationError) return c.text(describeValidation(err, langOf(c)));
+        if (err instanceof HttpError) {
+            switch (errorCode(err)) {
+                case "method_not_allowed":
+                    return c.text(serverMessage(langOf(c), "res.methodNotAllowed", { method: c.req.method, path: c.path, allow: err.headers.get("allow") ?? "" }));
+                case "query_no_body":
+                    return c.text(serverMessage(langOf(c), "res.queryNoBody"));
+                case "query_no_type":
+                    return c.text(serverMessage(langOf(c), "res.queryNoType"));
+            }
+            return c.text(err.message);
         }
-        return c.text(err.message);
-    }
-    explain(err);
-    return c.text(`500 Internal Server Error: ${err instanceof Error ? err.message : String(err)}`);
-};
+        explain(err, langOf(c));
+        return c.text(`500 Internal Server Error: ${err instanceof Error ? err.message : String(err)}`);
+    };
 
-// scope: どのリクエストに開発用の出力をするか / nodeEnv: 知らせるときに出す、NODE_ENV の値
-function install(core: AppCore, scope: Scope, nodeEnv: string | undefined): DevInstalled {
+// scope: どのリクエストに開発用の出力をするか / nodeEnv: 知らせるときに出す、NODE_ENV の値 / fixed: devtools({ lang })
+function install(core: AppCore, scope: Scope, nodeEnv: string | undefined, fixed: Lang | undefined): DevInstalled {
     const { app } = core;
+    // ターミナルの言語はアプリごとに1回だけ決める
+    const terminal = fixed ?? terminalLang();
+    const langOfRequest = (req: Request) => fixed ?? requestLang(req);
+    // Accept-Language で文言を変えたリクエスト(レスポンスに Vary を付ける)
+    const localized = new WeakSet<Context>();
+    const langOf = (c: Context): Lang => {
+        if (!fixed) localized.add(c);
+        return langOfRequest(c.req);
+    };
     // 本番と同じに振る舞うリクエスト(localhost でないもの)
     const quiet = new WeakSet<Context>();
     // localhost でないので開発用の出力をしなかったことを、1回だけ知らせる(Node / Bun / Deno のとき。Workers とブラウザはいつもなので出さない)
@@ -203,12 +231,8 @@ function install(core: AppCore, scope: Scope, nodeEnv: string | undefined): DevI
         try {
             host = new URL(req.url).host;
         } catch {}
-        const env = nodeEnv === undefined ? "not set" : `${JSON.stringify(nodeEnv)}`;
-        console.warn(
-            `[senri] NODE_ENV is ${env}, so dev output is shown only for requests to localhost (this request: ${JSON.stringify(host)}). ` +
-                "Set NODE_ENV=development to show it for all requests, or NODE_ENV=production in production. / " +
-                "NODE_ENV が development / test ではないので、開発用の出力は localhost へのリクエストだけにしています",
-        );
+        const env = nodeEnv === undefined ? serverMessage(terminal, "warn.notSet") : JSON.stringify(nodeEnv);
+        console.warn(`[senri] ${serverMessage(terminal, "warn.localOnly", { env, host: JSON.stringify(host) })}`);
     };
     // 一覧は優先順位の順(静的なセグメントが先)。本体は登録順に持っている
     const sortedRoutes = () => [...core.routes()].sort(compareRoutes);
@@ -224,10 +248,10 @@ function install(core: AppCore, scope: Scope, nodeEnv: string | undefined): DevI
         if (routes.length === checkedRoutes && middlewares.length === checkedMiddlewares) return;
         checkedRoutes = routes.length;
         checkedMiddlewares = middlewares.length;
-        for (const { text, ja } of routeWarnings(sortedRoutes(), middlewares)) {
+        for (const text of routeWarnings(sortedRoutes(), middlewares, terminal)) {
             if (warnedRoutes.has(text)) continue;
             warnedRoutes.add(text);
-            console.warn(`[senri] ${text} / ${ja}`);
+            console.warn(`[senri] ${text}`);
         }
     };
 
@@ -235,10 +259,13 @@ function install(core: AppCore, scope: Scope, nodeEnv: string | undefined): DevI
     // リクエストごとに別の isolate で動くことがあり、記録が残らない)。/_senri はふつうの 404 になる
     const dashboard = runtime.isWorkers()
         ? null
-        : createDashboard({
-              routes: () => sortedRoutes().map((r) => ({ method: r.method, path: r.path })),
-              middlewares: () => app.middlewareList(),
-          });
+        : createDashboard(
+              {
+                  routes: () => sortedRoutes().map((r) => ({ method: r.method, path: r.path })),
+                  middlewares: () => app.middlewareList(),
+              },
+              langOfRequest,
+          );
     if (dashboard) registerDashboard(app, dashboard);
 
     async function fetch(req: Request, info?: unknown, ctx?: ExecutionContext): Promise<Response> {
@@ -277,7 +304,7 @@ function install(core: AppCore, scope: Scope, nodeEnv: string | undefined): DevI
             measure(c, origin, layers, innerName),
         );
         // ミドルウェアを全部通ったあとなので、ここなら「通った順番」が揃っている
-        const page = await finishErrorPage(c, res);
+        const page = await finishErrorPage(c, res, () => langOf(c));
         // 層ごとの時間を Server-Timing に載せる(ブラウザの開発者ツールで見られる)
         const desc = resolved.kind === "route" ? `${resolved.route.method} ${resolved.route.path}` : innerName;
         const final = withServerTiming(
@@ -289,7 +316,10 @@ function install(core: AppCore, scope: Scope, nodeEnv: string | undefined): DevI
             ...layers.map((l) => ({ name: l.name, order: l.order ?? null })),
             { name: innerName, order: null },
         ]);
-        return final;
+        if (!localized.has(c)) return final;
+        const varied = editable(final);
+        appendVary(varied.headers, "Accept-Language");
+        return varied;
     }
 
     // 本番の fetch と同じ流れ(計測・記録・エラーページ・Server-Timing なし。onError / notFound も本番の既定になる)
@@ -303,19 +333,19 @@ function install(core: AppCore, scope: Scope, nodeEnv: string | undefined): DevI
         return compose(core.layers(c), c, () => core.inner(c, resolved), (err) => core.fail(err, c)).then((res) => c.finalize(res));
     }
 
-    const pageOnError = withErrorPage(devOnError, true);
+    const pageOnError = withErrorPage(devOnError(langOf), true);
     return {
         fetch,
         onError: (err, c) => (quiet.has(c) ? defaultOnError(err, c) : pageOnError(err, c)),
-        notFound: (c) => (quiet.has(c) ? defaultNotFound(c) : devNotFound(c, sortedRoutes())),
+        notFound: (c) => (quiet.has(c) ? defaultNotFound(c) : devNotFound(c, sortedRoutes(), () => langOf(c))),
         checkRoute(method, path, schemas) {
-            if (schemas) checkSchemas(path, schemas);
+            if (schemas) checkSchemas(path, schemas, terminal);
             // /_senri 以下はダッシュボードが使うので、登録しても呼ばれない。気づけるようにエラーにする
             if (dashboard && /^\/*_senri(\/|$)/.test(path)) {
-                throw new Error(`${method} ${path}: /_senri 以下は、開発モードではダッシュボード用に予約されています`);
+                throw new Error(serverMessage(terminal, "route.reserved", { method, path }));
             }
         },
-        explain,
+        explain: (err) => explain(err, terminal),
     };
 }
 

@@ -17,7 +17,9 @@
  */
 import { showRoutes } from "../../src/index.ts";
 import { setDraining } from "../../src/health.ts";
+import { isLang, terminalLang, type Lang } from "../../src/lang.ts";
 import * as runtime from "../../src/runtime.ts";
+import { SERVE_MESSAGES } from "./messages.ts";
 
 type App = {
     fetch: (req: Request) => Response | Promise<Response>;
@@ -37,6 +39,11 @@ export type ServeOptions = {
      * Without it, the runtime's default (all network interfaces on Node.js). Also used in {@link Server.url}.
      */
     hostname?: string;   // 省略するとランタイムのデフォルト(外からも繋がる)
+    /**
+     * The language of the messages printed to the terminal. Without it, `LC_ALL`, `LC_MESSAGES`, `LANG` and then the OS
+     * language decide, and English is used when none of them does. Bun on Windows does not report the OS language.
+     */
+    lang?: Lang;
     /** Print the URL and the route list on start. Default `true`. */
     banner?: boolean;    // false で起動時のルート一覧を出さない
     // SIGTERM / SIGINT を受けたら、処理中のリクエストを待ってから終わる(既定は true)
@@ -120,12 +127,6 @@ export function resolvePort(
     return { port: DEFAULT_PORT, source: "default" };
 }
 
-const SOURCE_NOTE: Record<PortSource, string> = {
-    option: "port オプション",
-    env: "環境変数 PORT",
-    default: "デフォルト。環境変数 PORT で変えられます",
-};
-
 // Bun と Deno の、ここで使う部分だけの型
 // (このフォルダは Node の型しか入れてないので、自分で書いておく)
 type BunLike = {
@@ -163,7 +164,7 @@ function within(promise: Promise<unknown>, ms: number): Promise<boolean> {
  * Starts the app on Bun (`Bun.serve`), Deno (`Deno.serve`) or Node.js (`@senrijs/senri/node`), detecting the runtime.
  * The port comes from `options.port`, the `PORT` environment variable, or {@link DEFAULT_PORT}.
  * Prints the URL and routes, and shuts down gracefully on SIGTERM / SIGINT (see {@link ServeOptions}).
- * The promise rejects if listening fails (the port is in use, for example).
+ * The promise rejects if listening fails (the port is in use, for example), or if `lang` is not `"ja"` or `"en"` (a `TypeError`).
  *
  * @example
  * ```ts
@@ -181,6 +182,8 @@ function within(promise: Promise<unknown>, ms: number): Promise<boolean> {
  * ```
  */
 export async function serve(app: App, options: ServeOptions = {}): Promise<Server> {
+    if (options.lang !== undefined && !isLang(options.lang)) throw new TypeError('serve(): lang must be "ja" or "en"');
+    const messages = SERVE_MESSAGES[options.lang ?? terminalLang()];
     const { port, source } = resolvePort(options.port);
     const hostname = options.hostname;
     const g = globalThis as { Bun?: BunLike; Deno?: DenoLike };
@@ -251,7 +254,7 @@ export async function serve(app: App, options: ServeOptions = {}): Promise<Serve
         const exit = (code: number) => (g.Deno ? g.Deno.exit(code) : proc?.exit(code));
         const onSignal = () => {
             if (stopping) return exit(1);
-            console.log("\n止めています(処理中のリクエストが終わるのを待ちます)…");
+            console.log(`\n${messages.stopping}`);
             stop()
                 .then(() => options.onShutdown?.())
                 .then(
@@ -279,7 +282,7 @@ export async function serve(app: App, options: ServeOptions = {}): Promise<Serve
 
     const url = `http://${hostname ?? "localhost"}:${actualPort}`;
     if (options.banner ?? true) {
-        showRoutes(app, url, { note: SOURCE_NOTE[source] });
+        showRoutes(app, url, { note: messages[source] });
     }
     return { port: actualPort, url, stop };
 }

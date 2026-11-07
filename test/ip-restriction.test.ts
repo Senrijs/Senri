@@ -137,7 +137,7 @@ describe("ipRestriction()", () => {
         } catch (e) {
             err = e;
         }
-        expect(explainText(err)).toContain("allow");
+        expect(explainText(err, "ja")).toContain("allow");
     });
 
     test.each([
@@ -153,7 +153,7 @@ describe("ipRestriction()", () => {
         } catch (e) {
             err = e;
         }
-        expect(explainText(err)).toContain("CIDR");
+        expect(explainText(err, "ja")).toContain("CIDR");
     });
 
     test("名前と印", () => {

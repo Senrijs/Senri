@@ -340,7 +340,7 @@ describe("compress()", () => {
     });
 
     test("開発モードでも動く", async () => {
-        const app = createApp({ dev: devtools() });
+        const app = createApp({ dev: devtools({ lang: "ja" }) });
         app.use(compress());
         app.get("/", () => BIG);
 
@@ -358,8 +358,8 @@ describe("compress()", () => {
             }
             return undefined;
         };
-        for (const threshold of [-1, Number.NaN, "1024"]) expect(explainText(errorOf({ threshold }))).toContain("threshold");
-        for (const encoding of ["br", "", "GZIP"]) expect(explainText(errorOf({ encoding }))).toContain("encoding");
+        for (const threshold of [-1, Number.NaN, "1024"]) expect(explainText(errorOf({ threshold }), "ja")).toContain("threshold");
+        for (const encoding of ["br", "", "GZIP"]) expect(explainText(errorOf({ encoding }), "ja")).toContain("encoding");
     });
 
     test("名前と印", () => {

@@ -182,13 +182,13 @@ describe("basicAuth()", () => {
             { verifyUser: "yes" },
         ];
         for (const options of bad) {
-            expect(explainText(errorOf(() => basicAuth(options as BasicAuthOptions)))).toContain("設定");
+            expect(explainText(errorOf(() => basicAuth(options as BasicAuthOptions)), "ja")).toContain("設定");
         }
     });
 
     test("realm に使えない文字があれば、作るときに投げる", () => {
         for (const realm of ["a\r\nX-Evil: 1", "a\nb", "日本語"]) {
-            expect(explainText(errorOf(() => basicAuth({ username: "a", password: "b", realm })))).toContain("realm");
+            expect(explainText(errorOf(() => basicAuth({ username: "a", password: "b", realm })), "ja")).toContain("realm");
         }
     });
 
@@ -215,7 +215,7 @@ describe("basicAuth()", () => {
     });
 
     test("開発モードでも 401 と WWW-Authenticate を返す", async () => {
-        const app = createApp({ dev: devtools() });
+        const app = createApp({ dev: devtools({ lang: "ja" }) });
         app.use(basicAuth({ username: "a", password: "b" }));
         app.get("/", () => "secret");
 
@@ -325,7 +325,7 @@ describe("bearerAuth()", () => {
             { token: 123 },
         ];
         for (const options of bad) {
-            expect(explainText(errorOf(() => bearerAuth(options as BearerAuthOptions)))).toContain("設定");
+            expect(explainText(errorOf(() => bearerAuth(options as BearerAuthOptions)), "ja")).toContain("設定");
         }
     });
 });
