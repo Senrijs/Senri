@@ -1,6 +1,6 @@
 {
   "name": "@senrijs/senri",
-  "version": "0.2.15",
+  "version": "0.2.16",
   "description": "A small web framework built on Web standards. Runs on Bun, Deno, Node.js, Cloudflare Workers and browsers.",
   "license": "MIT",
   "author": "ibuki-hum4",
