@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { createApp, HttpError, type AppOptions } from "../../src/index.ts";
+import { hintText } from "../../src/dev/messages.ts";
 import { PAGE_HTML } from "../../src/dev/page.generated.ts";
 import type { ErrorPageData } from "../../src/dev/page-data.ts";
 import { dashboardOf } from "../../src/dev/registry.ts";
@@ -16,7 +17,7 @@ async function pageData(res: Response): Promise<ErrorPageData> {
     return JSON.parse(m[1]!);
 }
 
-function boomApp(options: AppOptions = { dev: devtools() }) {
+function boomApp(options: AppOptions = { dev: devtools({ lang: "ja" }) }) {
     const app = createApp(options);
     app.use(async function logger(_c, next) {
         await next();
@@ -50,7 +51,7 @@ describe("HTML のエラーページを返す条件", () => {
     });
 
     test("意図して投げた 4xx の HttpError は、今までどおりテキスト", async () => {
-        const app = createApp({ dev: devtools() });
+        const app = createApp({ dev: devtools({ lang: "ja" }) });
         app.get("/secret", () => {
             throw new HttpError(403, "見せられません");
         });
@@ -62,7 +63,7 @@ describe("HTML のエラーページを返す条件", () => {
     });
 
     test("5xx の HttpError はページになり、本番で返る文言は message", async () => {
-        const app = createApp({ dev: devtools() });
+        const app = createApp({ dev: devtools({ lang: "ja" }) });
         app.get("/down", () => {
             throw new HttpError(503, "メンテナンス中");
         });
@@ -85,7 +86,7 @@ describe("HTML のエラーページを返す条件", () => {
     });
 
     test("HEAD ではボディを返さない", async () => {
-        const app = createApp({ dev: devtools() });
+        const app = createApp({ dev: devtools({ lang: "ja" }) });
         app.get("/boom", () => {
             throw new Error("x");
         });
@@ -107,7 +108,7 @@ describe("ページの中身", () => {
         expect(data.location!.file).toEndWith("test/dev/error-page.test.ts");
         expect(data.location!.display).toBe("test/dev/error-page.test.ts");
         expect(data.code!.lines.find((l) => l.hit)!.code).toContain('throw new Error("わざと壊した")');
-        expect(data.hint!.text).toContain("HttpError");
+        expect(hintText(data.hint!, "ja")).toContain("HttpError");
         // ページはミドルウェアを全部通ったあとに組み立てるので、外側の logger の時間も入る
         expect(data.layers.map((l) => [l.name, l.failed])).toEqual([
             ["logger", false],
@@ -126,7 +127,7 @@ describe("ページの中身", () => {
     });
 
     test("メッセージに </script> があっても、ページの script は増えない(XSS)", async () => {
-        const app = createApp({ dev: devtools() });
+        const app = createApp({ dev: devtools({ lang: "ja" }) });
         app.get("/xss", () => {
             throw new Error("</script><script>alert(1)</script>");
         });
@@ -183,7 +184,7 @@ describe("スクリプトが動かなくても読める(CSP など)", () => {
     });
 
     test("最初から入れる HTML もエスケープする(XSS)", async () => {
-        const app = createApp({ dev: devtools() });
+        const app = createApp({ dev: devtools({ lang: "ja" }) });
         app.get("/xss", () => {
             throw new Error("<img src=x onerror=alert(1)>");
         });
@@ -206,11 +207,11 @@ describe("返した値をレスポンスにできなかったとき", () => {
         // logger の `await next()` の行を「エラーの場所」として出さない
         expect(data.location).toBeNull();
         expect(data.code).toBeNull();
-        expect(data.hint!.text).toContain("BigInt");
+        expect(hintText(data.hint!, "ja")).toContain("BigInt");
     });
 
     test("ミドルウェアが返した値", async () => {
-        const app = createApp({ dev: devtools() });
+        const app = createApp({ dev: devtools({ lang: "ja" }) });
         app.use(async function logger(_c, next) {
             await next();
         });
@@ -236,7 +237,7 @@ describe("返した値をレスポンスにできなかったとき", () => {
     });
 
     test("onError には、元のエラーがそのまま届く", async () => {
-        const app = createApp({ dev: devtools() });
+        const app = createApp({ dev: devtools({ lang: "ja" }) });
         let received: unknown;
         app.onError((err) => {
             received = err;

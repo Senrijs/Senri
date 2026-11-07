@@ -249,7 +249,7 @@ describe("uploadLimit()", () => {
         } catch (e) {
             err = e;
         }
-        expect(explainText(err)).toContain("uploadLimit()");
+        expect(explainText(err, "ja")).toContain("uploadLimit()");
     });
 
     test("名前と印", () => {

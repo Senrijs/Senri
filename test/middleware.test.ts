@@ -303,7 +303,7 @@ describe('app.use("/x/*", mw)', () => {
     });
 
     test("開発モードの登録時のエラーには、日本語の説明が付く", () => {
-        const app = createApp({ dev: devtools() });
+        const app = createApp({ dev: devtools({ lang: "ja" }) });
 
         expect(() => app.use("/a/*/c", (_c, next) => next())).toThrow("最後のセグメント全体");
     });
@@ -323,7 +323,7 @@ describe("next() の呼び方", () => {
     });
 
     test("next() を2回呼ぶとエラーになり、ハンドラーは1回しか動かない", async () => {
-        const app = createApp({ dev: devtools() });
+        const app = createApp({ dev: devtools({ lang: "ja" }) });
         let calls = 0;
         app.use(async (_c, next) => {
             await next();

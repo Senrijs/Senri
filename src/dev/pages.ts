@@ -13,6 +13,7 @@
 // 目印が残り、そのステータスとヘッダーのまま HTML にできる
 import type { Context } from "../context.ts";
 import type { ErrorHandler } from "../errors.ts";
+import type { Lang } from "../lang.ts";
 import { buildErrorPageData } from "./error-page.ts";
 import { errorFallback } from "./fallback.ts";
 import { PAGE_HTML } from "./page.generated.ts";
@@ -22,7 +23,6 @@ const MARK = "x-senri-dev-page";
 
 // Context ごとの「エラーページにする予定」(リクエストが終われば一緒に消える)
 const pending = new WeakMap<Context, { token: string; err: unknown }>();
-
 
 // 既定の onError を包む。開発モードで、ブラウザから開いた 5xx のときだけ「あとでエラーページにする」
 // (利用者が app.onError で自分のものに替えたら、これは使われない)
@@ -46,7 +46,8 @@ function deferErrorPage(c: Context, err: unknown, fallback: Response): Response 
 }
 
 // app.fetch の最後に呼ぶ。目印があれば HTML のエラーページに差し替える
-export async function finishErrorPage(c: Context, res: Response): Promise<Response> {
+// lang: ページにするときだけ呼ぶ(呼んだら、応答が Accept-Language で変わる)
+export async function finishErrorPage(c: Context, res: Response, lang: () => Lang): Promise<Response> {
     const mark = res.headers.get(MARK);
     if (mark === null) return res;
 
@@ -61,7 +62,7 @@ export async function finishErrorPage(c: Context, res: Response): Promise<Respon
     }
 
     try {
-        const data = await buildErrorPageData(job.err, c, res);
+        const data = await buildErrorPageData(job.err, c, res, lang());
         await res.body?.cancel();
         headers.set("content-type", "text/html; charset=utf-8");
         // ボディを丸ごと差し替えるので、元のボディについてのヘッダーは消す

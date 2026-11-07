@@ -3,10 +3,13 @@
 import { computed, ref } from "vue";
 import type { MiddlewareRow, RouteRow } from "../../../src/dev/page-data.ts";
 import { routeChain } from "../dashboard.ts";
+import { useI18n } from "../i18n.ts";
+import RichText from "./RichText.vue";
 import { filterRoutes, methodColor } from "../view.ts";
 
 const props = defineProps<{ routes: RouteRow[]; middlewares: MiddlewareRow[] }>();
 
+const { t } = useI18n();
 const query = ref("");
 // 404 ページと同じ絞り込み(パスかメソッドに含まれるもの)。並びはパスの順
 const rows = computed(() => {
@@ -20,17 +23,17 @@ const linkable = (r: RouteRow) => (r.method === "GET" || r.method === "ALL") && 
 </script>
 
 <template>
-    <section class="routes" aria-label="登録されているルート">
+    <section class="routes" :aria-label="t('routes.label')">
         <div class="mono head">
-            <h2 class="section">// 登録されているルート({{ routes.length }})</h2>
+            <h2 class="section">{{ t("routes.title", { count: routes.length }) }}</h2>
             <div class="filter">
                 <label for="route-filter">filter</label>
                 <input id="route-filter" v-model="query" type="search" placeholder="/users" />
             </div>
         </div>
         <p class="lead">
-            各ルートに来たリクエストが、どのミドルウェアをどの順に通ってハンドラーに着くかです(左が外側)。
-            <span class="maybe-mark">*</span> はパスによってかかるもの(<code>:page</code> のようなパラメーターに何が来るか次第)です。
+            {{ t("routes.lead") }}
+            <span class="maybe-mark">*</span> <RichText :text="t('routes.leadMaybe')" />
         </p>
         <ul class="mono list">
             <li v-for="r in rows" :key="`${r.method} ${r.path}`">
@@ -41,12 +44,12 @@ const linkable = (r: RouteRow) => (r.method === "GET" || r.method === "ALL") && 
                     <template v-for="(m, i) in routeChain(r)" :key="i">
                         <span v-if="i > 0" class="arrow" aria-hidden="true">→</span>
                         <span :class="{ handler: m.name === 'handler', maybe: m.maybe }"
-                            >{{ m.name }}<span v-if="m.maybe" class="maybe-mark" title="パスによる">*</span></span
+                            >{{ m.name }}<span v-if="m.maybe" class="maybe-mark" :title="t('routes.maybe')">*</span></span
                         >
                     </template>
                 </span>
             </li>
-            <li v-if="rows.length === 0" class="empty">一致するルートはありません</li>
+            <li v-if="rows.length === 0" class="empty">{{ t("routes.empty") }}</li>
         </ul>
     </section>
 </template>

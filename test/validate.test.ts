@@ -32,7 +32,7 @@ describe("Standard Schema によるバリデーション", () => {
     for (const [name, schemas] of Object.entries(LIBS)) {
         describe(name, () => {
             function makeApp(dev = false) {
-                const app = createApp({ dev: dev ? devtools() : undefined });
+                const app = createApp({ dev: dev ? devtools({ lang: "ja" }) : undefined });
                 app.post("/users/:id", schemas, ({ id }, c) => ({
                     id,
                     params: c.params,
@@ -92,7 +92,7 @@ describe("ValidationError", () => {
     });
 
     test("ネストしたパスは user[0].name のように出す", async () => {
-        const app = createApp({ dev: devtools() });
+        const app = createApp({ dev: devtools({ lang: "ja" }) });
         app.post("/", { body: z.object({ users: z.array(z.object({ name: z.string() })) }) }, () => "ok");
         const res = await app.fetch(json("/", { users: [{ name: 1 }] }));
         expect(await res.text()).toContain("- users[0].name: ");
@@ -154,7 +154,7 @@ describe("いろいろな書き方", () => {
 
 describe("登録時のチェック", () => {
     test("開発モードでは、スキーマでないものや知らないキーを、登録した時点でエラーにする", () => {
-        const app = createApp({ dev: devtools() });
+        const app = createApp({ dev: devtools({ lang: "ja" }) });
         expect(() => app.post("/", { body: {} } as never, () => "x")).toThrow("Standard Schema");
         expect(() => app.post("/", { json: z.string() } as never, () => "x")).toThrow("params / query / body");
         expect(() => app.post("/", { body: z.string() } as never)).toThrow("ハンドラーがありません");
@@ -166,7 +166,7 @@ describe("登録時のチェック", () => {
     });
 
     test("スキーマを渡していないものを c.valid() で読むと、分かりやすいエラー", async () => {
-        const app = createApp({ dev: devtools() });
+        const app = createApp({ dev: devtools({ lang: "ja" }) });
         app.get("/", (_, c) => (c as never as { valid(t: string): unknown }).valid("body") as string);
         const res = await app.fetch(req("/"));
         expect(res.status).toBe(500);

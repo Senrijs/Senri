@@ -1,5 +1,6 @@
 // サーバーがページに埋め込むデータの形。サーバー(src/dev)と画面(ui/)の両方がこの型を使う
 import type { ConversionOrigin } from "../errors.ts";
+import type { Lang } from "../lang.ts";
 import type { CodeFrame } from "./source.ts";
 import type { EditorGuess } from "./editor.ts";
 import type { Hint } from "./hints.ts";
@@ -19,6 +20,8 @@ export type PageFrame = {
 
 export type ErrorPageData = {
     kind: "error";
+    // 画面の言語
+    lang: Lang;
     status: number;
     statusText: string;
     // リクエスト全体にかかった時間(ミリ秒)。計測できなければ null
@@ -51,6 +54,7 @@ export type ErrorPageData = {
 
 export type NotFoundPageData = {
     kind: "notFound";
+    lang: Lang;
     method: string;
     path: string;
     suggestion: (Difference & { method: string; path: string; link: boolean }) | null;
@@ -94,12 +98,13 @@ export type MiddlewareRow = {
 
 export type DashboardPageData = {
     kind: "dashboard";
+    lang: Lang;
     // 記録しておく件数の上限
     max: number;
     requests: RequestSummary[];
     routes: RouteRow[];
     middlewares: MiddlewareRow[];
-    // ルートとミドルウェアの書き間違いの警告(日本語)
+    // ルートとミドルウェアの書き間違いの警告
     warnings: string[];
 };
 

@@ -300,7 +300,7 @@ describe("etag()", () => {
     });
 
     test("開発モードでも動く", async () => {
-        const app = createApp({ dev: devtools() });
+        const app = createApp({ dev: devtools({ lang: "ja" }) });
         app.use(etag());
         app.get("/", () => "x");
         const local = { host: "localhost" };

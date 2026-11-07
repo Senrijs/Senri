@@ -52,20 +52,20 @@ describe("本番(既定)では固定の文言だけ返す", () => {
 
 describe("開発モード createApp({ dev: devtools() })", () => {
     test("500 にエラーメッセージが出る", async () => {
-        const res = await appWithRoutes({ dev: devtools() }).fetch(req("/boom"));
+        const res = await appWithRoutes({ dev: devtools({ lang: "ja" }) }).fetch(req("/boom"));
 
         expect(res.status).toBe(500);
         expect(await res.text()).toContain("db password=hunter2");
     });
 
     test("404 に「もしかして」が出る", async () => {
-        const res = await appWithRoutes({ dev: devtools() }).fetch(req("/helo"));
+        const res = await appWithRoutes({ dev: devtools({ lang: "ja" }) }).fetch(req("/helo"));
 
         expect(await res.text()).toContain("もしかして: GET /hello");
     });
 
     test("「もしかして」はデコード・正規化したパスで探す", async () => {
-        const app = createApp({ dev: devtools() });
+        const app = createApp({ dev: devtools({ lang: "ja" }) });
         app.get("/こんにちは", () => "ok");
         app.get("/hello", () => "ok");
 
@@ -77,13 +77,13 @@ describe("開発モード createApp({ dev: devtools() })", () => {
     });
 
     test("405 のメッセージも正規化したパスを出す", async () => {
-        const res = await appWithRoutes({ dev: devtools() }).fetch(req("//hello/", { method: "POST" }));
+        const res = await appWithRoutes({ dev: devtools({ lang: "ja" }) }).fetch(req("//hello/", { method: "POST" }));
 
         expect(await res.text()).toStartWith("405 Method Not Allowed: POST /hello\n");
     });
 
     test("405 にどのメソッドならあるかが出る", async () => {
-        const res = await appWithRoutes({ dev: devtools() }).fetch(req("/hello", { method: "POST" }));
+        const res = await appWithRoutes({ dev: devtools({ lang: "ja" }) }).fetch(req("/hello", { method: "POST" }));
 
         expect(await res.text()).toContain("GET, HEAD, OPTIONS ならあります");
     });
@@ -127,7 +127,7 @@ describe("計測(c.timings)", () => {
     }
 
     test("開発モードでは、ミドルウェアとハンドラーの self / total が記録される", async () => {
-        const { app, read } = measuredApp({ dev: devtools() });
+        const { app, read } = measuredApp({ dev: devtools({ lang: "ja" }) });
 
         await app.fetch(req("/x"));
         const [, slow, handler] = read();
@@ -142,7 +142,7 @@ describe("計測(c.timings)", () => {
     });
 
     test("例外が起きた層に failed が付く(ハンドラー)", async () => {
-        const app = createApp({ dev: devtools() });
+        const app = createApp({ dev: devtools({ lang: "ja" }) });
         let timings: { name: string; failed: boolean }[] = [];
         app.use(async function outer(c, next) {
             await next();
@@ -163,7 +163,7 @@ describe("計測(c.timings)", () => {
     });
 
     test("例外が起きた層に failed が付く(ミドルウェア)", async () => {
-        const app = createApp({ dev: devtools() });
+        const app = createApp({ dev: devtools({ lang: "ja" }) });
         let timings: { name: string; failed: boolean }[] = [];
         app.use(async function outer(c, next) {
             await next();
@@ -182,7 +182,7 @@ describe("計測(c.timings)", () => {
     });
 
     test("各層の開始時刻(リクエストの開始から)が入り、内側の層ほど後に始まる", async () => {
-        const { app, read } = measuredApp({ dev: devtools() });
+        const { app, read } = measuredApp({ dev: devtools({ lang: "ja" }) });
 
         await app.fetch(req("/x"));
         const [, slow, handler] = read();
@@ -193,7 +193,7 @@ describe("計測(c.timings)", () => {
     });
 
     test("next() を呼ばずに値を返して終わった層に stopped が付く", async () => {
-        const app = createApp({ dev: devtools() });
+        const app = createApp({ dev: devtools({ lang: "ja" }) });
         let timings: { name: string; stopped: boolean }[] = [];
         app.use(async function outer(c, next) {
             await next();
@@ -212,7 +212,7 @@ describe("計測(c.timings)", () => {
     });
 
     test("next() のあとに値を返した層は stopped ではない", async () => {
-        const app = createApp({ dev: devtools() });
+        const app = createApp({ dev: devtools({ lang: "ja" }) });
         let timings: { name: string; stopped: boolean }[] = [];
         app.use(async function outer(c, next) {
             await next();
@@ -230,7 +230,7 @@ describe("計測(c.timings)", () => {
     });
 
     test("いちばん内側の層の名前は、何が動いたかで変わる(handler / notFound / 405 / options / 400)", async () => {
-        const app = createApp({ dev: devtools() });
+        const app = createApp({ dev: devtools({ lang: "ja" }) });
         let last = "";
         app.use(async function outer(c, next) {
             await next();
@@ -262,7 +262,7 @@ describe("計測(c.timings)", () => {
 
 describe("「もしかして」のどこが違うか(explainDifference)", () => {
     test("1文字足りない: 足りない文字に印を付ける", () => {
-        expect(explainDifference("/helo", "/hello")).toEqual({
+        expect(explainDifference("/helo", "/hello", "ja")).toEqual({
             parts: [
                 { text: "/hel", mark: false },
                 { text: "l", mark: true },
@@ -273,18 +273,18 @@ describe("「もしかして」のどこが違うか(explainDifference)", () => 
     });
 
     test("続けて何文字か足りない", () => {
-        expect(explainDifference("/usr", "/users").note).toBe('"es" が2文字足りません');
+        expect(explainDifference("/usr", "/users", "ja").note).toBe('"es" が2文字足りません');
     });
 
     test("1文字多い: 候補のほうには印を付けない", () => {
-        expect(explainDifference("/helllo", "/hello")).toEqual({
+        expect(explainDifference("/helllo", "/hello", "ja")).toEqual({
             parts: [{ text: "/hello", mark: false }],
             note: '"l" が1文字多いです',
         });
     });
 
     test("1文字違う", () => {
-        expect(explainDifference("/userz", "/users")).toEqual({
+        expect(explainDifference("/userz", "/users", "ja")).toEqual({
             parts: [
                 { text: "/user", mark: false },
                 { text: "s", mark: true },
@@ -294,11 +294,11 @@ describe("「もしかして」のどこが違うか(explainDifference)", () => 
     });
 
     test("大文字と小文字の違いも分かる", () => {
-        expect(explainDifference("/Hello", "/hello").note).toBe('"h" のところが "H" になっています');
+        expect(explainDifference("/Hello", "/hello", "ja").note).toBe('"h" のところが "H" になっています');
     });
 
     test("いろいろ違うときは、か所の数だけ", () => {
-        expect(explainDifference("/hxlo", "/hello").note).toBe("2か所違います");
+        expect(explainDifference("/hxlo", "/hello", "ja").note).toBe("2か所違います");
     });
 });
 

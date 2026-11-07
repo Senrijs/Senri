@@ -5,10 +5,13 @@ import { copyText, editorUrl } from "../../src/dev/editor-url.ts";
 import SiteHeader from "./components/SiteHeader.vue";
 import EditorSelect from "./components/EditorSelect.vue";
 import CopyButton from "./components/CopyButton.vue";
+import RichText from "./components/RichText.vue";
+import { useI18n } from "./i18n.ts";
 import {
     editorOptions,
     formatMs,
-    inlineCode,
+    hintCode,
+    hintText,
     layerBars,
     loadEditor,
     openLabel,
@@ -19,13 +22,14 @@ import {
 
 const props = defineProps<{ data: ErrorPageData }>();
 const d = props.data;
+const { t, lang } = useI18n();
 
 const storage = typeof localStorage === "undefined" ? undefined : localStorage;
 const editor = ref(loadEditor(storage, d.editor));
 watch(editor, (id) => saveEditor(storage, id));
 
-const options = editorOptions(d.editor);
-const openText = computed(() => openLabel(editor.value));
+const options = editorOptions(d.editor, lang);
+const openText = computed(() => openLabel(editor.value, lang));
 const locOf = (f: PageFrame) => ({ file: f.file, line: f.line, col: f.col, root: d.root });
 const urlOf = (f: PageFrame) => editorUrl(editor.value, locOf(f));
 
@@ -55,7 +59,7 @@ const duration = formatMs(d.durationMs);
                 <span class="mono error-name">{{ d.error.name }}:</span> {{ d.error.message }}
             </h1>
             <div v-if="d.origin" class="mono location">
-                <span class="muted">--&gt; <span class="text">{{ originText(d.origin) }}</span></span>
+                <span class="muted">--&gt; <span class="text">{{ originText(d.origin, lang) }}</span></span>
             </div>
             <div v-else-if="d.location" class="mono location">
                 <span class="muted"
@@ -88,7 +92,7 @@ const duration = formatMs(d.durationMs);
         </section>
 
         <!-- 該当コード -->
-        <section v-if="d.code" class="mono code-frame" aria-label="エラーが起きたコード">
+        <section v-if="d.code" class="mono code-frame" :aria-label="t('error.codeLabel')">
             <template v-for="ln in d.code.lines" :key="ln.num">
                 <div class="code-line" :class="{ hit: ln.hit }">
                     <span class="num">{{ ln.num }}</span>
@@ -96,7 +100,7 @@ const duration = formatMs(d.durationMs);
                 </div>
                 <div v-if="ln.hit" class="code-line">
                     <span class="num" />
-                    <span class="caret">{{ d.code.caret }} {{ d.code.label }}</span>
+                    <span class="caret">{{ d.code.caret }} {{ t(d.code.thrown ? "code.thrown" : "code.error") }}</span>
                 </div>
             </template>
         </section>
@@ -104,24 +108,19 @@ const duration = formatMs(d.durationMs);
         <!-- ヒント -->
         <section v-if="d.hint" class="mono help">
             <span class="help-label">= help:</span>
-            <span class="help-text"
-                ><template v-for="(part, i) in inlineCode(d.hint.text)" :key="i"
-                    ><code v-if="part.code">{{ part.text }}</code
-                    ><template v-else>{{ part.text }}</template></template
-                ></span
-            >
-            <template v-if="d.hint.code">
+            <span class="help-text"><RichText :text="hintText(d.hint, lang)" /></span>
+            <template v-if="hintCode(d.hint, lang)">
                 <span />
-                <code class="help-code">{{ d.hint.code }}</code>
+                <code class="help-code">{{ hintCode(d.hint, lang) }}</code>
             </template>
         </section>
 
         <!-- スタックトレース -->
         <section class="stack">
             <div class="mono stack-head">
-                <h2 class="section">// スタックトレース</h2>
+                <h2 class="section">{{ t("error.stack") }}</h2>
                 <button v-if="internalCount > 0" type="button" class="toggle" @click="showInternal = !showInternal">
-                    {{ showInternal ? "Senri 内部を隠す" : `Senri 内部も表示(${internalCount})` }}
+                    {{ showInternal ? t("error.hideInternal") : t("error.showInternal", { count: internalCount }) }}
                 </button>
             </div>
             <ol class="mono frames">
@@ -130,25 +129,25 @@ const duration = formatMs(d.durationMs);
                     <span class="fn">{{ f.fn }}</span>
                     <span class="loc">{{ f.kind === "runtime" ? f.file : `${f.display}:${f.line}:${f.col}` }}</span>
                     <span v-if="f.kind !== 'runtime'" class="actions">
-                        <a v-if="urlOf(f)" :href="urlOf(f)!" class="open-small">開く</a>
+                        <a v-if="urlOf(f)" :href="urlOf(f)!" class="open-small">{{ t("error.open") }}</a>
                         <CopyButton :text="copyText(locOf(f))" />
                     </span>
                 </li>
-                <li v-if="frames.hidden > 0" class="hidden-count">… Senri 内部のフレーム {{ frames.hidden }}件</li>
+                <li v-if="frames.hidden > 0" class="hidden-count">{{ t("error.hiddenFrames", { count: frames.hidden }) }}</li>
             </ol>
         </section>
 
         <!-- リクエストと、通った順番 -->
         <section class="mono details">
             <div class="detail">
-                <h2 class="section">// リクエスト</h2>
+                <h2 class="section">{{ t("error.request") }}</h2>
                 <dl>
                     <dt>method</dt>
                     <dd>{{ d.request.method }}</dd>
                     <dt>path</dt>
                     <dd>{{ d.request.path }}</dd>
                     <dt>route</dt>
-                    <dd>{{ d.request.route ?? "(マッチなし)" }}</dd>
+                    <dd>{{ d.request.route ?? t("error.noRoute") }}</dd>
                     <dt>params</dt>
                     <dd>{{ JSON.stringify(d.request.params) }}</dd>
                     <template v-if="d.request.userAgent">
@@ -158,7 +157,7 @@ const duration = formatMs(d.durationMs);
                 </dl>
             </div>
             <div v-if="bars.length > 0" class="detail">
-                <h2 class="section">// 通った順番</h2>
+                <h2 class="section">{{ t("error.layers") }}</h2>
                 <ol class="layers">
                     <li v-for="(l, i) in bars" :key="i" :class="{ failed: l.failed }">
                         <span class="layer-name">{{ l.name }}</span>
@@ -166,14 +165,12 @@ const duration = formatMs(d.durationMs);
                         <span class="layer-ms">{{ l.ms }}</span>
                     </li>
                 </ol>
-                <a v-if="d.dashboardUrl" :href="d.dashboardUrl" class="dashboard-link">/_senri で詳しく見る →</a>
+                <a v-if="d.dashboardUrl" :href="d.dashboardUrl" class="dashboard-link">{{ t("error.dashboardLink") }}</a>
             </div>
         </section>
 
         <footer class="page-footer">
-            このページは開発モード(<code>import { devtools } from "@senrijs/senri/dev"</code> と <code>createApp({ dev: devtools() })</code>)でのみ表示されます。本番では「{{
-                d.production
-            }}」だけが返ります。
+            <RichText :text="t('error.footer', { production: d.production })" />
         </footer>
     </main>
 </template>

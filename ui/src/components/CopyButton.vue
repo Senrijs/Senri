@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { ref } from "vue";
+import { useI18n } from "../i18n.ts";
 
 const props = defineProps<{ text: string; label?: string; icon?: boolean }>();
+const { t } = useI18n();
 const done = ref(false);
 
 async function copy() {
@@ -38,7 +40,7 @@ async function copy() {
             <rect x="9" y="9" width="11" height="11" rx="2" />
             <path d="M5 15V5a1 1 0 0 1 1-1h10" />
         </svg>
-        <span aria-live="polite">{{ done ? "コピーしました" : (label ?? "コピー") }}</span>
+        <span aria-live="polite">{{ done ? t("copy.done") : (label ?? t("copy.copy")) }}</span>
     </button>
 </template>
 

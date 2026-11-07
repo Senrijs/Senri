@@ -145,7 +145,7 @@ describe("trailingSlash() の設定", () => {
         } catch (e) {
             err = e;
         }
-        expect(explainText(err)).toContain("trailingSlash()");
+        expect(explainText(err, "ja")).toContain("trailingSlash()");
     });
 
     test("名前と印", () => {

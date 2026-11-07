@@ -63,6 +63,15 @@ export function parseAcceptLanguage(header: string): string[] {
     return items.sort((a, b) => b.q - a.q).map((item) => item.tag);
 }
 
+// Accept-Language の中で、対応している言語に最初に当たったもの(q の順)。なければ null
+export function matchAcceptLanguage(header: string, supported: readonly string[]): string | null {
+    for (const tag of parseAcceptLanguage(header)) {
+        const language = matchLanguage(tag, supported);
+        if (language !== null) return language;
+    }
+    return null;
+}
+
 const SOURCES: readonly LanguageSource[] = ["querystring", "cookie", "header"];
 
 /**
@@ -118,12 +127,7 @@ export function languageDetector(options: LanguageDetectorOptions): Middleware {
             } else {
                 readHeader = true;
                 const header = headerOf(c, "accept-language");
-                if (header !== null) {
-                    for (const tag of parseAcceptLanguage(header)) {
-                        language = matchLanguage(tag, supported);
-                        if (language !== null) break;
-                    }
-                }
+                if (header !== null) language = matchAcceptLanguage(header, supported);
             }
             if (language !== null) break;
         }

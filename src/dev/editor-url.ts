@@ -15,7 +15,7 @@ export const EDITORS: { id: EditorId; label: string; experimental?: boolean }[] 
     { id: "cursor", label: "Cursor" },
     { id: "webstorm", label: "WebStorm", experimental: true },
     { id: "zed", label: "Zed" },
-    { id: "copy", label: "コピーのみ" },
+    { id: "copy", label: "Copy only" },
 ];
 
 export type Location = {

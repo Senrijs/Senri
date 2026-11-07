@@ -94,7 +94,7 @@ describe("serve(Bun)", () => {
     test("バナーに、実際の URL と、ポートをどこから決めたかが出る", async () => {
         const log = spyOn(console, "log").mockImplementation(() => {});
         try {
-            const server = await serve(app, { port: 0 });
+            const server = await serve(app, { port: 0, lang: "ja" });
             await server.stop();
             const text = log.mock.calls.map((args) => String(args[0])).join("\n");
 

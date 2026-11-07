@@ -246,7 +246,7 @@ describe("設定", () => {
         } catch (e) {
             err = e;
         }
-        expect(explainText(err)).toContain("trustProxy()");
+        expect(explainText(err, "ja")).toContain("trustProxy()");
     });
 });
 

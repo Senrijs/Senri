@@ -8,14 +8,15 @@ import BrandLogo from "./components/BrandLogo.vue";
 import RequestDetail from "./components/RequestDetail.vue";
 import RoutesTab from "./components/RoutesTab.vue";
 import MiddlewareTab from "./components/MiddlewareTab.vue";
+import { useI18n } from "./i18n.ts";
 import {
     applyEvent,
     filterRequests,
     formatMs,
     formatTime,
     latestOnly,
-    STATUS_FILTERS,
     statusClass,
+    statusFilters,
     type DashboardEvent,
     type StatusFilter,
 } from "./dashboard.ts";
@@ -23,6 +24,8 @@ import { methodColor } from "./view.ts";
 
 const props = defineProps<{ data: DashboardPageData }>();
 const host = location.host;
+const { t, lang } = useI18n();
+const filters = statusFilters(lang);
 
 // --- タブと選択(URL の # に入れておくと、再読み込みやリンクでも同じ画面になる) ---
 // #requests / #requests/<id> / #routes / #middleware
@@ -115,41 +118,41 @@ onUnmounted(() => {
         <div class="inner mono">
             <div class="left">
                 <BrandLogo />
-                <nav aria-label="ダッシュボードのメニュー">
-                    <a href="#requests" :aria-current="tab === 'requests' ? 'page' : undefined">リクエスト</a>
+                <nav :aria-label="t('dash.menu')">
+                    <a href="#requests" :aria-current="tab === 'requests' ? 'page' : undefined">{{ t("dash.requests") }}</a>
                     <a href="#routes" :aria-current="tab === 'routes' ? 'page' : undefined"
-                        >ルート <span class="count">{{ data.routes.length }}</span></a
+                        >{{ t("dash.routes") }} <span class="count">{{ data.routes.length }}</span></a
                     >
                     <a href="#middleware" :aria-current="tab === 'middleware' ? 'page' : undefined"
-                        >ミドルウェア <span class="count">{{ data.middlewares.length }}</span></a
+                        >{{ t("dash.middleware") }} <span class="count">{{ data.middlewares.length }}</span></a
                     >
                 </nav>
             </div>
             <div class="right">
                 <span class="live"><i :class="{ on: live }" aria-hidden="true" />{{ live ? "live" : "offline" }}</span>
                 <span>{{ host }}</span>
-                <button v-if="tab === 'requests'" type="button" @click="clearAll">クリア</button>
+                <button v-if="tab === 'requests'" type="button" @click="clearAll">{{ t("dash.clear") }}</button>
             </div>
         </div>
     </header>
 
-    <section v-if="data.warnings.length > 0" class="route-warnings" aria-label="ルートとミドルウェアの警告">
-        <h2 class="mono">書き間違いの可能性({{ data.warnings.length }})</h2>
+    <section v-if="data.warnings.length > 0" class="route-warnings" :aria-label="t('dash.warningsLabel')">
+        <h2 class="mono">{{ t("dash.warningsTitle", { count: data.warnings.length }) }}</h2>
         <ul>
             <li v-for="w in data.warnings" :key="w">{{ w }}</li>
         </ul>
     </section>
 
     <main v-if="tab === 'requests'" class="dash-main requests">
-        <section class="list" aria-label="リクエスト一覧">
+        <section class="list" :aria-label="t('dash.listLabel')">
             <div class="mono toolbar">
                 <div class="filter">
                     <label for="q">filter</label>
                     <input id="q" v-model="query" type="search" placeholder="/users" />
                 </div>
-                <div role="group" aria-label="ステータスで絞り込む" class="status-filters">
+                <div role="group" :aria-label="t('dash.statusFilter')" class="status-filters">
                     <button
-                        v-for="f in STATUS_FILTERS"
+                        v-for="f in filters"
                         :key="f.id"
                         type="button"
                         :aria-pressed="status === f.id"
@@ -161,7 +164,7 @@ onUnmounted(() => {
             </div>
 
             <div class="mono rows">
-                <div class="row head"><span>// 時刻</span><span>method</span><span>path</span><span>status</span><span class="num">time</span></div>
+                <div class="row head"><span>{{ t("dash.time") }}</span><span>method</span><span>path</span><span>status</span><span class="num">time</span></div>
                 <button
                     v-for="r in visible"
                     :key="r.id"
@@ -177,15 +180,15 @@ onUnmounted(() => {
                     <span :class="['num', { slow: r.durationMs >= 10 }]">{{ formatMs(r.durationMs) }}</span>
                 </button>
                 <p v-if="visible.length === 0" class="empty">
-                    {{ requests.length === 0 ? "まだリクエストがありません。アプリを開くと、ここに増えていきます。" : "一致するリクエストはありません" }}
+                    {{ requests.length === 0 ? t("dash.noRequests") : t("dash.noMatches") }}
                 </p>
             </div>
-            <div class="mono foot">直近 {{ data.max }} 件まで保持 · 再起動で消えます</div>
+            <div class="mono foot">{{ t("dash.retention", { max: data.max }) }}</div>
         </section>
 
         <RequestDetail v-if="detail" :record="detail" class="detail-pane" />
         <p v-else-if="missing" class="detail-pane empty">
-            この記録はもうありません(直近 {{ data.max }} 件だけ保持しています)。
+            {{ t("dash.gone", { max: data.max }) }}
         </p>
     </main>
 

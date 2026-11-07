@@ -82,7 +82,7 @@ describe("requestId()", () => {
                 return e;
             }
         })();
-        expect(explainText(err)).toContain("headerName");
+        expect(explainText(err, "ja")).toContain("headerName");
     });
 
     test("generator で作り方を変えられる", async () => {

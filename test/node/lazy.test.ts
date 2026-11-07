@@ -309,7 +309,7 @@ describe("Request を作らない道と app.fetch の道で、応答が同じ", 
         [
             "開発モードのアプリ",
             () => {
-                const app = createApp<any>({ dev: devtools() });
+                const app = createApp<any>({ dev: devtools({ lang: "ja" }) });
                 addRoutes(app);
                 return app;
             },
@@ -585,7 +585,7 @@ describe("c.req は、読んだときに作られる本物の Request", () => {
     });
 
     test("開発モードのアプリは、今までどおり先に作る", async () => {
-        const app = createApp({ dev: devtools() });
+        const app = createApp({ dev: devtools({ lang: "ja" }) });
         let real = false;
         app.get("/", (_, c) => {
             real = Object.getPrototypeOf(c.req) === Request.prototype;

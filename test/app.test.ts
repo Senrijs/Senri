@@ -49,7 +49,7 @@ describe("ルーティング", () => {
     });
 
     test("見つからないと404で「もしかして」が出る(開発モード)", async () => {
-        const app = createApp({ dev: devtools() });
+        const app = createApp({ dev: devtools({ lang: "ja" }) });
         app.get("/hello", () => "hi");
 
         const res = await app.fetch(req("/helo"));

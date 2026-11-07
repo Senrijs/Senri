@@ -20,7 +20,7 @@ async function readUntil(reader: ReadableStreamDefaultReader<Uint8Array>, done: 
 
 describe("ダッシュボード(Node)", () => {
     test("SSE でリクエストが届き、切断すると購読が外れる", async () => {
-        const app = createApp({ dev: devtools() });
+        const app = createApp({ dev: devtools({ lang: "ja" }) });
         app.get("/hello", () => "hi");
         const server = serve(app, { port: 0 });
         await new Promise<void>((resolve) => server.once("listening", resolve));

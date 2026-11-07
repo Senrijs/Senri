@@ -1,13 +1,16 @@
 // vite で見た目を確かめるときのサンプル(ビルド結果には入らない)
-// ?page=notFound で404ページ、それ以外はエラーページ
+// ?page=notFound で404ページ、それ以外はエラーページ。?lang=ja で日本語
+import type { Lang } from "../../src/lang.ts";
+import { message } from "../../src/dev/messages.ts";
 import type { PageData } from "../../src/dev/page-data.ts";
 
 const root = "C:/Users/me/senri";
 
-export function sample(page: string | null): PageData {
+export function sample(page: string | null, lang: Lang): PageData {
     if (page === "notFound") {
         return {
             kind: "notFound",
+            lang,
             method: "GET",
             path: "/helo",
             suggestion: {
@@ -19,7 +22,7 @@ export function sample(page: string | null): PageData {
                     { text: "l", mark: true },
                     { text: "o", mark: false },
                 ],
-                note: '"l" が1文字足りません',
+                note: message(lang, "diff.missing", { chars: "l", count: 1 }),
             },
             routes: [
                 ["GET", "/hello"],
@@ -38,6 +41,7 @@ export function sample(page: string | null): PageData {
     const file = `${root}/examples/shared/app.ts`;
     return {
         kind: "error",
+        lang,
         status: 500,
         statusText: "Internal Server Error",
         durationMs: 2.1,
@@ -58,12 +62,9 @@ export function sample(page: string | null): PageData {
                 { num: 41, code: 'app.get("/admin", () => "ようこそ管理者さん");', hit: false },
             ],
             caret: "              ^^^^^^^^^^^^^^^^^^^^^^",
-            label: "ここで throw",
+            thrown: true,
         },
-        hint: {
-            text: "ハンドラーやミドルウェアで投げたエラーが、どこでもキャッチされませんでした。意図したエラーなら `HttpError` でステータスコードを指定できます。",
-            code: 'throw new HttpError(400, "id が数字ではありません")',
-        },
+        hint: { key: "hint.uncaught", code: 'throw new HttpError(400, "id が数字ではありません")' },
         frames: [
             { fn: "<anonymous>", file, display: "examples/shared/app.ts", line: 38, col: 15, kind: "user" },
             { fn: "getUser", file: `${root}/examples/shared/db.ts`, display: "examples/shared/db.ts", line: 12, col: 9, kind: "user" },

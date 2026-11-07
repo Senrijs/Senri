@@ -79,15 +79,19 @@ export type StreamOptions<A = StreamingApi> = {
 /** Options for {@link streamSSE}. */
 export type SSEOptions = StreamOptions<SSEStreamingApi> & {
     /**
-     * Sends a comment this often, in milliseconds, to keep idle connections open. Off by default. Proxies often close a
-     * connection that stays quiet for a minute. On Bun, `Bun.serve` closes one after 10 seconds unless `idleTimeout` is raised.
+     * Sends a comment this often, in milliseconds, to keep idle connections open. Default `5000`; `false` turns it off.
+     * Proxies often close a connection that stays quiet for a minute, and `Bun.serve` closes one after about 10 seconds
+     * unless `idleTimeout` is raised. No comment is sent while the client is not keeping up.
      */
-    heartbeat?: number;
+    heartbeat?: number | false;
 };
 
 const encoder = new TextEncoder();
 
-function start(c: Context, run: (api: StreamingApi) => void | Promise<void>, onError: ((err: unknown, api: StreamingApi) => void | Promise<void>) | undefined, stopped: () => void): { response: Response; api: StreamingApi } {
+// Bun.serve の既定(idleTimeout 10 秒)では、静かな接続が早いと 8.8 秒で切られる(Bun 1.4.3 で計測)。余裕を持たせる
+const DEFAULT_HEARTBEAT = 5000;
+
+function start(c: Context, run: (api: StreamingApi) => void | Promise<void>, onError: ((err: unknown, api: StreamingApi) => void | Promise<void>) | undefined, stopped: () => void): { response: Response; api: StreamingApi; ping: (text: string) => void } {
     let controller!: ReadableStreamDefaultController<Uint8Array>;
     let aborted = false;
     let closed = false;
@@ -221,7 +225,14 @@ function start(c: Context, run: (api: StreamingApi) => void | Promise<void>, onE
             controller.error(err);
         });
 
-    return { response: c.toResponse(readable), api };
+    return {
+        response: c.toResponse(readable),
+        api,
+        // 読み手が止まっているときは送らない(止まった接続に、たまり続けないように)
+        ping(text) {
+            if (!aborted && !closed && (controller.desiredSize ?? 1) > 0) controller.enqueue(encoder.encode(text));
+        },
+    };
 }
 
 function setDefault(res: Response, name: string, value: string): void {
@@ -236,9 +247,10 @@ function setDefault(res: Response, name: string, value: string): void {
  *   long loops should check `s.aborted`
  * - **Errors:** the response has already started, so 500 is not possible. See `onError` in {@link StreamOptions}
  * - **On Node.js**, the headers are sent with the first chunk. Write something soon if the client is waiting for them
- * - **On Cloudflare Workers** (checked on workerd), `onAbort` did not run when the client disconnected, with or without
- *   `enable_request_signal` and `waitUntil`, so do not rely on it there to release anything. An error without `onError`
- *   also ends the response as if it were complete, since the runtime finishes it
+ * - **On Cloudflare Workers** (checked on workerd), a disconnect is noticed only on a later write. `onAbort` did not run while
+ *   a stream stayed quiet, with or without `enable_request_signal` and `waitUntil`; with the default `heartbeat` of
+ *   {@link streamSSE}, it ran within 15 seconds. Do not rely on it there to release anything quickly. An error without
+ *   `onError` also ends the response as if it were complete, since the runtime finishes it
  * - `compress()` and `etag()` wait up to 5 ms to read the start of the body. A stream that sends a lot at once can be compressed, which holds its data back
  *
  * @param c The context.
@@ -317,13 +329,13 @@ function sseText(message: SSEMessage): string {
  *
  * - Sends `Content-Type: text/event-stream`, `Cache-Control: no-cache, no-transform` and `X-Accel-Buffering: no`, which stops nginx from holding events back. `compress()` leaves it uncompressed
  * - Sends a first comment right away, so the headers reach the client before the first event
- * - Long-lived connections may need `heartbeat`, since proxies close quiet ones. On Bun, `Bun.serve` closes a connection
- *   that is quiet for 10 seconds unless `idleTimeout` is raised
+ * - Sends a comment every 5 seconds, because proxies and `Bun.serve` close quiet connections. Change it with `heartbeat`, or
+ *   turn it off with `heartbeat: false`. Clients ignore comments
  * - When the server stops, open streams keep it waiting. Use a signal or your own flag to end them
  *
  * @param c The context.
  * @param run Writes the events. The response ends when it returns, and browsers then reconnect.
- * @param options `heartbeat`: how often to send a comment. `onError`: called when `run` throws.
+ * @param options `heartbeat`: how often to send a comment, or `false`. `onError`: called when `run` throws.
  *
  * @example
  * ```ts
@@ -332,21 +344,17 @@ function sseText(message: SSEMessage): string {
  *
  * const app = createApp();
  * app.get("/events", (_, c) =>
- *     streamSSE(
- *         c,
- *         async (s) => {
- *             const unsubscribe = subscribe((value) => s.writeSSE({ event: "update", data: JSON.stringify(value) }));
- *             s.onAbort(unsubscribe);
- *             while (!s.aborted) await s.sleep(60_000);
- *         },
- *         { heartbeat: 15_000 },
- *     ),
+ *     streamSSE(c, async (s) => {
+ *         const unsubscribe = subscribe((value) => s.writeSSE({ event: "update", data: JSON.stringify(value) }));
+ *         s.onAbort(unsubscribe);
+ *         while (!s.aborted) await s.sleep(60_000);
+ *     }),
  * );
  * ```
  */
 export function streamSSE(c: Context, run: (stream: SSEStreamingApi) => void | Promise<void>, options: SSEOptions = {}): Response {
-    const { heartbeat, onError } = options;
-    if (heartbeat !== undefined && !(typeof heartbeat === "number" && heartbeat > 0 && Number.isFinite(heartbeat))) {
+    const { heartbeat = DEFAULT_HEARTBEAT, onError } = options;
+    if (heartbeat !== false && !(typeof heartbeat === "number" && heartbeat > 0 && Number.isFinite(heartbeat))) {
         throw senriError("sse_heartbeat", "streamSSE(): invalid heartbeat");
     }
     let timer: ReturnType<typeof setInterval> | undefined;
@@ -355,7 +363,7 @@ export function streamSSE(c: Context, run: (stream: SSEStreamingApi) => void | P
             writeSSE: (message: SSEMessage) => api.write(sseText(message)),
             writeComment: (text: string) => api.write(text.split(/\r\n|\r|\n/).map((line) => `: ${line}\n`).join("") + "\n"),
         });
-    const { response, api } = start(
+    const { response, api, ping } = start(
         c,
         (base) => run(withSSE(base)),
         onError && ((err, base) => onError(err, withSSE(base))),
@@ -366,8 +374,8 @@ export function streamSSE(c: Context, run: (stream: SSEStreamingApi) => void | P
     setDefault(response, "x-accel-buffering", "no");
     if (!api.aborted) {
         void api.write(": connected\n\n");
-        if (heartbeat !== undefined) {
-            timer = setInterval(() => void api.write(": ping\n\n"), heartbeat);
+        if (heartbeat !== false) {
+            timer = setInterval(() => ping(": ping\n\n"), heartbeat);
             // Node で、プロセスの終了を止めない
             (timer as { unref?: () => void }).unref?.();
         }

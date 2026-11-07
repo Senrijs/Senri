@@ -1,5 +1,6 @@
 // /_senri 以下へのリクエストを処理する(ページ、JSON の API、SSE、クリア)
 // 利用者のミドルウェアは通さず、記録もしない(app.ts が先にここへ回す)
+import type { Lang } from "../../lang.ts";
 import { splitPattern } from "../../router.ts";
 import { errorFallback } from "../fallback.ts";
 import type { DashboardPageData, MiddlewareRow, RequestSummary, RouteRow } from "../page-data.ts";
@@ -65,14 +66,15 @@ function middlewareRows(d: Dashboard): MiddlewareRow[] {
     });
 }
 
-export function pageData(d: Dashboard): DashboardPageData {
+export function pageData(d: Dashboard, lang: Lang): DashboardPageData {
     return {
         kind: "dashboard",
+        lang,
         max: d.log.max,
         requests: d.log.list().map(summarize),
         routes: routeRows(d),
         middlewares: middlewareRows(d),
-        warnings: routeWarnings(d.source.routes(), d.source.middlewares()).map((w) => w.ja),
+        warnings: routeWarnings(d.source.routes(), d.source.middlewares(), lang),
     };
 }
 
@@ -88,7 +90,7 @@ export async function handleDashboard(
 
     // ページ本体
     if (segments.length === 0) {
-        return method === "GET" || method === "HEAD" ? html(renderPage(PAGE_HTML, pageData(d))) : notFound();
+        return method === "GET" || method === "HEAD" ? html(renderPage(PAGE_HTML, pageData(d, d.lang(req)))) : notFound();
     }
     if (first !== "api") return notFound();
 
@@ -113,7 +115,9 @@ export async function handleDashboard(
         if (segments.length === 3) return json(record);
         // 500 のときのエラーページ(記録しておいた中身から作り直す)
         if (sub === "error" && segments.length === 4 && record.error) {
-            return html(renderPage(PAGE_HTML, record.error, errorFallback(record.error)));
+            // 見ている人の言語で出す(記録したときのリクエストの言語ではなく)
+            const page = { ...record.error, lang: d.lang(req) };
+            return html(renderPage(PAGE_HTML, page, errorFallback(page)));
         }
     }
     return notFound();

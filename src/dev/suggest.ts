@@ -1,3 +1,6 @@
+import type { Lang } from "../lang.ts";
+import { message } from "./messages.ts";
+
 // dp[i][j] = a の先頭 i 文字と b の先頭 j 文字が、何回の「追加・削除・置き換え」で同じになるか
 function table(a: string, b: string): number[][] {
     const dp: number[][] = Array.from({ length: a.length + 1 }, (_, i) =>
@@ -36,7 +39,7 @@ type Op =
 
 // リクエストされたパスと候補のパスの、どこが違うかを調べる
 // DP の表を右下(両方の最後)から左上へたどると、1文字ずつ「同じ / 足りない / 多い / 違う」が分かる
-export function explainDifference(requested: string, suggested: string): Difference {
+export function explainDifference(requested: string, suggested: string, lang: Lang): Difference {
     const dp = table(requested, suggested);
     const ops: Op[] = [];
     let i = requested.length;
@@ -76,13 +79,13 @@ export function explainDifference(requested: string, suggested: string): Differe
     const chars = diffs.map((op) => op.ch).join("");
     let note: string;
     if (diffs.every((op) => op.kind === "missing")) {
-        note = `"${chars}" が${diffs.length}文字足りません`;
+        note = message(lang, "diff.missing", { chars, count: diffs.length });
     } else if (diffs.every((op) => op.kind === "extra")) {
-        note = `"${chars}" が${diffs.length}文字多いです`;
+        note = message(lang, "diff.extra", { chars, count: diffs.length });
     } else if (diffs.length === 1 && diffs[0]!.kind === "changed") {
-        note = `"${diffs[0]!.ch}" のところが "${diffs[0]!.was}" になっています`;
+        note = message(lang, "diff.changed", { ch: diffs[0]!.ch, was: diffs[0]!.was });
     } else {
-        note = `${diffs.length}か所違います`;
+        note = message(lang, "diff.many", { count: diffs.length });
     }
     return { parts, note };
 }

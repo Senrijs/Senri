@@ -9,7 +9,8 @@ const texts = (routes: string[], middlewares: string[] = []) =>
     routeWarnings(
         routes.map((p) => route(p)),
         middlewares.map((path) => ({ name: "auth", path })),
-    ).map((w) => w.text);
+        "en",
+    );
 
 describe("どのルートにも当たらないミドルウェア", () => {
     test("打ち間違いなら、近いルートを提案する", () => {
@@ -27,9 +28,9 @@ describe("どのルートにも当たらないミドルウェア", () => {
     });
 
     test("日本語の説明も付く", () => {
-        const [warning] = routeWarnings([route("/admin")], [{ name: "auth", path: "/admni" }]);
+        const [warning] = routeWarnings([route("/admin")], [{ name: "auth", path: "/admni" }], "ja");
 
-        expect(warning!.ja).toBe('"/admni" のミドルウェア(auth)は、どのルートにも当たりません。"/admin" の打ち間違いではありませんか？ルートなしで自分で返すミドルウェアなら、問題ありません');
+        expect(warning).toBe('"/admni" のミドルウェア(auth)は、どのルートにも当たりません。"/admin" の打ち間違いではありませんか？ルートなしで自分で返すミドルウェアなら、問題ありません');
     });
 
     test.each([
@@ -45,7 +46,7 @@ describe("どのルートにも当たらないミドルウェア", () => {
     });
 
     test("パスのないミドルウェアと / のミドルウェアは、確かめない", () => {
-        expect(routeWarnings([route("/a")], [{ name: "all", path: null }, { name: "root", path: "/" }])).toEqual([]);
+        expect(routeWarnings([route("/a")], [{ name: "all", path: null }, { name: "root", path: "/" }], "en")).toEqual([]);
     });
 
     describe("/* があるとき", () => {
@@ -106,7 +107,7 @@ describe("コンソールへの警告", () => {
 
     const req = (url = "http://localhost/admin/users") => new Request(url);
     function mistaken() {
-        const app = createApp({ dev: devtools() });
+        const app = createApp({ dev: devtools({ lang: "ja" }) });
         app.use("/admni", function auth(_c, next) {
             return next();
         });
@@ -123,14 +124,14 @@ describe("コンソールへの警告", () => {
         }
     }
 
-    test("最初のリクエストで、英語と日本語を1行で出す", async () => {
+    test("最初のリクエストで、1つの言語だけで出す", async () => {
         const app = mistaken();
         const out = await warnings(async () => {
             await app.fetch(req());
         });
 
         expect(out).toEqual([
-            '[senri] Middleware "auth" at "/admni" matches no route. Did you mean "/admin"? Ignore this if it answers by itself. / "/admni" のミドルウェア(auth)は、どのルートにも当たりません。"/admin" の打ち間違いではありませんか？ルートなしで自分で返すミドルウェアなら、問題ありません',
+            '[senri] "/admni" のミドルウェア(auth)は、どのルートにも当たりません。"/admin" の打ち間違いではありませんか？ルートなしで自分で返すミドルウェアなら、問題ありません',
         ]);
     });
 
@@ -214,7 +215,7 @@ describe("コンソールへの警告", () => {
     });
 
     test("問題がなければ出さない", async () => {
-        const app = createApp({ dev: devtools() });
+        const app = createApp({ dev: devtools({ lang: "ja" }) });
         app.use("/admin/*", (_c, next) => next());
         app.get("/admin/users", () => "x");
         const out = await warnings(async () => {
@@ -238,7 +239,7 @@ describe("ダッシュボード", () => {
     }
 
     test("warnings に日本語の説明が入る", async () => {
-        const app = createApp({ dev: devtools() });
+        const app = createApp({ dev: devtools({ lang: "ja" }) });
         app.use("/admni", function auth(_c, next) {
             return next();
         });
@@ -252,14 +253,14 @@ describe("ダッシュボード", () => {
     });
 
     test("問題がなければ空", async () => {
-        const app = createApp({ dev: devtools() });
+        const app = createApp({ dev: devtools({ lang: "ja" }) });
         app.get("/hello", () => "hi");
 
         expect((await pageData(app)).warnings).toEqual([]);
     });
 
     test("パスに <script> があっても、ページの script は増えない", async () => {
-        const app = createApp({ dev: devtools() });
+        const app = createApp({ dev: devtools({ lang: "ja" }) });
         app.get("/</script><script>alert(1)</script>?", () => "x");
         const warn = spyOn(console, "warn").mockImplementation(() => {});
         try {

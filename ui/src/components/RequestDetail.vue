@@ -4,16 +4,18 @@ import { computed } from "vue";
 import type { DashboardRecord } from "../../../src/dev/dashboard/record.ts";
 import { MASK } from "../../../src/dev/dashboard/mask.ts";
 import { describeRequest, formatMs, formatTime, statusClass, timeline } from "../dashboard.ts";
+import { useI18n } from "../i18n.ts";
 import { methodColor } from "../view.ts";
 
 const props = defineProps<{ record: DashboardRecord }>();
 
-const bars = computed(() => timeline(props.record));
-const note = computed(() => describeRequest(props.record));
+const { t, lang } = useI18n();
+const bars = computed(() => timeline(props.record, lang));
+const note = computed(() => describeRequest(props.record, lang));
 </script>
 
 <template>
-    <section class="detail" aria-label="リクエストの詳細">
+    <section class="detail" :aria-label="t('dash.detailLabel')">
         <div class="title">
             <h1 class="mono">
                 <span :style="{ color: methodColor(record.method) }">{{ record.method }}</span> {{ record.path
@@ -27,7 +29,7 @@ const note = computed(() => describeRequest(props.record));
 
         <dl class="mono kv">
             <dt>route</dt>
-            <dd>{{ record.route ?? "(一致なし)" }}</dd>
+            <dd>{{ record.route ?? t("dash.noMatch") }}</dd>
             <dt>params</dt>
             <dd>{{ JSON.stringify(record.params) }}</dd>
         </dl>
@@ -35,16 +37,16 @@ const note = computed(() => describeRequest(props.record));
         <div v-if="record.error" class="mono error">
             <span class="error-name">{{ record.error.error.name }}:</span>
             <span class="error-message">{{ record.error.error.message }}</span>
-            <a :href="`/_senri/api/requests/${record.id}/error`">エラーページで見る →</a>
+            <a :href="`/_senri/api/requests/${record.id}/error`">{{ t("dash.errorPage") }}</a>
         </div>
 
         <!-- 玉ねぎタイムライン -->
         <div class="block">
             <div class="mono block-head">
-                <h2 class="section">// 玉ねぎタイムライン</h2>
+                <h2 class="section">{{ t("dash.timeline") }}</h2>
                 <span class="legend">
-                    <span><i class="swatch self" />自分の時間</span>
-                    <span><i class="swatch total" />下流の待ち時間</span>
+                    <span><i class="swatch self" />{{ t("dash.self") }}</span>
+                    <span><i class="swatch total" />{{ t("dash.downstream") }}</span>
                 </span>
             </div>
             <div class="mono timeline">
@@ -68,14 +70,14 @@ const note = computed(() => describeRequest(props.record));
 
         <!-- ヘッダー(機密のものは伏せてある) -->
         <div v-for="[title, headers] in [
-            ['// リクエストヘッダー', record.requestHeaders],
-            ['// レスポンスヘッダー', record.responseHeaders],
+            [t('dash.requestHeaders'), record.requestHeaders],
+            [t('dash.responseHeaders'), record.responseHeaders],
         ] as const" :key="title" class="mono block">
             <h2 class="section">{{ title }}</h2>
             <dl class="kv headers">
                 <template v-for="([name, value], i) in headers" :key="i">
                     <dt>{{ name }}</dt>
-                    <dd :class="{ masked: value === MASK }">{{ value === MASK ? "*** (伏せています)" : value }}</dd>
+                    <dd :class="{ masked: value === MASK }">{{ value === MASK ? t("dash.masked") : value }}</dd>
                 </template>
             </dl>
         </div>

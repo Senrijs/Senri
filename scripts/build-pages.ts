@@ -4,6 +4,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 
 const PLACEHOLDER = "<!--senri:data-->";
 const FALLBACK_PLACEHOLDER = "<!--senri:fallback-->";
+const HTML_TAG = '<html lang="en">';
 const input = new URL("../ui/dist/index.html", import.meta.url);
 const output = new URL("../src/dev/page.generated.ts", import.meta.url);
 
@@ -15,7 +16,7 @@ const html = readFileSync(input, "utf8").replace(/\r\n?/g, "\n");
 if (/<script[^>]+src=/.test(html) || /<link[^>]+rel="stylesheet"[^>]+href="\.?\//.test(html)) {
     throw new Error("ビルド結果が外のファイルを読み込んでいます。vite-plugin-singlefile が効いていません");
 }
-for (const placeholder of [PLACEHOLDER, FALLBACK_PLACEHOLDER]) {
+for (const placeholder of [PLACEHOLDER, FALLBACK_PLACEHOLDER, HTML_TAG]) {
     if (html.split(placeholder).length !== 2) {
         throw new Error(`ビルド結果に ${placeholder} がちょうど1つありません`);
     }

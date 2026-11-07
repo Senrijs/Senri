@@ -185,7 +185,7 @@ describe("timeout()", () => {
     });
 
     test("開発モードでも、504 を返して、あとから終わっても壊れない", async () => {
-        const app = createApp({ dev: devtools() });
+        const app = createApp({ dev: devtools({ lang: "ja" }) });
         app.use(timeout(5));
         app.get("/", () => sleep(30).then(() => "late"));
 
@@ -202,7 +202,7 @@ describe("timeout()", () => {
             } catch (e) {
                 err = e;
             }
-            expect(explainText(err)).toContain("ミリ秒");
+            expect(explainText(err, "ja")).toContain("ミリ秒");
         }
         for (const status of [200, 399, 600, 504.5]) {
             let err: unknown;
@@ -211,7 +211,7 @@ describe("timeout()", () => {
             } catch (e) {
                 err = e;
             }
-            expect(explainText(err)).toContain("status");
+            expect(explainText(err, "ja")).toContain("status");
         }
     });
 

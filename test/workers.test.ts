@@ -40,7 +40,7 @@ describe("Cloudflare Workers の fetch(req, env, ctx)", () => {
 
     test("ミドルウェアがあっても同じ(開発モードでも)", async () => {
         for (const dev of [false, true]) {
-            const app = createApp<{ Bindings: { N: number } }>({ dev: dev ? devtools() : undefined });
+            const app = createApp<{ Bindings: { N: number } }>({ dev: dev ? devtools({ lang: "ja" }) : undefined });
             app.use(async (c, next) => {
                 c.header("x-n", String(c.env.N));
                 return next();
@@ -104,11 +104,11 @@ describe("Workers で動いているとき", () => {
     test("開発モードでも、ダッシュボードは作らない(/_senri はふつうの 404)。ほかの開発用の機能は動く", async () => {
         // localhost からの接続に見える info を渡す(Workers でなければ、これでダッシュボードが開ける)
         const loopback = { requestIP: () => ({ address: "127.0.0.1" }) };
-        const outside = createApp({ dev: devtools() });
+        const outside = createApp({ dev: devtools({ lang: "ja" }) });
         expect((await outside.fetch(req("/_senri/api/requests", { headers: { host: "localhost" } }), loopback)).status).toBe(200);
 
         pretendWorkers();
-        const app = createApp({ dev: devtools() });
+        const app = createApp({ dev: devtools({ lang: "ja" }) });
         app.get("/boom", () => {
             throw new Error("わざと");
         });

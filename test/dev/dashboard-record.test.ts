@@ -6,7 +6,7 @@ import { devtools } from "../../src/dev/index.ts";
 const req = (path: string, init: RequestInit = {}) => new Request(`http://localhost${path}`, init);
 
 function app() {
-    const a = createApp({ dev: devtools() });
+    const a = createApp({ dev: devtools({ lang: "ja" }) });
     a.use(async function logger(_c, next) {
         await next();
     });
@@ -99,7 +99,7 @@ describe("リクエストの記録(開発モード)", () => {
     });
 
     test("意図した 4xx の HttpError はエラーとして記録しない", async () => {
-        const a = createApp({ dev: devtools() });
+        const a = createApp({ dev: devtools({ lang: "ja" }) });
         a.get("/x", () => {
             throw new HttpError(403, "だめ");
         });

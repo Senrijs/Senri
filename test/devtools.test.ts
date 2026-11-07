@@ -13,7 +13,7 @@ describe("devtools()", () => {
     });
 
     test("開発モードの機能(「もしかして」付きの 404、Server-Timing)が入る", async () => {
-        const app = createApp({ dev: devtools() });
+        const app = createApp({ dev: devtools({ lang: "ja" }) });
         app.get("/hello", () => "hi");
         const res = await app.fetch(req("/helo"));
         expect(await res.text()).toBe("404 Not Found: GET /helo\nもしかして: GET /hello ?");
@@ -22,8 +22,8 @@ describe("devtools()", () => {
 
     test("NODE_ENV=production では何もしない(消し忘れても本番に開発ページは出ない)", async () => {
         process.env.NODE_ENV = "production";
-        expect(devtools()).toBeUndefined();
-        const app = createApp({ dev: devtools() });
+        expect(devtools({ lang: "ja" })).toBeUndefined();
+        const app = createApp({ dev: devtools({ lang: "ja" }) });
         app.get("/boom", () => {
             throw new Error("secret");
         });
@@ -45,7 +45,7 @@ describe("devtools()", () => {
                 },
                 cwd: () => "/",
             };
-            expect(devtools()).toBeUndefined();
+            expect(devtools({ lang: "ja" })).toBeUndefined();
             expect(warn).toHaveBeenCalledTimes(1);
             expect(String(warn.mock.calls[0]![0])).toContain("--allow-env=NODE_ENV");
         } finally {
@@ -89,7 +89,7 @@ describe("NODE_ENV が読めない環境(Workers・ブラウザ)", () => {
                     cwd: () => "/",
                 };
             }
-            return devtools();
+            return devtools({ lang: "ja" });
         } finally {
             (globalThis as { process?: unknown }).process = realProcess;
             if (realNavigator) Object.defineProperty(globalThis, "navigator", realNavigator);
@@ -190,7 +190,7 @@ describe("NODE_ENV が development / test でないとき", () => {
     // 開発用の出力が出たかを、4つ(500 の本文・HTML のエラーページ・404 のルートの一覧・Server-Timing)で見る
     async function devOutput(nodeEnv: string | undefined, host: string, info: unknown) {
         setNodeEnv(nodeEnv);
-        const app = createApp({ dev: devtools() });
+        const app = createApp({ dev: devtools({ lang: "ja" }) });
         app.get("/hello", () => "hi");
         app.get("/boom", () => {
             throw new Error("secret detail");
@@ -224,7 +224,7 @@ describe("NODE_ENV が development / test でないとき", () => {
         const warn = spyOn(console, "warn").mockImplementation(() => {});
         try {
             setNodeEnv(undefined);
-            const app = createApp({ dev: devtools() });
+            const app = createApp({ dev: devtools({ lang: "ja" }) });
             app.get("/items/:id", (_, c) => c.notFound());
 
             const res = await app.fetch(new Request("http://example.com/items/1", { headers: { accept: "text/html" } }), loopback);
@@ -271,7 +271,7 @@ describe("NODE_ENV が development / test でないとき", () => {
         setNodeEnv(undefined);
         const warn = spyOn(console, "warn").mockImplementation(() => {});
         try {
-            const app = createApp({ dev: devtools() });
+            const app = createApp({ dev: devtools({ lang: "ja" }) });
             app.get("/", () => "ok");
             await app.fetch(new Request("http://localhost/"), loopback);
             expect(warn).toHaveBeenCalledTimes(0);

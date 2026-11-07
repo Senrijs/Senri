@@ -1,5 +1,6 @@
 // 開発ダッシュボード(/_senri)の本体。アプリごとに1つ作る(開発モードのときだけ)
 import type { Context } from "../../context.ts";
+import { requestLang, type Lang } from "../../lang.ts";
 import { canOpenDashboard } from "./access.ts";
 import { setDashboardLink } from "./links.ts";
 import { RequestLog } from "./log.ts";
@@ -13,7 +14,8 @@ export type DashboardSource = {
     middlewares(): { name: string; path: string | null; anonymous: boolean }[];
 };
 
-export function createDashboard(source: DashboardSource) {
+// lang: リクエストの言語(devtools({ lang }) で固定されていれば、それ)
+export function createDashboard(source: DashboardSource, lang: (req: Request) => Lang = requestLang) {
     const log = new RequestLog<DashboardRecord>();
     // SSE(/_senri/api/events)。記録が増えるたびに、開いているダッシュボードへ知らせる
     const events = (req: Request) => eventStream(log, req);
@@ -24,6 +26,7 @@ export function createDashboard(source: DashboardSource) {
     const dashboard = {
         log,
         source,
+        lang,
 
         // localhost から開いたときだけ(src/dev/dashboard/access.ts)
         canOpen(req: Request, info: unknown): boolean {
@@ -53,7 +56,7 @@ export function createDashboard(source: DashboardSource) {
             const id = ids.get(c);
             if (id === undefined) return;
             try {
-                log.add(await buildRecord({ id, time, c, res, layerNames }));
+                log.add(await buildRecord({ id, time, c, res, layerNames, lang: lang(c.req) }));
             } catch {
                 // 記録はおまけなので、失敗しても黙って捨てる
             }

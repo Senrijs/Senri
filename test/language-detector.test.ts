@@ -172,7 +172,7 @@ describe("languageDetector()", () => {
         } catch (e) {
             err = e;
         }
-        expect(explainText(err)).toContain("languageDetector()");
+        expect(explainText(err, "ja")).toContain("languageDetector()");
     });
 
     test("名前と印", () => {

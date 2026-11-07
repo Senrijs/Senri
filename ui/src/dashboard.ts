@@ -1,4 +1,6 @@
 // ダッシュボードの計算・判断だけを集めたもの(DOM も Vue も使わないので、bun test でそのまま試せる)
+import type { Lang } from "../../src/lang.ts";
+import { message } from "../../src/dev/messages.ts";
 import type { MiddlewareRow, RequestSummary, RouteRow } from "../../src/dev/page-data.ts";
 import type { DashboardRecord, LayerState } from "../../src/dev/dashboard/record.ts";
 
@@ -7,12 +9,14 @@ import type { DashboardRecord, LayerState } from "../../src/dev/dashboard/record
 // "all" か、ステータスの百の位("2" / "4" / "5")
 export type StatusFilter = "all" | "2" | "4" | "5";
 
-export const STATUS_FILTERS: { id: StatusFilter; label: string }[] = [
-    { id: "all", label: "全部" },
-    { id: "2", label: "2xx" },
-    { id: "4", label: "4xx" },
-    { id: "5", label: "5xx" },
-];
+export function statusFilters(lang: Lang): { id: StatusFilter; label: string }[] {
+    return [
+        { id: "all", label: message(lang, "dash.all") },
+        { id: "2", label: "2xx" },
+        { id: "4", label: "4xx" },
+        { id: "5", label: "5xx" },
+    ];
+}
 
 export function filterRequests(list: RequestSummary[], query: string, status: StatusFilter): RequestSummary[] {
     const q = query.trim().toLowerCase();
@@ -79,7 +83,7 @@ export type TimelineBar = {
 
 const clamp = (n: number) => Math.min(Math.max(n, 0), 100);
 
-export function timeline(r: DashboardRecord): TimelineBar[] {
+export function timeline(r: DashboardRecord, lang: Lang): TimelineBar[] {
     const total = r.durationMs;
     return r.layers.map((l) => {
         // 未到達の層や、全体が 0ms のときは、横いっぱいに置く(棒の中身で状態を見せる)
@@ -88,11 +92,11 @@ export function timeline(r: DashboardRecord): TimelineBar[] {
         const width = whole ? 100 : Math.min(clamp((l.total / total) * 100), 100 - left);
         const label =
             l.state === "skipped"
-                ? "未到達"
+                ? message(lang, "dash.skipped")
                 : l.state === "failed"
-                  ? `${formatMs(l.self)} ✕ 例外`
+                  ? message(lang, "dash.failed", { ms: formatMs(l.self) })
                   : l.state === "stopped"
-                    ? `${formatMs(l.self)} ← ここで終了`
+                    ? message(lang, "dash.stopped", { ms: formatMs(l.self) })
                     : `self ${l.self.toFixed(1)} / ${formatMs(l.total)}`;
         return {
             name: l.name,
@@ -119,38 +123,38 @@ export function routeChain(row: RouteRow): { name: string; maybe: boolean }[] {
 
 // --- ミドルウェアのタブ ---
 
-export function middlewareScope(path: string | null): string {
-    return path === null ? "すべてのパス" : `${path} とその下`;
+export function middlewareScope(path: string | null, lang: Lang): string {
+    return path === null ? message(lang, "mw.allPaths") : message(lang, "mw.under", { path });
 }
 
 // 無名のミドルウェア(anonymous#番号)があるときの案内。なければ null
-export function anonymousHint(rows: MiddlewareRow[]): string | null {
+export function anonymousHint(rows: MiddlewareRow[], lang: Lang): string | null {
     if (!rows.some((m) => m.anonymous)) return null;
-    return "anonymous#番号 は無名の関数です。app.use(function auth(c, next) { … }) のように名前付きの関数にすると、ここに名前が出ます。";
+    return message(lang, "mw.anonymous");
 }
 
-export function formatAverage(m: MiddlewareRow): string {
-    return m.avgSelfMs === null ? "—" : `平均 ${formatMs(m.avgSelfMs)}(${m.runs}件)`;
+export function formatAverage(m: MiddlewareRow, lang: Lang): string {
+    return m.avgSelfMs === null ? "—" : message(lang, "mw.average", { ms: formatMs(m.avgSelfMs), count: m.runs });
 }
 
 // タイムラインの下に出す説明(何が起きたか)。言うことがなければ空
-export function describeRequest(r: DashboardRecord): string {
+export function describeRequest(r: DashboardRecord, lang: Lang): string {
     const stopped = r.layers.find((l) => l.state === "stopped");
     if (stopped) {
         const skipped = r.layers.find((l) => l.state === "skipped");
-        return `${stopped.name} が next() を呼ばずに ${r.status} を返したので、${skipped?.name ?? "内側"} には届いていません。`;
+        return message(lang, "dash.describeStopped", { name: stopped.name, status: r.status, inner: skipped?.name ?? message(lang, "dash.inner") });
     }
     const failed = r.layers.find((l) => l.state === "failed");
-    if (failed) return `${failed.name} で例外が起きて、onError が ${r.status} を返しました。`;
+    if (failed) return message(lang, "dash.describeFailed", { name: failed.name, status: r.status });
 
-    if (r.layers.at(-1)?.name === "notFound") return "一致するルートがないので notFound が動きました。";
+    if (r.layers.at(-1)?.name === "notFound") return message(lang, "dash.describeNotFound");
 
     // 1つの層が、時間の大半(75% 以上)を使っていれば知らせる
     if (r.durationMs > 0) {
         const busiest = [...r.layers].sort((a, b) => b.self - a.self)[0];
         if (busiest) {
             const pct = Math.round((busiest.self / r.durationMs) * 100);
-            if (pct >= 75) return `ほとんどの時間(${pct}%)は ${busiest.name} で使われています。`;
+            if (pct >= 75) return message(lang, "dash.describeBusy", { pct, name: busiest.name });
         }
     }
     return "";

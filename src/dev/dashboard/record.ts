@@ -1,5 +1,6 @@
 // ダッシュボードに出す、リクエスト1件分の記録を作る
 import type { Context } from "../../context.ts";
+import type { Lang } from "../../lang.ts";
 import { buildErrorPageData } from "../error-page.ts";
 import type { ErrorPageData } from "../page-data.ts";
 import { maskHeaders, maskQuery } from "./mask.ts";
@@ -64,10 +65,11 @@ export async function buildRecord(input: {
     time: number;
     c: Context;
     res: Response;
-    // この リクエストで通るはずだった層の名前(外側から。最後がいちばん内側)
+    // このリクエストで通るはずだった層の名前(外側から。最後がいちばん内側)
     layerNames: { name: string; order: number | null }[];
+    lang: Lang;
 }): Promise<DashboardRecord> {
-    const { id, time, c, res, layerNames } = input;
+    const { id, time, c, res, layerNames, lang } = input;
 
     // タイムラインの 0 は、いちばん外側の層に入った時刻にする
     // (c.timings の start は app.fetch の開始が基準で、ルートのマッチなど、層に入る前の準備の分だけずれている。
@@ -82,7 +84,7 @@ export async function buildRecord(input: {
     });
 
     // 5xx で、例外が残っていれば(意図した 4xx の HttpError は c.error に入らない)、エラーページと同じ中身を取っておく
-    const error = res.status >= 500 && c.error !== undefined ? await buildErrorPageData(c.error, c, res) : null;
+    const error = res.status >= 500 && c.error !== undefined ? await buildErrorPageData(c.error, c, res, lang) : null;
 
     return {
         id,

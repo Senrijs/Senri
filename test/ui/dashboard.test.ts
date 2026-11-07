@@ -97,7 +97,7 @@ describe("SSE のイベントを一覧に反映する", () => {
 
 describe("玉ねぎタイムライン", () => {
     test("棒の位置(開始)と幅(下流込みの時間)を、リクエスト全体に対する割合で置く", () => {
-        const bars = timeline(record([layer("logger", 0, 0, 10, 1), layer("handler", 1, 2, 5, 5)], 200, 10));
+        const bars = timeline(record([layer("logger", 0, 0, 10, 1), layer("handler", 1, 2, 5, 5)], 200, 10), "ja");
 
         expect(bars[0]).toMatchObject({ name: "logger", indent: 0, left: 0, width: 100, selfWidth: 10, state: "ok" });
         expect(bars[0]!.label).toBe("self 1.0 / 10.0ms");
@@ -111,14 +111,15 @@ describe("玉ねぎタイムライン", () => {
                 401,
                 2,
             ),
-        );
+        "ja",
+);
 
         expect(bars.map((b) => b.label)).toEqual(["self 0.5 / 2.0ms", "1.0ms ← ここで終了", "未到達"]);
-        expect(timeline(record([layer("handler", 0, 0, 3, 3, "failed")], 500, 3))[0]!.label).toBe("3.0ms ✕ 例外");
+        expect(timeline(record([layer("handler", 0, 0, 3, 3, "failed")], 500, 3), "ja")[0]!.label).toBe("3.0ms ✕ 例外");
     });
 
     test("全体が 0ms でも 0 で割らない", () => {
-        const [bar] = timeline(record([layer("handler", 0, 0, 0, 0)], 200, 0));
+        const [bar] = timeline(record([layer("handler", 0, 0, 0, 0)], 200, 0), "ja");
         expect(bar).toMatchObject({ left: 0, width: 100, selfWidth: 100 });
     });
 });
@@ -166,46 +167,46 @@ describe("ルートのタブ", () => {
 
 describe("ミドルウェアのタブ", () => {
     test("かかる範囲の言い方", () => {
-        expect(middlewareScope(null)).toBe("すべてのパス");
-        expect(middlewareScope("/admin")).toBe("/admin とその下");
+        expect(middlewareScope(null, "ja")).toBe("すべてのパス");
+        expect(middlewareScope("/admin", "ja")).toBe("/admin とその下");
     });
 
     test("無名のミドルウェアがあるときだけ、名前付きの関数にする案内を出す", () => {
         const row = (name: string, anonymous: boolean) => ({ order: 1, name, anonymous, path: null, runs: 0, avgSelfMs: null });
 
-        expect(anonymousHint([row("logger", false)])).toBeNull();
-        expect(anonymousHint([row("logger", false), row("anonymous#2", true)])).toContain("function auth(c, next)");
+        expect(anonymousHint([row("logger", false)], "ja")).toBeNull();
+        expect(anonymousHint([row("logger", false), row("anonymous#2", true)], "ja")).toContain("function auth(c, next)");
     });
 
     test("平均時間(まだ通っていなければ —)", () => {
-        expect(formatAverage({ order: 1, name: "logger", anonymous: false, path: null, runs: 3, avgSelfMs: 0.25 })).toBe("平均 0.3ms(3件)");
-        expect(formatAverage({ order: 2, name: "auth", anonymous: false, path: "/admin", runs: 0, avgSelfMs: null })).toBe("—");
+        expect(formatAverage({ order: 1, name: "logger", anonymous: false, path: null, runs: 3, avgSelfMs: 0.25 }, "ja")).toBe("平均 0.3ms(3件)");
+        expect(formatAverage({ order: 2, name: "auth", anonymous: false, path: "/admin", runs: 0, avgSelfMs: null }, "ja")).toBe("—");
     });
 });
 
 describe("説明文", () => {
     test("next() を呼ばずに返して止まった", () => {
         const r = record([layer("logger", 0, 0, 1, 0.2), layer("auth", 1, 0.2, 0.4, 0.4, "stopped"), layer("handler", 2, 0, 0, 0, "skipped")], 401, 1);
-        expect(describeRequest(r)).toBe("auth が next() を呼ばずに 401 を返したので、handler には届いていません。");
+        expect(describeRequest(r, "ja")).toBe("auth が next() を呼ばずに 401 を返したので、handler には届いていません。");
     });
 
     test("例外が起きた", () => {
         const r = record([layer("logger", 0, 0, 2, 0.2), layer("handler", 1, 0.2, 1.6, 1.6, "failed")], 500, 2);
-        expect(describeRequest(r)).toBe("handler で例外が起きて、onError が 500 を返しました。");
+        expect(describeRequest(r, "ja")).toBe("handler で例外が起きて、onError が 500 を返しました。");
     });
 
     test("一致するルートがなかった", () => {
         const r = record([layer("logger", 0, 0, 1, 0.5), layer("notFound", 1, 0.5, 0.5, 0.5)], 404, 1);
-        expect(describeRequest(r)).toBe("一致するルートがないので notFound が動きました。");
+        expect(describeRequest(r, "ja")).toBe("一致するルートがないので notFound が動きました。");
     });
 
     test("時間の大半を使った層", () => {
         const r = record([layer("logger", 0, 0, 10, 0.4), layer("handler", 1, 0.4, 9.6, 9.6)], 200, 10);
-        expect(describeRequest(r)).toBe("ほとんどの時間(96%)は handler で使われています。");
+        expect(describeRequest(r, "ja")).toBe("ほとんどの時間(96%)は handler で使われています。");
     });
 
     test("とくに言うことがなければ空", () => {
         const r = record([layer("logger", 0, 0, 1, 0.5), layer("handler", 1, 0.5, 0.5, 0.5)], 200, 1);
-        expect(describeRequest(r)).toBe("");
+        expect(describeRequest(r, "ja")).toBe("");
     });
 });

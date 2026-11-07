@@ -122,7 +122,7 @@ describe("/_senri/api/events", () => {
     const local = { requestIP: () => ({ address: "127.0.0.1" }) };
 
     test("アプリにリクエストが来ると、ダッシュボードに届く", async () => {
-        const app = createApp({ dev: devtools() });
+        const app = createApp({ dev: devtools({ lang: "ja" }) });
         app.get("/hello", () => "hi");
         const ac = new AbortController();
 
