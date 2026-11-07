@@ -59,7 +59,7 @@ Senri がこれから向かう先です。バージョンは目標であって�
 - [x] `NODE_ENV` が未設定のとき、開発用の出力は localhost へのリクエストだけにする
 - [x] `create-senri`(`npm create senri`)
 - [x] 開発ページとターミナルの案内の日英対応(`devtools({ lang })`、または `Accept-Language` と `LANG` で自動)
-- [ ] 本番でも出るエラーメッセージを英語にそろえる
+- [x] 本番でも出るエラーメッセージを英語にそろえる
 - [x] レスポンスのヘルパー: `c.html()`、`c.redirect()`
 - [x] レスポンスのヘルパー: `c.notFound()`
 - [x] SSE / ストリーミングのヘルパー(`@senrijs/senri/streaming` の `stream()`、`streamText()`、`streamSSE()`。Context のメソッドにせず、使わないアプリを太らせない)

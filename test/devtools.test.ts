@@ -55,7 +55,7 @@ describe("devtools()", () => {
 });
 
 describe("0.1 の createApp({ dev: true })", () => {
-    test("エラーにして、devtools() の使い方を日本語と英語で案内する", () => {
+    test("エラーにして、devtools() の使い方を案内する", () => {
         let message = "";
         try {
             createApp({ dev: true as never });
@@ -63,7 +63,6 @@ describe("0.1 の createApp({ dev: true })", () => {
             message = (err as Error).message;
         }
         expect(message).toContain("is no longer supported");
-        expect(message).toContain("使えなくなりました");
         expect(message).toContain('import { devtools } from "@senrijs/senri/dev";');
         expect(message).toContain("createApp({ dev: devtools() })");
     });

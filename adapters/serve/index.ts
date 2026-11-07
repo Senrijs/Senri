@@ -114,14 +114,14 @@ export function resolvePort(
     env: (name: string) => string | undefined = runtime.env,
 ): { port: number; source: PortSource } {
     if (explicit !== undefined) {
-        if (!isPort(explicit)) throw new RangeError(`port が正しいポート番号(0〜65535)ではありません: ${explicit}`);
+        if (!isPort(explicit)) throw new RangeError(`port must be a port number (0-65535): ${explicit}`);
         return { port: explicit, source: "option" };
     }
     const raw = env("PORT")?.trim();
     if (raw) {
         // 黙ってデフォルトで待ち受けると、デプロイ先で「つながらない」原因が分かりにくいので、エラーにする
         const port = /^\d+$/.test(raw) ? Number(raw) : NaN;
-        if (!isPort(port)) throw new RangeError(`環境変数 PORT が正しいポート番号(0〜65535)ではありません: ${raw}`);
+        if (!isPort(port)) throw new RangeError(`The PORT environment variable must be a port number (0-65535): ${raw}`);
         return { port, source: "env" };
     }
     return { port: DEFAULT_PORT, source: "default" };
@@ -190,7 +190,7 @@ export async function serve(app: App, options: ServeOptions = {}): Promise<Serve
 
     const timeout = options.shutdownTimeout ?? 10_000;
     if (!Number.isFinite(timeout) || timeout < 0) {
-        throw new RangeError(`shutdownTimeout には 0 以上のミリ秒を指定してください: ${timeout}`);
+        throw new RangeError(`shutdownTimeout must be a number of milliseconds, 0 or more: ${timeout}`);
     }
 
     // 実際に待ち受けたポート(port: 0 なら、ランタイムが選んだ番号)と、止め方

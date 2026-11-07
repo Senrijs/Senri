@@ -248,7 +248,6 @@ export type DevInstalled = {
 
 // 0.1 の createApp({ dev: true }) は使えなくなった。どう書き換えるかを案内する
 const DEV_TRUE = `createApp({ dev: true }) is no longer supported. Use devtools() from "@senrijs/senri/dev".
-createApp({ dev: true }) は使えなくなりました。@senrijs/senri/dev の devtools() を渡してください。
 
   import { createApp } from "@senrijs/senri";
   import { devtools } from "@senrijs/senri/dev";

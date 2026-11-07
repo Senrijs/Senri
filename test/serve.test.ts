@@ -28,7 +28,7 @@ describe("resolvePort: 明示した port → 環境変数 PORT → デフォル�
 
     test("PORT が正しいポート番号でなければエラー(黙って別のポートで待ち受けない)", () => {
         for (const value of ["abc", "70000", "-1", "3.5", "80a"]) {
-            expect(() => resolvePort(undefined, envOf({ PORT: value }))).toThrow(`環境変数 PORT`);
+            expect(() => resolvePort(undefined, envOf({ PORT: value }))).toThrow("The PORT environment variable");
         }
     });
 

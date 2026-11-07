@@ -34,14 +34,14 @@ export async function readBody(req: Request): Promise<unknown> {
         try {
             return JSON.parse(text);
         } catch (err) {
-            throw new HttpError(400, "400 Bad Request: JSON が正しくありません", { cause: err });
+            throw new HttpError(400, "400 Bad Request: Invalid JSON", { cause: err });
         }
     }
     if (type === "application/x-www-form-urlencoded" || type === "multipart/form-data") {
         try {
             return formToObject(await req.formData());
         } catch (err) {
-            throw new HttpError(400, "400 Bad Request: フォームが正しくありません", { cause: err });
+            throw new HttpError(400, "400 Bad Request: Invalid form data", { cause: err });
         }
     }
     if (type.startsWith("text/")) return req.text();

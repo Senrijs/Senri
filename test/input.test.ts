@@ -85,13 +85,25 @@ describe("c.body", () => {
         expect(await res.json()).toEqual({ again: { a: 1 } });
     });
 
-    test("壊れた JSON は 400", async () => {
+    test("壊れた JSON は 400。本文は英語", async () => {
         const app = createApp();
         app.post("/b", async (_, c) => ({ got: await c.body() }));
 
         const res = await app.fetch(post("{bad", "application/json"));
 
         expect(res.status).toBe(400);
+        expect(await res.text()).toBe("400 Bad Request: Invalid JSON");
+    });
+
+    test("読めないフォームは 400。本文は英語", async () => {
+        const app = createApp();
+        app.post("/b", async (_, c) => ({ got: await c.body() }));
+
+        // boundary のない multipart は読めない
+        const res = await app.fetch(post("x", "multipart/form-data"));
+
+        expect(res.status).toBe(400);
+        expect(await res.text()).toBe("400 Bad Request: Invalid form data");
     });
 });
 

@@ -80,7 +80,7 @@ export function secureHeaders(options: SecureHeadersOptions = {}): Middleware {
         if (typeof value === "string") headers.push([name, value]);
         else if (fallback !== null) headers.push([name, fallback]);
         else if (value === true) {
-            throw new Error(`secureHeaders(): ${key} には既定の値がないので、文字列で指定してください`);
+            throw new Error(`secureHeaders(): ${key} has no default value, so specify it as a string`);
         }
     }
 

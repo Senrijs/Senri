@@ -38,7 +38,7 @@ export type BodyLimitOptions = {
 export function bodyLimit(options: BodyLimitOptions): Middleware {
     const max = options.maxSize;
     if (typeof max !== "number" || !Number.isFinite(max) || max < 0) {
-        throw new Error(`bodyLimit(): maxSize には 0 以上のバイト数を指定してください(${String(max)})`);
+        throw new Error(`bodyLimit(): maxSize must be a number of bytes, 0 or more (${String(max)})`);
     }
     // onError が文字列などを返しても 413 になるよう、先に status を入れておく(Response を返したら、その status のまま)
     const tooLarge = (c: Context) =>

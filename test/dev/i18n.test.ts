@@ -17,6 +17,39 @@ const req = (path: string, headers: Record<string, string> = {}) => new Request(
 // localhost からのアクセス(Bun の server を真似る)。ダッシュボードはこのときだけ開く
 const local = { requestIP: () => ({ address: "127.0.0.1", family: "IPv4", port: 1 }) };
 const dashboardReq = (path: string, headers: Record<string, string> = {}) => new Request(`http://localhost:3927${path}`, { headers: { host: "localhost:3927", ...headers } });
+// コメントを除いて、日本語のある行の番号(1 から)を返す
+// 文字列とテンプレートの中は飛ばすので、"/*" のような文字列をコメントの始まりと間違えない
+// 正規表現のリテラルは見分けないが、\ の次の文字は飛ばすので /^https?:\/\// も読み違えない
+function japaneseLines(source: string): number[] {
+    const text = source.replace(/<!--[\s\S]*?-->/g, (m) => m.replace(/[^\n]/g, " "));
+    let code = "";
+    for (let i = 0; i < text.length; i++) {
+        const ch = text[i]!;
+        const next = text[i + 1];
+        if (ch === "/" && next === "/") {
+            while (i < text.length && text[i] !== "\n") i++;
+            code += "\n";
+        } else if (ch === "/" && next === "*") {
+            const end = text.indexOf("*/", i + 2);
+            const stop = end === -1 ? text.length : end + 2;
+            code += text.slice(i, stop).replace(/[^\n]/g, " ");
+            i = stop - 1;
+        } else if (ch === '"' || ch === "'" || ch === "`") {
+            // 文字列は、閉じるまでそのまま残す(' と " は行末で終わりにする)
+            let j = i + 1;
+            while (j < text.length && text[j] !== ch && (ch === "`" || text[j] !== "\n")) j += text[j] === "\\" ? 2 : 1;
+            code += text.slice(i, j + 1);
+            i = j;
+        } else if (ch === "\\") {
+            code += text.slice(i, i + 2);
+            i++;
+        } else {
+            code += ch;
+        }
+    }
+    return code.split("\n").flatMap((line, i) => (/[ぁ-んァ-ヶ一-龥]/.test(line) ? [i + 1] : []));
+}
+
 const placeholders = (text: string) => [...text.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort();
 
 function dataOf(body: string) {
@@ -68,28 +101,41 @@ describe("辞書", () => {
         expect(fill("{ devtools } {nope}", {})).toBe("{ devtools } {nope}");
     });
 
-    // 辞書の外に日本語を書くと、その文言は英語にならない
-    test("画面とサーバーの文言は、辞書の外に日本語がない", () => {
+    test("コメントを除くとき、文字列の中の /* や // はコメントとみなさない", () => {
+        const source = [
+            'if (path.endsWith("/*")) x(); // 日本語のコメント',
+            'const a = "日本語の文字列";',
+            "/* 日本語の",
+            "   コメント */ const b = /^https?:\\/\\//.test(u) ? '日本語' : `${c}日本語`;",
+            '<!-- 日本語 --><p>日本語</p>',
+        ].join("\n");
+
+        expect(japaneseLines(source)).toEqual([2, 4, 5]);
+    });
+
+    // 辞書の外に日本語を書くと、その文言は英語にならない(本番でも出るメッセージも、英語にそろえる)
+    test("src/ と adapters/ と画面に、辞書の外の日本語がない", () => {
         const root = join(import.meta.dir, "../..");
-        const allowed = ["src/dev/messages.ts", "src/dev/server-messages.ts", "src/dev/explain.ts", "src/dev/page.generated.ts", "ui/src/sample.ts"];
+        const allowed = [
+            "src/dev/messages.ts",
+            "src/dev/server-messages.ts",
+            "src/dev/explain.ts",
+            "src/dev/page.generated.ts",
+            "adapters/serve/messages.ts",
+            "ui/src/sample.ts",
+        ];
         const walk = (dir: string): string[] =>
             readdirSync(dir).flatMap((name) => {
                 const path = join(dir, name);
                 return statSync(path).isDirectory() ? walk(path) : [path];
             });
         const found: string[] = [];
-        for (const file of [...walk(join(root, "src/dev")), ...walk(join(root, "ui/src"))]) {
+        for (const file of ["src", "adapters", "ui/src"].flatMap((dir) => walk(join(root, dir)))) {
             const relative = file.slice(root.length + 1).replaceAll("\\", "/");
             if (allowed.includes(relative) || !/\.(ts|vue)$/.test(file)) continue;
-            // コメントを除く(Vue は <!-- -->、スタイルの /* */ も)
-            const code = readFileSync(file, "utf8")
-                .replace(/<!--[\s\S]*?-->/g, "")
-                .replace(/\/\*[\s\S]*?\*\//g, "")
-                .split("\n")
-                .map((line) => line.replace(/^\s*\/\/.*$/, "").replace(/\s\/\/\s.*$/, ""));
-            code.forEach((line, i) => {
-                if (/[ぁ-んァ-ヶ一-龥]/.test(line)) found.push(`${relative}:${i + 1}: ${line.trim()}`);
-            });
+            const text = readFileSync(file, "utf8");
+            const lines = text.split("\n");
+            for (const n of japaneseLines(text)) found.push(`${relative}:${n}: ${lines[n - 1]!.trim()}`);
         }
         expect(found).toEqual([]);
     });

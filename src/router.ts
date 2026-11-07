@@ -33,7 +33,7 @@ export type Simplify<T> = { [K in keyof T]: T[K] } & {};
 export type RouteTable<K extends string, V extends object = any> = {
     [Key in K]: Key extends `${string} ${infer Path}`
         ? Handler<Simplify<ExtractParams<Path>>, V>
-        : 'ルートの書き方が違います。"GET /hello" のように、メソッドとパスの間にスペースを入れてください';
+        : 'The route is not written correctly. Put a space between the method and the path, as in "GET /hello"';
 };
 
 // ルートのパターン("/users/:id")を分割する。末尾スラッシュや連続スラッシュは無視
