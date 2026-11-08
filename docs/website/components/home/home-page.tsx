@@ -4,16 +4,19 @@ import Link from "next/link";
 import type { CSSProperties } from "react";
 import data from "@/lib/home/generated.json";
 import { homeDict } from "@/lib/home/dict";
+import { segments } from "@/lib/home/segments";
 import type { HomeData } from "@/lib/home/types";
 import { type Lang, localePath } from "@/lib/i18n";
 import { githubUrl } from "@/lib/shared";
 import { Carousel } from "./carousel";
+import { CountUp } from "./count-up";
 import { CliLog } from "./cli-log";
 import { Demo } from "./demo";
 import { Features } from "./features";
 import { ChevronIcon, DownloadIcon, StarIcon } from "./icons";
 import { Install } from "./install";
 import { Particles } from "./particles";
+import { BlurHeading } from "./text-reveal";
 
 const home = data as HomeData;
 
@@ -30,11 +33,7 @@ export function HomePage({ lang }: { lang: Lang }) {
             <section className="s-sec" style={{ overflow: "hidden" }}>
                 <div className="s-glow" style={{ right: "-6%", top: "10%", width: 720, height: 620 }} aria-hidden="true" />
                 <div className="s-wrap s-split">
-                    <h2 className="s-h2 lg s-reveal">
-                        {t.cliA}
-                        <br />
-                        {t.cliB}
-                    </h2>
+                    <BlurHeading className="s-h2 lg" lang={lang} lines={[t.cliA, t.cliB]} />
                     <CliLog banner={home.cli.banner[lang]} logs={home.cli.logs} label={t.cliAria} />
                 </div>
             </section>
@@ -50,7 +49,7 @@ export function HomePage({ lang }: { lang: Lang }) {
                     aria-hidden="true"
                 />
                 <div className="s-wrap">
-                    <h2 className="s-h2 lg s-reveal">{t.featH}</h2>
+                    <BlurHeading className="s-h2 lg" lang={lang} lines={[t.featH]} />
                     <Features lang={lang} error={boom} />
                 </div>
             </section>
@@ -61,7 +60,7 @@ export function HomePage({ lang }: { lang: Lang }) {
 
             <section className="s-cta">
                 <p>{t.proverb}</p>
-                <h2 className="s-reveal">{t.ctaH}</h2>
+                <BlurHeading lang={lang} lines={[t.ctaH]} />
                 <div className="row">
                     <Link className="s-btn s-btn-solid" href={docs}>
                         {t.docs}
@@ -89,11 +88,7 @@ function Hero({ lang, docs }: { lang: Lang; docs: string }) {
                 <span className="s-beacon" style={{ background: "var(--green)" }} aria-hidden="true" />
                 {badge}
             </Link>
-            <h1 className="s-h1 s-up d1">
-                {t.h1a}
-                <br />
-                {t.h1b}
-            </h1>
+            <HeroTitle lang={lang} lines={[t.h1a, t.h1b]} />
             <p className="s-lead s-up d2">{t.heroP}</p>
             <Install lang={lang} docsHref={docs} />
             {stats.stars !== null || stats.downloads !== null ? (
@@ -115,6 +110,34 @@ function Hero({ lang, docs }: { lang: Lang; docs: string }) {
             ) : null}
             <Demo lang={lang} recordings={home.playground[lang]} port={home.port} />
         </section>
+    );
+}
+
+// ヒーローの見出し。ぼやけた文字が下からふわっと出る(日本語は1文字ずつ、英語は1単語ずつ)
+// いちばん大きな表示なので、JavaScript を待たずに CSS だけで動かす(home.css の .s-blur-seg)
+function HeroTitle({ lang, lines }: { lang: Lang; lines: string[] }) {
+    const step = lang === "ja" ? 0.035 : 0.08;
+    let i = 0;
+    return (
+        <h1 className="s-h1">
+            <span className="sr-only">{lines.join(lang === "ja" ? "" : " ")}</span>
+            <span aria-hidden="true">
+                {lines.map((line, n) => (
+                    <span key={n}>
+                        {n > 0 ? <br /> : null}
+                        {segments(line, lang).map((seg) =>
+                            /^\s+$/.test(seg) ? (
+                                <span key={i++}>{seg}</span>
+                            ) : (
+                                <span key={i} className="s-blur-seg" style={{ animationDelay: `${(0.08 + i++ * step).toFixed(3)}s` }}>
+                                    {seg}
+                                </span>
+                            ),
+                        )}
+                    </span>
+                ))}
+            </span>
+        </h1>
     );
 }
 
@@ -146,10 +169,11 @@ function Marquee({ lang }: { lang: Lang }) {
 function Numbers({ lang }: { lang: Lang }) {
     const t = homeDict[lang];
     // 16 KB: bun run size の「hi」のアプリ(bun build、minify)。テスト: bun test の件数。リリースのときに見直す
-    const items = [
+    // 数える意味があるもの(16 と 1,484)だけ、画面に入ったときに数える
+    const items: [React.ReactNode, string][] = [
         ["5", t.nRt],
-        ["16 KB", t.nSize],
-        ["1,484", t.nTests],
+        [<CountUp key="size" value={16} suffix=" KB" />, t.nSize],
+        [<CountUp key="tests" value={1484} />, t.nTests],
         ["MIT", t.nLic],
     ];
     return (
@@ -157,7 +181,7 @@ function Numbers({ lang }: { lang: Lang }) {
             <div className="s-grid4">
                 {items.map(([value, label]) => (
                     <div key={label} className="s-number">
-                        <b>{value}</b>
+                        {typeof value === "string" ? <b>{value}</b> : value}
                         <span>{label}</span>
                     </div>
                 ))}
@@ -171,11 +195,7 @@ function Layers({ lang }: { lang: Lang }) {
     return (
         <section className="s-sec s-alt">
             <div className="s-wrap s-split">
-                <h2 className="s-h2 s-reveal">
-                    {t.layA}
-                    <br />
-                    {t.layB}
-                </h2>
+                <BlurHeading className="s-h2" lang={lang} lines={[t.layA, t.layB]} />
                 <div className="s-layers" role="img" aria-label={t.layAria}>
                     <div className="ippo">
                         Ippo <span>· {t.dev}</span>
@@ -231,11 +251,7 @@ function RouteTree({ lang }: { lang: Lang }) {
     return (
         <section className="s-sec">
             <div className="s-wrap">
-                <h2 className="s-h2 s-reveal">
-                    {t.rtA}
-                    <br />
-                    {t.rtB}
-                </h2>
+                <BlurHeading className="s-h2" lang={lang} lines={[t.rtA, t.rtB]} />
                 <div className="s-tree-box" role="img" aria-label={t.rtAria}>
                     <div className="s-tree">
                         {lines.map(([left, top, width, height, on], i) => (
@@ -337,11 +353,7 @@ function GitGraph({ lang }: { lang: Lang }) {
         <section className="s-sec" style={{ paddingBottom: 120 }}>
             <div className="s-wrap">
                 <div className="s-car-head" style={{ gap: "16px 48px" }}>
-                    <h2 className="s-h2 s-reveal">
-                        {t.gitA}
-                        <br />
-                        {t.gitB}
-                    </h2>
+                    <BlurHeading className="s-h2" lang={lang} lines={[t.gitA, t.gitB]} />
                     <a className="s-link" href={`${githubUrl}/pulls?q=is%3Apr+is%3Amerged`} style={{ fontSize: 14, color: "var(--muted)" }}>
                         {t.gitLink}
                     </a>
@@ -398,11 +410,7 @@ function Timeline({ lang }: { lang: Lang }) {
             <div className="s-glow" style={{ right: "-10%", top: "30%", width: 700, height: 700 }} aria-hidden="true" />
             <div className="s-wrap" style={{ display: "flex", flexWrap: "wrap", gap: "48px 64px", alignItems: "flex-start" }}>
                 <div className="s-tl-side">
-                    <h2 id="tl-title" className="s-h2 s-reveal">
-                        {t.tlA}
-                        <br />
-                        {t.tlB}
-                    </h2>
+                    <BlurHeading id="tl-title" className="s-h2" lang={lang} lines={[t.tlA, t.tlB]} />
                     <a className="s-link" href={`${githubUrl}/releases`} style={{ display: "inline-block", marginTop: 24, fontSize: 14, color: "var(--muted)" }}>
                         {t.tlAll}
                     </a>

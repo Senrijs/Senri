@@ -6,6 +6,7 @@ import { homeDict } from "@/lib/home/dict";
 import type { Lang } from "@/lib/i18n";
 import { ChevronIcon } from "./icons";
 import { useStill } from "./motion";
+import { BlurHeading } from "./text-reveal";
 
 const INTERVAL_MS = 4800;
 
@@ -102,7 +103,7 @@ export function Carousel({ lang }: { lang: Lang }) {
         <section className="s-sec" aria-roledescription="carousel" aria-label={t.carH}>
             <div className="s-wrap">
                 <div className="s-car-head">
-                    <h2 className="s-h2 s-reveal">{t.carH}</h2>
+                    <BlurHeading className="s-h2" lang={lang} lines={[t.carH]} />
                     <div style={{ display: "flex", gap: 8 }}>
                         <button type="button" className="s-round" onClick={() => go(slide - 1)} aria-label={t.prev}>
                             <ChevronIcon dir="left" size={18} />
