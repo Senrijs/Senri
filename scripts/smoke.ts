@@ -42,7 +42,8 @@ type Check = {
     only?: string[];
     except?: string[];
     path: string;
-    init?: RequestInit;
+    // 本文がストリームのときは、毎回作り直す(1回しか読めないため)
+    init?: RequestInit | (() => RequestInit);
     status: number;
     body?: string;
     cookies?: string[];
@@ -57,6 +58,31 @@ type Check = {
 
 const browser = { accept: "text/html,application/xhtml+xml,*/*;q=0.8" };
 
+// multipart() の確かめに送る本文。64 KiB を 256 回、ストリームで(fetch はチャンク転送で送る)
+const UPLOAD_BOUNDARY = "----senri-smoke";
+const UPLOAD_CHUNK = 64 * 1024;
+const UPLOAD_COUNT = 256;
+const UPLOAD_TITLE = new TextEncoder().encode("こんにちは");
+const UPLOAD_TITLE_SUM = UPLOAD_TITLE.reduce((sum, byte) => sum + byte, 0);
+let UPLOAD_SUM = 0;
+for (let i = 1; i <= UPLOAD_COUNT; i++) UPLOAD_SUM += (i % 251) * UPLOAD_CHUNK;
+function uploadInit(): RequestInit {
+    const encoder = new TextEncoder();
+    let i = 0;
+    const body = new ReadableStream<Uint8Array>({
+        pull(controller) {
+            if (i === 0) {
+                controller.enqueue(encoder.encode(`--${UPLOAD_BOUNDARY}\r\nContent-Disposition: form-data; name="title"\r\n\r\nこんにちは\r\n`));
+                controller.enqueue(encoder.encode(`--${UPLOAD_BOUNDARY}\r\nContent-Disposition: form-data; name="file"; filename="big.bin"\r\n\r\n`));
+            } else if (i <= UPLOAD_COUNT) controller.enqueue(new Uint8Array(UPLOAD_CHUNK).fill(i % 251));
+            else if (i === UPLOAD_COUNT + 1) controller.enqueue(encoder.encode(`\r\n--${UPLOAD_BOUNDARY}--\r\n`));
+            else controller.close();
+            i++;
+        },
+    });
+    return { method: "POST", headers: { "content-type": `multipart/form-data; boundary=${UPLOAD_BOUNDARY}` }, body, duplex: "half" } as RequestInit;
+}
+
 const CHECKS: Check[] = [
     { name: "テキスト", path: "/hello", status: 200, body: "こんにちは!" },
     // fetch が1回だけ展開する。二重に圧縮していたら、本文が合わない
@@ -64,6 +90,19 @@ const CHECKS: Check[] = [
     { name: "パスパラメーター", path: "/users/42", status: 200, body: "user 42" },
     { name: "POST", path: "/users", init: { method: "POST" }, status: 200 },
     { name: "POST のボディ", path: "/echo", init: { method: "POST", body: "こんにちは" }, status: 200, body: "body=こんにちは" },
+    {
+        name: "multipart()(16 MiB のファイルを、チャンク転送で)",
+        path: "/upload",
+        init: uploadInit,
+        status: 200,
+        json: (d) => {
+            const expected = [
+                { name: "title", size: 15, sum: UPLOAD_TITLE_SUM },
+                { name: "file", filename: "big.bin", size: UPLOAD_CHUNK * UPLOAD_COUNT, sum: UPLOAD_SUM },
+            ];
+            return JSON.stringify(d) === JSON.stringify(expected) ? null : `届いたものが違う: ${JSON.stringify(d)}`;
+        },
+    },
     { name: "Set-Cookie 2つ", path: "/cookies", status: 200, cookies: ["a=1", "b=2"] },
     { name: "日本語パラメーター", path: "/users/山田", status: 200, body: "user 山田" },
     { name: "c.html()", path: "/page", status: 200, body: "<h1>こんにちは!</h1>", type: "text/html; charset=utf-8" },
@@ -349,7 +388,7 @@ async function smoke(runtime: string): Promise<boolean> {
         for (const check of CHECKS) {
             if (check.only && !check.only.includes(runtime)) continue;
             if (check.except?.includes(runtime)) continue;
-            const res = await fetch(`${base}${check.path}`, check.init);
+            const res = await fetch(`${base}${check.path}`, typeof check.init === "function" ? check.init() : check.init);
             const body = await res.text();
             const cookies = res.headers.getSetCookie();
             let reason: string | null = null;

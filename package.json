@@ -51,6 +51,10 @@
       "types": "./dist/src/streaming.d.ts",
       "import": "./dist/src/streaming.js"
     },
+    "./multipart": {
+      "types": "./dist/src/multipart.d.ts",
+      "import": "./dist/src/multipart.js"
+    },
     "./node": {
       "types": "./dist/adapters/node/index.d.ts",
       "import": "./dist/adapters/node/index.js"

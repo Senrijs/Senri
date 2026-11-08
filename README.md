@@ -225,6 +225,28 @@ app.get("/events", (_, c) =>
 - Cloudflare Workers(workerd で確認)では、切断に気づくのは次に書き込んだときです。静かなストリームでは `onAbort` は呼ばれず、`streamSSE()` の既定の heartbeat があれば 15 秒以内に呼ばれました。急ぐ後片付けは任せないでください。途中のエラーでも、ランタイムが本文を正常に閉じます
 - `streamSSE()` は既定で5秒ごとに `: ping` のコメントを送ります(heartbeat)。Bun の `Bun.serve` は既定で約10秒(早いと 8.8 秒)、プロキシもよく1分ほどで、黙っている接続を切るからです。クライアントはコメントを無視します。間隔は `{ heartbeat: 15_000 }` で変えられ、`{ heartbeat: false }` で止められます(最初の `: connected` は残ります)。読み手が止まっている間は送りません
 
+### 大きいファイルの受け取り(マルチパート)
+
+```ts
+import { multipart } from "@senrijs/senri/multipart";
+
+app.post("/upload", async (_, c) => {
+    for await (const part of multipart(c, { maxFileSize: 100 * 1024 * 1024 })) {
+        if (part.filename !== undefined) await save(crypto.randomUUID(), part.stream);
+        else console.log(part.name, await part.text());
+    }
+    return "ok";
+});
+```
+
+- `multipart/form-data` を1パーツずつ読みます。本文を全部メモリに読まないので、大きいファイルを届いた分からそのまま保存先(ファイル、オブジェクトストレージなど)へ流せます。保存先は自由です
+- パーツは `name`、`filename`(フィールドなら `undefined`。ファイルを選ばなかったファイル欄は `""`)、`contentType`(なければ `text/plain`)、`headers`、`stream`、`text()`、`bytes()` を持ちます
+- 上限: `maxParts`(既定 100)、`maxFileSize`(既定 10 MiB)、`maxFieldSize`(既定 64 KiB)、`maxHeaderSize`(パーツのヘッダー、既定 8 KiB)、`maxTotalSize`(本文全体、既定なし)。超えたら 413 です。壊れた本文や `boundary` がないときは 400、multipart でなければ 415 です
+- ループが次へ進むと、読み残したパーツは読み飛ばします。そのあとで前のパーツの `stream` を読むとエラーなので、保存は `await` してから次へ進んでください。`break` で抜けると、それ以上は読みません
+- 本文を読んだあと(`c.body()`、`uploadLimit()`、ルートの `body` のスキーマ)や、2回目に呼ぶとエラーです。小さいファイルを `File` で受け取って種類まで確かめるなら `uploadLimit()`、大きいファイルを流すなら `multipart()` と、ルートごとに使い分けてください
+- `part.filename` と `part.contentType` は、送られてきたそのままの値です。保存先のパスには使わず、`crypto.randomUUID()` などで決めるか `safeFileName()` を通してください
+- 本文全体の上限は `maxTotalSize` で付けられます。`bodyLimit()` を一緒に使ってもかまいません
+
 ### グループ化
 
 ```ts
