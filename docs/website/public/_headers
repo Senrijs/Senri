@@ -1,0 +1,4 @@
+# Cloudflare Workers の静的アセットのヘッダー(wrangler.jsonc)
+# 検索の索引は拡張子がないので、Content-Type を付ける
+/api/search
+  Content-Type: application/json; charset=utf-8

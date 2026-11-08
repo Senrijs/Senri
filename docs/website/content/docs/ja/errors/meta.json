@@ -1,0 +1,8 @@
+{
+  "title": "エラー",
+  "pages": [
+    "http-error",
+    "on-error",
+    "not-found"
+  ]
+}

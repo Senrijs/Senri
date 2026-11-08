@@ -22,7 +22,7 @@
   "packages": {
     ".": {
       "package-name": "@senrijs/senri",
-      "exclude-paths": ["packages/create-senri"],
+      "exclude-paths": ["packages/create-senri", "docs/website"],
       "extra-files": [
         { "type": "json", "path": "jsr.json", "jsonpath": "$.version" }
       ]

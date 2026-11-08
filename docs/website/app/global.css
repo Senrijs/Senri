@@ -1,0 +1,30 @@
+@import "tailwindcss";
+@import "fumadocs-ui/css/neutral.css";
+@import "fumadocs-ui/css/preset.css";
+@import "fumadocs-twoslash/twoslash.css";
+
+/* fumadocs-typescript の AutoTypeTable が使うクラスを Tailwind に拾わせる */
+@source "../node_modules/fumadocs-typescript/dist/**/*.js";
+
+/* アクセント色は docs/design/ のデザイン(開発モードのページ)に合わせる。文字に使うので、コントラストの高いほうの色 */
+:root {
+    --color-fd-primary: #b42a17;
+    --color-fd-primary-foreground: #ffffff;
+}
+.dark {
+    --color-fd-primary: #ff8a75;
+    --color-fd-primary-foreground: #0e1013;
+}
+
+@theme {
+    --font-mono: var(--font-mono), ui-monospace, monospace;
+}
+
+html {
+    scrollbar-gutter: stable;
+}
+
+html > body[data-scroll-locked] {
+    margin-right: 0px !important;
+    --removed-body-scroll-bar-size: 0px !important;
+}

@@ -1,0 +1,41 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "forceConsistentCasingInFileNames": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "react-jsx",
+    "incremental": true,
+    // AutoTypeTable が読むリポジトリの src は、import "./router.ts" のように拡張子つきで書いている
+    "allowImportingTsExtensions": true,
+    "paths": {
+      "@/*": ["./*"],
+      "collections/*": ["./.source/*"],
+      // @senrijs/senri はリポジトリの src / adapters を読む(lib/senri-types.ts と同じ対応)
+      "@senrijs/senri": ["../../src/index.ts"],
+      "@senrijs/senri/dev": ["../../src/dev/index.ts"],
+      "@senrijs/senri/cookie": ["../../src/cookie.ts"],
+      "@senrijs/senri/ip": ["../../src/ip.ts"],
+      "@senrijs/senri/streaming": ["../../src/streaming.ts"],
+      "@senrijs/senri/multipart": ["../../src/multipart.ts"],
+      "@senrijs/senri/node": ["../../adapters/node/index.ts"],
+      "@senrijs/senri/serve": ["../../adapters/serve/index.ts"],
+      "@senrijs/senri/static": ["../../adapters/static/index.ts"]
+    },
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ]
+  },
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", ".next/dev/types/**/*.ts"],
+  "exclude": ["node_modules", "out"]
+}

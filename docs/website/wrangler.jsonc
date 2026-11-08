@@ -1,0 +1,14 @@
+// Cloudflare Workers の静的アセットとして out/ を配信する設定(Worker のコードはない)
+// 配信は Cloudflare の Workers Builds(Git 連携)が行う。ルートのディレクトリ docs/website、
+// ビルドのコマンド bun install --frozen-lockfile && bun run build、配信のコマンド npx wrangler deploy
+{
+  "name": "senri-docs",
+  "compatibility_date": "2026-10-01",
+  "assets": {
+    "directory": "./out",
+    // 見つからないときは out/404.html を 404 で返す
+    "not_found_handling": "404-page",
+    // next.config.mjs の trailingSlash: true に合わせて、/docs は /docs/ にそろえる
+    "html_handling": "force-trailing-slash"
+  }
+}

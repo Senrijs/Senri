@@ -1,3 +1,4 @@
 [test]
 # test/node/ は Node 本体で動かすテスト(node --test)なので bun test では実行しない
-pathIgnorePatterns = ["test/node/**"]
+# docs/website/ はドキュメントサイト(Next.js)。独立したパッケージで、本体のテストは置かない
+pathIgnorePatterns = ["test/node/**", "docs/website/**"]
