@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import { request as httpRequest } from "node:http";
 import { gunzipSync, inflateSync } from "node:zlib";
 import { compress, cors, createApp, etag, secureHeaders } from "../../src/index.ts";
-import { bothPaths, closeServers, counting, listen } from "./http.ts";
+import { bothPaths, closeServers, COMPARE_TIMEOUT, compareBothPaths, counting, listen } from "./http.ts";
 
 after(closeServers);
 
@@ -111,16 +111,15 @@ describe("compress() と Node の近道", () => {
         assert.deepEqual(counts, { Request: 0, Response: 1 });
     });
 
-    test("2つの道の応答が同じ", async () => {
-        const { lazy, viaFetch } = await bothPaths(makeApp());
-        for (const path of PATHS) {
-            for (const headers of ACCEPTS) {
-                for (const method of ["GET", "HEAD", "POST"]) {
-                    const label = `${method} ${path} ${JSON.stringify(headers)}`;
-                    assert.deepEqual(await get(lazy, path, headers, method), await get(viaFetch, path, headers, method), label);
-                }
-            }
-        }
+    test("2つの道の応答が同じ", { timeout: COMPARE_TIMEOUT }, async (t) => {
+        const cases = PATHS.flatMap((path) =>
+            ACCEPTS.flatMap((headers) =>
+                ["GET", "HEAD", "POST"].map(
+                    (method) => [`${method} ${path} ${JSON.stringify(headers)}`, (port: number) => get(port, path, headers, method)] as const,
+                ),
+            ),
+        );
+        await compareBothPaths(await bothPaths(makeApp()), cases, t.signal);
     });
 
     test("etag() や、ほかの純正のミドルウェアと一緒でも、2つの道の応答が同じ", async () => {

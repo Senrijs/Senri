@@ -303,16 +303,56 @@ describe("「もしかして」のどこが違うか(explainDifference)", () => 
 });
 
 describe("「もしかして」の計算が重くならない", () => {
-    test("8KB のパス × 50 ルートでもすぐ終わる", () => {
-        const routes = Array.from({ length: 50 }, (_, i) => ({ path: `/api/v1/resource${i}/:id/detail` }));
-        const long = "/" + "a".repeat(8000);
+    // 重いのは、ルートのパスとの距離の表(長さ × 長さ)を作ること。表を作ると、ルートのパスの文字を1文字ずつ読む
+    // なので、時間を測る代わりに、ルートのパスの文字が読まれた回数を数える(マシンの負荷で結果が変わらないように)
+    function countingRoute(path: string, counter: { reads: number }) {
+        const counted = new Proxy(new String(path), {
+            get(target, key) {
+                if (typeof key === "string" && /^\d+$/.test(key)) counter.reads++;
+                const value = Reflect.get(target, key, target);
+                return typeof value === "function" ? value.bind(target) : value;
+            },
+        });
+        return { path: counted as unknown as string };
+    }
 
-        const start = performance.now();
-        const result = suggest(routes, long);
-        const ms = performance.now() - start;
+    test("8KB のパス × 50 ルートでも、距離を計算しない", () => {
+        const counter = { reads: 0 };
+        const routes = Array.from({ length: 50 }, (_, i) => countingRoute(`/api/v1/resource${i}/:id/detail`, counter));
 
-        expect(result).toBeNull();
-        expect(ms).toBeLessThan(5);
+        expect(suggest(routes, "/" + "a".repeat(8000))).toBeNull();
+        expect(counter.reads).toBe(0);
+    });
+
+    // 長さの差では外せない組み合わせ(同じ長さのルート)で、長さの上限(200 文字)を確かめる
+    // 8KB 同士で確かめると、上限が効いていないときに大きな表を作って、失敗するまでが長いので、境目で確かめる
+    test("200 文字を超えるパスでは、同じ長さのルートがあっても距離を計算しない", () => {
+        const sameLength = (length: number, counter: { reads: number }) =>
+            Array.from({ length: 3 }, (_, i) => countingRoute("/" + "b".repeat(length - 1 - String(i).length) + i, counter));
+        const over = { reads: 0 };
+        const atLimit = { reads: 0 };
+
+        expect(suggest(sameLength(201, over), "/" + "a".repeat(200))).toBeNull();
+        expect(suggest(sameLength(200, atLimit), "/" + "a".repeat(199))).toBeNull();
+        expect(over.reads).toBe(0);
+        // 上限ちょうどなら計算する(数え方が空振りしていないことの確認も兼ねる)
+        expect(atLimit.reads).toBeGreaterThan(0);
+    });
+
+    test("長さが4文字以上違うルートとは、距離を計算しない", () => {
+        const counter = { reads: 0 };
+        const routes = [countingRoute("/abcdefgh", counter), countingRoute("/", counter)];
+
+        expect(suggest(routes, "/abcd")).toBeNull();
+        expect(counter.reads).toBe(0);
+    });
+
+    test("(数え方の確認)近いルートとは距離を計算するので、文字が読まれる", () => {
+        const counter = { reads: 0 };
+        const hello = countingRoute("/hello", counter);
+
+        expect(suggest([hello], "/helo")).toBe(hello);
+        expect(counter.reads).toBeGreaterThan(0);
     });
 
     test("近いものはちゃんと見つかる", () => {

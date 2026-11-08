@@ -22,17 +22,20 @@ describe("timeout()", () => {
         expect(await res.text()).toBe("ok");
     });
 
+    // 時間を測る代わりに、テストが合図するまでハンドラーを終わらせない
+    // timeout() がハンドラーを待つなら、fetch が返らずに時間切れになる
     test("時間切れなら、待たずに 504 で返す", async () => {
+        let finish = () => {};
+        const handlerDone = new Promise<void>((resolve) => (finish = resolve));
         const app = createApp();
         app.use(timeout(10));
         app.get("/", async () => {
-            await sleep(300);
+            await handlerDone;
             return "late";
         });
 
-        const start = performance.now();
         const res = await app.fetch(req("/"));
-        expect(performance.now() - start).toBeLessThan(250);
+        finish();
         expect(res.status).toBe(504);
         expect(await res.text()).toBe("504 Gateway Timeout");
     });

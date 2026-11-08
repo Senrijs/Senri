@@ -491,15 +491,23 @@ describe("streamSSE()", () => {
         expect(explainText(err, "en")).toContain("heartbeat");
     });
 
+    // 時間を測る代わりに、ハンドラーが返した本文のストリームが、そのまま届くかを見る
+    // compress() や etag() が本文を読もうとすると(clone や様子見)、別のストリームに差し替わる
+    // 本文の終わりを待つなら、run が終わらないので、fetch が返らずに時間切れになる
     test("compress() と etag() は触らない。イベントはすぐ届く", async () => {
         const app = createApp();
         app.use(compress({ threshold: 1 }));
         app.use(etag());
-        app.get("/", (_, c) => streamSSE(c, (s) => s.sleep(10_000)));
-        const start = performance.now();
+        let body: ReadableStream<Uint8Array> | null = null;
+        app.get("/", (_, c) => {
+            const res = streamSSE(c, (s) => s.sleep(10_000));
+            body = res.body;
+            return res;
+        });
         const res = await app.fetch(req("/", { headers: { "accept-encoding": "gzip" } }));
 
-        expect(performance.now() - start).toBeLessThan(100);
+        expect(body).not.toBeNull();
+        expect(res.body).toBe(body);
         expect(res.headers.get("content-encoding")).toBeNull();
         expect(res.headers.get("etag")).toBeNull();
         const reader = res.body!.getReader();

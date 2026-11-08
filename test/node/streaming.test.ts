@@ -1,9 +1,9 @@
 // ストリーミングのヘルパーを Node のアダプターで確かめる。最初のイベントが遅れないこと、切断で止まること
-import { after, describe, test } from "node:test";
+import { after, describe, test, type TestContext } from "node:test";
 import assert from "node:assert/strict";
 import net from "node:net";
 import { compress, createApp, etag, secureHeaders } from "../../src/index.ts";
-import { stream, streamSSE, streamText } from "../../src/streaming.ts";
+import { stream, streamSSE, streamText, type SSEOptions, type SSEStreamingApi } from "../../src/streaming.ts";
 import { closeServers, listen, raw, request } from "./http.ts";
 
 after(closeServers);
@@ -201,36 +201,63 @@ describe("streamText() と Node", () => {
     });
 });
 
+// heartbeat の時計(setInterval)だけを mock.timers で進める。接続と送受信は本物の HTTP のまま
+// 実際の時間で待って数えると、遅いマシンではサーバーが始まるのが遅れて、数がずれる
 describe("SSE の heartbeat と Node", () => {
-    test("既定で、5秒ごとに届く", { timeout: 9000 }, async () => {
+    // ハートビートの間隔ぶん時計を進めたときに、届いた ping の数を返す仕組み
+    async function heartbeatClock(t: TestContext, options?: SSEOptions) {
+        t.mock.timers.enable({ apis: ["setInterval"] });
+        let api: SSEStreamingApi | undefined;
         const app = createApp();
-        app.get("/", (_, c) => streamSSE(c, (s) => s.sleep(10_000)));
+        app.get("/", (_, c) =>
+            streamSSE(
+                c,
+                (s) => {
+                    api = s;
+                    return s.sleep(60_000);
+                },
+                options,
+            ),
+        );
         const state = connect(await listen(app), request("GET", "/"));
+        t.after(() => state.socket.destroy());
+        assert.ok(await eventually(() => state.data.includes(": connected") && api !== undefined), state.data);
+        let marks = 0;
+        return {
+            // ms だけ時計を進め、そこまでに送られた ping の数を返す
+            // 印のイベントを書き、それが届くのを待つ(同じストリームなので、先に送られた ping は全部届いている)
+            async advance(ms: number) {
+                t.mock.timers.tick(ms);
+                const mark = `mark-${++marks}`;
+                void api!.writeSSE({ data: mark });
+                assert.ok(await eventually(() => state.data.includes(mark)), state.data);
+                return state.data.match(/: ping\n\n/g)?.length ?? 0;
+            },
+        };
+    }
 
-        await sleep(5300);
-        state.socket.destroy();
-        assert.equal(state.data.match(/: ping\n\n/g)?.length, 1, state.data);
+    test("既定で、5秒ごとに届く", async (t) => {
+        const clock = await heartbeatClock(t);
+
+        assert.equal(await clock.advance(4999), 0);
+        assert.equal(await clock.advance(1), 1);
+        assert.equal(await clock.advance(4999), 1);
+        assert.equal(await clock.advance(1), 2);
     });
 
-    test("heartbeat: false なら届かない", { timeout: 2000 }, async () => {
-        const app = createApp();
-        app.get("/", (_, c) => streamSSE(c, (s) => s.sleep(10_000), { heartbeat: false }));
-        const state = connect(await listen(app), request("GET", "/"));
+    test("heartbeat: false なら届かない", async (t) => {
+        const clock = await heartbeatClock(t, { heartbeat: false });
 
-        await sleep(300);
-        state.socket.destroy();
-        assert.match(state.data, /: connected/);
-        assert.doesNotMatch(state.data, /: ping/);
+        assert.equal(await clock.advance(60_000), 0);
     });
 
-    test("間隔は設定どおり", { timeout: 2000 }, async () => {
-        const app = createApp();
-        app.get("/", (_, c) => streamSSE(c, (s) => s.sleep(10_000), { heartbeat: 100 }));
-        const state = connect(await listen(app), request("GET", "/"));
+    test("間隔は設定どおり", async (t) => {
+        const clock = await heartbeatClock(t, { heartbeat: 100 });
 
-        await sleep(350);
-        state.socket.destroy();
-        const pings = state.data.match(/: ping\n\n/g)?.length ?? 0;
-        assert.ok(pings === 2 || pings === 3, `${pings} 回`);
+        assert.equal(await clock.advance(99), 0);
+        assert.equal(await clock.advance(1), 1);
+        assert.equal(await clock.advance(99), 1);
+        assert.equal(await clock.advance(1), 2);
+        assert.equal(await clock.advance(100), 3);
     });
 });

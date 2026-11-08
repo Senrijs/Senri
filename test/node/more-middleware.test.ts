@@ -3,7 +3,7 @@
 import { after, describe, test } from "node:test";
 import assert from "node:assert/strict";
 import { cache, cors, createApp, languageDetector, prettyJSON, secureHeaders, trailingSlash, type Middleware } from "../../src/index.ts";
-import { bothPaths, closeServers, counting, listen, raw, request } from "./http.ts";
+import { bothPaths, closeServers, COMPARE_TIMEOUT, compareBothPaths, counting, listen, raw, rawCases, request } from "./http.ts";
 
 after(closeServers);
 
@@ -88,16 +88,13 @@ describe("2つの道の応答が同じ", () => {
     ];
     const headerSets: Record<string, string>[] = [{}, { "Accept-Language": "ja, en;q=0.5" }, { Cookie: "language=ja" }, { Origin: "https://a.example" }];
     for (const [name, make] of groups) {
-        test(name, async () => {
-            const { lazy, viaFetch } = await bothPaths(makeApp(...make()));
+        test(name, { timeout: COMPARE_TIMEOUT }, async (t) => {
             // ヘッダーの組み合わせは GET で、メソッドの違いはヘッダーなしで比べる(CI の時間の上限に収めるため)
             const cases: [string, Record<string, string>][] = [...headerSets.map((headers): [string, Record<string, string>] => ["GET", headers]), ["HEAD", {}], ["POST", {}]];
-            for (const path of PATHS) {
-                for (const [method, headers] of cases) {
-                    const text = request(method, path, headers);
-                    assert.equal(await raw(lazy, text), await raw(viaFetch, text), `${method} ${path} ${JSON.stringify(headers)}`);
-                }
-            }
+            const texts = PATHS.flatMap((path) =>
+                cases.map(([method, headers]): [string, string] => [`${method} ${path} ${JSON.stringify(headers)}`, request(method, path, headers)]),
+            );
+            await compareBothPaths(await bothPaths(makeApp(...make())), rawCases(texts), t.signal);
         });
     }
 });

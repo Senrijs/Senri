@@ -9,8 +9,7 @@ import { serve } from "../../adapters/node/index.ts";
 import { setCookie } from "../../src/cookie.ts";
 import { getIp } from "../../src/ip.ts";
 import { devtools } from "../../src/dev/index.ts";
-
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+import { COMPARE_TIMEOUT, compareBothPaths, rawCases } from "./http.ts";
 
 let upstreamPort = 0;
 
@@ -317,11 +316,8 @@ describe("Request を作らない道と app.fetch の道で、応答が同じ", 
     ];
 
     for (const [name, make] of groups) {
-        test(`${name}(${REQUESTS.length} 種類)`, async () => {
-            const { lazy, viaFetch } = await bothPaths(make());
-            for (const [label, text] of REQUESTS) {
-                assert.equal(await raw(lazy, text), await raw(viaFetch, text), label);
-            }
+        test(`${name}(${REQUESTS.length} 種類)`, { timeout: COMPARE_TIMEOUT }, async (t) => {
+            await compareBothPaths(await bothPaths(make()), rawCases(REQUESTS, raw), t.signal);
         });
     }
 
@@ -335,6 +331,7 @@ describe("Request を作らない道と app.fetch の道で、応答が同じ", 
         app.get("/", () => "Hello");
         const port = await listen(app);
         const socket = net.connect(port, "127.0.0.1");
+        let timer: ReturnType<typeof setTimeout> | undefined;
         const answer = await new Promise<string>((resolve) => {
             let data = "";
             socket.on("data", (chunk) => {
@@ -342,8 +339,10 @@ describe("Request を作らない道と app.fetch の道で、応答が同じ", 
                 if (data.includes("ignored") && data.includes("Hello")) resolve(data);
             });
             socket.write("POST /ignore HTTP/1.1\r\nHost: localhost\r\nContent-Length: 3\r\n\r\nabcGET / HTTP/1.1\r\nHost: localhost\r\n\r\n");
-            setTimeout(() => resolve(`${data}[timeout]`), 1000);
+            // 届かなかったときだけ効く(テスト全体の時間切れより先に、届いた分を出す)
+            timer = setTimeout(() => resolve(`${data}[timeout]`), 4000);
         });
+        clearTimeout(timer);
         socket.destroy();
 
         assert.ok(!answer.endsWith("[timeout]"), answer);
@@ -625,78 +624,108 @@ describe("c.req は、読んだときに作られる本物の Request", () => {
 });
 
 describe("切断の abort(Request を作らない道でも)", () => {
-    async function disconnectAfter(port: number, path: string, ms = 60) {
-        const socket = net.connect(port, "127.0.0.1", () => socket.write(`GET ${path} HTTP/1.1\r\nHost: localhost\r\n\r\n`));
-        await sleep(ms);
-        socket.destroy();
+    // 時間で待ってから切ると、遅いマシンではハンドラーに届く前に切れてしまう。なので、届いたことを確かめてから切る
+    const send = (port: number, path: string) => net.connect(port, "127.0.0.1", function (this: net.Socket) {
+        this.write(`GET ${path} HTTP/1.1\r\nHost: localhost\r\n\r\n`);
+    });
+    // 外から resolve できる Promise
+    function signalled<T = void>() {
+        let resolve!: (value: T) => void;
+        const promise = new Promise<T>((r) => (resolve = r));
+        return { promise, resolve };
     }
-    const within = <T>(promise: Promise<T>, label: string) =>
-        Promise.race([
-            promise,
-            sleep(2000).then(() => {
-                throw new Error(`${label} が届かなかった`);
-            }),
-        ]);
+    // 届かなかったときに、テスト全体の時間切れより先に、何が届かなかったかを出す(失敗したときだけ効く)
+    async function within<T>(promise: Promise<T>, label: string): Promise<T> {
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        const late = new Promise<never>((_, reject) => {
+            timer = setTimeout(() => reject(new Error(`${label} が届かなかった`)), 4000);
+        });
+        try {
+            return await Promise.race([promise, late]);
+        } finally {
+            clearTimeout(timer);
+        }
+    }
 
     test("c.req.signal", async () => {
         const app = createApp();
-        let done = () => {};
-        const aborted = new Promise<void>((resolve) => (done = resolve));
+        const entered = signalled();
+        const aborted = signalled();
         app.get("/", (_, c) => {
-            c.req.signal.addEventListener("abort", done);
+            c.req.signal.addEventListener("abort", () => aborted.resolve());
+            entered.resolve();
             return new Promise<Response>(() => {});
         });
-        await disconnectAfter(await listen(app), "/");
+        const socket = send(await listen(app), "/");
+        await within(entered.promise, "リクエスト");
+        socket.destroy();
 
-        await within(aborted, "abort");
+        await within(aborted.promise, "abort");
     });
 
     test("切断のあとで初めて c.req を読んでも、signal は abort 済み", async () => {
         const app = createApp();
-        let done = (_: boolean) => {};
-        const seen = new Promise<boolean>((resolve) => (done = resolve));
+        const entered = signalled();
+        const closed = signalled();
+        const seen = signalled<boolean>();
         app.get("/", async (_, c) => {
-            await sleep(120);
-            done(c.req.signal.aborted);
+            entered.resolve();
+            // サーバーが切断を受け取るまで、c.req を読まずに待つ
+            await closed.promise;
+            seen.resolve(c.req.signal.aborted);
             return "x";
         });
-        await disconnectAfter(await listen(app), "/", 30);
+        const port = await listen(app);
+        // サーバー側の接続が閉じたら知らせる(同じ 'close' で、Node は応答も閉じる。続きはそのあとのマイクロタスクで動く)
+        servers.at(-1)!.once("connection", (socket) => socket.once("close", () => closed.resolve()));
+        const socket = send(port, "/");
+        await within(entered.promise, "リクエスト");
+        socket.destroy();
 
-        assert.equal(await within(seen, "signal"), true);
+        assert.equal(await within(seen.promise, "signal"), true);
     });
 
     test("new Request(c.req) と c.req.clone()", async () => {
         const app = createApp();
         const events: string[] = [];
-        let done = () => {};
-        const both = new Promise<void>((resolve) => (done = resolve));
+        const entered = signalled();
+        const both = signalled();
         const mark = (name: string) => () => {
             events.push(name);
-            if (events.length === 2) done();
+            if (events.length === 2) both.resolve();
         };
         app.get("/", (_, c) => {
             new Request(c.req).signal.addEventListener("abort", mark("copy"));
             c.req.clone().signal.addEventListener("abort", mark("clone"));
+            entered.resolve();
             return new Promise<Response>(() => {});
         });
-        await disconnectAfter(await listen(app), "/");
+        const socket = send(await listen(app), "/");
+        await within(entered.promise, "リクエスト");
+        socket.destroy();
 
-        await within(both, "abort");
+        await within(both.promise, "abort");
         assert.deepEqual(events.sort(), ["clone", "copy"]);
     });
 
     test("fetch(c.req) の相手への接続も切れる", async () => {
-        let closed = () => {};
-        const upstreamClosed = new Promise<void>((resolve) => (closed = resolve));
-        const hanging = createServer((req) => req.socket.once("close", closed)).listen(0, "127.0.0.1");
+        const reached = signalled();
+        const upstreamClosed = signalled();
+        const hanging = createServer((req) => {
+            req.socket.once("close", () => upstreamClosed.resolve());
+            reached.resolve();
+        }).listen(0, "127.0.0.1");
         await new Promise<void>((resolve) => hanging.once("listening", resolve));
         const hangingPort = (hanging.address() as AddressInfo).port;
         try {
             const app = createApp();
             app.get("/", async (_, c) => (await fetch(new Request(`http://127.0.0.1:${hangingPort}/`, c.req)).catch(() => new Response("x"))));
-            await disconnectAfter(await listen(app), "/", 120);
+            const socket = send(await listen(app), "/");
+            // 上流にリクエストが届いてから切る
+            await within(reached.promise, "上流へのリクエスト");
+            socket.destroy();
 
-            await within(upstreamClosed, "上流の切断");
+            await within(upstreamClosed.promise, "上流の切断");
         } finally {
             hanging.closeAllConnections();
             hanging.close();
@@ -705,14 +734,18 @@ describe("切断の abort(Request を作らない道でも)", () => {
 
     test("応答を返したあとに読んだ signal は abort されていない", async () => {
         const app = createApp();
-        let done = (_: boolean) => {};
-        const seen = new Promise<boolean>((resolve) => (done = resolve));
+        let read = () => true;
         app.get("/", (_, c) => {
-            setTimeout(() => done(c.req.signal.aborted), 30);
+            read = () => c.req.signal.aborted;
             return "x";
         });
-        await raw(await listen(app), GET("/"));
+        const port = await listen(app);
+        const closed = signalled();
+        servers.at(-1)!.once("connection", (socket) => socket.once("close", () => closed.resolve()));
+        // 応答を受け取り、サーバー側の接続も閉じてから初めて c.req を読む
+        await raw(port, GET("/"));
+        await within(closed.promise, "サーバー側の切断");
 
-        assert.equal(await within(seen, "signal"), false);
+        assert.equal(read(), false);
     });
 });

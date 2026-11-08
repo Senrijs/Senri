@@ -2,7 +2,7 @@
 import { after, describe, test } from "node:test";
 import assert from "node:assert/strict";
 import { basicAuth, bearerAuth, createApp, secureHeaders } from "../../src/index.ts";
-import { bothPaths, closeServers, counting, listen, raw, request } from "./http.ts";
+import { bothPaths, closeServers, COMPARE_TIMEOUT, compareBothPaths, counting, listen, raw, rawCases, request } from "./http.ts";
 
 after(closeServers);
 
@@ -37,8 +37,7 @@ describe("basicAuth() / bearerAuth() と Node の近道", () => {
         }
     });
 
-    test("2つの道の応答が同じ", async () => {
-        const { lazy, viaFetch } = await bothPaths(makeApp());
+    test("2つの道の応答が同じ", { timeout: COMPARE_TIMEOUT }, async (t) => {
         const headers: Record<string, string>[] = [
             {},
             { Authorization: "" },
@@ -53,14 +52,10 @@ describe("basicAuth() / bearerAuth() と Node の近道", () => {
             { Authorization: "Bearer a b" },
             { Authorization: "Bearer \xe6\x97\xa5" },
         ];
-        for (const path of ["/basic", "/bearer", "/verify-basic", "/verify-bearer"]) {
-            for (const method of ["GET", "HEAD", "POST"]) {
-                for (const header of headers) {
-                    const text = request(method, path, header);
-                    assert.equal(await raw(lazy, text), await raw(viaFetch, text), text);
-                }
-            }
-        }
+        const texts = ["/basic", "/bearer", "/verify-basic", "/verify-bearer"].flatMap((path) =>
+            ["GET", "HEAD", "POST"].flatMap((method) => headers.map((header) => request(method, path, header))),
+        );
+        await compareBothPaths(await bothPaths(makeApp()), rawCases(texts.map((text) => [text, text])), t.signal);
     });
 
     test("Authorization が2つあっても、2つの道の応答が同じ", async () => {
