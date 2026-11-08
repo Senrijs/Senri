@@ -1,5 +1,6 @@
 "use client";
-// 特長のカード。マウスに合わせて少し傾き、押すとその場からダイアログが広がる
+// 特長のカード。マウスに合わせて少し傾き(ばねで戻る)、押すとその場からダイアログが広がる
+import * as m from "motion/react-m";
 import { type MouseEvent, type ReactNode, useState } from "react";
 import { homeDict } from "@/lib/home/dict";
 import { PLAYGROUND_CODE } from "@/lib/home/playground-code";
@@ -102,47 +103,21 @@ export function Features({ lang, error }: { lang: Lang; error: NonNullable<Recor
         },
     ];
 
-    function tilt(e: MouseEvent<HTMLButtonElement>) {
-        if (still) return;
-        const el = e.currentTarget;
-        const r = el.getBoundingClientRect();
-        const x = (e.clientX - r.left) / r.width - 0.5;
-        const y = (e.clientY - r.top) / r.height - 0.5;
-        el.style.setProperty("--rx", `${(-y * 12).toFixed(2)}deg`);
-        el.style.setProperty("--ry", `${(x * 12).toFixed(2)}deg`);
-        el.style.setProperty("--sc", "1.02");
-        el.style.setProperty("--gx", `${((x + 0.5) * 100).toFixed(1)}%`);
-        el.style.setProperty("--gy", `${((y + 0.5) * 100).toFixed(1)}%`);
-        el.style.setProperty("--shine", "1");
-    }
-
-    function reset(el: HTMLElement) {
-        for (const name of ["--rx", "--ry", "--sc", "--gx", "--gy", "--shine"]) el.style.removeProperty(name);
-    }
-
     const current = open ? cards[open.i]! : null;
     return (
         <>
             <div className="s-grid4 s-cards">
                 {cards.map((card, i) => (
-                    <button
+                    <TiltCard
                         key={card.title}
-                        type="button"
-                        className={`s-card s-glass${open?.i === i ? " ghost" : ""}`}
-                        aria-haspopup="dialog"
-                        aria-expanded={open?.i === i}
-                        onMouseMove={tilt}
-                        onMouseLeave={(e) => reset(e.currentTarget)}
-                        onClick={(e) => {
-                            reset(e.currentTarget);
-                            setOpen({ i, origin: { rect: e.currentTarget.getBoundingClientRect(), opener: e.currentTarget } });
-                        }}
+                        still={still}
+                        ghost={open?.i === i}
+                        onOpen={(origin) => setOpen({ i, origin })}
                     >
-                        <span className="shine" aria-hidden="true" />
                         {card.icon}
                         <span className="t">{card.title}</span>
                         <span className="d">{card.desc}</span>
-                    </button>
+                    </TiltCard>
                 ))}
             </div>
             {open && current ? (
@@ -151,5 +126,63 @@ export function Features({ lang, error }: { lang: Lang; error: NonNullable<Recor
                 </ExpandDialog>
             ) : null}
         </>
+    );
+}
+
+// マウスに合わせて傾くカード。Motion Primitives の Tilt を元にしたもの
+// https://github.com/ibelick/motion-primitives/blob/120f64f6ca60348e251f929e9c81f11ccbe45eda/components/core/tilt.tsx
+// MIT License, Copyright (c) 2024 ibelick(https://github.com/ibelick/motion-primitives/blob/main/LICENCE.md)
+// 変えたところ:
+// - useSpring と useTransform の代わりに animate とばねの transition を使う(Motion の動きの仕組みを、あとから読む分に入れるため)
+// - <button> にした、光の当たる位置(--gx / --gy)も動かす、動きを止めるときは傾けない
+const TILT = 6;
+const SPRING = { type: "spring", stiffness: 260, damping: 22, mass: 0.6 } as const;
+
+function TiltCard({ still, ghost, onOpen, children }: { still: boolean; ghost: boolean; onOpen: (origin: Origin) => void; children: ReactNode }) {
+    const [tilt, setTilt] = useState({ x: 0, y: 0, hover: false });
+
+    function move(e: MouseEvent<HTMLButtonElement>) {
+        if (still) return;
+        const el = e.currentTarget;
+        const r = el.getBoundingClientRect();
+        const px = (e.clientX - r.left) / r.width;
+        const py = (e.clientY - r.top) / r.height;
+        setTilt({ x: px - 0.5, y: py - 0.5, hover: true });
+        el.style.setProperty("--gx", `${(px * 100).toFixed(1)}%`);
+        el.style.setProperty("--gy", `${(py * 100).toFixed(1)}%`);
+        el.style.setProperty("--shine", "1");
+    }
+
+    function leave(el: HTMLElement) {
+        setTilt({ x: 0, y: 0, hover: false });
+        el.style.removeProperty("--shine");
+    }
+
+    return (
+        <m.button
+            type="button"
+            className={`s-card s-glass${ghost ? " ghost" : ""}`}
+            aria-haspopup="dialog"
+            aria-expanded={ghost}
+            style={{ transformPerspective: 900 }}
+            animate={{ rotateX: -tilt.y * 2 * TILT, rotateY: tilt.x * 2 * TILT, scale: tilt.hover ? 1.02 : 1 }}
+            transition={SPRING}
+            whileTap={still ? undefined : { scale: 0.98 }}
+            onMouseMove={move}
+            onMouseLeave={(e) => leave(e.currentTarget)}
+            onClick={(e) => {
+                const el = e.currentTarget;
+                leave(el);
+                // 傾きを外した位置を測る(ダイアログが、まっすぐなカードから広がるように)
+                const saved = el.style.transform;
+                el.style.transform = "none";
+                const rect = el.getBoundingClientRect();
+                el.style.transform = saved;
+                onOpen({ rect, opener: el });
+            }}
+        >
+            <span className="shine" aria-hidden="true" />
+            {children}
+        </m.button>
     );
 }

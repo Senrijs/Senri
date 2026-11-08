@@ -6,6 +6,7 @@ import { homeDict } from "@/lib/home/dict";
 import { type Lang, localePath } from "@/lib/i18n";
 import { githubUrl } from "@/lib/shared";
 import { LangLink, MotionButton, ThemeButton } from "./controls";
+import { MotionRoot } from "./motion-root";
 import { SiteHeader } from "./site-header";
 import { Wordmark } from "./wordmark";
 import "./home.css";
@@ -13,6 +14,7 @@ import "./home.css";
 export function SiteShell({ lang, children }: { lang: Lang; children: ReactNode }) {
     const t = homeDict[lang];
     return (
+        <MotionRoot>
         <div className="site">
             <a className="s-skip" href="#main">
                 {t.skip}
@@ -23,6 +25,7 @@ export function SiteShell({ lang, children }: { lang: Lang; children: ReactNode 
             <SiteFooter lang={lang} />
             <div className="s-grain" aria-hidden="true" />
         </div>
+        </MotionRoot>
     );
 }
 

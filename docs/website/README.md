@@ -42,6 +42,11 @@ bun run preview   # out/ を配信して確かめる
   - GitHub のスター数と npm の週間ダウンロード数: トークンなしの API。取れなければ数字を出しません
 - **数字(16 KB とテストの件数):** `components/home/home-page.tsx` に直接書いています。リリースのときに `bun run size` と `bun test` で見直します
 - **動き:** 動きを減らす設定と、フッターの「動きを止める」(`<html data-motion="off">`)で止まります
+  - [Motion](https://motion.dev) は `LazyMotion` と `domAnimation` だけを使い、`m.*` の部品で書きます(`components/home/motion-root.tsx`)。`domAnimation` は描いたあとで読み込みます
+  - `motion/react` から `useSpring` などのフックを取り込むと、Motion の動きの仕組みが最初に読む JavaScript に入るので使いません
+  - Motion Primitives(MIT)から元にした部品は、ファイルの先頭に出どころを書いています
+  - ヒーローの見出しは、JavaScript を待たずに出るように CSS だけで動かします
+  - 特長のカードのダイアログは Web Animations API で動かします(`components/home/expand-dialog.tsx`)
 - **リンクの先読み:** `bun run build` の最後に `scripts/flatten-segments.ts` が動きます。Next.js が入れ子のフォルダーに書いた先読みのファイルを、ブラウザが読みに来る名前(`/` を `.` にしたもの)でも置きます
 - **ロゴ:** `public/brand/` は https://github.com/Senrijs/brand の SVG のコピーです
 

@@ -112,7 +112,7 @@ function Playground({ lang, recordings }: { lang: Lang; recordings: Recording[] 
                 </span>
                 <span className="file">app.ts</span>
                 <span className="note">
-                    <span className="s-beacon sm" style={{ background: "var(--green)" }} aria-hidden="true" />
+                    <span className="s-beacon sm still" style={{ background: "var(--green)" }} aria-hidden="true" />
                     {t.pgNote}
                 </span>
             </div>
@@ -213,7 +213,7 @@ function Dashboard({ lang, port }: { lang: Lang; port: number }) {
                     <span />
                 </span>
                 <span className="s-addr">
-                    <span className="s-beacon sm" style={{ background: "var(--accent)" }} aria-hidden="true" />
+                    <span className="s-beacon sm still" style={{ background: "var(--accent)" }} aria-hidden="true" />
                     localhost:{port}/_senri
                 </span>
             </div>
@@ -241,7 +241,7 @@ function Dashboard({ lang, port }: { lang: Lang; port: number }) {
                             </span>
                         </KV>
                         <KV label={t.kvStatus}>
-                            <span className="s-beacon sm" style={{ background: "var(--green)" }} aria-hidden="true" />
+                            <span className="s-beacon sm still" style={{ background: "var(--green)" }} aria-hidden="true" />
                             200
                         </KV>
                         <KV label={t.kvTime}>3 ms</KV>

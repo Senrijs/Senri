@@ -1,6 +1,7 @@
 "use client";
 // CLI のログ。中身は、ビルドのときに本物の showRoutes() と logger() が出したもの(scripts/home-data.ts)
 // 時刻だけ、見ているときの時刻に置き換える。画面の外では止め、動きを止める設定では最後の形を止めて出す
+import * as m from "motion/react-m";
 import { useEffect, useRef, useState } from "react";
 import type { Line, LogEntry } from "@/lib/home/types";
 import { useStill } from "./motion";
@@ -108,13 +109,14 @@ export function CliLog({ banner, logs, label }: { banner: Line[]; logs: LogEntry
                         <div className="gap" />
                     </>
                 ) : null}
+                {/* 新しい行は、少しだけフェードしながら出す */}
                 {shown.map((s) => (
-                    <div key={s.key}>
+                    <m.div key={s.key} initial={still ? false : { opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25, ease: "easeOut" }}>
                         <Row line={s.line} />
                         {s.error.map((line, i) => (
                             <Row key={i} line={line} />
                         ))}
-                    </div>
+                    </m.div>
                 ))}
                 <span className="s-caret" />
             </div>
