@@ -67,6 +67,16 @@ export function methodColor(method: string): string {
 type StorageLike = Pick<Storage, "getItem" | "setItem">;
 const STORAGE_KEY = "senri.editor";
 
+// localStorage は、読むだけで例外を投げる環境がある(サイトのデータを止めているとき、sandbox の iframe の中など)
+// ここで止めないと、ページの描画ごと止まって真っ白になる
+export function browserStorage(scope: { readonly localStorage?: StorageLike } = globalThis): StorageLike | undefined {
+    try {
+        return scope.localStorage ?? undefined;
+    } catch {
+        return undefined;
+    }
+}
+
 export function loadEditor(storage: StorageLike | undefined, guess: EditorGuess): EditorId {
     try {
         const saved = storage?.getItem(STORAGE_KEY);

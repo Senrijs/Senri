@@ -8,6 +8,7 @@ import CopyButton from "./components/CopyButton.vue";
 import RichText from "./components/RichText.vue";
 import { useI18n } from "./i18n.ts";
 import {
+    browserStorage,
     editorOptions,
     formatMs,
     hintCode,
@@ -24,7 +25,7 @@ const props = defineProps<{ data: ErrorPageData }>();
 const d = props.data;
 const { t, lang } = useI18n();
 
-const storage = typeof localStorage === "undefined" ? undefined : localStorage;
+const storage = browserStorage();
 const editor = ref(loadEditor(storage, d.editor));
 watch(editor, (id) => saveEditor(storage, id));
 
