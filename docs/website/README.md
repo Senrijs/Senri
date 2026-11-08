@@ -42,6 +42,7 @@ bun run preview   # out/ を配信して確かめる
   - GitHub のスター数と npm の週間ダウンロード数: トークンなしの API。取れなければ数字を出しません
 - **数字(16 KB とテストの件数):** `components/home/home-page.tsx` に直接書いています。リリースのときに `bun run size` と `bun test` で見直します
 - **動き:** 動きを減らす設定と、フッターの「動きを止める」(`<html data-motion="off">`)で止まります
+- **リンクの先読み:** `bun run build` の最後に `scripts/flatten-segments.ts` が動きます。Next.js が入れ子のフォルダーに書いた先読みのファイルを、ブラウザが読みに来る名前(`/` を `.` にしたもの)でも置きます
 - **ロゴ:** `public/brand/` は https://github.com/Senrijs/brand の SVG のコピーです
 
 ## 書くときに使えるもの

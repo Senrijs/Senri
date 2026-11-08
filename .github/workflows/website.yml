@@ -53,4 +53,6 @@ jobs:
           grep -q 'maxFileSize' out/docs/samples/index.html
           # トップページ: 本物の logger() の出力(serve() の既定のポート)が入っているか
           grep -q 'localhost:3927' out/index.html
+          # リンクの先読みのファイルが、ブラウザが読みに来る名前でも置かれているか(scripts/flatten-segments.ts)
+          find out -maxdepth 1 -name '__next.*.__PAGE__.txt' | grep -q .
           du -sh out

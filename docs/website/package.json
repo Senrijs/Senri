@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "bun scripts/home-data.ts && next dev",
-    "build": "bun scripts/home-data.ts && next build",
+    "build": "bun scripts/home-data.ts && next build && bun scripts/flatten-segments.ts",
     "preview": "serve out",
     "postinstall": "fumadocs-mdx"
   },
