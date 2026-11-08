@@ -43,7 +43,8 @@ jobs:
         run: |
           for f in index.html docs/index.html docs/samples/index.html en/index.html en/docs/index.html \
                    blog/index.html en/blog/index.html 404.html api/search llms.txt llms-full.txt en/llms.txt \
-                   llms.mdx/ja/docs/samples/content.md og/ja/docs/samples/image.png og/en/docs/samples/image.png og/ja/image.png og/en/image.png \n                   brand/senri-wordmark-light.svg brand/senri-icon-accent.svg _headers; do
+                   llms.mdx/ja/docs/samples/content.md og/ja/docs/samples/image.png og/en/docs/samples/image.png og/ja/image.png og/en/image.png \
+                   brand/senri-wordmark-light.svg brand/senri-icon-accent.svg _headers; do
             test -s "out/$f" || { echo "out/$f がありません"; exit 1; }
           done
           grep -q 'lang="ja"' out/index.html
