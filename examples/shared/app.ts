@@ -1,6 +1,7 @@
 import { compress, createApp, health, logger, type StandardSchemaV1 } from "../../src/index.ts";
 import { devtools } from "../../src/dev/index.ts";
 import { getIp } from "../../src/ip.ts";
+import { multipart } from "../../src/multipart.ts";
 
 // examples は手元で動かすものなので開発モード
 export const app = createApp({ dev: devtools() });
@@ -30,6 +31,23 @@ app.get("/created", (_, c) => {
 app.get("/accepted", (_, c) => c.json({ hi: 1 }, 202));
 app.get("/ua", (_, c) => c.req.headers.get("user-agent") ?? "unknown");
 app.post("/echo", async (_, c) => `body=${await c.req.text()}`);
+// 大きいファイルを、メモリにためずに受け取る。保存はせず、パーツごとの大きさと全バイトの合計を返す
+app.post("/upload", async (_, c) => {
+    const parts: { name: string; filename?: string; size: number; sum: number }[] = [];
+    for await (const part of multipart(c, { maxFileSize: 64 * 1024 * 1024 })) {
+        let size = 0;
+        let sum = 0;
+        const reader = part.stream.getReader();
+        for (;;) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            size += value.length;
+            for (const byte of value) sum += byte;
+        }
+        parts.push({ name: part.name, filename: part.filename, size, sum });
+    }
+    return parts;
+});
 // QUERY: 検索の条件をボディに入れて送る(RFC 10008)
 app.on("QUERY", "/search", async (_, c) => ({ query: await c.body() }));
 app.get("/client-ip", (_, c) => ({ ip: getIp(c) }));
