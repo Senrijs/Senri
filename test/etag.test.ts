@@ -11,18 +11,25 @@ import { bundleOf, CONTEXT_MARKER } from "./bundle.ts";
 
 const req = (path: string, init?: RequestInit) => new Request(`http://localhost${path}`, init);
 const inm = (path: string, value: string, method = "GET") => req(path, { method, headers: { "if-none-match": value } });
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 const WEAK = /^W\/"[0-9a-f]+-[0-9a-f]{16}"$/;
 const BIG = "x".repeat(1024 * 1024 + 1);
 
-const slowStream = () =>
-    new ReadableStream({
+// 遅いストリームの代わり。release() を呼ぶまで本文を出さない(時間で待つと、遅いマシンで結果が変わる)
+function gatedStream(text: string) {
+    let release = () => {};
+    const gate = new Promise<void>((resolve) => (release = resolve));
+    const body = new ReadableStream<Uint8Array>({
         async start(controller) {
-            await sleep(30);
-            controller.enqueue(new TextEncoder().encode("slow"));
+            await gate;
+            controller.enqueue(new TextEncoder().encode(text));
             controller.close();
         },
     });
+    return { body, release };
+}
+
+// /slow の本文を出す(リクエストごとに入れ替わる)
+let releaseSlow = () => {};
 
 function makeApp(options?: Parameters<typeof etag>[0]) {
     const app = createApp();
@@ -58,7 +65,11 @@ function makeApp(options?: Parameters<typeof etag>[0]) {
         c.header("set-cookie", "a=1");
         return new Response("x", { headers: { "content-type": "text/plain", "content-language": "ja", vary: "accept", "set-cookie": "b=2", "x-res": "2" } });
     });
-    app.get("/slow", () => new Response(slowStream()));
+    app.get("/slow", () => {
+        const slow = gatedStream("slow");
+        releaseSlow = slow.release;
+        return new Response(slow.body);
+    });
     app.get("/fast-stream", () => {
         return new Response(
             new ReadableStream({
@@ -234,11 +245,11 @@ describe("etag()", () => {
     });
 
     test("遅いストリームには付けない。本文は最後まで読める", async () => {
-        const start = performance.now();
+        // 本文はまだ出ていない。etag() が本文を待てば、ここで止まって時間切れになる
         const res = await makeApp().fetch(req("/slow"));
 
         expect(res.headers.get("etag")).toBeNull();
-        expect(performance.now() - start).toBeLessThan(30);
+        releaseSlow();
         expect(await res.text()).toBe("slow");
     });
 
@@ -368,7 +379,7 @@ describe("peekBody()", () => {
         await used.text();
 
         expect(await peekBody(new Response(null), 10)).toBeNull();
-        expect(await peekBody(new Response(slowStream()), 10)).toBeNull();
+        expect(await peekBody(new Response(gatedStream("slow").body), 10)).toBeNull();
         expect(await peekBody(used, 10)).toBeNull();
     });
 

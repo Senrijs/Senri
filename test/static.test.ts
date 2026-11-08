@@ -297,6 +297,8 @@ describe("serveStatic() は、綴りがディスク上の名前と同じとき�
     // 同じ時計の刻みのうちに続けて名前を変えると、ディレクトリの mtime が変わらないことがある(CI の Windows で起きた)
     // mtime で一覧を使い回すと、古い綴りが通ってしまう。偶然に頼らず再現するため、名前を変えるたびに mtime を同じ値に戻す
     // (大文字小文字だけの名前の変更で同じファイルのままになるのは Windows / macOS)
+    // mtime を戻しているので、1往復で必ず再現する。回数を増やしても確かめる力は変わらず、負荷のある Windows では
+    // ファイル操作が何十倍も遅くなって時間切れになるので、3往復にしている。時間の上限も長めにする
     test.if(looseOs)("大文字小文字だけの名前の変更を続けても、毎回いまの綴りでだけ配る", async () => {
         const app = makeApp();
         const swap = join(root, "swap");
@@ -305,7 +307,7 @@ describe("serveStatic() は、綴りがディスク上の名前と同じとき�
         await writeFile(join(swap, "Case.txt"), "swap");
         await utimes(swap, frozen, frozen);
         let current = "Case.txt";
-        for (let i = 0; i < 30; i++) {
+        for (let i = 0; i < 6; i++) {
             const other = current === "Case.txt" ? "case.txt" : "Case.txt";
             await rename(join(swap, current), join(swap, other));
             await utimes(swap, frozen, frozen);
@@ -318,5 +320,5 @@ describe("serveStatic() は、綴りがディスク上の名前と同じとき�
             expect({ i, path: stale, status: miss.status }).toEqual({ i, path: stale, status: 404 });
             await miss.body?.cancel();
         }
-    });
+    }, 20_000);
 });

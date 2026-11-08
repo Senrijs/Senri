@@ -13,7 +13,20 @@ import { bundleOf, CONTEXT_MARKER } from "./bundle.ts";
 const BIG = "hello world ".repeat(200);
 const req = (path: string, acceptEncoding: string | null = "gzip", init: RequestInit = {}) =>
     new Request(`http://localhost${path}`, { ...init, headers: { ...(acceptEncoding === null ? {} : { "accept-encoding": acceptEncoding }), ...(init.headers as object) } });
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// 遅いストリームの代わり。release() を呼ぶまで本文を出さない(時間で待つと、遅いマシンで結果が変わる)
+function gatedStream(text: string) {
+    let release = () => {};
+    const gate = new Promise<void>((resolve) => (release = resolve));
+    const body = new ReadableStream<Uint8Array>({
+        async start(controller) {
+            await gate;
+            controller.enqueue(new TextEncoder().encode(text));
+            controller.close();
+        },
+    });
+    return { body, release };
+}
 const typed = (type: string, body: BodyInit | null = BIG, status = 200) => new Response(body, { status, headers: { "content-type": type } });
 
 async function decoded(res: Response): Promise<string> {
@@ -278,21 +291,13 @@ describe("compress()", () => {
     });
 
     test("遅いストリームは圧縮しない。本文は最後まで読める", async () => {
-        const res = await appWith(() =>
-            typed(
-                "text/plain",
-                new ReadableStream({
-                    async start(controller) {
-                        await sleep(30);
-                        controller.enqueue(new TextEncoder().encode(BIG));
-                        controller.close();
-                    },
-                }),
-            ),
-        ).fetch(req("/"));
+        // 本文はまだ出ていない(時間で待つと、遅いマシンでは compress() の様子見のうちに届いてしまう)
+        const slow = gatedStream(BIG);
+        const res = await appWith(() => typed("text/plain", slow.body)).fetch(req("/"));
 
         expect(res.headers.get("content-encoding")).toBeNull();
         expect(res.headers.get("vary")).toBeNull();
+        slow.release();
         expect(await res.text()).toBe(BIG);
     });
 
