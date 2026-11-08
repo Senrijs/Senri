@@ -1,0 +1,9 @@
+{
+  "title": "開発モード(dev ツール)",
+  "pages": [
+    "devtools",
+    "error-pages",
+    "dashboard",
+    "server-timing"
+  ]
+}

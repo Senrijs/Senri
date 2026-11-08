@@ -1,0 +1,51 @@
+name: Website
+
+# ドキュメントサイト(docs/website)のビルドが通るかを確かめる。配信は Cloudflare の Workers Builds が行う(docs/website/README.md)
+# サイトは独立したパッケージなので、本体の CI(ci.yml)とは別に install する
+# Twoslash と AutoTypeTable がリポジトリの src / adapters の型を読むので、それらが変わったときも動かす
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "docs/website/**"
+      - "src/**"
+      - "adapters/**"
+      - "jsr.json"
+      - ".github/workflows/website.yml"
+  pull_request:
+    paths:
+      - "docs/website/**"
+      - "src/**"
+      - "adapters/**"
+      - "jsr.json"
+      - ".github/workflows/website.yml"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: docs/website
+    steps:
+      - uses: actions/checkout@v6
+      - uses: oven-sh/setup-bun@v2
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - run: bun install --frozen-lockfile
+      - run: bun run build
+      # 静的書き出しで、言語ごとのページ、検索の索引、llms.txt、ページの Markdown、OG 画像、404 ページができたか
+      - name: Check exported files
+        run: |
+          for f in index.html docs/index.html docs/samples/index.html en/index.html en/docs/index.html \
+                   blog/index.html en/blog/index.html 404.html api/search llms.txt llms-full.txt en/llms.txt \
+                   llms.mdx/ja/docs/samples/content.md og/ja/docs/samples/image.png og/en/docs/samples/image.png _headers; do
+            test -s "out/$f" || { echo "out/$f がありません"; exit 1; }
+          done
+          grep -q 'lang="ja"' out/index.html
+          grep -q 'lang="en"' out/en/index.html
+          # Twoslash(型のヒント)と AutoTypeTable(MultipartLimits の表)が出ているか
+          grep -q 'twoslash-hover' out/docs/samples/index.html
+          grep -q 'maxFileSize' out/docs/samples/index.html
+          du -sh out

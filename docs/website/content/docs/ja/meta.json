@@ -1,0 +1,16 @@
+{
+  "pages": [
+    "index",
+    "getting-started",
+    "runtimes",
+    "routing",
+    "request-response",
+    "validation",
+    "middleware",
+    "errors",
+    "dev",
+    "performance",
+    "api",
+    "samples"
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "title": "Dev Mode (devtools)",
+  "pages": [
+    "devtools",
+    "error-pages",
+    "dashboard",
+    "server-timing"
+  ]
+}
