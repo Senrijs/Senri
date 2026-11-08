@@ -3,8 +3,9 @@
 import { generateOGImage } from "fumadocs-ui/og";
 import { notFound } from "next/navigation";
 import { i18n } from "@/lib/i18n";
+import { OgWordmark } from "@/lib/og-brand";
 import { ogFonts } from "@/lib/og-fonts";
-import { appName, getPageImageUrl } from "@/lib/shared";
+import { getPageImageUrl } from "@/lib/shared";
 import { source } from "@/lib/source";
 
 export const revalidate = false;
@@ -21,11 +22,12 @@ export async function GET(_req: Request, { params }: { params: Promise<{ lang: s
     return generateOGImage({
         title,
         description,
-        site: appName,
+        // サイト名の代わりにワードマークを描く
+        icon: <OgWordmark />,
         primaryColor: "rgba(227, 65, 43, 0.3)",
         primaryTextColor: "rgb(255, 106, 82)",
         // 日本語の字形を持つフォントを渡す(Satori は woff2 を読めないので woff)
-        fonts: await ogFonts(`${title}${description}${appName}`),
+        fonts: await ogFonts(`${title}${description}`),
     });
 }
 

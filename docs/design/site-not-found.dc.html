@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>Senri 404</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@800&amp;family=JetBrains+Mono:wght@400;700&amp;family=Noto+Sans+JP:wght@400;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#FFFFFF}
+.nf{--bg:#FFFFFF;--fg:#111418;--muted:#5B616A;--line:#ECEDEF;--glass:rgba(255,255,255,0.6);--hl:rgba(227,65,43,0.08);--accent-text:#B5321F;background:var(--bg);color:var(--fg)}
+@media (prefers-color-scheme: dark){body{background:#0B0C0E}.nf{--bg:#0B0C0E;--fg:#F2F3F5;--muted:#9AA0A8;--line:#23262C;--glass:rgba(30,33,38,0.6);--hl:rgba(255,106,82,0.12);--accent-text:#FF8A7A}}
+.nf a{color:var(--fg);text-decoration:none}.nf a:hover{color:var(--accent-text)}
+.nf :focus-visible{outline:2px solid #E3412B;outline-offset:3px;border-radius:6px}
+</style>
+</helmet>
+<main class="nf" style="min-height: 100vh; box-sizing: border-box; padding: 96px 24px; display: flex; align-items: center; justify-content: center; font-family: 'Noto Sans JP', sans-serif; position: relative; overflow: hidden">
+<div aria-hidden="true" style="position: absolute; left: 50%; top: 40%; width: 760px; height: 760px; transform: translate(-50%, -50%); background: radial-gradient(closest-side, rgba(227,65,43,0.14), rgba(227,65,43,0)); pointer-events: none"></div>
+<div style="position: relative; width: 100%; max-width: 560px; text-align: center">
+<p style="margin: 0; font-family: 'JetBrains Mono', monospace; font-size: 14px; color: var(--muted)">GET /docs/rooting</p>
+<h1 style="margin: 12px 0 0; font-family: 'Inter', sans-serif; font-weight: 800; font-size: clamp(88px, 18vw, 160px); line-height: 1; letter-spacing: -0.06em">404</h1>
+<p style="margin: 16px 0 0; font-size: 17px; color: var(--muted)">このページは見つかりませんでした。</p>
+<a href="#docs-routing" style="margin-top: 40px; display: flex; align-items: center; gap: 14px; padding: 18px 22px; border-radius: 16px; border: 1.5px solid #E3412B; background: var(--glass); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); text-align: left">
+<span style="font-size: 13px; color: var(--muted)">もしかして</span>
+<span style="flex: 1 1 auto; font-family: 'JetBrains Mono', monospace; font-size: 15px; font-weight: 700">/docs/routing</span>
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"></path><path d="M13 6l6 6-6 6"></path></svg>
+</a>
+<div style="margin-top: 28px; display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; font-size: 14px">
+<a href="#top">トップへ</a>
+<a href="#docs">ドキュメント</a>
+<a href="#search" style="display: inline-flex; align-items: center; gap: 6px">検索 <kbd style="padding: 1px 6px; border-radius: 6px; border: 1px solid var(--line); font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--muted)">⌘K</kbd></a>
+</div>
+</div>
+</main>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":800}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

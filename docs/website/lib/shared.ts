@@ -9,6 +9,15 @@ export const gitConfig = {
     branch: "main",
 };
 
+export const githubUrl = `https://github.com/${gitConfig.user}/${gitConfig.repo}`;
+
+// ロゴ。https://github.com/Senrijs/brand(d9f075d)の SVG を public/brand/ にコピーしたもの
+export const brand = {
+    wordmarkLight: "/brand/senri-wordmark-light.svg",
+    wordmarkDark: "/brand/senri-wordmark-dark.svg",
+    icon: "/brand/senri-icon-accent.svg",
+};
+
 // ページの Markdown(「Markdown でコピー」と llms.txt)と OG 画像の URL
 // 言語の印は、ページの URL と違って /llms.mdx/ja/... のように中に入れる(ルートのファイルを1つにするため)
 export function getPageMarkdownUrl(page: { slugs: string[]; locale?: string }) {

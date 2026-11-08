@@ -26,7 +26,7 @@ export function blogIndexMetadata(lang: Lang): Metadata {
 export function BlogIndex({ lang }: { lang: Lang }) {
     const list = posts(lang);
     return (
-        <main className="mx-auto w-full max-w-3xl px-4 py-12">
+        <main id="main" className="mx-auto w-full max-w-3xl px-4 py-12">
             <h1 className="mb-2 text-3xl font-bold">{text[lang].title}</h1>
             <p className="mb-8 text-fd-muted-foreground">{text[lang].description}</p>
             {list.length === 0 ? (
@@ -63,7 +63,7 @@ export function BlogPost({ lang, slug }: { lang: Lang; slug: string }) {
     if (!page) notFound();
     const MDX = page.data.body;
     return (
-        <main className="mx-auto w-full max-w-3xl px-4 py-12">
+        <main id="main" className="mx-auto w-full max-w-3xl px-4 py-12">
             <h1 className="mb-2 text-3xl font-bold">{page.data.title}</h1>
             <p className="mb-8 text-sm text-fd-muted-foreground">
                 {formatDate(lang, page.data.date)}

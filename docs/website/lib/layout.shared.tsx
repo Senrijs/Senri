@@ -1,18 +1,19 @@
 import type { BaseLayoutProps } from "fumadocs-ui/layouts/shared";
+import { Wordmark } from "@/components/home/wordmark";
 import { type Lang, localePath } from "./i18n";
-import { appName, gitConfig } from "./shared";
+import { githubUrl } from "./shared";
 
-// ヘッダーの共通の設定(トップ、ドキュメント、ブログ)
+// ドキュメントのヘッダーの設定(トップとブログは components/home/site-shell.tsx)
 export function baseOptions(lang: Lang): BaseLayoutProps {
     return {
         nav: {
-            title: <span className="font-mono text-lg font-extrabold tracking-tight">{appName.toLowerCase()}</span>,
+            title: <Wordmark height={20} />,
             url: localePath(lang, "/"),
         },
         links: [
             { text: lang === "ja" ? "ドキュメント" : "Docs", url: localePath(lang, "/docs"), active: "nested-url" },
             { text: lang === "ja" ? "ブログ" : "Blog", url: localePath(lang, "/blog"), active: "nested-url" },
         ],
-        githubUrl: `https://github.com/${gitConfig.user}/${gitConfig.repo}`,
+        githubUrl,
     };
 }

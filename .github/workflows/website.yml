@@ -34,13 +34,17 @@ jobs:
         with:
           node-version: 24
       - run: bun install --frozen-lockfile
+      # scripts/home-data.ts が GitHub のスター数を取る(トークンがなくても取れるが、回数の上限が上がる)
       - run: bun run build
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
       # 静的書き出しで、言語ごとのページ、検索の索引、llms.txt、ページの Markdown、OG 画像、404 ページができたか
       - name: Check exported files
         run: |
           for f in index.html docs/index.html docs/samples/index.html en/index.html en/docs/index.html \
                    blog/index.html en/blog/index.html 404.html api/search llms.txt llms-full.txt en/llms.txt \
-                   llms.mdx/ja/docs/samples/content.md og/ja/docs/samples/image.png og/en/docs/samples/image.png _headers; do
+                   llms.mdx/ja/docs/samples/content.md og/ja/docs/samples/image.png og/en/docs/samples/image.png og/ja/image.png og/en/image.png \
+                   brand/senri-wordmark-light.svg brand/senri-icon-accent.svg _headers; do
             test -s "out/$f" || { echo "out/$f がありません"; exit 1; }
           done
           grep -q 'lang="ja"' out/index.html
@@ -48,4 +52,8 @@ jobs:
           # Twoslash(型のヒント)と AutoTypeTable(MultipartLimits の表)が出ているか
           grep -q 'twoslash-hover' out/docs/samples/index.html
           grep -q 'maxFileSize' out/docs/samples/index.html
+          # トップページ: 本物の logger() の出力(serve() の既定のポート)が入っているか
+          grep -q 'localhost:3927' out/index.html
+          # リンクの先読みのファイルが、ブラウザが読みに来る名前でも置かれているか(scripts/flatten-segments.ts)
+          find out -maxdepth 1 -name '__next.*.__PAGE__.txt' | grep -q .
           du -sh out

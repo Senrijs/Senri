@@ -3,8 +3,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
+    "dev": "bun scripts/home-data.ts && next dev",
+    "build": "bun scripts/home-data.ts && next build && bun scripts/flatten-segments.ts",
     "preview": "serve out",
     "postinstall": "fumadocs-mdx"
   },
