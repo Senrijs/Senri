@@ -17,3 +17,6 @@ next-env.d.ts
 .DS_Store
 *.pem
 .env*.local
+
+# scripts/home-data.ts がビルドのときに作る
+/lib/home/generated.json

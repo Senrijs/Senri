@@ -1,0 +1,1023 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>Senri トップページ</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;family=JetBrains+Mono:wght@400;500;700&amp;family=Noto+Sans+JP:wght@400;500;700;900&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#FFFFFF}
+@media (prefers-color-scheme: dark){body{background:#0B0C0E}}
+.s-root{
+--bg:#FFFFFF;--fg:#111418;--fg-2:#3A3F46;--muted:#5B616A;--muted-2:#6B7079;
+--surface:#F5F6F8;--surface-2:#F7F8FA;--line:#ECEDEF;--line-2:#DADCE0;--line-3:#B8BCC3;
+--glass:rgba(255,255,255,0.55);--glass-strong:rgba(255,255,255,0.84);--glass-line:rgba(255,255,255,0.85);--glass-hl:rgba(255,255,255,0.9);
+--nav:rgba(255,255,255,0.8);--hl:rgba(227,65,43,0.08);--hl-strong:#FFE3DE;--accent-text:#B5321F;--green:#1F8A4C;--blue:#1C5FB8;
+--particle:rgba(17,20,24,0.22);--grain-blend:multiply;--grain-op:0.08;--shadow:rgba(17,20,24,0.08);--glow:rgba(227,65,43,0.18);
+--bar1:#FBE3DF;--bar2:#F8CFC8;--bar3:#F4B3A8;--bar4:#EE8E7F;--code:#0E1013;--code-2:#14171C;
+background:var(--bg);color:var(--fg);transition:background-color .3s,color .3s}
+.s-root[data-theme="dark"]{
+--bg:#0B0C0E;--fg:#F2F3F5;--fg-2:#C9CDD3;--muted:#9AA0A8;--muted-2:#8A9099;
+--surface:#121418;--surface-2:#17191E;--line:#23262C;--line-2:#2E3238;--line-3:#4A4F57;
+--glass:rgba(30,33,38,0.55);--glass-strong:rgba(22,25,30,0.88);--glass-line:rgba(255,255,255,0.09);--glass-hl:rgba(255,255,255,0.06);
+--nav:rgba(11,12,14,0.75);--hl:rgba(255,106,82,0.12);--hl-strong:rgba(255,106,82,0.24);--accent-text:#FF8A7A;--green:#7FD6A0;--blue:#82AAFF;
+--particle:rgba(242,243,245,0.28);--grain-blend:overlay;--grain-op:0.14;--shadow:rgba(0,0,0,0.45);--glow:rgba(255,106,82,0.16);
+--bar1:#3A1E1A;--bar2:#5A2A22;--bar3:#7A342A;--bar4:#A8463A;--code:#07080A;--code-2:#0E1013}
+@media (prefers-color-scheme: dark){.s-root[data-theme="auto"]{
+--bg:#0B0C0E;--fg:#F2F3F5;--fg-2:#C9CDD3;--muted:#9AA0A8;--muted-2:#8A9099;
+--surface:#121418;--surface-2:#17191E;--line:#23262C;--line-2:#2E3238;--line-3:#4A4F57;
+--glass:rgba(30,33,38,0.55);--glass-strong:rgba(22,25,30,0.88);--glass-line:rgba(255,255,255,0.09);--glass-hl:rgba(255,255,255,0.06);
+--nav:rgba(11,12,14,0.75);--hl:rgba(255,106,82,0.12);--hl-strong:rgba(255,106,82,0.24);--accent-text:#FF8A7A;--green:#7FD6A0;--blue:#82AAFF;
+--particle:rgba(242,243,245,0.28);--grain-blend:overlay;--grain-op:0.14;--shadow:rgba(0,0,0,0.45);--glow:rgba(255,106,82,0.16);
+--bar1:#3A1E1A;--bar2:#5A2A22;--bar3:#7A342A;--bar4:#A8463A;--code:#07080A;--code-2:#0E1013}}
+.s-root a{color:var(--fg);text-decoration:none}.s-root a:hover{color:var(--accent-text)}
+@keyframes s-up{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:none}}
+@keyframes s-marquee{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+@keyframes s-spin{to{transform:rotate(360deg)}}
+@keyframes s-blink{50%{opacity:0}}
+@keyframes s-glow{0%,100%{box-shadow:0 0 0 0 rgba(227,65,43,0)}50%{box-shadow:0 0 0 6px rgba(227,65,43,.16)}}
+@keyframes s-slide{0%{left:0;opacity:0}10%{opacity:1}90%{opacity:1}100%{left:100%;opacity:0}}
+@keyframes s-beacon{0%{transform:scale(1);opacity:.7}100%{transform:scale(3.2);opacity:0}}
+.s-up{animation:s-up .9s cubic-bezier(.2,.7,.2,1) both}.d1{animation-delay:.08s}.d2{animation-delay:.18s}.d3{animation-delay:.3s}.d4{animation-delay:.45s}
+.s-marquee{animation:s-marquee 28s linear infinite}
+.s-spin{animation:s-spin .8s linear infinite;transform-origin:50% 50%}
+.s-caret{animation:s-blink 1s step-end infinite}
+.s-match{animation:s-glow 2.4s ease-in-out infinite}
+.s-slide{animation:s-slide 3.2s ease-in-out infinite}
+.s-beacon{position:relative;display:inline-block;flex:none;width:8px;height:8px;border-radius:50%}
+.s-beacon::after{content:"";position:absolute;inset:0;border-radius:50%;background:inherit;animation:s-beacon 2s cubic-bezier(.2,.6,.4,1) infinite}
+.s-tilt{transition:transform .25s ease-out}
+.s-ghost{visibility:hidden}
+.s-root button{transition:transform .12s ease-out}.s-root button:active{transform:scale(.97)}
+.s-root :focus-visible{outline:2px solid #E3412B;outline-offset:3px;border-radius:6px}
+.s-skip{position:absolute;left:16px;top:-60px;z-index:60;padding:10px 16px;border-radius:10px;background:var(--fg);color:var(--bg) !important;font-size:14px;transition:top .2s}.s-skip:focus{top:12px}
+.s-link{background:linear-gradient(currentColor,currentColor) 0 100%/0 1px no-repeat;padding-bottom:2px;transition:background-size .25s ease}.s-link:hover{background-size:100% 1px}
+.s-btn{transition:transform .15s ease,box-shadow .2s ease}.s-btn:hover{transform:translateY(-1px);box-shadow:0 8px 20px var(--shadow)}
+.s-tl-card{transition:transform .25s ease,box-shadow .25s ease}.s-tl-card:hover{transform:translateX(4px);box-shadow:0 14px 34px var(--shadow)}
+.s-root summary{cursor:pointer;list-style:none}.s-root summary::-webkit-details-marker{display:none}
+.s-root details[open] .s-chev{transform:rotate(90deg)}.s-chev{transition:transform .2s ease}
+@supports (animation-timeline: view()){
+.s-reveal{animation:s-reveal linear both;animation-timeline:view();animation-range:entry 0% entry 45%}
+@keyframes s-reveal{from{opacity:0;transform:translateY(36px)}to{opacity:1;transform:none}}
+.s-tl-item{animation:s-tl linear both;animation-timeline:view();animation-range:cover 20% cover 80%}
+@keyframes s-tl{0%{opacity:.4}40%,60%{opacity:1}100%{opacity:.4}}
+.s-tl-dot{animation:s-dot linear both;animation-timeline:view();animation-range:cover 30% cover 70%}
+@keyframes s-dot{0%,100%{background-color:var(--line-2);transform:scale(1)}50%{background-color:#E3412B;transform:scale(1.35)}}
+.s-progress{animation:s-prog linear both;animation-timeline:scroll(root)}
+@keyframes s-prog{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+}
+.s-grid4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr))}
+.s-show-sm{display:none}
+@keyframes s-menu{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}
+.s-menu{animation:s-menu .25s ease-out both}
+@media (max-width: 720px){.s-show-sm{display:inline-flex !important}}
+@media (min-width: 721px){.s-menu{display:none}}
+@keyframes s-gping{0%{transform:scale(1);opacity:.6}100%{transform:scale(3);opacity:0}}
+.s-gping{transform-box:fill-box;transform-origin:center;animation:s-gping 2s ease-out infinite}
+.s-git text{font-family:'JetBrains Mono',monospace}
+@supports (animation-timeline: view()){
+.s-draw{stroke-dasharray:1400;stroke-dashoffset:1400;animation:s-draw linear both;animation-timeline:view();animation-range:entry 0% cover 45%}
+@keyframes s-draw{to{stroke-dashoffset:0}}
+.s-cm{animation:s-cm linear both;animation-timeline:view();animation-range:entry 20% cover 45%}
+@keyframes s-cm{from{opacity:0}to{opacity:1}}
+}
+@media (prefers-reduced-motion: reduce){.s-gping,.s-draw,.s-cm{animation:none;stroke-dashoffset:0}}
+@media (max-width: 960px){.s-grid4{grid-template-columns:repeat(2,minmax(0,1fr)) !important}}
+@media (max-width: 860px){.s-sticky{position:static !important}}
+@media (max-width: 720px){
+.s-hide-sm{display:none !important}
+.s-sec{padding-top:96px !important;padding-bottom:96px !important}
+.s-pad{padding:28px 24px !important}
+.s-cmd{font-size:13px !important}
+}
+@media (max-width: 520px){.s-grid4{grid-template-columns:minmax(0,1fr) !important}}
+@media (prefers-reduced-motion: reduce){
+.s-up,.s-marquee,.s-spin,.s-caret,.s-match,.s-slide,.s-reveal,.s-tl-item,.s-tl-dot,.s-progress,.s-beacon::after{animation:none}
+.s-tilt,.s-btn,.s-tl-card,.s-link,.s-root button{transition:none}
+}
+</style>
+</helmet>
+<div class="s-root" data-theme="{{theme}}" lang="{{t.lang}}" style="font-family: 'Noto Sans JP', 'Inter', system-ui, sans-serif; overflow-x: clip; position: relative">
+<a class="s-skip" href="#top">{{t.skip}}</a>
+<div class="s-progress" aria-hidden="true" style="position: fixed; top: 0; left: 0; width: 100%; height: 2px; background: {{accent}}; transform-origin: 0 50%; transform: scaleX(0); z-index: 45"></div>
+
+<header style="position: sticky; top: 0; z-index: 20; background: var(--nav); backdrop-filter: saturate(180%) blur(18px); -webkit-backdrop-filter: saturate(180%) blur(18px); border-bottom: 1px solid var(--line)">
+<nav style="max-width: 1200px; margin: 0 auto; padding: 0 24px; min-height: 56px; display: flex; align-items: center; justify-content: space-between; gap: 16px" aria-label="{{t.nav}}">
+<a href="#top" aria-label="Senri" style="display: flex; align-items: center; min-height: 44px"><svg width="76" height="24" viewBox="2.8 -48.82 155.42 49.38" aria-hidden="true" style="display: block"><path style="fill: var(--fg)" d="M15.51 0.56Q11.7 0.56 8.85 -0.64Q5.99 -1.85 4.4 -3.98Q2.8 -6.1 2.8 -8.96H11.03Q11.03 -7.39 12.21 -6.61Q13.38 -5.82 15.51 -5.82H17.98Q20.27 -5.82 21.53 -6.61Q22.79 -7.39 22.79 -8.85Q22.79 -10.25 21.78 -10.89Q20.78 -11.54 18.7 -11.76L11.65 -12.6Q7.56 -13.1 5.38 -15.65Q3.19 -18.2 3.19 -22.01Q3.19 -31.36 15.18 -31.36H17.81Q23.46 -31.36 26.82 -28.9Q30.18 -26.43 30.18 -22.29H21.95Q21.95 -23.63 20.86 -24.36Q19.77 -25.09 17.81 -25.09H15.18Q13.22 -25.09 12.21 -24.36Q11.2 -23.63 11.2 -22.34Q11.2 -21.06 12.18 -20.61Q13.16 -20.16 14.95 -19.94L21.67 -19.1Q26.21 -18.54 28.5 -15.9Q30.8 -13.27 30.8 -8.96Q30.8 -4.42 27.55 -1.93Q24.3 0.56 17.98 0.56Z M48.78 0.56Q44.69 0.56 41.64 -0.98Q38.58 -2.52 36.93 -5.29Q35.28 -8.06 35.28 -11.76V-19.04Q35.28 -22.74 36.93 -25.51Q38.58 -28.28 41.64 -29.82Q44.69 -31.36 48.78 -31.36Q52.86 -31.36 55.86 -29.82Q58.86 -28.28 60.51 -25.51Q62.16 -22.74 62.16 -19.04V-13.33H43.29V-11.76Q43.29 -8.85 44.66 -7.5Q46.03 -6.16 48.78 -6.16Q50.57 -6.16 51.91 -6.72Q53.26 -7.28 53.48 -8.4H61.71Q60.82 -4.37 57.29 -1.9Q53.76 0.56 48.78 0.56ZM43.29 -19.04V-18.31L54.15 -18.42V-19.15Q54.15 -22.01 52.84 -23.58Q51.52 -25.14 48.78 -25.14Q46.03 -25.14 44.66 -23.52Q43.29 -21.9 43.29 -19.04Z M67.54 0V-30.8H75.66V-25.2Q76.33 -28 78.54 -29.68Q80.75 -31.36 83.94 -31.36Q88.42 -31.36 91.14 -28.22Q93.86 -25.09 93.86 -19.88V0H85.46V-19.04Q85.46 -21.45 84.2 -22.76Q82.94 -24.08 80.7 -24.08Q78.46 -24.08 77.2 -22.76Q75.94 -21.45 75.94 -19.04V0Z M100.58 0V-30.8H108.7V-24.98Q109.37 -27.94 111.64 -29.65Q113.9 -31.36 117.32 -31.36Q121.97 -31.36 124.6 -28.22Q127.23 -25.09 127.23 -19.6V-16.52H118.83V-19.04Q118.83 -21.45 117.54 -22.76Q116.26 -24.08 113.9 -24.08Q111.55 -24.08 110.26 -22.6Q108.98 -21.11 108.98 -18.37V0Z"></path><polygon fill="{{accent}}" points="127.65,-0.29 137.36,-0.29 151.92,-34.26 142.21,-34.26"></polygon><polygon fill="{{accent}}" points="144.73,-40.09 154.44,-40.09 158.22,-48.82 148.52,-48.82"></polygon></svg></a>
+<div style="display: flex; align-items: center; gap: 24px; font-size: 14px">
+<a class="s-link" href="#docs">{{t.docs}}</a>
+<a class="s-link s-hide-sm" href="#timeline">{{t.navTl}}</a>
+<a class="s-link s-hide-sm" href="#blog">{{t.navBlog}}</a>
+<a class="s-link s-hide-sm" href="https://github.com/Senrijs/Senri">GitHub</a>
+<button type="button" onClick="{{openSearch}}" aria-label="{{t.search}}" aria-haspopup="dialog" aria-keyshortcuts="Meta+K Control+K" style="display: inline-flex; align-items: center; gap: 8px; min-height: 36px; padding: 0 8px 0 12px; border-radius: 999px; border: 1px solid var(--line-2); background: var(--glass); color: var(--muted); font-size: 13px; cursor: pointer"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-4-4"></path></svg><span class="s-hide-sm">{{t.searchShort}}</span><kbd class="s-hide-sm" style="padding: 2px 6px; border-radius: 6px; border: 1px solid var(--line-2); font-family: 'JetBrains Mono', monospace; font-size: 11px">⌘K</kbd></button>
+<button type="button" class="s-hide-sm" onClick="{{toggleLang}}" aria-label="{{t.langAria}}" style="min-width: 44px; min-height: 36px; padding: 0 10px; border-radius: 999px; border: 1px solid var(--line-2); background: transparent; color: var(--fg-2); font-family: 'JetBrains Mono', monospace; font-size: 12px; cursor: pointer">{{t.langBtn}}</button>
+<button type="button" class="s-hide-sm" onClick="{{toggleTheme}}" aria-label="{{themeAria}}" style="width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--line-2); background: transparent; color: var(--fg-2); cursor: pointer; display: flex; align-items: center; justify-content: center"><sc-if value="{{isDark}}" hint-placeholder-val="{{ false }}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2"></path><path d="M12 20v2"></path><path d="M4.9 4.9l1.4 1.4"></path><path d="M17.7 17.7l1.4 1.4"></path><path d="M2 12h2"></path><path d="M20 12h2"></path><path d="M4.9 19.1l1.4-1.4"></path><path d="M17.7 6.3l1.4-1.4"></path></svg></sc-if><sc-if value="{{isLight}}" hint-placeholder-val="{{ true }}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"></path></svg></sc-if></button>
+<button type="button" class="s-show-sm" onClick="{{toggleMenu}}" aria-expanded="{{menuExp}}" aria-controls="s-menu" aria-label="{{menuAria}}" style="width: 44px; height: 44px; border-radius: 12px; border: 1px solid var(--line-2); background: var(--glass); color: var(--fg); cursor: pointer; align-items: center; justify-content: center"><sc-if value="{{menuClosed}}" hint-placeholder-val="{{ true }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16"></path><path d="M4 12h16"></path><path d="M4 17h16"></path></svg></sc-if><sc-if value="{{menuOpen}}" hint-placeholder-val="{{ false }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12"></path><path d="M18 6L6 18"></path></svg></sc-if></button>
+</div>
+</nav>
+<sc-if value="{{menuOpen}}" hint-placeholder-val="{{ false }}"><div id="s-menu" class="s-menu" style="position: absolute; left: 0; right: 0; top: 100%; padding: 8px 16px 20px; background: var(--glass-strong); backdrop-filter: blur(24px) saturate(160%); -webkit-backdrop-filter: blur(24px) saturate(160%); border-bottom: 1px solid var(--line); box-shadow: 0 24px 48px var(--shadow)">
+<ul style="margin: 0; padding: 0; list-style: none">
+<li><a href="#docs" onClick="{{closeMenu}}" style="display: flex; align-items: center; min-height: 52px; padding: 0 8px; font-size: 17px; font-weight: 700; border-bottom: 1px solid var(--line)">{{t.docs}}</a></li>
+<li><a href="#timeline" onClick="{{closeMenu}}" style="display: flex; align-items: center; min-height: 52px; padding: 0 8px; font-size: 17px; font-weight: 700; border-bottom: 1px solid var(--line)">{{t.navTl}}</a></li>
+<li><a href="#blog" onClick="{{closeMenu}}" style="display: flex; align-items: center; min-height: 52px; padding: 0 8px; font-size: 17px; font-weight: 700; border-bottom: 1px solid var(--line)">{{t.navBlog}}</a></li>
+<li><a href="https://github.com/Senrijs/Senri" style="display: flex; align-items: center; min-height: 52px; padding: 0 8px; font-size: 17px; font-weight: 700; border-bottom: 1px solid var(--line)">GitHub</a></li>
+</ul>
+<div style="display: flex; gap: 8px; margin-top: 16px">
+<button type="button" onClick="{{toggleLang}}" aria-label="{{t.langAria}}" style="flex: 1 1 0; min-height: 44px; border-radius: 12px; border: 1px solid var(--line-2); background: transparent; color: var(--fg); font-size: 14px; cursor: pointer">{{t.fLang}}</button>
+<button type="button" onClick="{{toggleTheme}}" aria-label="{{themeAria}}" style="flex: 1 1 0; min-height: 44px; border-radius: 12px; border: 1px solid var(--line-2); background: transparent; color: var(--fg); font-size: 14px; cursor: pointer">{{themeLabel}}</button>
+</div>
+</div></sc-if>
+</header>
+
+<!-- ヒーロー -->
+<section id="top" onMouseMove="{{heroMove}}" onMouseLeave="{{heroLeave}}" style="position: relative; isolation: isolate; overflow: hidden; padding: 112px 24px 96px; text-align: center">
+<canvas ref="{{cvRef}}" aria-hidden="true" style="position: absolute; inset: 0; width: 100%; height: 100%; z-index: -1; pointer-events: none"></canvas>
+<div aria-hidden="true" style="position: absolute; left: 50%; bottom: -160px; width: 1000px; height: 520px; transform: translateX(-50%); background: radial-gradient(closest-side, var(--glow), rgba(227,65,43,0)); z-index: -1; pointer-events: none"></div>
+<a href="#timeline" class="s-up" style="display: inline-flex; align-items: center; gap: 10px; padding: 6px 14px; border-radius: 999px; border: 1px solid var(--glass-line); background: var(--glass); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--fg-2)"><span class="s-beacon" style="background: var(--green)"></span>{{t.badge}}</a>
+<h1 class="s-up d1" style="margin: 28px auto 0; max-width: 980px; font-family: 'Inter', 'Noto Sans JP', sans-serif; font-weight: 800; font-size: clamp(42px, 8vw, 108px); line-height: 1.02; letter-spacing: -0.05em">{{t.h1a}}<br>{{t.h1b}}</h1>
+<p class="s-up d2" style="margin: 28px auto 0; max-width: 620px; font-size: clamp(16px, 1.6vw, 19px); line-height: 1.8; color: var(--muted)">{{t.heroP}}</p>
+<div class="s-up d3" style="margin-top: 40px; display: flex; justify-content: center; gap: 4px; flex-wrap: wrap" role="group" aria-label="{{t.pmGroup}}">
+<sc-for list="{{pms}}" as="pm" hint-placeholder-count="5"><button type="button" onClick="{{pm.pick}}" aria-pressed="{{pm.pressed}}" style="min-height: 36px; padding: 0 14px; border: 0; border-radius: 999px; background: {{pm.bg}}; color: {{pm.fg}}; font-family: 'JetBrains Mono', monospace; font-size: 13px; cursor: pointer">{{pm.label}}</button></sc-for>
+</div>
+<div class="s-up d3" style="margin-top: 12px; display: flex; justify-content: center; align-items: center; gap: 12px; flex-wrap: wrap">
+<button type="button" class="s-cmd" onClick="{{copy}}" aria-label="{{t.copyAria}}" style="display: inline-flex; align-items: center; gap: 12px; max-width: 100%; min-height: 48px; padding: 8px 20px; box-sizing: border-box; border-radius: 12px; border: 1px solid var(--glass-line); background: var(--glass); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); color: var(--fg); font-family: 'JetBrains Mono', monospace; font-size: 15px; text-align: left; overflow-wrap: anywhere; cursor: pointer"><span style="color: var(--muted-2)">$</span>{{cmd}}<sc-if value="{{copied}}" hint-placeholder-val="{{ false }}"><span style="font-size: 13px; color: var(--green)">Copied!</span></sc-if><sc-if value="{{notCopied}}" hint-placeholder-val="{{ true }}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; color: var(--muted-2)"><rect x="9" y="9" width="11" height="11" rx="2"></rect><path d="M5 15V5a1 1 0 0 1 1-1h10"></path></svg></sc-if></button>
+<a class="s-btn" href="#docs" style="display: inline-flex; align-items: center; min-height: 48px; padding: 0 24px; border-radius: 12px; background: var(--fg); color: var(--bg); font-weight: 700; font-size: 15px">{{t.docs}}</a>
+</div>
+
+<div class="s-up d3" style="margin-top: 20px; display: flex; justify-content: center; align-items: center; gap: 8px 18px; flex-wrap: wrap; font-size: 13px; color: var(--muted)">
+<a class="s-link" href="https://github.com/Senrijs/Senri/stargazers" aria-label="{{t.stars}}: 3" style="display: inline-flex; align-items: center; gap: 6px; color: var(--muted)"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"></path></svg><b style="color: var(--fg)">3</b> GitHub</a>
+<span aria-hidden="true">·</span>
+<a class="s-link" href="https://www.npmjs.com/package/@senrijs/senri" aria-label="{{t.dl}}" style="display: inline-flex; align-items: center; gap: 6px; color: var(--muted)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v12"></path><path d="M6 11l6 6 6-6"></path><path d="M5 20h14"></path></svg><b style="color: var(--fg)">[DL]</b> {{t.perWeek}}</a>
+</div>
+
+<div class="s-up d4" style="margin: 48px auto 0; max-width: 1080px; text-align: left">
+<div role="tablist" aria-label="{{t.demo}}" style="display: flex; gap: 4px; margin: 0 0 12px 4px">
+<button type="button" role="tab" aria-selected="{{tabPlaySel}}" onClick="{{showPlay}}" style="min-height: 36px; padding: 0 14px; border: 0; border-radius: 999px; background: {{tabPlayBg}}; color: {{tabPlayFg}}; font-size: 13px; cursor: pointer">{{t.pgTab}}</button>
+<button type="button" role="tab" aria-selected="{{tabDashSel}}" onClick="{{showDash}}" style="min-height: 36px; padding: 0 14px; border: 0; border-radius: 999px; background: {{tabDashBg}}; color: {{tabDashFg}}; font-size: 13px; cursor: pointer">{{t.dashTab}}</button>
+</div>
+<sc-if value="{{tabPlay}}" hint-placeholder-val="{{ true }}"><div role="tabpanel" aria-label="{{t.pgTab}}" style="border-radius: 16px; border: 1px solid var(--glass-line); background: var(--glass); backdrop-filter: blur(24px) saturate(160%); -webkit-backdrop-filter: blur(24px) saturate(160%); overflow: hidden; box-shadow: inset 0 1px 0 var(--glass-hl), 0 12px 32px var(--shadow)">
+<div style="display: flex; align-items: center; gap: 8px; padding: 12px 16px; border-bottom: 1px solid var(--line)">
+<span style="width: 11px; height: 11px; border-radius: 50%; background: var(--line-2)"></span><span style="width: 11px; height: 11px; border-radius: 50%; background: var(--line-2)"></span><span style="width: 11px; height: 11px; border-radius: 50%; background: var(--line-2)"></span>
+<span style="margin-left: 8px; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--muted)">app.ts</span>
+<span style="margin-left: auto; display: inline-flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted)"><span class="s-beacon" style="background: var(--green); width: 6px; height: 6px"></span>{{t.pgNote}}</span>
+</div>
+<div style="display: flex; flex-wrap: wrap">
+<div style="flex: 1 1 460px; min-width: 0; background: var(--code)">
+<textarea spellcheck="false" aria-label="{{t.pgCode}}" value="{{code}}" onChange="{{onCode}}" style="display: block; width: 100%; height: 400px; box-sizing: border-box; margin: 0; padding: 20px 24px; border: 0; resize: none; background: transparent; color: #D7DAE0; font-family: 'JetBrains Mono', monospace; font-size: 13px; line-height: 1.75; tab-size: 2; white-space: pre; overflow: auto"></textarea>
+</div>
+<div style="flex: 1 1 380px; min-width: 0; padding: 20px; box-sizing: border-box; display: flex; flex-direction: column; gap: 12px; font-family: 'JetBrains Mono', monospace; font-size: 13px">
+<form onSubmit="{{send}}" style="display: flex; gap: 8px">
+<select aria-label="{{t.pgMethod}}" value="{{method}}" onChange="{{onMethod}}" style="min-height: 40px; padding: 0 8px; border-radius: 10px; border: 1px solid var(--line-2); background: var(--bg); color: var(--fg); font: inherit"><option value="GET">GET</option><option value="POST">POST</option><option value="PUT">PUT</option><option value="DELETE">DELETE</option></select>
+<input type="text" aria-label="{{t.pgPath}}" value="{{path}}" onChange="{{onPath}}" style="flex: 1 1 auto; min-width: 0; min-height: 40px; padding: 0 12px; box-sizing: border-box; border-radius: 10px; border: 1px solid var(--line-2); background: var(--bg); color: var(--fg); font: inherit">
+<button type="submit" class="s-btn" style="min-height: 40px; padding: 0 16px; border: 0; border-radius: 10px; background: var(--fg); color: var(--bg); font-family: 'Noto Sans JP', sans-serif; font-size: 13px; font-weight: 700; cursor: pointer">{{t.send}}</button>
+</form>
+<div style="display: flex; gap: 6px; flex-wrap: wrap">
+<sc-for list="{{quick}}" as="q" hint-placeholder-count="4"><button type="button" onClick="{{q.go}}" style="min-height: 32px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--line); background: transparent; color: var(--fg-2); font: inherit; font-size: 12px; cursor: pointer">{{q.label}}</button></sc-for>
+</div>
+<div aria-live="polite" style="flex: 1 1 auto; min-height: 200px; border-radius: 12px; border: 1px solid var(--line); background: var(--bg); overflow: hidden; display: flex; flex-direction: column">
+<div style="display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--line)"><span style="font-size: 11px; letter-spacing: 0.06em; color: var(--muted)">{{t.resp}}</span><span style="margin-left: auto; color: {{resColor}}; font-weight: 700">{{resStatus}}</span><span style="color: var(--muted)">{{resMs}}</span></div>
+<sc-if value="{{resType}}" hint-placeholder-val="{{ true }}"><div style="padding: 8px 14px 0; color: var(--muted); font-size: 12px">content-type: {{resType}}</div></sc-if>
+<sc-if value="{{resLoc}}" hint-placeholder-val="{{ false }}"><div style="padding: 8px 14px 0; color: var(--muted); font-size: 12px; overflow-wrap: anywhere">location: {{resLoc}}</div></sc-if>
+<pre style="flex: 1 1 auto; margin: 0; padding: 10px 14px 14px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--fg)">{{resBody}}</pre>
+<sc-if value="{{hasErr}}" hint-placeholder-val="{{ false }}"><div style="padding: 0 14px 14px"><button type="button" onClick="{{openErr}}" style="min-height: 36px; padding: 0 12px; border-radius: 8px; border: 1px solid {{accent}}; background: var(--hl); color: var(--accent-text); font-family: 'Noto Sans JP', sans-serif; font-size: 13px; cursor: pointer">{{t.openErr}} →</button></div></sc-if>
+</div>
+<button type="button" onClick="{{boom}}" style="align-self: flex-start; display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 14px; border-radius: 10px; border: 1px dashed var(--line-3); background: transparent; color: var(--fg-2); font-family: 'Noto Sans JP', sans-serif; font-size: 13px; cursor: pointer"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l9 16H3z"></path><path d="M12 10v4"></path><path d="M12 17h.01"></path></svg>{{t.boom}}</button>
+</div>
+</div>
+</div></sc-if>
+<sc-if value="{{tabDash}}" hint-placeholder-val="{{ false }}"><div role="tabpanel" aria-label="{{t.dashTab}}" style="border-radius: 16px; border: 1px solid var(--glass-line); background: var(--glass); backdrop-filter: blur(24px) saturate(160%); -webkit-backdrop-filter: blur(24px) saturate(160%); overflow: hidden; box-shadow: inset 0 1px 0 var(--glass-hl), 0 12px 32px var(--shadow)">
+<div style="display: flex; align-items: center; gap: 8px; padding: 12px 16px; border-bottom: 1px solid var(--line)">
+<span style="width: 11px; height: 11px; border-radius: 50%; background: var(--line-2)"></span><span style="width: 11px; height: 11px; border-radius: 50%; background: var(--line-2)"></span><span style="width: 11px; height: 11px; border-radius: 50%; background: var(--line-2)"></span>
+<span style="margin: 0 auto; display: inline-flex; align-items: center; gap: 8px; padding: 4px 14px; border-radius: 8px; background: var(--surface); font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--muted)"><span class="s-beacon" style="background: {{accent}}; width: 6px; height: 6px"></span>localhost:3000/_senri</span>
+</div>
+<div style="display: flex; flex-wrap: wrap; font-family: 'JetBrains Mono', monospace; font-size: 13px">
+<ul aria-label="{{t.reqList}}" style="flex: 1 1 260px; min-width: 0; margin: 0; padding: 8px 0; list-style: none; border-right: 1px solid var(--line)">
+<li style="display: flex; gap: 12px; padding: 12px 20px; background: var(--hl); border-left: 2px solid {{accent}}"><span style="color: var(--green); width: 48px">GET</span><span style="flex: 1 1 auto">/users/42</span><span style="color: var(--muted)">200</span></li>
+<li style="display: flex; gap: 12px; padding: 12px 20px; border-left: 2px solid transparent"><span style="color: var(--blue); width: 48px">POST</span><span style="flex: 1 1 auto">/users</span><span style="color: var(--muted)">201</span></li>
+<li style="display: flex; gap: 12px; padding: 12px 20px; border-left: 2px solid transparent"><span style="color: var(--green); width: 48px">GET</span><span style="flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">/never-gonna-give-you-up</span><span style="color: var(--muted)">302</span></li>
+<li style="display: flex; gap: 12px; padding: 12px 20px; border-left: 2px solid transparent"><span style="color: var(--green); width: 48px">GET</span><span style="flex: 1 1 auto">/nope</span><span style="color: var(--accent-text)">404</span></li>
+<li style="display: flex; gap: 12px; padding: 12px 20px; border-left: 2px solid transparent"><span style="color: var(--green); width: 48px">GET</span><span style="flex: 1 1 auto">/files/report.pdf</span><span style="color: var(--muted)">200</span></li>
+</ul>
+<div style="flex: 999 1 480px; min-width: 0; padding: 22px 28px 28px; display: flex; flex-direction: column; gap: 18px">
+<dl style="margin: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 14px 24px">
+<div><dt style="font-size: 11px; letter-spacing: 0.06em; color: var(--muted)">{{t.kvMethod}}</dt><dd style="margin: 4px 0 0; color: var(--green); font-weight: 700">GET</dd></div>
+<div><dt style="font-size: 11px; letter-spacing: 0.06em; color: var(--muted)">{{t.kvPath}}</dt><dd style="margin: 4px 0 0">/users/42</dd></div>
+<div><dt style="font-size: 11px; letter-spacing: 0.06em; color: var(--muted)">{{t.kvRoute}}</dt><dd style="margin: 4px 0 0">/users/<span style="color: var(--accent-text)">:id</span></dd></div>
+<div><dt style="font-size: 11px; letter-spacing: 0.06em; color: var(--muted)">{{t.kvStatus}}</dt><dd style="margin: 4px 0 0; display: flex; align-items: center; gap: 8px"><span class="s-beacon" style="background: var(--green); width: 6px; height: 6px"></span>200</dd></div>
+<div><dt style="font-size: 11px; letter-spacing: 0.06em; color: var(--muted)">{{t.kvTime}}</dt><dd style="margin: 4px 0 0">3 ms</dd></div>
+<div><dt style="font-size: 11px; letter-spacing: 0.06em; color: var(--muted)">{{t.kvId}}</dt><dd style="margin: 4px 0 0; color: var(--muted)">7f3a9c</dd></div>
+</dl>
+<div style="display: flex; flex-direction: column; gap: 10px; padding-top: 16px; border-top: 1px solid var(--line)">
+<div style="display: grid; grid-template-columns: 120px minmax(0, 1fr); align-items: center; gap: 16px"><span style="color: var(--muted)">requestId</span><div style="height: 18px; border-radius: 5px; background: var(--bar1); width: 100%"></div></div>
+<div style="display: grid; grid-template-columns: 120px minmax(0, 1fr); align-items: center; gap: 16px"><span style="color: var(--muted)">cors</span><div style="height: 18px; border-radius: 5px; background: var(--bar2); margin-left: 4%; width: 92%"></div></div>
+<div style="display: grid; grid-template-columns: 120px minmax(0, 1fr); align-items: center; gap: 16px"><span style="color: var(--muted)">secureHeaders</span><div style="height: 18px; border-radius: 5px; background: var(--bar3); margin-left: 8%; width: 84%"></div></div>
+<div style="display: grid; grid-template-columns: 120px minmax(0, 1fr); align-items: center; gap: 16px"><span style="color: var(--muted)">auth</span><div style="height: 18px; border-radius: 5px; background: var(--bar4); margin-left: 12%; width: 76%"></div></div>
+<div style="display: grid; grid-template-columns: 120px minmax(0, 1fr); align-items: center; gap: 16px"><span style="font-weight: 700">handler</span><div style="height: 18px; border-radius: 5px; background: {{accent}}; margin-left: 18%; width: 58%"></div></div>
+</div>
+</div>
+</div>
+</div></sc-if>
+</div>
+</section>
+
+<!-- ランタイム -->
+<section style="border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 26px 0; overflow: hidden" aria-label="{{t.runtimes}}">
+<div class="s-marquee" style="display: flex; gap: 72px; width: max-content; font-family: 'Inter', sans-serif; font-weight: 600; font-size: 20px; color: var(--muted-2); white-space: nowrap">
+<span>Bun</span><span>Node.js</span><span>Deno</span><span>Cloudflare Workers</span><span>Browser</span><span style="font-family: 'JetBrains Mono', monospace; font-size: 14px; color: var(--accent-text)">● Web Standard</span>
+<span aria-hidden="true">Bun</span><span aria-hidden="true">Node.js</span><span aria-hidden="true">Deno</span><span aria-hidden="true">Cloudflare Workers</span><span aria-hidden="true">Browser</span><span aria-hidden="true" style="font-family: 'JetBrains Mono', monospace; font-size: 14px; color: var(--accent-text)">● Web Standard</span>
+</div>
+</section>
+
+<!-- 数字 -->
+<section style="padding: 96px 24px 0">
+<div class="s-grid4" style="max-width: 1200px; margin: 0 auto; gap: 0; border-top: 1px solid var(--line)">
+<div style="padding: 36px 16px 0; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 10px"><span style="font-family: 'Inter', sans-serif; font-weight: 800; font-size: 44px; letter-spacing: -0.04em; line-height: 1">5</span><span style="font-size: 13px; color: var(--muted)">{{t.nRt}}</span></div>
+<div style="padding: 36px 16px 0; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 10px"><span style="font-family: 'Inter', sans-serif; font-weight: 800; font-size: 44px; letter-spacing: -0.04em; line-height: 1">16 KB</span><span style="font-size: 13px; color: var(--muted)">{{t.nSize}}</span></div>
+<div style="padding: 36px 16px 0; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 10px"><span style="font-family: 'Inter', sans-serif; font-weight: 800; font-size: 44px; letter-spacing: -0.04em; line-height: 1">1,484</span><span style="font-size: 13px; color: var(--muted)">{{t.nTests}}</span></div>
+<div style="padding: 36px 16px 0; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 10px"><span style="font-family: 'Inter', sans-serif; font-weight: 800; font-size: 44px; letter-spacing: -0.04em; line-height: 1">MIT</span><span style="font-size: 13px; color: var(--muted)">{{t.nLic}}</span></div>
+</div>
+</section>
+
+<!-- CLI -->
+<section class="s-sec" style="position: relative; isolation: isolate; overflow: hidden; padding: 140px 24px">
+<div aria-hidden="true" style="position: absolute; right: -6%; top: 10%; width: 720px; height: 620px; background: radial-gradient(closest-side, var(--glow), rgba(227,65,43,0)); z-index: -1; pointer-events: none"></div>
+<div style="max-width: 1200px; margin: 0 auto; display: flex; flex-wrap: wrap; gap: 56px; align-items: center">
+<h2 class="s-reveal" style="flex: 1 1 320px; min-width: 0; margin: 0; font-family: 'Inter', 'Noto Sans JP', sans-serif; font-weight: 800; font-size: clamp(34px, 4.4vw, 56px); line-height: 1.1; letter-spacing: -0.04em">{{t.cliA}}<br>{{t.cliB}}</h2>
+<div role="img" aria-label="{{t.cliAria}}" style="flex: 1 1 560px; min-width: 0; border-radius: 16px; background: rgba(14,16,19,0.9); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.08); overflow: hidden; box-shadow: 0 24px 60px var(--shadow)">
+<div style="display: flex; align-items: center; gap: 8px; padding: 14px 18px; border-bottom: 1px solid rgba(255,255,255,0.06)">
+<span style="width: 11px; height: 11px; border-radius: 50%; background: #3A3D44"></span><span style="width: 11px; height: 11px; border-radius: 50%; background: #3A3D44"></span><span style="width: 11px; height: 11px; border-radius: 50%; background: #3A3D44"></span>
+</div>
+<div aria-hidden="true" style="height: 470px; box-sizing: border-box; padding: 22px 24px; font-family: 'JetBrains Mono', monospace; font-size: 13px; line-height: 1.85; color: #D7DAE0; overflow: hidden">
+<sc-for list="{{intro}}" as="line" hint-placeholder-count="2"><div style="color: #F2F3F5; white-space: pre">{{line.text}}</div></sc-for>
+<sc-if value="{{booting}}" hint-placeholder-val="{{ false }}"><div style="display: flex; align-items: center; gap: 10px; color: #8A9099"><svg class="s-spin" width="13" height="13" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="3"></circle><path d="M12 3a9 9 0 0 1 9 9" fill="none" stroke="#D7DAE0" stroke-width="3" stroke-linecap="round"></path></svg>starting</div></sc-if>
+<sc-if value="{{ready}}" hint-placeholder-val="{{ false }}"><div style="white-space: pre">  <b style="color: #F2F3F5">senr</b><b style="color: #E3412B">/</b>  <span style="color: #7FD6A0">ready</span>  http://localhost:3000  <span style="color: #6B7079">(PORT)</span></div>
+<div style="height: 12px"></div>
+<div style="white-space: pre">    <span style="display: inline-block; width: 8ch; color: #7FD6A0">GET</span>/</div>
+<div style="white-space: pre">    <span style="display: inline-block; width: 8ch; color: #7FD6A0">GET</span>/files/<span style="color: #7DD3E8">*</span></div>
+<div style="white-space: pre">    <span style="display: inline-block; width: 8ch; color: #7FD6A0">GET</span>/never-gonna-give-you-up</div>
+<div style="white-space: pre">    <span style="display: inline-block; width: 8ch; color: #7DD3E8">POST</span>/users</div>
+<div style="white-space: pre">    <span style="display: inline-block; width: 8ch; color: #FF6B5E">DELETE</span>/users/<span style="color: #7DD3E8">:id</span></div>
+<div style="white-space: pre">    <span style="display: inline-block; width: 8ch; color: #7FD6A0">GET</span>/users/<span style="color: #7DD3E8">:id</span></div>
+<div style="height: 12px"></div></sc-if>
+<sc-for list="{{logs}}" as="log" hint-placeholder-count="0"><div style="display: flex; white-space: pre"><span style="color: #6B7079; width: 9ch; flex: none">{{log.time}}</span><span style="color: {{log.mcolor}}; width: 8ch; flex: none">{{log.method}}</span><span style="flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis">{{log.path}}</span><span style="color: {{log.scolor}}; width: 5ch; flex: none; text-align: right">{{log.status}}</span><span style="color: {{log.tcolor}}; width: 7ch; flex: none; text-align: right">{{log.ms}}</span></div><sc-if value="{{log.err}}" hint-placeholder-val="{{ false }}"><div style="color: #FF6B5E; white-space: pre">  Error: database connection lost</div><div style="color: #FF6B5E; white-space: pre">    at &lt;anonymous&gt; (src/routes/users.ts:12:11)</div></sc-if></sc-for>
+<span class="s-caret" style="display: inline-block; width: 8px; height: 16px; background: #D7DAE0; vertical-align: middle"></span>
+</div>
+</div>
+</div>
+</section>
+
+<!-- 層 -->
+<section class="s-sec" style="background: var(--surface); padding: 140px 24px">
+<div style="max-width: 1200px; margin: 0 auto; display: flex; flex-wrap: wrap; gap: 56px; align-items: center">
+<h2 class="s-reveal" style="flex: 1 1 320px; min-width: 0; margin: 0; font-family: 'Inter', 'Noto Sans JP', sans-serif; font-weight: 800; font-size: clamp(32px, 4vw, 52px); line-height: 1.12; letter-spacing: -0.04em">{{t.layA}}<br>{{t.layB}}</h2>
+<div role="img" aria-label="{{t.layAria}}" style="flex: 1 1 560px; min-width: 0; display: flex; flex-direction: column; align-items: center; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--muted)">
+<div style="padding: 10px 18px; border: 1px dashed var(--line-3)">Ippo <span style="color: var(--muted-2)">· {{t.dev}}</span></div>
+<div style="width: 1px; height: 36px; background: var(--line-3)"></div>
+<div style="align-self: stretch; position: relative; border: 1px solid var(--line-3); padding: 40px 20px 24px">
+<span style="position: absolute; top: 12px; left: 14px; letter-spacing: 0.08em">RUNTIME</span>
+<span class="s-hide-sm" style="position: absolute; top: 12px; right: 14px; color: var(--muted-2)">Bun / Node.js / Deno / Workers</span>
+<div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap">
+<span style="color: var(--fg)">Request</span>
+<div style="flex: 1 1 300px; min-width: 0; position: relative; border: 1.5px solid {{accent}}; background: var(--bg); padding: 36px 16px 18px">
+<span style="position: absolute; top: 10px; left: 12px; color: var(--accent-text); letter-spacing: 0.08em">SENRI</span>
+<div style="position: relative; display: flex; gap: 6px; flex-wrap: wrap">
+<span style="flex: 1 1 0; min-width: 72px; padding: 10px 0; text-align: center; border: 1px solid var(--line-2); color: var(--fg-2)">requestId</span>
+<span style="flex: 1 1 0; min-width: 72px; padding: 10px 0; text-align: center; border: 1px solid var(--line-2); color: var(--fg-2)">cors</span>
+<span style="flex: 1 1 0; min-width: 72px; padding: 10px 0; text-align: center; border: 1px solid var(--line-2); color: var(--fg-2)">auth</span>
+<span style="flex: 1 1 0; min-width: 72px; padding: 10px 0; text-align: center; background: var(--fg); color: var(--bg)">handler</span>
+<span class="s-slide" style="position: absolute; top: -12px; width: 6px; height: 6px; margin-left: -3px; border-radius: 50%; background: {{accent}}"></span>
+</div>
+</div>
+<span style="color: var(--fg)">Response</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+
+<!-- ルートの木 -->
+<section class="s-sec" style="padding: 140px 24px">
+<div style="max-width: 1200px; margin: 0 auto">
+<h2 class="s-reveal" style="margin: 0; font-family: 'Inter', 'Noto Sans JP', sans-serif; font-weight: 800; font-size: clamp(32px, 4vw, 52px); line-height: 1.12; letter-spacing: -0.04em">{{t.rtA}}<br>{{t.rtB}}</h2>
+<div role="img" aria-label="{{t.rtAria}}" style="margin-top: 56px; border-radius: 20px; border: 1px solid var(--line); overflow-x: auto">
+<div style="position: relative; width: 860px; height: 380px; margin: 0 auto">
+<div style="position: absolute; left: 200px; top: 189px; width: 48px; height: 2px; background: var(--line-3)"></div>
+<div style="position: absolute; left: 247px; top: 94px; width: 2px; height: 192px; background: var(--line-3)"></div>
+<div style="position: absolute; left: 248px; top: 189px; width: 48px; height: 2px; background: var(--line-3)"></div>
+<div style="position: absolute; left: 248px; top: 285px; width: 48px; height: 2px; background: var(--line-3)"></div>
+<div style="position: absolute; left: 511px; top: 46px; width: 2px; height: 72px; background: var(--line-3)"></div>
+<div style="position: absolute; left: 512px; top: 45px; width: 48px; height: 2px; background: var(--line-3)"></div>
+<div style="position: absolute; left: 464px; top: 189px; width: 96px; height: 2px; background: var(--line-3)"></div>
+<div style="position: absolute; left: 464px; top: 285px; width: 48px; height: 2px; background: var(--line-3)"></div>
+<div style="position: absolute; left: 511px; top: 262px; width: 2px; height: 72px; background: var(--line-3)"></div>
+<div style="position: absolute; left: 512px; top: 261px; width: 48px; height: 2px; background: var(--line-3)"></div>
+<div style="position: absolute; left: 512px; top: 333px; width: 48px; height: 2px; background: var(--line-3)"></div>
+<div style="position: absolute; left: 200px; top: 189px; width: 49px; height: 2px; background: {{accent}}"></div>
+<div style="position: absolute; left: 247px; top: 93px; width: 2px; height: 98px; background: {{accent}}"></div>
+<div style="position: absolute; left: 247px; top: 93px; width: 49px; height: 2px; background: {{accent}}"></div>
+<div style="position: absolute; left: 464px; top: 93px; width: 49px; height: 2px; background: {{accent}}"></div>
+<div style="position: absolute; left: 511px; top: 93px; width: 2px; height: 26px; background: {{accent}}"></div>
+<div style="position: absolute; left: 511px; top: 117px; width: 49px; height: 2px; background: {{accent}}"></div>
+<div style="position: absolute; left: 64px; top: 166px; width: 136px; height: 48px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; border-radius: 10px; background: var(--fg); color: var(--bg); font-family: 'JetBrains Mono', monospace; font-size: 15px; font-weight: 700">app</div>
+<div style="position: absolute; left: 296px; top: 70px; width: 168px; height: 48px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; border-radius: 10px; background: var(--bg); border: 1.5px solid {{accent}}; font-family: 'JetBrains Mono', monospace; font-size: 14px">/users</div>
+<div style="position: absolute; left: 296px; top: 166px; width: 168px; height: 48px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; border-radius: 10px; background: var(--bg); border: 1px solid var(--line-2); font-family: 'JetBrains Mono', monospace; font-size: 14px">/posts</div>
+<div style="position: absolute; left: 296px; top: 262px; width: 168px; height: 48px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; border-radius: 10px; background: var(--bg); border: 1px solid var(--line-2); font-family: 'JetBrains Mono', monospace; font-size: 14px">/api/*</div>
+<div style="position: absolute; left: 560px; top: 22px; width: 236px; height: 48px; box-sizing: border-box; display: flex; align-items: center; padding: 0 16px; border-radius: 10px; background: var(--bg); border: 1px solid var(--line-2); font-family: 'JetBrains Mono', monospace; font-size: 13px"><span><span style="color: var(--green); font-weight: 700">GET</span> /users</span></div>
+<div class="s-match" style="position: absolute; left: 560px; top: 94px; width: 236px; height: 48px; box-sizing: border-box; display: flex; align-items: center; padding: 0 16px; border-radius: 10px; background: var(--hl); border: 1.5px solid {{accent}}; font-family: 'JetBrains Mono', monospace; font-size: 13px"><span><span style="color: var(--green); font-weight: 700">GET</span> /users/<b style="color: var(--accent-text)">:id</b></span></div>
+<div style="position: absolute; left: 560px; top: 166px; width: 236px; height: 48px; box-sizing: border-box; display: flex; align-items: center; padding: 0 16px; border-radius: 10px; background: var(--bg); border: 1px solid var(--line-2); font-family: 'JetBrains Mono', monospace; font-size: 13px"><span><span style="color: var(--blue); font-weight: 700">POST</span> /posts</span></div>
+<div style="position: absolute; left: 560px; top: 238px; width: 236px; height: 48px; box-sizing: border-box; display: flex; align-items: center; padding: 0 16px; border-radius: 10px; background: var(--bg); border: 1px solid var(--line-2); font-family: 'JetBrains Mono', monospace; font-size: 13px"><span><span style="color: var(--muted)">use</span> rateLimit()</span></div>
+<div style="position: absolute; left: 560px; top: 310px; width: 236px; height: 48px; box-sizing: border-box; display: flex; align-items: center; padding: 0 16px; border-radius: 10px; background: var(--bg); border: 1px solid var(--line-2); font-family: 'JetBrains Mono', monospace; font-size: 13px"><span><span style="color: var(--green); font-weight: 700">GET</span> /api/health</span></div>
+<div style="position: absolute; left: 64px; top: 236px; width: 136px; text-align: center; font-family: 'JetBrains Mono', monospace; font-size: 12px; line-height: 16px; color: var(--muted)">GET /users/42</div>
+</div>
+</div>
+</div>
+</section>
+
+<!-- 特長 -->
+<section class="s-sec" style="position: relative; isolation: isolate; overflow: hidden; background: var(--surface); padding: 140px 24px">
+<div aria-hidden="true" style="position: absolute; left: -8%; top: 18%; width: 680px; height: 680px; background: radial-gradient(closest-side, var(--glow), rgba(227,65,43,0)); z-index: -1; pointer-events: none"></div>
+<div aria-hidden="true" style="position: absolute; right: -6%; bottom: -12%; width: 600px; height: 600px; background: radial-gradient(closest-side, rgba(255,150,80,0.2), rgba(255,150,80,0)); z-index: -1; pointer-events: none"></div>
+<div style="max-width: 1200px; margin: 0 auto">
+<h2 class="s-reveal" style="margin: 0; font-family: 'Inter', 'Noto Sans JP', sans-serif; font-weight: 800; font-size: clamp(34px, 4.4vw, 56px); line-height: 1.1; letter-spacing: -0.04em">{{t.featH}}</h2>
+<div class="s-grid4" style="margin-top: 56px; gap: 16px">
+<button type="button" class="s-tilt {{cls0}}" onClick="{{open0}}" aria-expanded="{{exp0}}" aria-haspopup="dialog" onMouseMove="{{move0}}" onMouseLeave="{{leave0}}" style="text-align: left; font: inherit; color: inherit; cursor: pointer; width: 100%; position: relative; overflow: hidden; border-radius: 20px; background: var(--glass); backdrop-filter: blur(20px) saturate(160%); -webkit-backdrop-filter: blur(20px) saturate(160%); border: 1px solid var(--glass-line); box-shadow: inset 0 1px 0 var(--glass-hl), 0 20px 50px var(--shadow); padding: 28px; min-height: 200px; box-sizing: border-box; display: flex; flex-direction: column; gap: 10px; transform: {{tf0}}">
+<span aria-hidden="true" style="position: absolute; inset: 0; pointer-events: none; background: {{gl0}}"></span>
+<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="margin-bottom: auto"><circle cx="12" cy="12" r="9"></circle><path d="M3 12h18"></path><path d="M12 3a14 14 0 0 1 0 18"></path><path d="M12 3a14 14 0 0 0 0 18"></path></svg>
+<span style="display: block; font-size: 18px; font-weight: 700">{{t.f0t}}</span>
+<span style="display: block; font-size: 14px; color: var(--muted)">{{t.f0d}}</span>
+</button>
+<button type="button" class="s-tilt {{cls1}}" onClick="{{open1}}" aria-expanded="{{exp1}}" aria-haspopup="dialog" onMouseMove="{{move1}}" onMouseLeave="{{leave1}}" style="text-align: left; font: inherit; color: inherit; cursor: pointer; width: 100%; position: relative; overflow: hidden; border-radius: 20px; background: var(--glass); backdrop-filter: blur(20px) saturate(160%); -webkit-backdrop-filter: blur(20px) saturate(160%); border: 1px solid var(--glass-line); box-shadow: inset 0 1px 0 var(--glass-hl), 0 20px 50px var(--shadow); padding: 28px; min-height: 200px; box-sizing: border-box; display: flex; flex-direction: column; gap: 10px; transform: {{tf1}}">
+<span aria-hidden="true" style="position: absolute; inset: 0; pointer-events: none; background: {{gl1}}"></span>
+<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="margin-bottom: auto"><path d="M12 3l9 16H3z"></path><path d="M12 10v4"></path><path d="M12 17h.01"></path></svg>
+<span style="display: block; font-size: 18px; font-weight: 700">{{t.f1t}}</span>
+<span style="display: block; font-size: 14px; color: var(--muted)">{{t.f1d}}</span>
+</button>
+<button type="button" class="s-tilt {{cls2}}" onClick="{{open2}}" aria-expanded="{{exp2}}" aria-haspopup="dialog" onMouseMove="{{move2}}" onMouseLeave="{{leave2}}" style="text-align: left; font: inherit; color: inherit; cursor: pointer; width: 100%; position: relative; overflow: hidden; border-radius: 20px; background: var(--glass); backdrop-filter: blur(20px) saturate(160%); -webkit-backdrop-filter: blur(20px) saturate(160%); border: 1px solid var(--glass-line); box-shadow: inset 0 1px 0 var(--glass-hl), 0 20px 50px var(--shadow); padding: 28px; min-height: 200px; box-sizing: border-box; display: flex; flex-direction: column; gap: 10px; transform: {{tf2}}">
+<span aria-hidden="true" style="position: absolute; inset: 0; pointer-events: none; background: {{gl2}}"></span>
+<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="margin-bottom: auto"><path d="M3 12h4l3-8 4 16 3-8h4"></path></svg>
+<span style="display: block; font-size: 18px; font-weight: 700">{{t.f2t}}</span>
+<span style="display: block; font-size: 14px; color: var(--muted)"><code style="font-family: 'JetBrains Mono', monospace; font-size: 13px">/_senri</code> {{t.f2d}}</span>
+</button>
+<button type="button" class="s-tilt {{cls3}}" onClick="{{open3}}" aria-expanded="{{exp3}}" aria-haspopup="dialog" onMouseMove="{{move3}}" onMouseLeave="{{leave3}}" style="text-align: left; font: inherit; color: inherit; cursor: pointer; width: 100%; position: relative; overflow: hidden; border-radius: 20px; background: var(--glass); backdrop-filter: blur(20px) saturate(160%); -webkit-backdrop-filter: blur(20px) saturate(160%); border: 1px solid var(--glass-line); box-shadow: inset 0 1px 0 var(--glass-hl), 0 20px 50px var(--shadow); padding: 28px; min-height: 200px; box-sizing: border-box; display: flex; flex-direction: column; gap: 10px; transform: {{tf3}}">
+<span aria-hidden="true" style="position: absolute; inset: 0; pointer-events: none; background: {{gl3}}"></span>
+<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="margin-bottom: auto"><path d="M4 7h16"></path><path d="M4 12h16"></path><path d="M4 17h10"></path></svg>
+<span style="display: block; font-size: 18px; font-weight: 700">{{t.f3t}}</span>
+<span style="display: block; font-size: 14px; color: var(--muted)">{{t.f3d}}</span>
+</button>
+</div>
+</div>
+</section>
+
+<!-- カルーセル -->
+<section class="s-sec" style="padding: 140px 24px" aria-roledescription="carousel" aria-label="{{t.carH}}">
+<div style="max-width: 1200px; margin: 0 auto">
+<div style="display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-end; justify-content: space-between">
+<h2 class="s-reveal" style="margin: 0; font-family: 'Inter', 'Noto Sans JP', sans-serif; font-weight: 800; font-size: clamp(32px, 4vw, 52px); line-height: 1.12; letter-spacing: -0.04em">{{t.carH}}</h2>
+<div style="display: flex; gap: 8px">
+<button type="button" onClick="{{prev}}" aria-label="{{t.prev}}" style="width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--line-2); background: var(--bg); color: var(--fg); cursor: pointer; display: flex; align-items: center; justify-content: center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"></path></svg></button>
+<button type="button" onClick="{{next}}" aria-label="{{t.next}}" style="width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--line-2); background: var(--bg); color: var(--fg); cursor: pointer; display: flex; align-items: center; justify-content: center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></button>
+</div>
+</div>
+<div onMouseEnter="{{pauseCar}}" onMouseLeave="{{resumeCar}}" aria-live="polite" style="margin-top: 48px; overflow: hidden; border-radius: 24px">
+<div style="display: flex; transition: transform .7s cubic-bezier(.65,0,.35,1); transform: {{track}}">
+<div style="flex: 0 0 100%; min-width: 0; box-sizing: border-box; display: flex; flex-wrap: wrap; background: var(--code); color: #F2F3F5">
+<div class="s-pad" style="flex: 1 1 320px; min-width: 0; padding: 48px; box-sizing: border-box"><p style="margin: 0; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #9AA0A8">JSON API</p><h3 style="margin: 12px 0 0; font-size: 28px; font-weight: 800; letter-spacing: -0.02em">{{t.s0t}}</h3><p style="margin: 16px 0 0; font-size: 15px; line-height: 1.8; color: #A6ACB4">{{t.s0d}}</p></div>
+<pre class="s-pad" style="flex: 1 1 420px; min-width: 0; margin: 0; padding: 48px; box-sizing: border-box; overflow-x: auto; font-family: 'JetBrains Mono', monospace; font-size: 14px; line-height: 1.85; color: #D7DAE0; background: var(--code-2)">app.<span style="color: #82AAFF">get</span>(<span style="color: #C3E88D">"/hello"</span>, () =&gt; ({
+  message: <span style="color: #C3E88D">"Hello, Senri!"</span>,
+}));</pre>
+</div>
+<div style="flex: 0 0 100%; min-width: 0; box-sizing: border-box; display: flex; flex-wrap: wrap; background: var(--code); color: #F2F3F5">
+<div class="s-pad" style="flex: 1 1 320px; min-width: 0; padding: 48px; box-sizing: border-box"><p style="margin: 0; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #9AA0A8">MIDDLEWARE</p><h3 style="margin: 12px 0 0; font-size: 28px; font-weight: 800; letter-spacing: -0.02em">{{t.s1t}}</h3><p style="margin: 16px 0 0; font-size: 15px; line-height: 1.8; color: #A6ACB4">{{t.s1d}}</p></div>
+<pre class="s-pad" style="flex: 1 1 420px; min-width: 0; margin: 0; padding: 48px; box-sizing: border-box; overflow-x: auto; font-family: 'JetBrains Mono', monospace; font-size: 14px; line-height: 1.85; color: #D7DAE0; background: var(--code-2)">app.<span style="color: #82AAFF">use</span>(<span style="color: #82AAFF">secureHeaders</span>());
+app.<span style="color: #82AAFF">use</span>(<span style="color: #82AAFF">cors</span>({ origin: <span style="color: #C3E88D">"https://example.com"</span> }));</pre>
+</div>
+<div style="flex: 0 0 100%; min-width: 0; box-sizing: border-box; display: flex; flex-wrap: wrap; background: var(--code); color: #F2F3F5">
+<div class="s-pad" style="flex: 1 1 320px; min-width: 0; padding: 48px; box-sizing: border-box"><p style="margin: 0; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #9AA0A8">SSE</p><h3 style="margin: 12px 0 0; font-size: 28px; font-weight: 800; letter-spacing: -0.02em">{{t.s2t}}</h3><p style="margin: 16px 0 0; font-size: 15px; line-height: 1.8; color: #A6ACB4">{{t.s2d}}</p></div>
+<pre class="s-pad" style="flex: 1 1 420px; min-width: 0; margin: 0; padding: 48px; box-sizing: border-box; overflow-x: auto; font-family: 'JetBrains Mono', monospace; font-size: 14px; line-height: 1.85; color: #D7DAE0; background: var(--code-2)">app.<span style="color: #82AAFF">get</span>(<span style="color: #C3E88D">"/events"</span>, (_, c) =&gt;
+  <span style="color: #82AAFF">streamSSE</span>(c, <span style="color: #C792EA">async</span> (s) =&gt; {
+    <span style="color: #C792EA">await</span> s.<span style="color: #82AAFF">writeSSE</span>({ data: <span style="color: #C3E88D">"hi"</span> });
+  }),
+);</pre>
+</div>
+<div style="flex: 0 0 100%; min-width: 0; box-sizing: border-box; display: flex; flex-wrap: wrap; background: var(--code); color: #F2F3F5">
+<div class="s-pad" style="flex: 1 1 320px; min-width: 0; padding: 48px; box-sizing: border-box"><p style="margin: 0; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #9AA0A8">UPLOAD</p><h3 style="margin: 12px 0 0; font-size: 28px; font-weight: 800; letter-spacing: -0.02em">{{t.s3t}}</h3><p style="margin: 16px 0 0; font-size: 15px; line-height: 1.8; color: #A6ACB4">{{t.s3d}}</p></div>
+<pre class="s-pad" style="flex: 1 1 420px; min-width: 0; margin: 0; padding: 48px; box-sizing: border-box; overflow-x: auto; font-family: 'JetBrains Mono', monospace; font-size: 14px; line-height: 1.85; color: #D7DAE0; background: var(--code-2)"><span style="color: #C792EA">for await</span> (<span style="color: #C792EA">const</span> part <span style="color: #C792EA">of</span> <span style="color: #82AAFF">multipart</span>(c)) {
+  <span style="color: #C792EA">if</span> (part.filename) <span style="color: #C792EA">await</span> <span style="color: #82AAFF">save</span>(part.stream);
+}</pre>
+</div>
+</div>
+</div>
+<div style="margin-top: 24px; display: flex; justify-content: center; gap: 8px">
+<sc-for list="{{dots}}" as="dot" hint-placeholder-count="4"><button type="button" onClick="{{dot.pick}}" aria-label="{{dot.label}}" aria-current="{{dot.current}}" style="width: 44px; height: 24px; border: 0; background: transparent; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0"><span style="display: block; height: 6px; border-radius: 999px; width: {{dot.w}}; background: {{dot.bg}}; transition: width .3s"></span></button></sc-for>
+</div>
+</div>
+</section>
+
+<!-- 開発の様子(ブランチの図) -->
+<section class="s-sec" style="padding: 140px 24px 120px">
+<div style="max-width: 1200px; margin: 0 auto">
+<div style="display: flex; flex-wrap: wrap; gap: 16px 48px; align-items: flex-end; justify-content: space-between">
+<h2 class="s-reveal" style="margin: 0; font-family: 'Inter', 'Noto Sans JP', sans-serif; font-weight: 800; font-size: clamp(32px, 4vw, 52px); line-height: 1.12; letter-spacing: -0.04em">{{t.gitA}}<br>{{t.gitB}}</h2>
+<a class="s-link" href="https://github.com/Senrijs/Senri/pulls?q=is%3Apr+is%3Amerged" style="font-size: 14px; color: var(--muted)">{{t.gitLink}}</a>
+</div>
+<div style="margin-top: 48px; border-radius: 20px; border: 1px solid var(--glass-line); background: var(--glass); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); box-shadow: inset 0 1px 0 var(--glass-hl), 0 12px 32px var(--shadow); overflow-x: auto">
+<svg class="s-git" role="img" aria-label="{{t.gitAria}}" viewBox="0 0 1120 300" style="display: block; width: 100%; min-width: 880px; height: auto">
+<path class="s-draw" d="M40 150 H1060" fill="none" style="stroke: var(--fg); stroke-width: 2.5"></path>
+<path class="s-draw" d="M100 150 C130 150 120 70 160 70 H220 C260 70 250 150 280 150" fill="none" style="stroke: {{accent}}; stroke-width: 2.5"></path>
+<path class="s-draw" d="M360 150 C390 150 380 230 410 230 H420 C455 230 450 150 480 150" fill="none" style="stroke: #3B82F6; stroke-width: 2.5"></path>
+<path class="s-draw" d="M500 150 C525 150 515 70 545 70 H550 C580 70 575 150 600 150" fill="none" style="stroke: #22A06B; stroke-width: 2.5"></path>
+<path class="s-draw" d="M660 150 C690 150 680 230 720 230 H780 C820 230 810 150 840 150" fill="none" style="stroke: #9B6BF2; stroke-width: 2.5"></path>
+<path class="s-draw" d="M900 150 C925 150 915 70 950 70 H960 C990 70 985 150 1000 150" fill="none" style="stroke: #F08A24; stroke-width: 2.5"></path>
+<g class="s-cm">
+<circle cx="160" cy="70" r="6" style="fill: var(--bg); stroke: {{accent}}; stroke-width: 2.5"></circle>
+<circle cx="220" cy="70" r="6" style="fill: var(--bg); stroke: {{accent}}; stroke-width: 2.5"></circle>
+<circle cx="420" cy="230" r="6" style="fill: var(--bg); stroke: #3B82F6; stroke-width: 2.5"></circle>
+<circle cx="550" cy="70" r="6" style="fill: var(--bg); stroke: #22A06B; stroke-width: 2.5"></circle>
+<circle cx="720" cy="230" r="6" style="fill: var(--bg); stroke: #9B6BF2; stroke-width: 2.5"></circle>
+<circle cx="780" cy="230" r="6" style="fill: var(--bg); stroke: #9B6BF2; stroke-width: 2.5"></circle>
+<circle cx="960" cy="70" r="6" style="fill: var(--bg); stroke: #F08A24; stroke-width: 2.5"></circle>
+<circle cx="60" cy="150" r="6" style="fill: var(--bg); stroke: var(--fg); stroke-width: 2.5"></circle>
+<circle cx="280" cy="150" r="7" style="fill: {{accent}}"></circle>
+<circle cx="330" cy="150" r="6" style="fill: var(--bg); stroke: var(--fg); stroke-width: 2.5"></circle>
+<circle cx="480" cy="150" r="7" style="fill: #3B82F6"></circle>
+<circle cx="600" cy="150" r="7" style="fill: #22A06B"></circle>
+<circle cx="640" cy="150" r="6" style="fill: var(--bg); stroke: var(--fg); stroke-width: 2.5"></circle>
+<circle cx="840" cy="150" r="7" style="fill: #9B6BF2"></circle>
+<circle cx="880" cy="150" r="6" style="fill: var(--bg); stroke: var(--fg); stroke-width: 2.5"></circle>
+<circle cx="1000" cy="150" r="7" style="fill: #F08A24"></circle>
+<text x="60" y="126" text-anchor="middle" style="fill: var(--muted); font-size: 12px">v0.2.15</text>
+<text x="330" y="126" text-anchor="middle" style="fill: var(--muted); font-size: 12px">v0.2.16</text>
+<text x="640" y="126" text-anchor="middle" style="fill: var(--muted); font-size: 12px">v0.2.17</text>
+<text x="880" y="126" text-anchor="middle" style="fill: var(--muted); font-size: 12px">v0.2.18</text>
+<text x="280" y="180" text-anchor="middle" style="fill: var(--fg-2); font-size: 12px">#61</text>
+<text x="492" y="180" text-anchor="start" style="fill: var(--fg-2); font-size: 12px">#63</text>
+<text x="600" y="180" text-anchor="middle" style="fill: var(--fg-2); font-size: 12px">#65</text>
+<text x="852" y="180" text-anchor="start" style="fill: var(--fg-2); font-size: 12px">#66</text>
+<text x="1000" y="180" text-anchor="middle" style="fill: var(--fg-2); font-size: 12px">#68</text>
+<text x="160" y="50" style="fill: var(--muted); font-size: 12px">feat/i18n-dev</text>
+<text x="410" y="258" style="fill: var(--muted); font-size: 12px">fix/english-messages</text>
+<text x="530" y="50" style="fill: var(--muted); font-size: 12px">fix/flaky-tests</text>
+<text x="700" y="258" style="fill: var(--muted); font-size: 12px">feat/multipart-stream</text>
+<text x="930" y="50" style="fill: var(--muted); font-size: 12px">feat/docs-website</text>
+</g>
+<circle class="s-gping" cx="1060" cy="150" r="7" style="fill: {{accent}}"></circle>
+<circle cx="1060" cy="150" r="7" style="fill: {{accent}}"></circle>
+<text x="1060" y="126" text-anchor="middle" style="fill: var(--fg); font-size: 12px; font-weight: 700">main</text>
+</svg>
+</div>
+</div>
+</section>
+
+<!-- タイムライン -->
+<section id="timeline" class="s-sec" aria-labelledby="tl-title" style="position: relative; isolation: isolate; overflow-x: clip; padding: 140px 24px; background: var(--surface)">
+<div aria-hidden="true" style="position: absolute; right: -10%; top: 30%; width: 700px; height: 700px; background: radial-gradient(closest-side, var(--glow), rgba(227,65,43,0)); z-index: -1; pointer-events: none"></div>
+<div style="max-width: 1200px; margin: 0 auto; display: flex; flex-wrap: wrap; gap: 48px 64px; align-items: flex-start">
+<div class="s-sticky" style="flex: 1 1 300px; min-width: 0; position: sticky; top: 120px">
+<h2 id="tl-title" class="s-reveal" style="margin: 0; font-family: 'Inter', 'Noto Sans JP', sans-serif; font-weight: 800; font-size: clamp(32px, 4vw, 52px); line-height: 1.12; letter-spacing: -0.04em">{{t.tlA}}<br>{{t.tlB}}</h2>
+<a class="s-link" href="https://github.com/Senrijs/Senri/releases" style="display: inline-block; margin-top: 24px; font-size: 14px; color: var(--muted)">{{t.tlAll}}</a>
+</div>
+<ol style="flex: 2 1 520px; min-width: 0; list-style: none; margin: 0; padding: 0; position: relative">
+<li aria-hidden="true" style="position: absolute; left: 7px; top: 12px; bottom: 12px; width: 2px; background: var(--line)"></li>
+<li style="position: relative; display: grid; grid-template-columns: 16px minmax(0, 1fr); gap: 24px; padding-bottom: 28px">
+<span aria-hidden="true" style="width: 16px; height: 16px; margin-top: 18px; border-radius: 50%; background: var(--bg); border: 2px solid var(--line-2); box-sizing: border-box"></span>
+<details style="border-radius: 16px; background: var(--glass); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid var(--glass-line); padding: 14px 20px"><summary style="display: flex; align-items: center; gap: 10px; min-height: 24px; font-size: 14px; color: var(--fg-2)"><svg class="s-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg>{{t.tlBefore}}</summary><p style="margin: 12px 0 0 24px; font-size: 14px; line-height: 1.8; color: var(--muted)">{{t.tlB1}}<a class="s-link" href="https://github.com/Senrijs/Senri/blob/main/CHANGELOG.md">CHANGELOG</a>{{t.tlB2}}</p></details>
+</li>
+<li class="s-tl-item" style="position: relative; display: grid; grid-template-columns: 16px minmax(0, 1fr); gap: 24px; padding-bottom: 28px">
+<span class="s-tl-dot" aria-hidden="true" style="width: 16px; height: 16px; margin-top: 22px; border-radius: 50%; background: var(--line-2); border: 3px solid var(--surface); box-sizing: border-box"></span>
+<div class="s-tl-card" style="border-radius: 18px; background: var(--glass); backdrop-filter: blur(20px) saturate(160%); -webkit-backdrop-filter: blur(20px) saturate(160%); border: 1px solid var(--glass-line); box-shadow: inset 0 1px 0 var(--glass-hl), 0 8px 24px var(--shadow); padding: 20px 24px"><span style="display: block; font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--muted)">v0.2.11</span><span style="display: block; margin-top: 6px; font-size: 18px; font-weight: 700">{{t.e1t}}</span><span style="display: block; margin-top: 4px; font-size: 14px; color: var(--muted)">{{t.e1d}}</span></div>
+</li>
+<li class="s-tl-item" style="position: relative; display: grid; grid-template-columns: 16px minmax(0, 1fr); gap: 24px; padding-bottom: 28px">
+<span class="s-tl-dot" aria-hidden="true" style="width: 16px; height: 16px; margin-top: 22px; border-radius: 50%; background: var(--line-2); border: 3px solid var(--surface); box-sizing: border-box"></span>
+<div class="s-tl-card" style="border-radius: 18px; background: var(--glass); backdrop-filter: blur(20px) saturate(160%); -webkit-backdrop-filter: blur(20px) saturate(160%); border: 1px solid var(--glass-line); box-shadow: inset 0 1px 0 var(--glass-hl), 0 8px 24px var(--shadow); padding: 20px 24px"><span style="display: block; font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--muted)">v0.2.16 · <time datetime="2026-11-07">2026-11-07</time></span><span style="display: block; margin-top: 6px; font-size: 18px; font-weight: 700">{{t.e2t}}</span><span style="display: block; margin-top: 4px; font-size: 14px; color: var(--muted)">{{t.e2d}}</span></div>
+</li>
+<li class="s-tl-item" style="position: relative; display: grid; grid-template-columns: 16px minmax(0, 1fr); gap: 24px; padding-bottom: 28px">
+<span class="s-tl-dot" aria-hidden="true" style="width: 16px; height: 16px; margin-top: 22px; border-radius: 50%; background: var(--line-2); border: 3px solid var(--surface); box-sizing: border-box"></span>
+<div class="s-tl-card" style="border-radius: 18px; background: var(--glass); backdrop-filter: blur(20px) saturate(160%); -webkit-backdrop-filter: blur(20px) saturate(160%); border: 1px solid var(--glass-line); box-shadow: inset 0 1px 0 var(--glass-hl), 0 8px 24px var(--shadow); padding: 20px 24px"><span style="display: block; font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--muted)">v0.2.18 · <time datetime="2026-11-08">2026-11-08</time></span><span style="display: block; margin-top: 6px; font-size: 18px; font-weight: 700">{{t.e3t}}</span><span style="display: block; margin-top: 4px; font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--muted)">multipart(c)</span></div>
+</li>
+<li class="s-tl-item" style="position: relative; display: grid; grid-template-columns: 16px minmax(0, 1fr); gap: 24px; padding-bottom: 28px" aria-current="step">
+<span style="display: flex; align-items: center; justify-content: center; width: 16px; height: 16px; margin-top: 22px"><span class="s-beacon" aria-hidden="true" style="width: 12px; height: 12px; background: {{accent}}; box-shadow: 0 0 0 3px var(--surface)"></span></span>
+<div class="s-tl-card" style="border-radius: 18px; background: var(--glass); backdrop-filter: blur(20px) saturate(160%); -webkit-backdrop-filter: blur(20px) saturate(160%); border: 1.5px solid {{accent}}; box-shadow: 0 8px 24px var(--shadow); padding: 20px 24px"><span style="display: flex; gap: 10px; align-items: center; font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--muted)"><time datetime="2026-11-08">2026-11-08</time><span style="padding: 2px 8px; border-radius: 999px; background: var(--fg); color: var(--bg); font-size: 11px">{{t.now}}</span></span><span style="display: block; margin-top: 6px; font-size: 18px; font-weight: 700">{{t.e4t}}</span><span style="display: block; margin-top: 4px; font-size: 14px; color: var(--muted)">{{t.e4d}}</span></div>
+</li>
+<li class="s-tl-item" style="position: relative; display: grid; grid-template-columns: 16px minmax(0, 1fr); gap: 24px; padding-bottom: 28px">
+<span aria-hidden="true" style="width: 16px; height: 16px; margin-top: 22px; border-radius: 50%; background: var(--surface); border: 2px dashed var(--line-3); box-sizing: border-box"></span>
+<div class="s-tl-card" style="border-radius: 18px; border: 1px dashed var(--line-3); padding: 20px 24px"><span style="display: block; font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--muted)">v0.3.0 · {{t.planned}}</span><span style="display: block; margin-top: 6px; font-size: 18px; font-weight: 700">{{t.e5t}}</span></div>
+</li>
+<li class="s-tl-item" style="position: relative; display: grid; grid-template-columns: 16px minmax(0, 1fr); gap: 24px">
+<span aria-hidden="true" style="width: 16px; height: 16px; margin-top: 22px; border-radius: 50%; background: var(--surface); border: 2px dashed var(--line-3); box-sizing: border-box"></span>
+<div class="s-tl-card" style="border-radius: 18px; border: 1px dashed var(--line-3); padding: 20px 24px"><span style="display: block; font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--muted)">Ippo 0.1.0 · {{t.planned}}</span><span style="display: block; margin-top: 6px; font-size: 18px; font-weight: 700">{{t.e6t}}</span></div>
+</li>
+</ol>
+</div>
+</section>
+
+<!-- CTA -->
+<section class="s-sec" style="padding: 160px 24px 140px; text-align: center">
+<p style="margin: 0 0 20px; font-size: 14px; color: var(--muted)">{{t.proverb}}</p>
+<h2 class="s-reveal" style="margin: 0 auto; font-family: 'Inter', 'Noto Sans JP', sans-serif; font-weight: 800; font-size: clamp(38px, 6vw, 84px); line-height: 1.05; letter-spacing: -0.05em">{{t.ctaH}}</h2>
+<div style="margin-top: 40px; display: flex; justify-content: center; gap: 12px; flex-wrap: wrap">
+<a class="s-btn" href="#docs" style="display: inline-flex; align-items: center; min-height: 48px; padding: 0 28px; border-radius: 12px; background: var(--fg); color: var(--bg); font-weight: 700; font-size: 15px">{{t.docs}}</a>
+<a class="s-btn" href="https://github.com/Senrijs/Senri" style="display: inline-flex; align-items: center; min-height: 48px; padding: 0 28px; border-radius: 12px; border: 1px solid var(--line-2); background: var(--bg); font-weight: 600; font-size: 15px">GitHub</a>
+</div>
+</section>
+
+<footer style="border-top: 1px solid var(--line); padding: 64px 24px 32px; background: var(--surface)">
+<div style="max-width: 1200px; margin: 0 auto">
+<div style="display: flex; flex-wrap: wrap; gap: 40px 48px">
+<div style="flex: 2 1 240px; min-width: 0">
+<a href="#top" aria-label="Senri" style="display: inline-flex; align-items: center"><svg width="95" height="30" viewBox="2.8 -48.82 155.42 49.38" aria-hidden="true" style="display: block"><path style="fill: var(--fg)" d="M15.51 0.56Q11.7 0.56 8.85 -0.64Q5.99 -1.85 4.4 -3.98Q2.8 -6.1 2.8 -8.96H11.03Q11.03 -7.39 12.21 -6.61Q13.38 -5.82 15.51 -5.82H17.98Q20.27 -5.82 21.53 -6.61Q22.79 -7.39 22.79 -8.85Q22.79 -10.25 21.78 -10.89Q20.78 -11.54 18.7 -11.76L11.65 -12.6Q7.56 -13.1 5.38 -15.65Q3.19 -18.2 3.19 -22.01Q3.19 -31.36 15.18 -31.36H17.81Q23.46 -31.36 26.82 -28.9Q30.18 -26.43 30.18 -22.29H21.95Q21.95 -23.63 20.86 -24.36Q19.77 -25.09 17.81 -25.09H15.18Q13.22 -25.09 12.21 -24.36Q11.2 -23.63 11.2 -22.34Q11.2 -21.06 12.18 -20.61Q13.16 -20.16 14.95 -19.94L21.67 -19.1Q26.21 -18.54 28.5 -15.9Q30.8 -13.27 30.8 -8.96Q30.8 -4.42 27.55 -1.93Q24.3 0.56 17.98 0.56Z M48.78 0.56Q44.69 0.56 41.64 -0.98Q38.58 -2.52 36.93 -5.29Q35.28 -8.06 35.28 -11.76V-19.04Q35.28 -22.74 36.93 -25.51Q38.58 -28.28 41.64 -29.82Q44.69 -31.36 48.78 -31.36Q52.86 -31.36 55.86 -29.82Q58.86 -28.28 60.51 -25.51Q62.16 -22.74 62.16 -19.04V-13.33H43.29V-11.76Q43.29 -8.85 44.66 -7.5Q46.03 -6.16 48.78 -6.16Q50.57 -6.16 51.91 -6.72Q53.26 -7.28 53.48 -8.4H61.71Q60.82 -4.37 57.29 -1.9Q53.76 0.56 48.78 0.56ZM43.29 -19.04V-18.31L54.15 -18.42V-19.15Q54.15 -22.01 52.84 -23.58Q51.52 -25.14 48.78 -25.14Q46.03 -25.14 44.66 -23.52Q43.29 -21.9 43.29 -19.04Z M67.54 0V-30.8H75.66V-25.2Q76.33 -28 78.54 -29.68Q80.75 -31.36 83.94 -31.36Q88.42 -31.36 91.14 -28.22Q93.86 -25.09 93.86 -19.88V0H85.46V-19.04Q85.46 -21.45 84.2 -22.76Q82.94 -24.08 80.7 -24.08Q78.46 -24.08 77.2 -22.76Q75.94 -21.45 75.94 -19.04V0Z M100.58 0V-30.8H108.7V-24.98Q109.37 -27.94 111.64 -29.65Q113.9 -31.36 117.32 -31.36Q121.97 -31.36 124.6 -28.22Q127.23 -25.09 127.23 -19.6V-16.52H118.83V-19.04Q118.83 -21.45 117.54 -22.76Q116.26 -24.08 113.9 -24.08Q111.55 -24.08 110.26 -22.6Q108.98 -21.11 108.98 -18.37V0Z"></path><polygon fill="{{accent}}" points="127.65,-0.29 137.36,-0.29 151.92,-34.26 142.21,-34.26"></polygon><polygon fill="{{accent}}" points="144.73,-40.09 154.44,-40.09 158.22,-48.82 148.52,-48.82"></polygon></svg></a>
+<p style="margin: 14px 0 0; max-width: 280px; font-size: 14px; line-height: 1.8; color: var(--muted)">{{t.heroP}}</p>
+</div>
+<nav aria-label="{{t.fDocs}}" style="flex: 1 1 140px; min-width: 0"><h3 style="margin: 0 0 14px; font-size: 13px; color: var(--fg)">{{t.fDocs}}</h3><ul style="margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 10px; font-size: 14px"><li><a class="s-link" href="#docs" style="color: var(--muted)">{{t.fStart}}</a></li><li><a class="s-link" href="#docs" style="color: var(--muted)">{{t.fRouting}}</a></li><li><a class="s-link" href="#docs" style="color: var(--muted)">{{t.fMw}}</a></li><li><a class="s-link" href="#docs" style="color: var(--muted)">{{t.fDev}}</a></li></ul></nav>
+<nav aria-label="{{t.fCommunity}}" style="flex: 1 1 140px; min-width: 0"><h3 style="margin: 0 0 14px; font-size: 13px; color: var(--fg)">{{t.fCommunity}}</h3><ul style="margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 10px; font-size: 14px"><li><a class="s-link" href="https://github.com/Senrijs/Senri" style="color: var(--muted)">GitHub</a></li><li><a class="s-link" href="https://github.com/Senrijs/Senri/issues" style="color: var(--muted)">{{t.fIssues}}</a></li><li><a class="s-link" href="https://github.com/Senrijs/Senri/releases" style="color: var(--muted)">{{t.fReleases}}</a></li><li><a class="s-link" href="#blog" style="color: var(--muted)">{{t.navBlog}}</a></li></ul></nav>
+<nav aria-label="{{t.fPkgs}}" style="flex: 1 1 140px; min-width: 0"><h3 style="margin: 0 0 14px; font-size: 13px; color: var(--fg)">{{t.fPkgs}}</h3><ul style="margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 10px; font-size: 14px"><li><a class="s-link" href="https://www.npmjs.com/package/@senrijs/senri" style="color: var(--muted)">npm</a></li><li><a class="s-link" href="https://jsr.io/@senrijs/senri" style="color: var(--muted)">JSR</a></li><li><a class="s-link" href="https://www.npmjs.com/package/create-senri" style="color: var(--muted)">create-senri</a></li></ul></nav>
+<div style="flex: 1 1 160px; min-width: 0"><h3 style="margin: 0 0 14px; font-size: 13px; color: var(--fg)">{{t.fSite}}</h3><div style="display: flex; flex-direction: column; align-items: flex-start; gap: 10px">
+<button type="button" onClick="{{toggleLang}}" aria-label="{{t.langAria}}" style="display: inline-flex; align-items: center; gap: 8px; min-height: 36px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line-2); background: transparent; color: var(--fg-2); font-size: 13px; cursor: pointer"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M3 12h18"></path><path d="M12 3a14 14 0 0 1 0 18"></path><path d="M12 3a14 14 0 0 0 0 18"></path></svg>{{t.fLang}}</button>
+<button type="button" onClick="{{toggleTheme}}" aria-label="{{themeAria}}" style="display: inline-flex; align-items: center; gap: 8px; min-height: 36px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line-2); background: transparent; color: var(--fg-2); font-size: 13px; cursor: pointer">{{themeLabel}}</button>
+</div></div>
+</div>
+<div style="margin-top: 48px; padding-top: 24px; border-top: 1px solid var(--line); display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; font-size: 13px; color: var(--muted)"><span>MIT License</span><span>{{t.proverb}}</span></div>
+</div>
+</footer>
+
+<sc-if value="{{searchOn}}" hint-placeholder-val="{{ false }}">
+<button type="button" onClick="{{closeSearch}}" aria-label="{{t.close}}" tabindex="-1" style="position: fixed; inset: 0; z-index: 37; border: 0; padding: 0; cursor: default; background: rgba(17,20,24,0.32); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px)"></button>
+<div role="dialog" aria-modal="true" aria-label="{{t.search}}" onKeyDown="{{searchKey}}" class="s-pal" style="position: fixed; z-index: 38; top: 12vh; left: 50%; width: min(620px, calc(100vw - 32px)); transform: translateX(-50%); border-radius: 18px; background: var(--glass-strong); backdrop-filter: blur(24px) saturate(160%); -webkit-backdrop-filter: blur(24px) saturate(160%); border: 1px solid var(--glass-line); box-shadow: 0 40px 120px rgba(17,20,24,0.3); overflow: hidden">
+<div style="display: flex; align-items: center; gap: 12px; padding: 0 18px; border-bottom: 1px solid var(--line)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" style="color: var(--muted)"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-4-4"></path></svg><input type="search" ref="{{searchRef}}" aria-label="{{t.search}}" placeholder="{{t.searchPh}}" value="{{query}}" onChange="{{onQuery}}" style="flex: 1 1 auto; min-width: 0; height: 56px; border: 0; background: transparent; color: var(--fg); font: inherit; font-size: 16px; outline: none"><kbd style="padding: 2px 6px; border-radius: 6px; border: 1px solid var(--line-2); font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--muted)">esc</kbd></div>
+<ul role="listbox" aria-label="{{t.search}}" style="margin: 0; padding: 8px; list-style: none; max-height: 50vh; overflow: auto">
+<sc-for list="{{results}}" as="r" hint-placeholder-count="5"><li><a href="#docs" onClick="{{closeSearch}}" style="display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 8px 12px; border-radius: 10px; font-size: 14px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color: var(--muted)"><path d="M6 3h9l3 3v15H6z"></path><path d="M9 10h6"></path><path d="M9 14h6"></path></svg><span style="flex: 1 1 auto">{{r.title}}</span><span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--muted)">{{r.path}}</span></a></li></sc-for>
+<sc-if value="{{noResults}}" hint-placeholder-val="{{ false }}"><li style="padding: 20px 12px; font-size: 14px; color: var(--muted)">{{t.noResult}}</li></sc-if>
+</ul>
+</div>
+</sc-if>
+
+<sc-if value="{{ovOn}}" hint-placeholder-val="{{ false }}">
+<button type="button" onClick="{{close}}" aria-label="{{t.close}}" tabindex="-1" style="position: fixed; inset: 0; z-index: 35; border: 0; padding: 0; cursor: default; background: {{ovBg}}; backdrop-filter: blur({{ovBlur}}); -webkit-backdrop-filter: blur({{ovBlur}}); transition: background .4s, backdrop-filter .4s"></button>
+<div role="dialog" aria-modal="true" aria-label="{{ovTitle}}" onKeyDown="{{ovKey}}" style="position: fixed; z-index: 36; top: {{ovTop}}; left: {{ovLeft}}; width: {{ovW}}; height: {{ovH}}; transform: {{ovTf}}; border-radius: {{ovR}}; box-sizing: border-box; padding: 28px 32px; overflow: auto; background: var(--glass-strong); backdrop-filter: blur(24px) saturate(160%); -webkit-backdrop-filter: blur(24px) saturate(160%); border: 1px solid var(--glass-line); box-shadow: {{ovShadow}}; transition: top .55s cubic-bezier(.3,1.12,.4,1), left .55s cubic-bezier(.3,1.12,.4,1), width .55s cubic-bezier(.3,1.12,.4,1), height .55s cubic-bezier(.3,1.12,.4,1), transform .18s ease-out, border-radius .55s, box-shadow .3s; display: flex; flex-direction: column; gap: 10px">
+<div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 16px"><div><span style="display: block; font-size: 22px; font-weight: 700">{{ovTitle}}</span><span style="display: block; margin-top: 6px; font-size: 14px; color: var(--muted)">{{ovDesc}}</span></div><button type="button" ref="{{closeRef}}" onClick="{{close}}" aria-label="{{t.close}}" style="flex: none; width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--line-2); background: var(--glass); color: var(--fg); cursor: pointer; display: flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12"></path><path d="M18 6L6 18"></path></svg></button></div>
+<div style="margin-top: 16px; opacity: {{ovFade}}; transform: {{ovFadeTf}}; transition: opacity .35s .2s, transform .35s .2s">
+<sc-if value="{{ov0}}" hint-placeholder-val="{{ false }}"><pre style="margin: 0; border-radius: 14px; background: var(--code); padding: 28px 32px; font-family: 'JetBrains Mono', monospace; font-size: 15px; line-height: 1.85; color: #D7DAE0; overflow-x: auto"><span style="color: #8A9099">// Bun · Node.js · Deno</span>
+<span style="color: #82AAFF">serve</span>(app);
+
+<span style="color: #8A9099">// Cloudflare Workers</span>
+<span style="color: #C792EA">export default</span> app;</pre></sc-if>
+<sc-if value="{{ov1}}" hint-placeholder-val="{{ false }}"><div style="font-family: 'JetBrains Mono', monospace; font-size: 13px; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; background: var(--bg)"><div style="padding: 14px 18px; border-bottom: 1px solid var(--line); color: var(--accent-text); font-weight: 700">TypeError: Cannot read properties of undefined (reading 'name')</div><div style="padding: 12px 0; line-height: 1.9; white-space: pre; overflow-x: auto"><div style="padding: 0 18px; color: var(--muted)"> 7  app.get("/me", (_, c) =&gt; {</div><div style="padding: 0 18px"> 8    const user = c.get("user");</div><div style="padding: 0 18px; background: var(--hl-strong); font-weight: 700"> 9    return { name: user.name };</div><div style="padding: 0 18px; color: var(--muted)">10  });</div></div><div style="padding: 14px 18px; border-top: 1px solid var(--line); font-family: 'Noto Sans JP', sans-serif; font-size: 14px; line-height: 1.8; color: var(--fg-2)">{{t.err1}}<code style="font-family: 'JetBrains Mono', monospace">name</code>{{t.err2}}<code style="font-family: 'JetBrains Mono', monospace">c.get()</code>{{t.err3}}<code style="font-family: 'JetBrains Mono', monospace">await</code>{{t.err4}}</div></div></sc-if>
+<sc-if value="{{ov2}}" hint-placeholder-val="{{ false }}"><div style="display: flex; flex-direction: column; gap: 16px; font-family: 'JetBrains Mono', monospace; font-size: 13px"><dl style="margin: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px 24px"><div><dt style="font-size: 11px; color: var(--muted)">{{t.kvMethod}}</dt><dd style="margin: 4px 0 0; color: var(--green); font-weight: 700">GET</dd></div><div><dt style="font-size: 11px; color: var(--muted)">{{t.kvPath}}</dt><dd style="margin: 4px 0 0">/users/42</dd></div><div><dt style="font-size: 11px; color: var(--muted)">{{t.kvStatus}}</dt><dd style="margin: 4px 0 0">200</dd></div><div><dt style="font-size: 11px; color: var(--muted)">{{t.kvTime}}</dt><dd style="margin: 4px 0 0">3 ms</dd></div></dl><div style="display: grid; grid-template-columns: 120px minmax(0, 1fr); align-items: center; gap: 16px"><span style="color: var(--muted)">requestId</span><div style="height: 20px; border-radius: 5px; background: var(--bar1); width: 100%"></div></div><div style="display: grid; grid-template-columns: 120px minmax(0, 1fr); align-items: center; gap: 16px"><span style="color: var(--muted)">cors</span><div style="height: 20px; border-radius: 5px; background: var(--bar2); margin-left: 4%; width: 92%"></div></div><div style="display: grid; grid-template-columns: 120px minmax(0, 1fr); align-items: center; gap: 16px"><span style="color: var(--muted)">auth</span><div style="height: 20px; border-radius: 5px; background: var(--bar4); margin-left: 10%; width: 80%"></div></div><div style="display: grid; grid-template-columns: 120px minmax(0, 1fr); align-items: center; gap: 16px"><span style="font-weight: 700">handler</span><div style="height: 20px; border-radius: 5px; background: {{accent}}; margin-left: 16%; width: 62%"></div></div></div></sc-if>
+<sc-if value="{{ov4}}" hint-placeholder-val="{{ false }}"><div style="font-family: 'JetBrains Mono', monospace; font-size: 13px; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; background: var(--bg)"><div style="padding: 18px 20px; border-bottom: 1px solid var(--line)"><div style="font-size: 12px; color: var(--muted)">500 · {{errWhere}}</div><div style="margin-top: 6px; font-size: 18px; font-weight: 700; color: var(--accent-text); overflow-wrap: anywhere">{{errName}}: {{errMsg}}</div></div><div style="padding: 12px 0; line-height: 1.9; white-space: pre; overflow-x: auto"><sc-for list="{{errFrame}}" as="ln" hint-placeholder-count="4"><div style="padding: 0 20px; background: {{ln.bg}}; color: {{ln.fg}}; font-weight: {{ln.fw}}">{{ln.n}}  {{ln.text}}</div></sc-for></div><div style="padding: 14px 20px; border-top: 1px solid var(--line); font-family: 'Noto Sans JP', sans-serif; font-size: 14px; line-height: 1.8; color: var(--fg-2)">{{errHint}}</div><div style="padding: 12px 20px; border-top: 1px solid var(--line); font-size: 12px; color: var(--muted)">/_senri →</div></div></sc-if>
+<sc-if value="{{ov3}}" hint-placeholder-val="{{ false }}"><pre style="margin: 0; border-radius: 14px; background: var(--code); padding: 28px 32px; font-family: 'JetBrains Mono', monospace; font-size: 15px; line-height: 1.85; color: #D7DAE0; overflow-x: auto">app.<span style="color: #82AAFF">use</span>(<span style="color: #82AAFF">requestId</span>());
+app.<span style="color: #82AAFF">use</span>(<span style="color: #82AAFF">cors</span>());
+app.<span style="color: #82AAFF">use</span>(<span style="color: #82AAFF">compress</span>());
+app.<span style="color: #82AAFF">use</span>(<span style="color: #C3E88D">"/api/*"</span>, <span style="color: #82AAFF">rateLimit</span>());</pre></sc-if>
+</div>
+</div>
+</sc-if>
+<svg aria-hidden="true" style="position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 40; opacity: var(--grain-op); mix-blend-mode: var(--grain-blend)"><filter id="s-grain"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" stitchTiles="stitch"></feTurbulence><feColorMatrix type="saturate" values="0"></feColorMatrix></filter><rect width="100%" height="100%" filter="url(#s-grain)"></rect></svg>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#E3412B","options":["#E3412B","#FF6A52","#FF8A3D","#2F6BFF"]},"$preview":{"width":1440,"height":7600}}'>
+class Component extends DCLogic {
+dict() {
+return {
+ja: {
+lang: 'ja', skip: '本文へ移動', nav: 'メイン', docs: 'ドキュメント', navTl: 'タイムライン', navBlog: 'ブログ',
+langBtn: 'EN', langAria: 'English に切り替える', toDark: 'ダークモードにする', toLight: 'ライトモードにする',
+badge: 'v0.2.18 — マルチパート', h1a: '小さく書いて、', h1b: '遠くまで。', heroP: 'Web 標準で作った TypeScript のフレームワーク。',
+pmGroup: 'パッケージマネージャー', copyAria: 'コマンドをコピー', reqList: 'リクエストの一覧',
+kvMethod: 'メソッド', kvPath: 'パス', kvRoute: 'ルート', kvStatus: 'ステータス', kvTime: '時間', kvId: 'リクエスト ID',
+runtimes: '対応ランタイム', nRt: 'ランタイム', nSize: '最小アプリ(minify 後)', nTests: 'テスト', nLic: 'ライセンス',
+cliA: '起動して、', cliB: 'すぐ見える。', cliAria: 'npm create senri で作って起動すると、ルートの一覧とリクエストのログが流れるターミナル',
+layA: '画面から、', layB: 'ランタイムまで。', dev: '開発中', layAria: 'ランタイムの中で Senri がリクエストを requestId、cors、auth、handler の順に通し、レスポンスを返す図。上に開発中の Ippo がつながる',
+rtA: '枝分かれしても、', rtB: 'まっすぐ届く。', rtAria: 'app から /users、/posts、/api/* に分かれるルートの木。GET /users/42 が GET /users/:id にマッチする',
+featH: '必要なものだけ。', f0t: 'どこでも同じコード', f0d: 'Request と Response だけで動く', f1t: '教えてくれるエラー', f1d: '原因の行と直し方を、日英で',
+f2t: 'ダッシュボード', f2d: 'で時間の内訳', f3t: '標準のミドルウェア', f3d: 'cors · compress · rateLimit ほか',
+o0: '書き換えるのは、起動するところだけ。', o1: '開発中のエラー画面の例。', o2: 'どのミドルウェアで時間がかかったか。', o3: 'import して use するだけ。',
+err1: 'undefined か null から ', err2: ' を読もうとしました。値をセットしていない ', err3: ' や ', err4: ' の抜けがよくある原因です。', close: '閉じる',
+carH: 'よくある使い方。', prev: '前へ', next: '次へ', show: ' を表示',
+s0t: '返すだけで JSON', s0d: 'オブジェクトを返せば、そのまま JSON のレスポンスになる。', s1t: '1行で守る', s1d: 'CORS もセキュリティのヘッダーも、use するだけ。',
+s2t: '流し続ける', s2d: 'Server-Sent Events も、切れないための heartbeat も最初から。', s3t: '大きいファイルも少しずつ', s3d: 'メモリに全部載せずに、パーツを1つずつ読む。',
+tlA: '一歩ずつ、', tlB: 'ここまで。', tlAll: 'すべてのリリース →', tlBefore: 'それ以前', tlB1: '0.1 から 0.2.10 までの細かい変更は ', tlB2: ' に。',
+e1t: 'Node.js を正攻法で速く', e1d: '手元の計測で約 4 倍', e2t: '開発ページが日英対応', e2d: 'SSE の heartbeat を既定で ON', e3t: 'マルチパートを少しずつ読む',
+e4t: 'senri.skyia.jp を公開', e4d: 'ドキュメントは日本語と英語', now: 'いまここ', planned: '予定', e5t: '型付きクライアントと OpenAPI', e6t: 'メタフレームワークの一歩目',
+proverb: '千里の道も、一歩から。', ctaH: 'はじめよう。',
+gitA: '毎日、', gitB: '少しずつ前へ。', gitLink: 'GitHub で見る →', gitAria: 'main から機能ごとにブランチを切り、プルリクエストでマージして、リリースのタグを付けていく開発の流れの図。#61 日英対応、#63 英語化、#65 テストの修正、#66 マルチパート、#68 ドキュメントサイト',
+stars: 'GitHub のスター', dl: 'npm の週間ダウンロード', perWeek: '/ 週', demo: 'デモ', pgTab: 'プレイグラウンド', dashTab: 'ダッシュボード', pgNote: 'ブラウザの中で動いています',
+pgCode: 'コード', pgMethod: 'メソッド', pgPath: 'パス', send: '送信', resp: 'レスポンス', boom: 'わざとエラーを出す', openErr: 'エラー画面を開く', maybe: 'もしかして',
+errTitle: '開発中のエラー画面', errDesc: 'あなたのブラウザの中で実行した結果です。', errHint: 'ハイライトした行で例外が投げられました。', errSyntax: 'コードを実行できませんでした。書き方を確認してください。',
+errRead1: 'undefined か null から ', errRead2: ' を読もうとしました。値をセットしていない c.get() や await の抜けがよくある原因です。', noContent: '(本文なし)',
+search: 'ドキュメントを検索', searchShort: '検索', searchPh: 'ページを検索…', noResult: '見つかりませんでした',
+fDocs: 'ドキュメント', fStart: 'はじめに', fRouting: 'ルーティング', fMw: 'ミドルウェア', fDev: '開発モード', fCommunity: 'コミュニティ', fIssues: 'Issue', fReleases: 'リリース', fPkgs: 'パッケージ', fSite: 'このサイト', fLang: 'English', toDarkShort: 'ダーク', toLightShort: 'ライト', menuOpen: 'メニューを開く', menuClose: 'メニューを閉じる'
+},
+en: {
+lang: 'en', skip: 'Skip to content', nav: 'Main', docs: 'Docs', navTl: 'Timeline', navBlog: 'Blog',
+langBtn: 'JA', langAria: 'Switch to Japanese', toDark: 'Switch to dark mode', toLight: 'Switch to light mode',
+badge: 'v0.2.18 — multipart', h1a: 'Write small.', h1b: 'Go far.', heroP: 'A TypeScript framework built on web standards.',
+pmGroup: 'Package manager', copyAria: 'Copy command', reqList: 'Requests',
+kvMethod: 'Method', kvPath: 'Path', kvRoute: 'Route', kvStatus: 'Status', kvTime: 'Duration', kvId: 'Request ID',
+runtimes: 'Supported runtimes', nRt: 'Runtimes', nSize: 'Minimal app, minified', nTests: 'Tests', nLic: 'License',
+cliA: 'Start it.', cliB: 'See it.', cliAria: 'A terminal where an app made with npm create senri starts, lists its routes and logs requests',
+layA: 'From the screen', layB: 'to the runtime.', dev: 'in development', layAria: 'Inside the runtime, Senri passes a request through requestId, cors, auth and the handler, then returns a response. Ippo, in development, connects from above',
+rtA: 'Many branches,', rtB: 'one straight path.', rtAria: 'A route tree from app to /users, /posts and /api/*. GET /users/42 matches GET /users/:id',
+featH: 'Only what you need.', f0t: 'Same code everywhere', f0d: 'Just Request and Response', f1t: 'Errors that teach', f1d: 'The line and the fix, in English or Japanese',
+f2t: 'Dashboard', f2d: 'shows where time goes', f3t: 'Built-in middleware', f3d: 'cors · compress · rateLimit and more',
+o0: 'Only the startup line changes.', o1: 'An example of the dev error page.', o2: 'Which middleware took the time.', o3: 'Import it and use it.',
+err1: 'Tried to read ', err2: ' from undefined or null. A ', err3: ' with no value set, or a missing ', err4: ', is a common cause.', close: 'Close',
+carH: 'Common patterns.', prev: 'Previous', next: 'Next', show: 'Show ',
+s0t: 'Return it, get JSON', s0d: 'Return an object and it becomes a JSON response.', s1t: 'Protect in one line', s1d: 'CORS and security headers are one use away.',
+s2t: 'Keep streaming', s2d: 'Server-Sent Events, with a heartbeat on by default.', s3t: 'Big files, bit by bit', s3d: 'Read parts one at a time without loading it all into memory.',
+tlA: 'Step by step,', tlB: 'so far.', tlAll: 'All releases →', tlBefore: 'Earlier', tlB1: 'Changes from 0.1 to 0.2.10 are in the ', tlB2: '.',
+e1t: 'A faster Node.js, no tricks', e1d: 'About 4× in our benchmark', e2t: 'Dev pages in English and Japanese', e2d: 'SSE heartbeat on by default', e3t: 'Streaming multipart',
+e4t: 'senri.skyia.jp is live', e4d: 'Docs in Japanese and English', now: 'Now', planned: 'Planned', e5t: 'Typed client and OpenAPI', e6t: 'The first step of a meta-framework',
+proverb: 'A journey of a thousand miles begins with a single step.', ctaH: 'Get started.',
+gitA: 'Every day,', gitB: 'a little further.', gitLink: 'See it on GitHub →', gitAria: 'A development flow where feature branches leave main, merge back through pull requests and get release tags. #61 i18n, #63 English messages, #65 test fixes, #66 multipart, #68 docs site',
+stars: 'GitHub stars', dl: 'npm weekly downloads', perWeek: '/ week', demo: 'Demo', pgTab: 'Playground', dashTab: 'Dashboard', pgNote: 'Running in your browser',
+pgCode: 'Code', pgMethod: 'Method', pgPath: 'Path', send: 'Send', resp: 'Response', boom: 'Throw an error on purpose', openErr: 'Open the error page', maybe: 'Did you mean',
+errTitle: 'Dev error page', errDesc: 'This ran in your browser.', errHint: 'The highlighted line threw the error.', errSyntax: 'The code could not run. Check how it is written.',
+errRead1: 'Tried to read ', errRead2: ' from undefined or null. A c.get() with no value set, or a missing await, is a common cause.', noContent: '(no body)',
+search: 'Search docs', searchShort: 'Search', searchPh: 'Search pages…', noResult: 'No results',
+fDocs: 'Docs', fStart: 'Getting started', fRouting: 'Routing', fMw: 'Middleware', fDev: 'Dev mode', fCommunity: 'Community', fIssues: 'Issues', fReleases: 'Releases', fPkgs: 'Packages', fSite: 'This site', fLang: '日本語', toDarkShort: 'Dark', toLightShort: 'Light', menuOpen: 'Open menu', menuClose: 'Close menu'
+}
+};
+}
+constructor(props) {
+super(props);
+this.state = {
+step: 0, logs: [], slide: 0, copied: false, pm: 0, ov: null, lang: 'ja', theme: null, tilt: [null, null, null, null],
+menuOpen: false, heroTab: 'play', method: 'GET', path: '/users/42', res: null, err: null, searchOn: false, query: '',
+code: 'import { createApp } from "@senrijs/senri";\n\nconst app = createApp();\n\napp.get("/hello", () => ({ message: "Hello, Senri!" }));\n\napp.get("/users/:id", (_, c) => ({ id: c.req.param("id") }));\n\napp.get("/never-gonna-give-you-up", (_, c) =>\n  c.redirect("https://www.youtube.com/watch?v=dQw4w9WgXcQ"),\n);\n\napp.get("/me", (_, c) => {\n  const user = c.get("user");\n  return { name: user.name };\n});\n\nexport default app;\n',
+};
+this.searchRef = (el) => { this.searchInput = el; };
+this.openSearch = () => { this.lastFocus = document.activeElement; this.setState({ searchOn: true, query: '' }); };
+this.closeSearch = () => { this.setState({ searchOn: false }); const f = this.lastFocus; if (f && f.focus) setTimeout(() => f.focus(), 0); };
+this.searchKey = (e) => { if (e.key === 'Escape') this.closeSearch(); };
+this.onQuery = (e) => this.setState({ query: e.target.value });
+this.onCode = (e) => this.setState({ code: e.target.value });
+this.onMethod = (e) => this.setState({ method: e.target.value });
+this.onPath = (e) => this.setState({ path: e.target.value });
+this.send = (e) => { if (e && e.preventDefault) e.preventDefault(); return this.request(this.state.method, this.state.path); };
+this.boom = (e) => {
+const el = e.currentTarget;
+const b = el.getBoundingClientRect();
+this.setState({ method: 'GET', path: '/me' });
+this.request('GET', '/me').then((r) => { if (r.err) this.openOv(4, b, el); });
+};
+this.openErr = (e) => this.openOv(4, e.currentTarget.getBoundingClientRect(), e.currentTarget);
+this.mouse = { x: -9999, y: -9999 };
+this.cvRef = (el) => { this.cv = el; };
+this.closeRef = (el) => { this.closeBtn = el; };
+this.heroMove = (e) => {
+const r = (this.cv || e.currentTarget).getBoundingClientRect();
+this.mouse = { x: e.clientX - r.left, y: e.clientY - r.top };
+};
+this.heroLeave = () => { this.mouse = { x: -9999, y: -9999 }; };
+this.close = () => {
+if (!this.state.ov) return;
+clearTimeout(this.t4);
+const back = this.opener;
+this.setState((s) => ({ ov: Object.assign({}, s.ov, { phase: 'closing' }) }));
+this.t4 = setTimeout(() => { this.setState({ ov: null }); if (back && back.focus) back.focus(); }, 480);
+};
+this.ovKey = (e) => { if (e.key === 'Escape') this.close(); };
+this.pauseCar = () => { this.carPaused = true; };
+this.resumeCar = () => { this.carPaused = false; };
+}
+sysDark() {
+return typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+}
+startParticles() {
+const reduce = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const loop = () => {
+const cv = this.cv;
+if (cv) {
+const r = cv.getBoundingClientRect();
+const dpr = window.devicePixelRatio || 1;
+const w = Math.max(1, Math.round(r.width));
+const h = Math.max(1, Math.round(r.height));
+if (cv.width !== w * dpr || cv.height !== h * dpr) { cv.width = w * dpr; cv.height = h * dpr; this.ps = null; }
+if (!this.ps) {
+const n = Math.min(170, Math.round((w * h) / 7000));
+this.ps = [];
+for (let i = 0; i < n; i++) {
+const a = Math.random() * Math.PI * 2;
+this.ps.push({ x: Math.random() * w, y: Math.random() * h, vx: 0, vy: 0, dx: Math.cos(a) * 0.18, dy: Math.sin(a) * 0.18, r: Math.random() * 1.3 + 0.7 });
+}
+}
+const ctx = cv.getContext('2d');
+ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+ctx.clearRect(0, 0, w, h);
+const m = this.mouse;
+const accent = this.props.accent ?? '#E3412B';
+const base = getComputedStyle(cv).getPropertyValue('--particle').trim() || 'rgba(17,20,24,0.22)';
+for (const p of this.ps) {
+const ox = p.x - m.x;
+const oy = p.y - m.y;
+const d2 = ox * ox + oy * oy;
+if (d2 < 19600) {
+const d = Math.sqrt(d2) || 1;
+const f = (140 - d) / 140;
+p.vx += (ox / d) * f * 0.9;
+p.vy += (oy / d) * f * 0.9;
+}
+p.vx += (p.dx - p.vx) * 0.04;
+p.vy += (p.dy - p.vy) * 0.04;
+p.x += p.vx;
+p.y += p.vy;
+if (p.x < -10) p.x = w + 10; if (p.x > w + 10) p.x = -10;
+if (p.y < -10) p.y = h + 10; if (p.y > h + 10) p.y = -10;
+const near = d2 < 40000;
+ctx.fillStyle = near ? accent : base;
+ctx.beginPath();
+ctx.arc(p.x, p.y, near ? p.r + 0.7 : p.r, 0, Math.PI * 2);
+ctx.fill();
+}
+}
+if (!reduce) this.raf = requestAnimationFrame(loop);
+};
+this.raf = requestAnimationFrame(loop);
+}
+componentDidMount() {
+this.t1 = setInterval(() => this.tick(), 700);
+this.t2 = setInterval(() => { if (!this.carPaused) this.setState((s) => ({ slide: (s.slide + 1) % 4 })); }, 4800);
+this.startParticles();
+}
+componentDidUpdate(prevProps, prevState) {
+if (this.state.searchOn && !prevState.searchOn && this.searchInput) this.searchInput.focus();
+if (this.state.ov && this.state.ov.phase === 'open' && (!prevState.ov || prevState.ov.phase !== 'open') && this.closeBtn) this.closeBtn.focus();
+}
+componentWillUnmount() {
+clearInterval(this.t1);
+clearInterval(this.t2);
+clearTimeout(this.t3);
+clearTimeout(this.t4);
+cancelAnimationFrame(this.raf);
+}
+tick() {
+const s = this.state;
+if (s.step < 6) { this.setState({ step: s.step + 1 }); return; }
+if (s.step > 44) { this.setState({ step: 0, logs: [] }); return; }
+const routes = [
+['GET', '/', 200], ['GET', '/users/42', 200], ['POST', '/users', 201], ['DELETE', '/users/42', 204],
+['GET', '/never-gonna-give-you-up', 302], ['GET', '/nope', 404], ['GET', '/files/report.pdf', 200],
+['GET', '/users/7', 500], ['GET', '/users/42', 200], ['GET', '/', 200],
+];
+const r = routes[Math.floor(Math.random() * routes.length)];
+const status = r[2];
+const slow = Math.random() < 0.08;
+const msNum = slow ? Math.round(520 + Math.random() * 300) : Math.round(Math.random() * 2);
+const mcolors = { GET: '#7FD6A0', POST: '#7DD3E8', DELETE: '#FF6B5E', PUT: '#E8C46A', PATCH: '#D59BF6' };
+const scolor = status >= 500 ? '#FF6B5E' : status >= 400 ? '#E8C46A' : status >= 300 ? '#7DD3E8' : '#7FD6A0';
+const d = new Date();
+const time = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0') + ':' + String(d.getSeconds()).padStart(2, '0');
+const log = { time, method: r[0], path: r[1], status: String(status), ms: msNum + 'ms', mcolor: mcolors[r[0]], scolor, tcolor: msNum > 500 ? '#FF6B5E' : '#6B7079', err: status >= 500 };
+this.setState({ step: s.step + 1, logs: s.logs.concat([log]).slice(-5) });
+}
+mkMove(i) {
+return (e) => {
+const r = e.currentTarget.getBoundingClientRect();
+const x = (e.clientX - r.left) / r.width - 0.5;
+const y = (e.clientY - r.top) / r.height - 0.5;
+const t = this.state.tilt.slice();
+t[i] = { rx: -y * 12, ry: x * 12, gx: (x + 0.5) * 100, gy: (y + 0.5) * 100 };
+this.setState({ tilt: t });
+};
+}
+mkLeave(i) {
+return () => {
+const t = this.state.tilt.slice();
+t[i] = null;
+this.setState({ tilt: t });
+};
+}
+openOv(i, b, el) {
+this.opener = el;
+clearTimeout(this.t4);
+this.setState({ ov: { i, phase: 'lift', r: { top: b.top, left: b.left, width: b.width, height: b.height } } });
+this.t4 = setTimeout(() => this.setState((s) => (s.ov ? { ov: Object.assign({}, s.ov, { phase: 'open' }) } : null)), 180);
+}
+mkOpen(i) {
+return (e) => this.openOv(i, e.currentTarget.getBoundingClientRect(), e.currentTarget);
+}
+lev(a, b) {
+const m = a.length, n = b.length;
+const d = [];
+for (let i = 0; i <= m; i++) { d.push([i]); }
+for (let j = 1; j <= n; j++) d[0][j] = j;
+for (let i = 1; i <= m; i++) for (let j = 1; j <= n; j++) d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+return d[m][n];
+}
+async request(method, rawPath) {
+const code = this.state.code;
+const path = (rawPath || '/').split('?')[0] || '/';
+const t0 = performance.now();
+const routes = [];
+const app = { use() { return app; } };
+['get', 'post', 'put', 'delete', 'patch'].forEach((m) => { app[m] = (p, h) => { routes.push({ m: m.toUpperCase(), p, h }); return app; }; });
+const src = code.replace(/^\s*import\s[^\n]*$/gm, '').replace(/export\s+default\s+[^;\n]*;?/g, '');
+const done = (res, err) => {
+res.ms = Math.max(0, performance.now() - t0).toFixed(1) + ' ms';
+this.setState({ res, err });
+return { res, err };
+};
+try {
+new Function('createApp', src)(() => app);
+} catch (e) {
+return done({ kind: 'error', status: 500 }, { name: e.name || 'Error', message: e.message, frame: [], where: 'app.ts', syntax: true });
+}
+let hit = null;
+let params = {};
+for (const r of routes) {
+if (r.m !== method) continue;
+const names = [];
+const re = new RegExp('^' + r.p.split('/').map((seg) => {
+if (seg === '*') return '(.*)';
+if (seg.charAt(0) === ':') { names.push(seg.slice(1)); return '([^/]+)'; }
+return seg.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}).join('/') + '$');
+const mt = re.exec(path);
+if (mt) { hit = r; names.forEach((n, i) => { params[n] = decodeURIComponent(mt[i + 1]); }); break; }
+}
+if (!hit) {
+let best = null;
+let bestD = Infinity;
+for (const r of routes) {
+const d = this.lev(path, r.p);
+if (d < bestD) { bestD = d; best = r; }
+}
+return done({ kind: 'notfound', status: 404, type: 'text/plain', sugg: best && bestD <= Math.max(3, Math.floor(path.length / 2)) ? best.m + ' ' + best.p : '' }, null);
+}
+const mk = (status, type, body, loc) => ({ __senri: true, status, type, body, loc });
+const c = {
+req: { method, path, param: (n) => params[n], query: () => undefined, header: () => undefined },
+get: () => undefined, set: () => {},
+json: (o, s) => mk(s || 200, 'application/json', JSON.stringify(o, null, 2)),
+text: (x, s) => mk(s || 200, 'text/plain', String(x)),
+redirect: (u, s) => mk(s || 302, '', '', u),
+};
+try {
+let v = hit.h(undefined, c);
+if (v && typeof v.then === 'function') v = await v;
+if (v && v.__senri) return done({ kind: 'raw', status: v.status, type: v.type, body: v.body, loc: v.loc }, null);
+if (v === undefined || v === null) return done({ kind: 'raw', status: 204, type: '', body: '' }, null);
+if (typeof v === 'string') return done({ kind: 'raw', status: 200, type: 'text/plain', body: v }, null);
+return done({ kind: 'raw', status: 200, type: 'application/json', body: JSON.stringify(v, null, 2) }, null);
+} catch (e) {
+const lines = code.split('\n');
+let idx = lines.findIndex((l) => l.indexOf('"' + hit.p + '"') >= 0 || l.indexOf("'" + hit.p + "'") >= 0);
+if (idx < 0) idx = 0;
+let hl = idx;
+const pm = /reading '([^']+)'/.exec(e.message || '');
+if (pm) { for (let j = idx; j < Math.min(lines.length, idx + 10); j++) { if (lines[j].indexOf('.' + pm[1]) >= 0) { hl = j; break; } } }
+const from = Math.max(0, hl - 2), to = Math.min(lines.length, hl + 3);
+const frame = [];
+for (let j = from; j < to; j++) frame.push({ n: String(j + 1).padStart(3, ' '), text: lines[j], hl: j === hl });
+return done({ kind: 'error', status: 500 }, { name: e.name || 'Error', message: e.message, frame, where: 'app.ts:' + (hl + 1), prop: pm ? pm[1] : '' });
+}
+}
+tf(i) {
+const t = this.state.tilt[i];
+return t ? 'perspective(900px) rotateX(' + t.rx.toFixed(2) + 'deg) rotateY(' + t.ry.toFixed(2) + 'deg) translateZ(0) scale(1.02)' : 'perspective(900px) rotateX(0deg) rotateY(0deg)';
+}
+gl(i) {
+const t = this.state.tilt[i];
+return t ? 'radial-gradient(420px circle at ' + t.gx.toFixed(1) + '% ' + t.gy.toFixed(1) + '%, rgba(227,65,43,0.10), rgba(255,255,255,0) 60%)' : 'transparent';
+}
+renderVals() {
+const accent = this.props.accent ?? '#E3412B';
+const t = this.dict()[this.state.lang];
+const dark = this.state.theme ? this.state.theme === 'dark' : this.sysDark();
+const step = this.state.step;
+const slide = this.state.slide;
+const ov = this.state.ov;
+const ovI = ov ? ov.i : -1;
+const ovTitles = [t.f0t, t.f1t, t.f2t, t.f3t, t.errTitle];
+const ovDescs = [t.o0, t.o1, t.o2, t.o3, t.errDesc];
+const res = this.state.res;
+const err = this.state.err;
+const reasons = { 200: 'OK', 201: 'Created', 204: 'No Content', 301: 'Moved Permanently', 302: 'Found', 404: 'Not Found', 500: 'Internal Server Error' };
+let resBody = '';
+if (res) {
+if (res.kind === 'notfound') resBody = '404 Not Found' + (res.sugg ? '\n\n' + t.maybe + ': ' + res.sugg + ' ?' : '');
+else if (res.kind === 'error') resBody = '500 Internal Server Error\n\n' + err.name + ': ' + err.message;
+else resBody = res.body || t.noContent;
+}
+const st = res ? res.status : 0;
+const pages = [
+['はじめに', 'Getting started', '/docs'], ['インストール', 'Installation', '/docs/install'], ['ルーティング', 'Routing', '/docs/routing'],
+['ミドルウェア', 'Middleware', '/docs/middleware'], ['バリデーション', 'Validation', '/docs/validation'], ['ストリーミング(SSE)', 'Streaming (SSE)', '/docs/streaming'],
+['マルチパート', 'Multipart', '/docs/multipart'], ['エラー', 'Errors', '/docs/errors'], ['開発モード', 'Dev mode', '/docs/dev'], ['ランタイムごとの使い方', 'Runtimes', '/docs/runtimes'],
+];
+const q = this.state.query.trim().toLowerCase();
+const results = pages.filter((p) => !q || p[0].toLowerCase().indexOf(q) >= 0 || p[1].toLowerCase().indexOf(q) >= 0 || p[2].indexOf(q) >= 0)
+.map((p) => ({ title: this.state.lang === 'ja' ? p[0] : p[1], path: p[2] }));
+const quickPaths = ['/hello', '/users/42', '/never-gonna-give-you-up', '/nope'];
+const play = this.state.heroTab === 'play';
+let ovBox = { top: 0, left: 0, width: 0, height: 0 };
+if (ov) {
+if (ov.phase === 'open') {
+const vw = window.innerWidth, vh = window.innerHeight;
+const w = Math.min(880, vw - 32), h = Math.min(560, vh - 64);
+ovBox = { top: Math.round((vh - h) / 2), left: Math.round((vw - w) / 2), width: w, height: h };
+} else {
+ovBox = { top: Math.round(ov.r.top), left: Math.round(ov.r.left), width: Math.round(ov.r.width), height: Math.round(ov.r.height) };
+}
+}
+const cmds = [
+['npm', 'npm create senri@latest'],
+['pnpm', 'pnpm create senri'],
+['yarn', 'yarn create senri'],
+['bun', 'bun create senri'],
+['deno', 'deno run -A npm:create-senri@latest'],
+];
+const labels = ['JSON API', 'Middleware', 'SSE', 'Upload'];
+const script = [{ text: '$ npm create senri@latest my-app' }, { text: '$ cd my-app && bun run dev' }];
+return {
+accent, t,
+theme: this.state.theme || 'auto',
+isDark: dark, isLight: !dark,
+themeAria: dark ? t.toLight : t.toDark,
+toggleTheme: () => this.setState({ theme: dark ? 'light' : 'dark' }),
+toggleLang: () => this.setState({ lang: this.state.lang === 'ja' ? 'en' : 'ja' }),
+intro: script.slice(0, Math.min(step, 2)),
+booting: step === 3 || step === 4,
+ready: step >= 5,
+logs: this.state.logs,
+cvRef: this.cvRef, closeRef: this.closeRef,
+heroMove: this.heroMove, heroLeave: this.heroLeave,
+pauseCar: this.pauseCar, resumeCar: this.resumeCar,
+copied: this.state.copied,
+notCopied: !this.state.copied,
+cmd: cmds[this.state.pm][1],
+pms: cmds.map((c, i) => ({
+label: c[0],
+pressed: i === this.state.pm ? 'true' : 'false',
+bg: i === this.state.pm ? 'var(--fg)' : 'transparent',
+fg: i === this.state.pm ? 'var(--bg)' : 'var(--muted)',
+pick: () => this.setState({ pm: i, copied: false }),
+})),
+copy: () => {
+try { navigator.clipboard && navigator.clipboard.writeText(cmds[this.state.pm][1]); } catch (e) {}
+this.setState({ copied: true });
+clearTimeout(this.t3);
+this.t3 = setTimeout(() => this.setState({ copied: false }), 1400);
+},
+track: 'translateX(-' + (slide * 100) + '%)',
+prev: () => this.setState({ slide: (slide + 3) % 4 }),
+next: () => this.setState({ slide: (slide + 1) % 4 }),
+dots: labels.map((label, i) => ({
+label: this.state.lang === 'ja' ? label + t.show : t.show + label,
+current: i === slide ? 'true' : 'false',
+w: i === slide ? '32px' : '10px',
+bg: i === slide ? accent : 'var(--line-2)',
+pick: () => this.setState({ slide: i }),
+})),
+move0: this.mkMove(0), move1: this.mkMove(1), move2: this.mkMove(2), move3: this.mkMove(3),
+leave0: this.mkLeave(0), leave1: this.mkLeave(1), leave2: this.mkLeave(2), leave3: this.mkLeave(3),
+tf0: this.tf(0), tf1: this.tf(1), tf2: this.tf(2), tf3: this.tf(3),
+gl0: this.gl(0), gl1: this.gl(1), gl2: this.gl(2), gl3: this.gl(3),
+open0: this.mkOpen(0), open1: this.mkOpen(1), open2: this.mkOpen(2), open3: this.mkOpen(3),
+close: this.close, ovKey: this.ovKey,
+cls0: ovI === 0 ? 's-ghost' : '', cls1: ovI === 1 ? 's-ghost' : '', cls2: ovI === 2 ? 's-ghost' : '', cls3: ovI === 3 ? 's-ghost' : '',
+exp0: ovI === 0 ? 'true' : 'false', exp1: ovI === 1 ? 'true' : 'false', exp2: ovI === 2 ? 'true' : 'false', exp3: ovI === 3 ? 'true' : 'false',
+ovOn: !!ov, ov0: ovI === 0, ov1: ovI === 1, ov2: ovI === 2, ov3: ovI === 3, ov4: ovI === 4,
+themeLabel: dark ? t.toLightShort : t.toDarkShort,
+menuOpen: this.state.menuOpen, menuClosed: !this.state.menuOpen, menuExp: this.state.menuOpen ? 'true' : 'false',
+menuAria: this.state.menuOpen ? t.menuClose : t.menuOpen,
+toggleMenu: () => this.setState({ menuOpen: !this.state.menuOpen }), closeMenu: () => this.setState({ menuOpen: false }),
+tabPlay: play, tabDash: !play,
+tabPlaySel: play ? 'true' : 'false', tabDashSel: play ? 'false' : 'true',
+tabPlayBg: play ? 'var(--fg)' : 'transparent', tabPlayFg: play ? 'var(--bg)' : 'var(--muted)',
+tabDashBg: play ? 'transparent' : 'var(--fg)', tabDashFg: play ? 'var(--muted)' : 'var(--bg)',
+showPlay: () => this.setState({ heroTab: 'play' }), showDash: () => this.setState({ heroTab: 'dash' }),
+code: this.state.code, method: this.state.method, path: this.state.path,
+onCode: this.onCode, onMethod: this.onMethod, onPath: this.onPath, send: this.send, boom: this.boom, openErr: this.openErr,
+quick: quickPaths.map((p) => ({ label: p, go: () => { this.setState({ method: 'GET', path: p }); this.request('GET', p); } })),
+resStatus: res ? st + ' ' + (reasons[st] || '') : '—',
+resColor: st >= 500 ? 'var(--accent-text)' : st >= 400 ? '#C28A10' : st >= 300 ? 'var(--blue)' : st ? 'var(--green)' : 'var(--muted)',
+resMs: res ? res.ms : '',
+resType: res && res.type ? res.type : '',
+resLoc: res && res.loc ? res.loc : '',
+resBody: res ? resBody : (this.state.lang === 'ja' ? '送信を押すか、下のパスを選んでね' : 'Press Send or pick a path below'),
+hasErr: !!err,
+errName: err ? err.name : '', errMsg: err ? err.message : '', errWhere: err ? err.where : '',
+errFrame: err ? err.frame.map((l) => ({ n: l.n, text: l.text, bg: l.hl ? 'var(--hl-strong)' : 'transparent', fg: l.hl ? 'var(--fg)' : 'var(--muted)', fw: l.hl ? 700 : 400 })) : [],
+errHint: err ? (err.syntax ? t.errSyntax : err.prop ? t.errRead1 + err.prop + t.errRead2 : t.errHint) : '',
+searchOn: this.state.searchOn, query: this.state.query, results, noResults: results.length === 0,
+openSearch: this.openSearch, closeSearch: this.closeSearch, searchKey: this.searchKey, onQuery: this.onQuery, searchRef: this.searchRef,
+ovTitle: ov ? ovTitles[ov.i] : '', ovDesc: ov ? ovDescs[ov.i] : '',
+ovTop: ovBox.top + 'px', ovLeft: ovBox.left + 'px', ovW: ovBox.width + 'px', ovH: ovBox.height + 'px',
+ovTf: ov && ov.phase === 'lift' ? 'translateY(-12px) scale(1.03)' : 'none',
+ovR: ov && ov.phase === 'open' ? '28px' : '20px',
+ovShadow: ov && ov.phase === 'lift' ? '0 30px 60px rgba(17,20,24,0.18)' : '0 40px 120px rgba(17,20,24,0.25)',
+ovBg: ov && ov.phase === 'open' ? 'rgba(17,20,24,0.32)' : 'rgba(17,20,24,0)',
+ovBlur: ov && ov.phase === 'open' ? '8px' : '0px',
+ovFade: ov && ov.phase === 'open' ? 1 : 0,
+ovFadeTf: ov && ov.phase === 'open' ? 'none' : 'translateY(8px)',
+};
+}
+}
+</script>
+</body>
+</html>

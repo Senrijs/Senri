@@ -31,6 +31,19 @@ bun run preview   # out/ を配信して確かめる
 - 静的書き出しでは middleware が動かないので、言語ごとにルートのファイルを置いています(`app/(ja)` と `app/(en)/en`)。中身は `components/pages` の共通の部品です。
 - `/docs/routing.md` のような短い Markdown の URL は、Next.js の rewrites が静的書き出しで使えないので作っていません。
 
+## トップページ
+
+`components/home/` にあります。見本は `docs/design/top-page.dc.html` です。
+
+- **文言:** `lib/home/dict.ts`(日本語と英語)。バッジの説明(`badgeVersion` と `badge`)は、リリースのたびに書き換えます。バージョンが合わないときは「vX.Y.Z リリース」とだけ出ます
+- **ビルドのときに作るデータ:** `bun run dev` と `bun run build` は、先に `scripts/home-data.ts` を動かして `lib/home/generated.json`(Git には入れない)を作ります
+  - CLI のログとプレイグラウンドの結果: リポジトリの本物の `logger()`、`showRoutes()`、開発モードで動かした出力
+  - バージョン: リポジトリの `package.json`
+  - GitHub のスター数と npm の週間ダウンロード数: トークンなしの API。取れなければ数字を出しません
+- **数字(16 KB とテストの件数):** `components/home/home-page.tsx` に直接書いています。リリースのときに `bun run size` と `bun test` で見直します
+- **動き:** 動きを減らす設定と、フッターの「動きを止める」(`<html data-motion="off">`)で止まります
+- **ロゴ:** `public/brand/` は https://github.com/Senrijs/brand の SVG のコピーです
+
 ## 書くときに使えるもの
 
 `content/docs/ja/samples.mdx` に、全部の見本があります。

@@ -24,6 +24,15 @@ html {
     scrollbar-gutter: stable;
 }
 
+/* ワードマーク(components/home/wordmark.tsx): テーマに合わせて片方だけ出す */
+.s-wm-dark,
+.dark .s-wm-light {
+    display: none !important;
+}
+.dark .s-wm-dark {
+    display: block !important;
+}
+
 html > body[data-scroll-locked] {
     margin-right: 0px !important;
     --removed-body-scroll-bar-size: 0px !important;
