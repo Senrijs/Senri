@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import {
+    browserStorage,
     editorOptions,
     filterRoutes,
     methodColor,
@@ -115,6 +116,24 @@ describe("エディタの選択", () => {
 
         expect(loadEditor(broken, { id: "vscode", detected: false })).toBe("vscode");
         expect(() => saveEditor(broken, "zed")).not.toThrow();
+    });
+
+    test("localStorage を読むだけで例外になる環境(サイトのデータを止めている、sandbox の iframe)では undefined", () => {
+        const blocked = {
+            get localStorage(): Storage {
+                throw new DOMException("Access is denied for this document.", "SecurityError");
+            },
+        };
+
+        expect(browserStorage(blocked)).toBeUndefined();
+        expect(loadEditor(browserStorage(blocked), { id: "vscode", detected: false })).toBe("vscode");
+    });
+
+    test("localStorage がない環境では undefined、ある環境ではそれを返す", () => {
+        const storage = fakeStorage();
+
+        expect(browserStorage({})).toBeUndefined();
+        expect(browserStorage({ localStorage: storage })).toBe(storage);
     });
 
     test("選択肢: 推測できたものに(自動判別)、WebStorm に(実験的)", () => {
