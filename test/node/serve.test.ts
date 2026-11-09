@@ -123,3 +123,66 @@ describe("serve(Node)", () => {
         assert.equal(await hanging, "cut");
     });
 });
+
+describe("serve(Node): maxRequestBodySize", () => {
+    const limited = createApp();
+    limited.post("/echo", async (_, c) => `${(await c.req.text()).length}`);
+    // 読み取りのエラーを握りつぶすハンドラー。それでも 413 にする
+    limited.post("/swallow", async (_, c) => {
+        try {
+            await c.body();
+        } catch {}
+        return "ok";
+    });
+
+    const chunked = (size: number) =>
+        new ReadableStream<Uint8Array>({
+            start(controller) {
+                controller.enqueue(new Uint8Array(size));
+                controller.close();
+            },
+        });
+
+    // senri の近道(Request を後で作る)と、app.fetch を通す道の両方で確かめる
+    for (const [label, target] of [
+        ["近道", limited],
+        ["app.fetch を通す道", { fetch: limited.fetch, routeList: () => limited.routeList() }],
+    ] as const) {
+        test(`${label}: 上限を超えたら 413。上限までなら通る(Content-Length あり・なし)`, async () => {
+            const server = await serve(target as typeof limited, { port: 0, banner: false, maxRequestBodySize: 16 });
+            try {
+                const post = (path: string, body: BodyInit) =>
+                    fetch(`${server.url}${path}`, { method: "POST", body, duplex: "half" } as RequestInit);
+                const ok = await post("/echo", "x".repeat(16));
+                assert.equal(ok.status, 200);
+                assert.equal(await ok.text(), "16");
+                assert.equal((await post("/echo", "x".repeat(17))).status, 413);
+                assert.equal((await post("/echo", chunked(16))).status, 200);
+                const over = await post("/echo", chunked(17));
+                assert.equal(over.status, 413);
+                assert.equal(await over.text(), "413 Content Too Large");
+                assert.equal((await post("/swallow", chunked(17))).status, 413);
+            } finally {
+                await server.stop();
+            }
+        });
+    }
+
+    test("省略すると上限なし(Node.js の既定)。Infinity も上限なし", async () => {
+        for (const maxRequestBodySize of [undefined, Infinity]) {
+            const server = await serve(limited, { port: 0, banner: false, maxRequestBodySize });
+            try {
+                const res = await fetch(`${server.url}/echo`, { method: "POST", body: "x".repeat(1024 * 1024) });
+                assert.equal(await res.text(), String(1024 * 1024));
+            } finally {
+                await server.stop();
+            }
+        }
+    });
+
+    test("負の数や数でない値は RangeError", async () => {
+        for (const value of [-1, Number.NaN]) {
+            await assert.rejects(serve(limited, { port: 0, banner: false, maxRequestBodySize: value }), RangeError);
+        }
+    });
+});

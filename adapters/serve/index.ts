@@ -17,6 +17,7 @@
  */
 import { showRoutes } from "../../src/index.ts";
 import { setDraining } from "../../src/health.ts";
+import { checkMaxRequestBodySize, countBytes } from "../../src/middleware/body-limit.ts";
 import { isLang, terminalLang, type Lang } from "../../src/lang.ts";
 import * as runtime from "../../src/runtime.ts";
 import { SERVE_MESSAGES } from "./messages.ts";
@@ -70,6 +71,22 @@ export type ServeOptions = {
      * Not called by {@link Server.stop}.
      */
     onShutdown?: () => unknown;
+    // リクエストの本文の上限(バイト数)。超えたら 413
+    // 省略したときはランタイムの既定: Bun は 128 MiB(Bun.serve の既定)、Node.js と Deno は上限なし
+    /**
+     * The maximum request body size in bytes. Over it, the request gets 413 `413 Content Too Large`.
+     * `Infinity` removes the limit; a negative or non-numeric value throws a `RangeError`.
+     *
+     * Without it, each runtime's default applies:
+     * - **Bun:** 128 MiB (the default of `Bun.serve`). Larger bodies are cut off, so raise this to receive large
+     *   uploads, for example with `multipart()`.
+     * - **Node.js and Deno:** no limit.
+     *
+     * With `Content-Length`, a body over the limit is refused before it is read. Without it (chunked), it is
+     * counted while it is read, and the request gets 413 even if the handler caught the error.
+     * This is a server-wide limit; to limit each route, use `bodyLimit()`, `uploadLimit()` or the limits of `multipart()`.
+     */
+    maxRequestBodySize?: number;
 };
 
 /** A server started by {@link serve}. */
@@ -133,6 +150,7 @@ type BunLike = {
     serve(options: {
         port: number;
         hostname?: string;
+        maxRequestBodySize?: number;
         fetch: App["fetch"];
     }): { port: number; stop(closeActiveConnections?: boolean): Promise<void> | void };
 };
@@ -152,6 +170,32 @@ type ProcessLike = {
 };
 
 const SIGNALS = ["SIGTERM", "SIGINT"] as const;
+
+const tooLarge = () =>
+    new Response("413 Content Too Large", {
+        status: 413,
+        headers: { "content-type": "text/plain; charset=utf-8", connection: "close" },
+    });
+
+// Deno 用: 本文が max を超えたら 413 にする(Deno.serve には本文の上限がない)
+// Content-Length があれば読む前に決め、ない(チャンク転送)ときは読みながら数える
+function limitBody(fetch: App["fetch"], max: number): App["fetch"] {
+    return async (req, ...rest) => {
+        if (req.body === null) return fetch(req, ...rest);
+        const length = req.headers.get("content-length");
+        if (length !== null) return Number(length) > max ? tooLarge() : fetch(req, ...rest);
+        let exceeded = false;
+        const body = countBytes(req.body, max, () => (exceeded = true));
+        try {
+            const res = await fetch(new Request(req, { body, duplex: "half" } as RequestInit), ...rest);
+            // ハンドラーがエラーを握りつぶしていても、超えていたら 413 にする
+            return exceeded ? tooLarge() : res;
+        } catch (err) {
+            if (exceeded) return tooLarge();
+            throw err;
+        }
+    };
+}
 
 // 上限つきで待つ。時間内に終われば true
 function within(promise: Promise<unknown>, ms: number): Promise<boolean> {
@@ -192,6 +236,8 @@ export async function serve(app: App, options: ServeOptions = {}): Promise<Serve
     if (!Number.isFinite(timeout) || timeout < 0) {
         throw new RangeError(`shutdownTimeout must be a number of milliseconds, 0 or more: ${timeout}`);
     }
+    const maxBody = options.maxRequestBodySize;
+    checkMaxRequestBodySize(maxBody);
 
     // 実際に待ち受けたポート(port: 0 なら、ランタイムが選んだ番号)と、止め方
     // - drain: 新しい接続を受けるのをやめ、処理中のものが終わったら resolve
@@ -201,13 +247,20 @@ export async function serve(app: App, options: ServeOptions = {}): Promise<Serve
     let force: () => void;
 
     if (g.Bun) {
-        const s = g.Bun.serve({ port, hostname, fetch: app.fetch });
+        // 省略したときは渡さない(Bun の既定の 128 MiB のまま)
+        const s = g.Bun.serve({
+            port,
+            hostname,
+            ...(maxBody === undefined ? {} : { maxRequestBodySize: maxBody }),
+            fetch: app.fetch,
+        });
         actualPort = s.port;
         drain = async () => s.stop(false);
         force = () => void s.stop(true);
     } else if (g.Deno) {
         // onListen を空にして、Deno が勝手に出す "Listening on ..." を消す(バナーと二重になるので)
-        const s = g.Deno.serve({ port, hostname, onListen() {} }, app.fetch);
+        const fetch = maxBody === undefined || maxBody === Infinity ? app.fetch : limitBody(app.fetch, maxBody);
+        const s = g.Deno.serve({ port, hostname, onListen() {} }, fetch);
         actualPort = s.addr.port;
         drain = () => s.shutdown();
         // Deno には、shutdown() のあとに残りの接続を切る方法がない(signal で abort すると Deno の中で例外になる)
@@ -216,7 +269,7 @@ export async function serve(app: App, options: ServeOptions = {}): Promise<Serve
     } else {
         // Node のときだけ node:http を読み込む
         const node = await import("../node/index.ts");
-        const s = node.serve(app, { port, hostname });
+        const s = node.serve(app, { port, hostname, maxRequestBodySize: maxBody });
         // Node は待ち受けが非同期。使用中のポートなどは error イベントで来るので、ここで reject にする
         // (受け取らないとプロセスごと落ちる)
         await new Promise<void>((resolve, reject) => {

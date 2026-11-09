@@ -105,3 +105,36 @@ describe("serve(Bun)", () => {
         }
     });
 });
+
+describe("serve(Bun): maxRequestBodySize", () => {
+    const app = createApp();
+    app.post("/echo", async (_, c) => `${(await c.req.text()).length}`);
+
+    // 送り切るまで長さが分からない本文(チャンク転送になる)
+    const chunked = (size: number) =>
+        new ReadableStream<Uint8Array>({
+            start(controller) {
+                controller.enqueue(new Uint8Array(size));
+                controller.close();
+            },
+        });
+
+    test("上限を超えたら 413。上限までなら通る(Content-Length あり・なしの両方)", async () => {
+        const server = await serve(app, { port: 0, banner: false, maxRequestBodySize: 16 });
+        try {
+            const post = (body: BodyInit) => fetch(`${server.url}/echo`, { method: "POST", body, duplex: "half" } as RequestInit);
+            expect((await post("x".repeat(16))).status).toBe(200);
+            expect((await post("x".repeat(17))).status).toBe(413);
+            expect((await post(chunked(16))).status).toBe(200);
+            expect((await post(chunked(17))).status).toBe(413);
+        } finally {
+            await server.stop();
+        }
+    });
+
+    test("負の数や数でない値は RangeError", async () => {
+        for (const value of [-1, Number.NaN, "1" as unknown as number]) {
+            await expect(serve(app, { port: 0, banner: false, maxRequestBodySize: value })).rejects.toThrow(RangeError);
+        }
+    });
+});
