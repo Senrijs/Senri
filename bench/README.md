@@ -67,17 +67,17 @@ wrk は JSON を出さないので、表示の文字を読むのではなく、L
 
 ### 1. 入れるもの
 
-版を固定して入れます(手元で試した版と同じ)。
+版を固定して入れます(ベンチ用の VM で測った版)。
 
 ```sh
 sudo apt-get update && sudo apt-get install -y git curl unzip util-linux wrk   # taskset は util-linux に入っている
 
-# Bun 1.4.3
-curl -fsSL https://bun.sh/install | bash -s "bun-v1.4.3"
+# Bun 1.4.4
+curl -fsSL https://bun.sh/install | bash -s "bun-v1.4.4"
 
-# Node.js 24.11.0(nvm で入れる)
+# Node.js 24.22.2(nvm で入れる)
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash
-. ~/.nvm/nvm.sh && nvm install 24.11.0
+. ~/.nvm/nvm.sh && nvm install 24.22.2
 
 # Deno 2.9.8
 curl -fsSL https://deno.land/install.sh | sh -s v2.9.8
@@ -87,7 +87,7 @@ exec $SHELL -l
 bun --version && node --version && deno --version && wrk -v
 ```
 
-- wrk は Ubuntu のパッケージ(`apt-get install wrk`)を使います。`wrk -v` で出る版を、結果といっしょに残してください(`wrk -v` は 0 以外で終わることがありますが、版が出ていれば大丈夫です)
+- wrk は Ubuntu のパッケージ(`apt-get install wrk`)を使います(Ubuntu 24.04 では 4.1.0、`debian/4.1.0-4build2`)。`wrk -v` で出る版を、結果といっしょに残してください(`wrk -v` は 0 以外で終わることがありますが、版が出ていれば大丈夫です)
 
 ### 2. 測る
 
@@ -106,7 +106,7 @@ ROUNDS=5 DURATION=15s bun run http:all 2>&1 | tee http-$(date +%Y%m%d).txt
 - それぞれのランタイムの最後に、次のような表が出ます。表をそのまま貼れば、比べられます
 
 ```
-Node.js v24.11.0 / AMD EPYC ... x 8 / wrk -t4 -c64 -d15s / 5 rounds (median) / server on CPU 0-3, wrk on CPU 4-7
+Node.js v24.22.2 / AMD EPYC ... x 8 / wrk -t4 -c64 -d15s / 5 rounds (median) / server on CPU 0-3, wrk on CPU 4-7
 
 | | senri | senri-0.2.9 | hono | elysia | raw |
 |---|---:|---:|---:|---:|---:|
