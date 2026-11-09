@@ -1,5 +1,6 @@
 "use client";
 // 特長のカード。マウスに合わせて少し傾き(ばねで戻る)、押すとその場からダイアログが広がる
+// カードの中には小さな見本を置く。並びは横に流れるギャラリー(components/home/gallery.tsx)
 import * as m from "motion/react-m";
 import { type MouseEvent, type ReactNode, useState } from "react";
 import { homeDict } from "@/lib/home/dict";
@@ -17,11 +18,23 @@ export function Features({ lang, error }: { lang: Lang; error: NonNullable<Recor
     const still = useStill();
     const [open, setOpen] = useState<{ i: number; origin: Origin } | null>(null);
 
-    const cards: { icon: ReactNode; title: string; desc: ReactNode; dialog: string; body: ReactNode }[] = [
+    // エラーの見本: 本物の Senri で記録したエラーと、例外が投げられた行
+    const errorLine = error.line ? PLAYGROUND_CODE.split("\n")[error.line - 1]!.trim() : "";
+    const cards: { icon: ReactNode; title: string; desc: ReactNode; preview: ReactNode; dialog: string; body: ReactNode }[] = [
         {
             icon: <GlobeIcon size={26} />,
             title: t.f0t,
             desc: t.f0d,
+            preview: (
+                <span className="s-prev code">
+                    <span className="c-cm">{"// Bun · Node.js · Deno"}</span>
+                    {"\n"}
+                    <span className="c-fn">serve</span>(app);{"\n"}
+                    <span className="c-cm">{"// Cloudflare Workers"}</span>
+                    {"\n"}
+                    <span className="c-kw">export default</span> app;
+                </span>
+            ),
             dialog: t.o0,
             body: (
                 <pre className="s-code">
@@ -40,6 +53,18 @@ export function Features({ lang, error }: { lang: Lang; error: NonNullable<Recor
             icon: <WarnIcon size={26} strokeWidth={1.6} />,
             title: t.f1t,
             desc: t.f1d,
+            preview: (
+                <span className="s-prev err">
+                    <span className="top">
+                        {error.name}: {error.message}
+                    </span>
+                    {error.line ? (
+                        <span className="hit">
+                            {error.line}    {errorLine}
+                        </span>
+                    ) : null}
+                </span>
+            ),
             dialog: t.o1,
             body: <ErrorBox error={error} code={PLAYGROUND_CODE} file="app.ts" />,
         },
@@ -50,6 +75,23 @@ export function Features({ lang, error }: { lang: Lang; error: NonNullable<Recor
                 <>
                     <code>/_senri</code> {t.f2d}
                 </>
+            ),
+            preview: (
+                <span className="s-prev bars">
+                    {(
+                        [
+                            ["requestId", "var(--bar1)", 0, 100],
+                            ["cors", "var(--bar2)", 4, 92],
+                            ["auth", "var(--bar4)", 10, 80],
+                            ["handler", "var(--accent)", 16, 62],
+                        ] as const
+                    ).map(([name, color, left, width]) => (
+                        <span key={name} className="row">
+                            <span className={name === "handler" ? "name main" : "name"}>{name}</span>
+                            <span className="fill" style={{ background: color, marginLeft: `${left}%`, width: `${width}%` }} />
+                        </span>
+                    ))}
+                </span>
             ),
             dialog: t.o2,
             body: (
@@ -87,6 +129,13 @@ export function Features({ lang, error }: { lang: Lang; error: NonNullable<Recor
             icon: <ListIcon size={26} />,
             title: t.f3t,
             desc: t.f3d,
+            preview: (
+                <span className="s-prev chips">
+                    {["cors", "secureHeaders", "compress", "rateLimit", "etag", "requestId"].map((name) => (
+                        <span key={name}>{name}</span>
+                    ))}
+                </span>
+            ),
             dialog: t.o3,
             body: (
                 <pre className="s-code">
@@ -106,7 +155,7 @@ export function Features({ lang, error }: { lang: Lang; error: NonNullable<Recor
     const current = open ? cards[open.i]! : null;
     return (
         <>
-            <div className="s-grid4 s-cards">
+            <div className="s-gal-track" data-track>
                 {cards.map((card, i) => (
                     <TiltCard
                         key={card.title}
@@ -117,6 +166,7 @@ export function Features({ lang, error }: { lang: Lang; error: NonNullable<Recor
                         {card.icon}
                         <span className="t">{card.title}</span>
                         <span className="d">{card.desc}</span>
+                        {card.preview}
                     </TiltCard>
                 ))}
             </div>
@@ -161,7 +211,7 @@ function TiltCard({ still, ghost, onOpen, children }: { still: boolean; ghost: b
     return (
         <m.button
             type="button"
-            className={`s-card s-glass${ghost ? " ghost" : ""}`}
+            className={`s-card${ghost ? " ghost" : ""}`}
             aria-haspopup="dialog"
             aria-expanded={ghost}
             style={{ transformPerspective: 900 }}

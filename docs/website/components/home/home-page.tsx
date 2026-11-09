@@ -8,14 +8,18 @@ import { segments } from "@/lib/home/segments";
 import type { HomeData } from "@/lib/home/types";
 import { type Lang, localePath } from "@/lib/i18n";
 import { githubUrl } from "@/lib/shared";
+import { AnimIcon } from "./anim-icon";
 import { Carousel } from "./carousel";
 import { CountUp } from "./count-up";
 import { CliLog } from "./cli-log";
 import { Demo } from "./demo";
 import { Features } from "./features";
+import { Gallery } from "./gallery";
 import { HeroStage } from "./hero-stage";
 import { ChevronIcon, DownloadIcon, StarIcon } from "./icons";
+import { Horizon } from "./horizon";
 import { Install } from "./install";
+import { Journey } from "./journey";
 import { Particles } from "./particles";
 import { BlurHeading } from "./text-reveal";
 
@@ -28,7 +32,7 @@ export function HomePage({ lang }: { lang: Lang }) {
     return (
         <main id="main">
             <Hero lang={lang} docs={docs} />
-            {/* リクエストの旅は、あとの PR でここに入る */}
+            <Journey lang={lang} />
 
             <section className="s-sec" aria-labelledby="demo-title">
                 <div className="s-wrap">
@@ -52,24 +56,16 @@ export function HomePage({ lang }: { lang: Lang }) {
             <Layers lang={lang} />
             <RouteTree lang={lang} />
 
-            <section className="s-sec s-alt" aria-labelledby="feat-title" style={{ overflow: "hidden" }}>
-                <div className="s-glow" style={{ left: "-8%", top: "18%", width: 680, height: 680 }} aria-hidden="true" />
-                <div
-                    className="s-glow"
-                    style={{ right: "-6%", bottom: "-12%", width: 600, height: 600, background: "radial-gradient(closest-side, rgba(255,150,80,0.2), rgba(255,150,80,0))" }}
-                    aria-hidden="true"
-                />
-                <div className="s-wrap">
-                    <BlurHeading id="feat-title" className="s-h2 s-h2-big" lang={lang} big="FEATURES" lines={[t.featH]} />
-                    {/* 横に流れるギャラリーは、あとの PR で作る */}
-                    <Features lang={lang} error={boom} />
-                </div>
-            </section>
+            <Gallery heading={<BlurHeading id="feat-title" className="s-h2 s-h2-big" lang={lang} big="FEATURES" lines={[t.featH]} />}>
+                <Features lang={lang} error={boom} />
+            </Gallery>
 
             <Carousel lang={lang} />
             <Timeline lang={lang} />
 
             <section className="s-cta">
+                <Horizon />
+                <div className="s-cta-fade" aria-hidden="true" />
                 <p>{t.proverb}</p>
                 <BlurHeading lang={lang} lines={[t.ctaH]} />
                 <div className="row">
@@ -109,7 +105,7 @@ function Hero({ lang, docs }: { lang: Lang; docs: string }) {
                 <div className="s-stats s-up d3">
                     {stats.stars !== null ? (
                         <a className="s-link" href={`${githubUrl}/stargazers`} aria-label={`${t.stars}: ${fmt(stats.stars)}`}>
-                            <StarIcon />
+                            <AnimIcon name="star" size={14} interaction="hover" fallback={<StarIcon />} />
                             <b>{fmt(stats.stars)}</b> GitHub
                         </a>
                     ) : null}

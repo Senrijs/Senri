@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 import { homeDict } from "@/lib/home/dict";
 import type { Lang } from "@/lib/i18n";
 import { GlobeIcon, MoonIcon, PauseIcon, PlayIcon, SearchIcon, SunIcon } from "./icons";
+import { AnimIcon } from "./anim-icon";
 import { applyStoredMotion, setMotionOff, useMotionOff } from "./motion";
 
 // テーマは描いたあとでしか分からないので、それまではライトとして描く(ずれの警告を出さないため)
@@ -45,13 +46,19 @@ export function ThemeButton({ lang, variant }: { lang: Lang; variant: "icon" | "
     if (variant === "icon") {
         return (
             <button type="button" className="s-pill s-icon-btn s-hide-sm" onClick={toggle} aria-label={label}>
-                {dark ? <SunIcon /> : <MoonIcon />}
+                {dark ? <AnimIcon key="sun" name="sun" fallback={<SunIcon />} /> : <AnimIcon key="moon" name="moon" fallback={<MoonIcon />} />}
             </button>
         );
     }
     return (
         <button type="button" className={variant === "text" ? "s-pill" : undefined} onClick={toggle} aria-label={label}>
-            {variant === "text" ? dark ? <SunIcon size={14} /> : <MoonIcon size={14} /> : null}
+            {variant === "text" ? (
+                dark ? (
+                    <AnimIcon key="sun" name="sun" size={14} fallback={<SunIcon size={14} />} />
+                ) : (
+                    <AnimIcon key="moon" name="moon" size={14} fallback={<MoonIcon size={14} />} />
+                )
+            ) : null}
             {dark ? t.toLightShort : t.toDarkShort}
         </button>
     );
