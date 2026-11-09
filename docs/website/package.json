@@ -3,8 +3,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "bun scripts/home-data.ts && next dev",
-    "build": "bun scripts/home-data.ts && next build && bun scripts/flatten-segments.ts",
+    "dev": "bun scripts/home-data.ts && bun scripts/build-worker.ts && next dev",
+    "build": "bun scripts/home-data.ts && bun scripts/build-worker.ts && next build && bun scripts/flatten-segments.ts",
     "preview": "serve out",
     "postinstall": "fumadocs-mdx"
   },
@@ -24,6 +24,7 @@
     "react": "19.3.1",
     "react-dom": "19.3.1",
     "react-useanimations": "3.1.1",
+    "sucrase": "3.35.1",
     "zod": "4.6.7"
   },
   "devDependencies": {

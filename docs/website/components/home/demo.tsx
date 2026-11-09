@@ -1,6 +1,7 @@
 "use client";
 // ヒーローの「プレイグラウンド / ダッシュボード」のタブ
-// プレイグラウンドは、いまはビルドのときに本物の Senri で動かした結果を見せる(ブラウザで動かす版はあとの PR)
+// プレイグラウンド: 最初のコードのままなら、ビルドのときに本物の Senri で動かした結果(記録)を見せる。
+// コードを書き換えたり、記録にないパスを送ったりすると、ブラウザの Worker で本物の Senri を動かす(playground/worker.ts)
 import { type KeyboardEvent, type ReactNode, useRef, useState } from "react";
 import { homeDict } from "@/lib/home/dict";
 import { PLAYGROUND_CODE, QUICK_PATHS, BOOM_PATH } from "@/lib/home/playground-code";
@@ -9,6 +10,7 @@ import type { Lang } from "@/lib/i18n";
 import { ErrorBox } from "./error-box";
 import { ExpandDialog, type Origin } from "./expand-dialog";
 import { WarnIcon } from "./icons";
+import { run, type RunError } from "./playground-client";
 
 const TABS = ["play", "dash"] as const;
 type Tab = (typeof TABS)[number];
@@ -52,11 +54,15 @@ export function Demo({ lang, recordings, port }: { lang: Lang; recordings: Recor
                 ))}
             </div>
             <div role="tabpanel" id={`s-tabpanel-${tab}`} aria-labelledby={`s-tab-${tab}`} className="s-panel s-glass">
-                {tab === "play" ? <Playground lang={lang} recordings={recordings} /> : <Dashboard lang={lang} port={port} />}
+                {tab === "play" ? <Playground lang={lang} recordings={recordings} port={port} /> : <Dashboard lang={lang} port={port} />}
             </div>
         </div>
     );
 }
+
+// ブラウザの Response は statusText が空のことがあるので、よく使うものだけ補う
+const REASONS: Record<number, string> = { 200: "OK", 201: "Created", 202: "Accepted", 204: "No Content", 301: "Moved Permanently", 302: "Found", 303: "See Other", 304: "Not Modified", 307: "Temporary Redirect", 308: "Permanent Redirect", 400: "Bad Request", 401: "Unauthorized", 403: "Forbidden", 404: "Not Found", 405: "Method Not Allowed", 409: "Conflict", 413: "Content Too Large", 415: "Unsupported Media Type", 422: "Unprocessable Content", 429: "Too Many Requests", 500: "Internal Server Error", 503: "Service Unavailable" };
+const reason = (r: Recording) => r.statusText || REASONS[r.status] || "";
 
 function statusTone(status: number) {
     return status >= 500 ? "s-tone-err" : status >= 400 ? "s-tone-warn" : status >= 300 ? "s-tone-redirect" : "s-tone-ok";
@@ -73,35 +79,66 @@ function pretty(res: Recording): string | null {
     }
 }
 
-function Playground({ lang, recordings }: { lang: Lang; recordings: Recording[] }) {
+function Playground({ lang, recordings, port }: { lang: Lang; recordings: Recording[]; port: number }) {
     const t = homeDict[lang];
+    const [code, setCode] = useState(PLAYGROUND_CODE);
     const [method, setMethod] = useState("GET");
     const [path, setPath] = useState("/users/42");
     const [res, setRes] = useState<Recording | null>(null);
-    const [missing, setMissing] = useState(false);
+    // 何を出しているか: 記録 / ブラウザで動かした結果 / 実行中 / 時間切れ / 書き方の間違い / 動かせなかった
+    const [state, setState] = useState<"idle" | "recorded" | "live" | "running" | "timeout" | "build" | "unavailable">("idle");
+    const [buildError, setBuildError] = useState<RunError | null>(null);
     const [dialog, setDialog] = useState<Origin | null>(null);
+    const latest = useRef(0);
 
-    function find(m: string, p: string) {
-        const clean = p.split(/[?#]/)[0] || "/";
-        return recordings.find((r) => r.method === m && r.path === clean) ?? null;
+    const find = (m: string, p: string) => recordings.find((r) => r.method === m && r.path === p) ?? null;
+
+    // コードを書き換えていなくて、記録があるパスなら、記録を出す(Worker を読み込まない)
+    // それ以外は、ブラウザの中で本物の Senri を動かす
+    async function send(m: string, p: string): Promise<Recording | null> {
+        const clean = p.trim() || "/";
+        if (code === PLAYGROUND_CODE) {
+            const hit = find(m, clean.split(/[?#]/)[0] || "/");
+            if (hit) {
+                setRes(hit);
+                setBuildError(null);
+                setState("recorded");
+                return hit;
+            }
+        }
+        const ticket = ++latest.current;
+        setState("running");
+        const result = await run({ code, method: m, path: clean, lang, port });
+        if (ticket !== latest.current) return null;
+        if (result.kind === "response") {
+            setRes(result.recording);
+            setBuildError(null);
+            setState("live");
+            return result.recording;
+        }
+        setRes(null);
+        setBuildError(result.kind === "build" ? result.error : null);
+        setState(result.kind);
+        return null;
     }
 
-    function send(m: string, p: string) {
-        const hit = find(m, p);
-        setMissing(hit === null);
-        setRes(hit);
-        return hit;
-    }
-
-    function boom(e: React.MouseEvent<HTMLButtonElement>) {
+    async function boom(e: React.MouseEvent<HTMLButtonElement>) {
         const opener = e.currentTarget;
         setMethod("GET");
         setPath(BOOM_PATH);
-        const hit = send("GET", BOOM_PATH);
+        const hit = await send("GET", BOOM_PATH);
         if (hit?.error) setDialog({ rect: opener.getBoundingClientRect(), opener });
     }
 
-    const body = res ? (pretty(res) ?? t.noContent) : missing ? t.pgPreview : t.respEmpty;
+    const live = state === "live" || state === "build" || state === "running" || state === "timeout";
+    let body: string;
+    if (state === "running") body = t.pgRunning;
+    else if (state === "timeout") body = t.pgTimeout;
+    else if (state === "unavailable") body = t.pgUnavailable;
+    else if (state === "build" && buildError) body = `${t.pgBuildErr}\n\n${buildError.name}: ${buildError.message}`;
+    else if (res) body = pretty(res) ?? t.noContent;
+    else body = t.respEmpty;
+
     return (
         <>
             <div className="s-panel-bar">
@@ -113,35 +150,42 @@ function Playground({ lang, recordings }: { lang: Lang; recordings: Recording[] 
                 <span className="file">app.ts</span>
                 <span className="note">
                     <span className="s-beacon sm still" style={{ background: "var(--green)" }} aria-hidden="true" />
-                    {t.pgNote}
+                    {live ? t.pgLive : t.pgNote}
                 </span>
             </div>
             <div className="s-pg">
                 <div className="s-pg-code">
-                    <textarea spellCheck={false} aria-label={t.pgCode} aria-describedby="s-pg-note" value={PLAYGROUND_CODE} readOnly />
+                    <textarea
+                        spellCheck={false}
+                        aria-label={t.pgCode}
+                        aria-describedby="s-pg-note"
+                        value={code}
+                        maxLength={20000}
+                        onChange={(e) => setCode(e.target.value)}
+                    />
                 </div>
                 <div className="s-pg-side">
                     <form
                         className="s-pg-form"
                         onSubmit={(e) => {
                             e.preventDefault();
-                            send(method, path);
+                            void send(method, path);
                         }}
                     >
                         <select aria-label={t.pgMethod} value={method} onChange={(e) => setMethod(e.target.value)}>
-                            {["GET", "POST", "PUT", "DELETE"].map((m) => (
+                            {["GET", "POST", "PUT", "DELETE", "PATCH"].map((m) => (
                                 <option key={m} value={m}>
                                     {m}
                                 </option>
                             ))}
                         </select>
                         <input type="text" aria-label={t.pgPath} value={path} onChange={(e) => setPath(e.target.value)} />
-                        <button type="submit" className="s-btn-solid">
+                        <button type="submit" className="s-btn-solid" disabled={state === "running"}>
                             {t.send}
                         </button>
                     </form>
                     <p id="s-pg-note" className="s-pg-note">
-                        {t.pgPreview}
+                        {t.pgHelp}
                     </p>
                     <div className="s-quick">
                         {QUICK_PATHS.map((p) => (
@@ -151,22 +195,41 @@ function Playground({ lang, recordings }: { lang: Lang; recordings: Recording[] 
                                 onClick={() => {
                                     setMethod("GET");
                                     setPath(p);
-                                    send("GET", p);
+                                    void send("GET", p);
                                 }}
                             >
                                 {p}
                             </button>
                         ))}
+                        {code !== PLAYGROUND_CODE ? (
+                            <button type="button" onClick={() => setCode(PLAYGROUND_CODE)}>
+                                {t.pgReset}
+                            </button>
+                        ) : null}
                     </div>
-                    <div className="s-res" aria-live="polite">
+                    <div className="s-res" aria-live="polite" aria-busy={state === "running"}>
                         <div className="s-res-head">
                             <span className="label">{t.resp}</span>
-                            <span className={`status ${res ? statusTone(res.status) : ""}`}>{res ? `${res.status} ${res.statusText}` : "—"}</span>
+                            <span className={`status ${res && state !== "running" ? statusTone(res.status) : ""}`}>
+                                {res && (state === "live" || state === "recorded") ? `${res.status} ${reason(res)}`.trim() : "—"}
+                            </span>
                         </div>
-                        {res?.type ? <div className="s-res-meta">content-type: {res.type}</div> : null}
-                        {res?.location ? <div className="s-res-meta">location: {res.location}</div> : null}
+                        {res?.type && (state === "live" || state === "recorded") ? <div className="s-res-meta">content-type: {res.type}</div> : null}
+                        {res?.location && (state === "live" || state === "recorded") ? <div className="s-res-meta">location: {res.location}</div> : null}
                         <pre>{body}</pre>
-                        {res?.error ? (
+                        {(state === "live" || state === "recorded") && res?.error ? (
+                            <div style={{ padding: "0 14px 14px" }}>
+                                <button
+                                    type="button"
+                                    className="s-open-err"
+                                    aria-haspopup="dialog"
+                                    onClick={(e) => setDialog({ rect: e.currentTarget.getBoundingClientRect(), opener: e.currentTarget })}
+                                >
+                                    {t.openErr} →
+                                </button>
+                            </div>
+                        ) : null}
+                        {state === "build" && buildError ? (
                             <div style={{ padding: "0 14px 14px" }}>
                                 <button
                                     type="button"
@@ -185,9 +248,15 @@ function Playground({ lang, recordings }: { lang: Lang; recordings: Recording[] 
                     </button>
                 </div>
             </div>
-            {dialog && res?.error ? (
-                <ExpandDialog origin={dialog} title={t.errTitle} description={t.errDesc} closeLabel={t.close} onClosed={() => setDialog(null)}>
-                    <ErrorBox error={res.error} code={PLAYGROUND_CODE} file="app.ts" big />
+            {dialog && (state === "build" ? buildError : res?.error) ? (
+                <ExpandDialog
+                    origin={dialog}
+                    title={t.errTitle}
+                    description={state === "recorded" ? t.errDesc : t.errDescLive}
+                    closeLabel={t.close}
+                    onClosed={() => setDialog(null)}
+                >
+                    <ErrorBox error={(state === "build" ? buildError : res?.error)!} code={code} file="app.ts" big status={state === "build" ? t.pgBuildShort : "500"} />
                 </ExpandDialog>
             ) : null}
         </>
