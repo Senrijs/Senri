@@ -1195,6 +1195,199 @@ html[data-motion="off"] .s-hero-inner {
     min-height: 0;
 }
 
+/* --- FEATURES の横に流れるギャラリー(components/home/gallery.tsx) --- */
+.s-gal {
+    position: relative;
+    height: 340vh;
+    background: var(--surface);
+}
+.s-gal-stage {
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    /* clip: カードにフォーカスしても、ブラウザがこの箱を横にスクロールしないように(hidden だとずれる) */
+    overflow: clip;
+    isolation: isolate;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+.s-gal-pad {
+    padding: 0 max(24px, calc((100vw - 1200px) / 2));
+}
+.s-gal-pad .s-h2.s-h2-big {
+    margin: 0;
+}
+.s-gal-track {
+    --card-w: min(520px, 82vw);
+    margin-top: 40px;
+    display: flex;
+    align-items: stretch;
+    gap: 24px;
+    padding: 0 max(24px, calc((100vw - 1200px) / 2));
+    will-change: transform;
+}
+.s-gal-track .s-card {
+    flex: 0 0 var(--card-w);
+    height: min(54vh, 440px);
+    min-height: 0;
+    /* 動くので、ぼかし(backdrop-filter)は付けない */
+    background: var(--glass);
+    border: 1px solid var(--glass-line);
+}
+.s-gal-bar {
+    margin-top: 28px;
+    height: 2px;
+    max-width: 240px;
+    background: var(--line-2);
+    border-radius: 6px;
+    overflow: hidden;
+}
+.s-gal-bar > div {
+    height: 100%;
+    width: 0;
+    background: var(--fg);
+}
+/* カードの中の見本(中の部品なので角ばらせる) */
+.s-prev {
+    display: block;
+    margin-top: 18px;
+    font-family: var(--mono);
+    font-size: 12px;
+}
+.s-prev.code {
+    padding: 18px 20px;
+    border-radius: 6px;
+    background: var(--code);
+    color: #d7dae0;
+    font-size: 13px;
+    line-height: 1.8;
+    white-space: pre;
+    overflow: hidden;
+}
+.s-prev.err {
+    border-radius: 6px;
+    border: 1px solid var(--line);
+    overflow: hidden;
+    background: var(--bg);
+}
+.s-prev.err .top {
+    display: block;
+    padding: 10px 14px;
+    color: var(--accent-text);
+    font-weight: 700;
+    border-bottom: 1px solid var(--line);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.s-prev.err .hit {
+    display: block;
+    padding: 8px 14px;
+    background: var(--hl-strong);
+    font-weight: 700;
+    white-space: pre;
+    overflow: hidden;
+}
+.s-prev.bars {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.s-prev.bars .row {
+    display: grid;
+    grid-template-columns: 90px minmax(0, 1fr);
+    align-items: center;
+    gap: 12px;
+}
+.s-prev.bars .name {
+    color: var(--muted);
+}
+.s-prev.bars .name.main {
+    color: var(--fg);
+    font-weight: 700;
+}
+.s-prev.bars .fill {
+    display: block;
+    height: 12px;
+    border-radius: 4px;
+}
+.s-prev.chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    font-size: 13px;
+}
+.s-prev.chips span {
+    padding: 6px 12px;
+    border-radius: 999px;
+    background: var(--surface);
+}
+/* 狭い画面と動きを止めるとき: 貼り付けずに、ふつうの横スクロール(1枚ずつ止まる) */
+@media (max-width: 720px) {
+    .s-gal {
+        height: auto;
+        padding: 96px 0;
+    }
+    .s-gal-stage {
+        position: relative;
+        height: auto;
+    }
+    .s-gal-track {
+        overflow-x: auto;
+        scroll-snap-type: x mandatory;
+        scroll-padding: 0 24px;
+        padding-bottom: 8px;
+        will-change: auto;
+    }
+    .s-gal-track .s-card {
+        scroll-snap-align: start;
+    }
+    .s-gal-bar {
+        display: none;
+    }
+}
+@media (prefers-reduced-motion: reduce) {
+    .s-gal {
+        height: auto;
+        padding: 140px 0;
+    }
+    .s-gal-stage {
+        position: relative;
+        height: auto;
+    }
+    .s-gal-track {
+        overflow-x: auto;
+        scroll-snap-type: x mandatory;
+        will-change: auto;
+    }
+    .s-gal-track .s-card {
+        scroll-snap-align: start;
+    }
+    .s-gal-bar {
+        display: none;
+    }
+}
+html[data-motion="off"] .s-gal {
+    height: auto;
+    padding: 140px 0;
+}
+html[data-motion="off"] .s-gal-stage {
+    position: relative;
+    height: auto;
+}
+html[data-motion="off"] .s-gal-track {
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    will-change: auto;
+}
+html[data-motion="off"] .s-gal-track .s-card {
+    scroll-snap-align: start;
+}
+html[data-motion="off"] .s-gal-bar {
+    display: none;
+}
+
 /* --- RUNTIMES の表 --- */
 .s-rt-sec {
     padding-bottom: 40px;
