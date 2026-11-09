@@ -1198,6 +1198,7 @@ html[data-motion="off"] .s-hero-inner {
 /* --- FEATURES の横に流れるギャラリー(components/home/gallery.tsx) --- */
 .s-gal {
     position: relative;
+    /* 高さは components/home/gallery.tsx が、横に動く距離から出す(これは読み込む前の仮の値) */
     height: 340vh;
     background: var(--surface);
 }
@@ -1205,6 +1206,8 @@ html[data-motion="off"] .s-hero-inner {
     position: sticky;
     top: 0;
     height: 100vh;
+    /* スマホでは、アドレスバーが出入りしても高さが変わらない単位にする */
+    height: 100svh;
     /* clip: カードにフォーカスしても、ブラウザがこの箱を横にスクロールしないように(hidden だとずれる) */
     overflow: clip;
     isolation: isolate;
@@ -1226,6 +1229,8 @@ html[data-motion="off"] .s-hero-inner {
     gap: 24px;
     padding: 0 max(24px, calc((100vw - 1200px) / 2));
     will-change: transform;
+    /* 貼り付いている間は、指で横にスワイプさせない(縦のスクロールだけを受け付ける) */
+    touch-action: pan-y;
 }
 .s-gal-track .s-card {
     flex: 0 0 var(--card-w);
@@ -1234,6 +1239,24 @@ html[data-motion="off"] .s-hero-inner {
     /* 動くので、ぼかし(backdrop-filter)は付けない */
     background: var(--glass);
     border: 1px solid var(--glass-line);
+}
+/* スマホ: カードの高さを中身に合わせ、アイコンとタイトルの間を空けない(高さを決め打ちすると、間が大きく空く) */
+@media (max-width: 720px) {
+    .s-gal-track {
+        margin-top: 28px;
+        gap: 16px;
+        align-items: flex-start;
+    }
+    .s-gal-track .s-card {
+        height: auto;
+        padding: 24px;
+    }
+    .s-gal-track .s-card svg {
+        margin-bottom: 12px;
+    }
+    .s-gal .s-gal-bar {
+        margin-top: 20px;
+    }
 }
 .s-gal-bar {
     margin-top: 28px;
@@ -1323,15 +1346,16 @@ html[data-motion="off"] .s-hero-inner {
     border-radius: 999px;
     background: var(--surface);
 }
-/* 狭い画面と動きを止めるとき: 貼り付けずに、ふつうの横スクロール(1枚ずつ止まる) */
-@media (max-width: 720px) {
+/* 動きを止めるとき: 貼り付けずに、ふつうの横スクロール(1枚ずつ止まる)
+   余白はセクションではなく箱の中に取り、背景のぼかしがセクションの最後まで続くようにする */
+@media (prefers-reduced-motion: reduce) {
     .s-gal {
-        height: auto;
-        padding: 96px 0;
+        height: auto !important;
     }
     .s-gal-stage {
         position: relative;
         height: auto;
+        padding: 140px 0;
     }
     .s-gal-track {
         overflow-x: auto;
@@ -1339,27 +1363,7 @@ html[data-motion="off"] .s-hero-inner {
         scroll-padding: 0 24px;
         padding-bottom: 8px;
         will-change: auto;
-    }
-    .s-gal-track .s-card {
-        scroll-snap-align: start;
-    }
-    .s-gal-bar {
-        display: none;
-    }
-}
-@media (prefers-reduced-motion: reduce) {
-    .s-gal {
-        height: auto;
-        padding: 140px 0;
-    }
-    .s-gal-stage {
-        position: relative;
-        height: auto;
-    }
-    .s-gal-track {
-        overflow-x: auto;
-        scroll-snap-type: x mandatory;
-        will-change: auto;
+        touch-action: auto;
     }
     .s-gal-track .s-card {
         scroll-snap-align: start;
@@ -1369,17 +1373,20 @@ html[data-motion="off"] .s-hero-inner {
     }
 }
 html[data-motion="off"] .s-gal {
-    height: auto;
-    padding: 140px 0;
+    height: auto !important;
 }
 html[data-motion="off"] .s-gal-stage {
     position: relative;
     height: auto;
+    padding: 140px 0;
 }
 html[data-motion="off"] .s-gal-track {
     overflow-x: auto;
     scroll-snap-type: x mandatory;
+    scroll-padding: 0 24px;
+    padding-bottom: 8px;
     will-change: auto;
+    touch-action: auto;
 }
 html[data-motion="off"] .s-gal-track .s-card {
     scroll-snap-align: start;
