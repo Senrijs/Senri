@@ -532,7 +532,7 @@ Hono 4.13.13・Elysia 1.4.30 と、同じルート(12 個)・同じリクエス�
 
 ### HTTP 越し(1 秒あたりのリクエスト数。大きいほど速い)
 
-3 つとも同じ `Bun.serve({ fetch })` で動かし、[oha](https://github.com/hatoo/oha) 1.16.0 で負荷をかけました(`oha -z 10s -c 64`、交互に 3 回ずつ測った中央値)。`bun run http`。
+3 つとも同じ `Bun.serve({ fetch })` で動かし、[oha](https://github.com/hatoo/oha) 1.16.0 で負荷をかけました(`oha -z 10s -c 64`、交互に 3 回ずつ測った中央値)。ベンチは今は wrk で測る形に変えたので、ベンチ用の VM で測り直した結果に置き換える予定です。
 
 | リクエスト | Senri | Hono | Elysia |
 | --- | ---: | ---: | ---: |
