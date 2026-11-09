@@ -20,3 +20,6 @@ next-env.d.ts
 
 # scripts/home-data.ts がビルドのときに作る
 /lib/home/generated.json
+
+# scripts/build-worker.ts がビルドのときに作る
+/public/playground/

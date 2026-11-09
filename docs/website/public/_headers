@@ -2,3 +2,9 @@
 # 検索の索引は拡張子がないので、Content-Type を付ける
 /api/search
   Content-Type: application/json; charset=utf-8
+
+# プレイグラウンドの Worker(scripts/build-worker.ts)。利用者のコードを new Function で動かすので 'unsafe-eval' が要る。
+# このパスにだけ付けて、ほかのページには付けない。connect-src などは default-src 'none' で、外への通信をすべて止める
+/playground/worker.js
+  Content-Security-Policy: default-src 'none'; script-src 'self' 'unsafe-eval'
+  X-Content-Type-Options: nosniff

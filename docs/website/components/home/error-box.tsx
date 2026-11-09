@@ -2,7 +2,8 @@
 import type { Recording } from "@/lib/home/types";
 import { RichText } from "./expand-dialog";
 
-export function ErrorBox({ error, code, file, big }: { error: NonNullable<Recording["error"]>; code: string; file: string; big?: boolean }) {
+// status: 見出しの左に出すもの(ふつうは 500。コードを動かす前の間違いでは、別の言葉を渡す)
+export function ErrorBox({ error, code, file, big, status = "500" }: { error: NonNullable<Recording["error"]>; code: string; file: string; big?: boolean; status?: string }) {
     const lines = code.split("\n");
     const hit = error.line;
     const from = hit ? Math.max(1, hit - 2) : 0;
@@ -15,7 +16,7 @@ export function ErrorBox({ error, code, file, big }: { error: NonNullable<Record
         <div className="s-errbox">
             <div className={big ? "top big" : "top"}>
                 <small>
-                    500 · {file}
+                    {status} · {file}
                     {hit ? `:${hit}` : ""}
                 </small>
                 {error.name}: {error.message}

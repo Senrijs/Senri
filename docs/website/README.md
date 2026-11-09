@@ -47,6 +47,10 @@ bun run preview   # out/ を配信して確かめる
   - Motion Primitives(MIT)から元にした部品は、ファイルの先頭に出どころを書いています
   - ヒーローの見出しは、JavaScript を待たずに出るように CSS だけで動かします
   - 特長のカードのダイアログは Web Animations API で動かします(`components/home/expand-dialog.tsx`)
+- **プレイグラウンド:** 最初のコードのままなら、ビルドのときの記録を出します。コードを書き換えたり、記録にないパスを送ったりすると、ブラウザの Worker で本物の Senri を動かします
+  - Worker は `playground/worker.ts`。`bun run dev` と `bun run build` の前に `scripts/build-worker.ts` が `public/playground/worker.js`(Git には入れない)にまとめます
+  - `public/_headers` で、このファイルにだけ CSP(`default-src 'none'; script-src 'self' 'unsafe-eval'`)を付けます。ほかのページには付けません
+  - 2 秒で返事がなければ、Worker ごと止めます。import できるのは `@senrijs/senri` とそのサブパスだけです
 - **リンクの先読み:** `bun run build` の最後に `scripts/flatten-segments.ts` が動きます。Next.js が入れ子のフォルダーに書いた先読みのファイルを、ブラウザが読みに来る名前(`/` を `.` にしたもの)でも置きます
 - **ロゴ:** `public/brand/` は https://github.com/Senrijs/brand の SVG のコピーです
 
