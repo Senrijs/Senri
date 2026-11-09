@@ -14,6 +14,15 @@
       "matchManagers": ["github-actions"],
       "groupName": "github actions",
       "semanticCommitType": "chore"
+    },
+    {
+      "matchFileNames": ["bench/**"],
+      "groupName": "bench",
+      "semanticCommitType": "chore"
+    },
+    {
+      "matchUpdateTypes": ["major"],
+      "dependencyDashboardApproval": true
     }
   ]
 }
