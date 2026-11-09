@@ -13,6 +13,9 @@ const mono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-mono" });
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 const jp = Noto_Sans_JP({ subsets: ["latin"], variable: "--font-jp", preload: false });
 
+// 404 ページ(app/global-not-found.tsx)も同じフォントを使う
+export const fontVariables = `${mono.variable} ${inter.variable} ${jp.variable}`;
+
 export function rootMetadata(lang: Lang): Metadata {
     return {
         metadataBase: new URL(siteUrl),
@@ -24,7 +27,7 @@ export function rootMetadata(lang: Lang): Metadata {
 
 export function Root({ lang, children }: { lang: Lang; children: ReactNode }) {
     return (
-        <html lang={lang} className={`${mono.variable} ${inter.variable} ${jp.variable}`} suppressHydrationWarning>
+        <html lang={lang} className={fontVariables} suppressHydrationWarning>
             <body className="flex min-h-screen flex-col">
                 <Provider i18n={i18nUI.provider(lang)}>{children}</Provider>
             </body>
