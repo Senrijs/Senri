@@ -8,6 +8,7 @@ import { segments } from "@/lib/home/segments";
 import type { HomeData } from "@/lib/home/types";
 import { type Lang, localePath } from "@/lib/i18n";
 import { githubUrl } from "@/lib/shared";
+import { AnimIcon } from "./anim-icon";
 import { Carousel } from "./carousel";
 import { CountUp } from "./count-up";
 import { CliLog } from "./cli-log";
@@ -110,7 +111,7 @@ function Hero({ lang, docs }: { lang: Lang; docs: string }) {
                 <div className="s-stats s-up d3">
                     {stats.stars !== null ? (
                         <a className="s-link" href={`${githubUrl}/stargazers`} aria-label={`${t.stars}: ${fmt(stats.stars)}`}>
-                            <StarIcon />
+                            <AnimIcon name="star" size={14} interaction="hover" fallback={<StarIcon />} />
                             <b>{fmt(stats.stars)}</b> GitHub
                         </a>
                     ) : null}

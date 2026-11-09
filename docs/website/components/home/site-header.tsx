@@ -7,6 +7,7 @@ import { homeDict } from "@/lib/home/dict";
 import { type Lang, localePath } from "@/lib/i18n";
 import { githubUrl } from "@/lib/shared";
 import { LangLink, SearchButton, ThemeButton, useAltHref } from "./controls";
+import { AnimIcon } from "./anim-icon";
 import { CloseIcon, MenuIcon } from "./icons";
 
 export function SiteHeader({ lang, wordmark }: { lang: Lang; wordmark: React.ReactNode }) {
@@ -57,7 +58,7 @@ export function SiteHeader({ lang, wordmark }: { lang: Lang; wordmark: React.Rea
                         aria-controls="s-menu"
                         aria-label={open ? t.menuClose : t.menuOpen}
                     >
-                        {open ? <CloseIcon /> : <MenuIcon />}
+                        <AnimIcon name="menu" size={20} active={open} fallback={open ? <CloseIcon /> : <MenuIcon />} />
                     </button>
                 </div>
             </nav>

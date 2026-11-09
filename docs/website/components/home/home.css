@@ -1383,7 +1383,16 @@ html[data-motion="off"] .s-hero-inner {
     color: var(--muted-2);
     flex: none;
 }
+/* useAnimations のアイコン(components/home/anim-icon.tsx)。文字と同じ色で、行の高さを変えない */
+.s-anim-icon {
+    display: inline-flex;
+    flex: none;
+    line-height: 0;
+}
 .s-cmd .ok {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
     font-size: 13px;
     color: var(--green);
 }

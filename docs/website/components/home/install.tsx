@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { homeDict } from "@/lib/home/dict";
 import type { Lang } from "@/lib/i18n";
+import { AnimIcon } from "./anim-icon";
 import { CopyIcon } from "./icons";
 
 const COMMANDS = [
@@ -68,7 +69,14 @@ export function Install({ lang, docsHref }: { lang: Lang; docsHref: string }) {
                 <button type="button" className="s-cmd s-lg" onClick={copy} aria-label={`${t.copyAria}: ${COMMANDS[pm]![1]}`}>
                     <span className="prompt">$</span>
                     {COMMANDS[pm]![1]}
-                    {copied ? <span className="ok">Copied!</span> : <CopyIcon />}
+                    {copied ? (
+                        <span className="ok">
+                            <AnimIcon name="checkmark" size={16} loop={false} fallback={null} />
+                            Copied!
+                        </span>
+                    ) : (
+                        <AnimIcon name="copy" size={16} fallback={<CopyIcon />} />
+                    )}
                 </button>
                 <Link className="s-btn s-btn-solid" href={docsHref}>
                     {t.docs}
