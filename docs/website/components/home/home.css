@@ -12,7 +12,7 @@
     --line: #ecedef;
     --line-2: #dadce0;
     --line-3: #b8bcc3;
-    --glass: rgba(255, 255, 255, 0.55);
+    --glass: rgba(255, 255, 255, 0.78);
     --glass-strong: rgba(255, 255, 255, 0.84);
     --glass-line: rgba(255, 255, 255, 0.85);
     --glass-hl: rgba(255, 255, 255, 0.9);
@@ -62,7 +62,7 @@
     --line: #23262c;
     --line-2: #2e3238;
     --line-3: #4a4f57;
-    --glass: rgba(30, 33, 38, 0.55);
+    --glass: rgba(30, 33, 38, 0.82);
     --glass-strong: rgba(22, 25, 30, 0.88);
     --glass-line: rgba(255, 255, 255, 0.09);
     --glass-hl: rgba(255, 255, 255, 0.06);
@@ -169,16 +169,6 @@
         opacity: 0;
     }
 }
-@keyframes s-gping {
-    0% {
-        transform: scale(1);
-        opacity: 0.6;
-    }
-    100% {
-        transform: scale(3);
-        opacity: 0;
-    }
-}
 @keyframes s-menu {
     from {
         opacity: 0;
@@ -261,7 +251,7 @@
     justify-content: center;
     min-height: 48px;
     padding: 0 24px;
-    border-radius: 12px;
+    border-radius: 6px;
     font-weight: 700;
     font-size: 15px;
     transition:
@@ -349,31 +339,6 @@
             transform: scaleX(1);
         }
     }
-    .s-draw {
-        stroke-dasharray: 1400;
-        stroke-dashoffset: 1400;
-        animation: s-draw linear both;
-        animation-timeline: view();
-        animation-range: entry 0% cover 45%;
-    }
-    @keyframes s-draw {
-        to {
-            stroke-dashoffset: 0;
-        }
-    }
-    .s-cm {
-        animation: s-cm linear both;
-        animation-timeline: view();
-        animation-range: entry 20% cover 45%;
-    }
-    @keyframes s-cm {
-        from {
-            opacity: 0;
-        }
-        to {
-            opacity: 1;
-        }
-    }
 }
 
 /* 動きを減らす設定と、フッターの「動きを止める」(<html data-motion="off">) */
@@ -384,18 +349,12 @@
         animation: none !important;
         transition: none !important;
     }
-    .s-draw {
-        stroke-dashoffset: 0 !important;
-    }
 }
 html[data-motion="off"] .site *,
 html[data-motion="off"] .site *::before,
 html[data-motion="off"] .site *::after {
     animation: none !important;
     transition: none !important;
-}
-html[data-motion="off"] .s-draw {
-    stroke-dashoffset: 0 !important;
 }
 
 /* --- 全体の飾り --- */
@@ -434,13 +393,14 @@ html[data-motion="off"] .s-draw {
     }
 }
 /* うっすらしたグレイン。ノイズの小さなタイルを敷き詰める(毎回フィルターを描かないので、スクロールが重くならない) */
+/* うっすらしたグレイン。画面全体には重ねず、ヒーローの中だけ
+   動いているパーティクルの上で色を混ぜる(mix-blend-mode)と毎コマ重くなるので、薄く重ねるだけにする */
 .s-grain {
-    position: fixed;
+    position: absolute;
     inset: 0;
-    z-index: 40;
+    z-index: -1;
     pointer-events: none;
-    opacity: var(--grain-op);
-    mix-blend-mode: var(--grain-blend);
+    opacity: calc(var(--grain-op) * 0.6);
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 .s-glass {
@@ -452,6 +412,62 @@ html[data-motion="off"] .s-draw {
         inset 0 1px 0 var(--glass-hl),
         0 12px 32px var(--shadow);
 }
+/* Liquid Glass っぽい質感。使うのは、ナビ、バッジ、コマンド、デモのタブ、ダイアログ、検索だけ
+   動くもの(横に流れるカードなど)には付けない(backdrop-filter は重い) */
+.site .s-lg {
+    position: relative;
+    isolation: isolate;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.66), rgba(255, 255, 255, 0.34));
+    backdrop-filter: blur(16px) saturate(180%);
+    -webkit-backdrop-filter: blur(16px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.7);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.95),
+        inset 0 -1px 1px rgba(255, 255, 255, 0.35),
+        0 10px 30px rgba(17, 20, 24, 0.1),
+        0 1px 2px rgba(17, 20, 24, 0.06);
+}
+.dark .site .s-lg {
+    background: linear-gradient(180deg, rgba(44, 48, 56, 0.62), rgba(20, 22, 26, 0.46));
+    border-color: rgba(255, 255, 255, 0.12);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.16),
+        inset 0 -1px 1px rgba(255, 255, 255, 0.04),
+        0 10px 30px rgba(0, 0, 0, 0.45);
+}
+/* 左上から当たる光(ダイアログの面にも使う) */
+.site .s-lg::before,
+.s-dlg-surface::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    pointer-events: none;
+    background: radial-gradient(120% 90% at 18% 0%, rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0) 46%);
+}
+.dark .site .s-lg::before,
+.dark .s-dlg-surface::before {
+    background: radial-gradient(120% 90% at 18% 0%, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0) 46%);
+}
+/* 検索(Fumadocs のダイアログ)。ページの外(body の直下)に出るので、トップとブログのページにいるときだけ当てる */
+body:has(.site) .s-search-content {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.86), rgba(255, 255, 255, 0.7));
+    backdrop-filter: blur(24px) saturate(160%);
+    -webkit-backdrop-filter: blur(24px) saturate(160%);
+    border-color: rgba(255, 255, 255, 0.7);
+    border-radius: 18px;
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.95),
+        0 40px 120px rgba(17, 20, 24, 0.3);
+}
+.dark body:has(.site) .s-search-content {
+    background: linear-gradient(180deg, rgba(36, 40, 47, 0.86), rgba(20, 22, 26, 0.78));
+    border-color: rgba(255, 255, 255, 0.12);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.16),
+        0 40px 120px rgba(0, 0, 0, 0.5);
+}
 .s-glow {
     position: absolute;
     z-index: -1;
@@ -461,20 +477,21 @@ html[data-motion="off"] .s-draw {
 
 /* --- ナビ --- */
 
+/* 浮かぶカプセル型。外側は透明で、クリックを下に通す */
 .s-header {
     position: sticky;
     top: 0;
     z-index: 20;
-    background: var(--nav);
-    backdrop-filter: saturate(180%) blur(18px);
-    -webkit-backdrop-filter: saturate(180%) blur(18px);
-    border-bottom: 1px solid var(--line);
+    padding: 10px 16px 0;
+    pointer-events: none;
 }
 .s-nav {
-    max-width: 1200px;
+    pointer-events: auto;
+    max-width: 1120px;
     margin: 0 auto;
-    padding: 0 24px;
+    padding: 0 8px 0 20px;
     min-height: 56px;
+    border-radius: 999px;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -534,24 +551,67 @@ html[data-motion="off"] .s-draw {
     display: none;
     width: 44px;
     height: 44px;
-    border-radius: 12px;
+    border-radius: 6px;
     border: 1px solid var(--line-2);
     background: var(--glass);
     color: var(--fg);
     align-items: center;
     justify-content: center;
 }
+@keyframes s-menu-pop {
+    0% {
+        opacity: 0;
+        transform: translateY(-6px) scale(0.12, 0.06);
+    }
+    55% {
+        opacity: 1;
+        transform: scale(1.015, 1.02);
+    }
+    100% {
+        opacity: 1;
+        transform: none;
+    }
+}
+@keyframes s-in-item {
+    from {
+        opacity: 0;
+        transform: translateY(-6px);
+    }
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
 .s-menu {
+    pointer-events: auto;
     position: absolute;
-    left: 0;
-    right: 0;
-    top: 100%;
+    left: 16px;
+    right: 16px;
+    top: calc(100% + 8px);
     padding: 8px 16px 20px;
+    border-radius: 24px;
     /* 後ろの文字が透けないように、不透明にする(ぼかしは使わない) */
     background: var(--bg);
-    border-bottom: 1px solid var(--line);
+    border: 1px solid var(--line);
     box-shadow: 0 24px 48px var(--shadow);
-    animation: s-menu 0.25s ease-out both;
+    /* ハンバーガーのボタン(右上)から広がる */
+    transform-origin: calc(100% - 26px) -12px;
+    animation: s-menu-pop 0.5s cubic-bezier(0.3, 1.15, 0.4, 1) both;
+}
+.s-menu li {
+    animation: s-in-item 0.4s ease-out both;
+}
+.s-menu li:nth-child(1) {
+    animation-delay: 0.12s;
+}
+.s-menu li:nth-child(2) {
+    animation-delay: 0.16s;
+}
+.s-menu li:nth-child(3) {
+    animation-delay: 0.2s;
+}
+.s-menu li:nth-child(4) {
+    animation-delay: 0.24s;
 }
 .s-menu ul {
     margin: 0;
@@ -579,7 +639,7 @@ html[data-motion="off"] .s-draw {
     justify-content: center;
     flex: 1 1 0;
     min-height: 44px;
-    border-radius: 12px;
+    border-radius: 6px;
     border: 1px solid var(--line-2);
     background: transparent;
     color: var(--fg);
@@ -591,6 +651,22 @@ html[data-motion="off"] .s-draw {
     }
     .s-menu-btn {
         display: inline-flex;
+    }
+    .s-nav-links {
+        gap: 8px;
+    }
+    /* スマホでは、検索とハンバーガーを丸いボタンにする */
+    .s-search-btn,
+    .s-menu-btn {
+        width: 40px;
+        height: 40px;
+        min-height: 40px;
+        padding: 0;
+        border-radius: 50%;
+        justify-content: center;
+        border: 1px solid var(--line-2);
+        background: var(--glass);
+        color: var(--fg);
     }
 }
 @media (min-width: 721px) {
@@ -635,6 +711,32 @@ html[data-motion="off"] .s-draw {
     flex: 1 1 320px;
     min-width: 0;
 }
+/* 巨大な英語(TRY IT など)+ 小さい一言の見出し。英語は飾りなので読み上げない(aria-hidden) */
+.s-h2.s-h2-big {
+    margin: 0 0 48px;
+    font-family: var(--sans);
+    font-size: clamp(17px, 1.8vw, 22px);
+    font-weight: 700;
+    letter-spacing: 0;
+    line-height: 1.6;
+    color: var(--muted);
+}
+.s-split > .s-h2.s-h2-big {
+    flex: 1 1 100%;
+    max-width: 100%;
+    margin-bottom: 0;
+}
+.s-big {
+    display: block;
+    margin-bottom: 18px;
+    font-family: var(--font-inter), sans-serif;
+    font-weight: 800;
+    font-size: clamp(56px, 10.5vw, 164px);
+    line-height: 0.9;
+    letter-spacing: -0.055em;
+    color: var(--fg);
+    overflow-wrap: anywhere;
+}
 .s-dots {
     display: flex;
     gap: 8px;
@@ -668,12 +770,165 @@ html[data-motion="off"] .s-draw {
 
 /* --- ヒーロー --- */
 
+/* ヒーロー: 画面に貼り付き、スクロールすると中身ごと縮みながら薄くなる(components/home/hero-stage.tsx) */
 .s-hero {
     position: relative;
+    height: 170vh;
+}
+.s-hero-stage {
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    box-sizing: border-box;
     isolation: isolate;
     overflow: hidden;
-    padding: 112px 24px 96px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 56px 24px 0;
     text-align: center;
+}
+.s-hero-inner {
+    will-change: transform, opacity;
+}
+.s-cue {
+    position: absolute;
+    bottom: 28px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--muted);
+}
+.s-cue span {
+    width: 1px;
+    height: 40px;
+    background: linear-gradient(var(--muted), transparent);
+}
+/* 動きを止めるときは、貼り付けずにふつうに並べる */
+@media (prefers-reduced-motion: reduce) {
+    .s-hero {
+        height: auto;
+    }
+    .s-hero-stage {
+        position: relative;
+        min-height: 100vh;
+        height: auto;
+    }
+    .s-hero-inner {
+        will-change: auto;
+    }
+}
+html[data-motion="off"] .s-hero {
+    height: auto;
+}
+html[data-motion="off"] .s-hero-stage {
+    position: relative;
+    min-height: 100vh;
+    height: auto;
+}
+html[data-motion="off"] .s-hero-inner {
+    will-change: auto;
+}
+
+/* --- RUNTIMES の表 --- */
+.s-rt-sec {
+    padding-bottom: 40px;
+}
+.s-rt {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: var(--mono);
+    font-size: 14px;
+}
+.s-rt thead th {
+    padding: 0 12px 12px;
+    font-size: 11px;
+    font-weight: 400;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+    text-align: left;
+    border-bottom: 1px solid var(--fg);
+}
+.s-rt tbody tr {
+    border-bottom: 1px solid var(--line);
+    transition: background-color 0.2s ease;
+}
+.s-rt tbody tr:hover {
+    background: var(--surface);
+}
+.s-rt td,
+.s-rt tbody th {
+    height: 64px;
+    padding: 0 12px;
+    text-align: left;
+    font-weight: 400;
+}
+.s-rt .no {
+    width: 64px;
+    color: var(--muted);
+}
+.s-rt .name {
+    font-family: var(--font-inter), sans-serif;
+    font-weight: 700;
+    font-size: 20px;
+}
+/* 行のどこを押しても開くように、リンクを行いっぱいに広げる */
+.s-rt tbody tr {
+    position: relative;
+}
+.s-rt .name::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+}
+.s-rt .note {
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 400;
+    color: var(--muted);
+}
+.s-rt-code code {
+    color: var(--muted);
+}
+.s-rt .arrow {
+    width: 32px;
+    transition:
+        transform 0.2s ease,
+        color 0.2s ease;
+}
+.s-rt tbody tr:hover .arrow {
+    transform: translateX(4px);
+    color: var(--accent-text);
+}
+
+/* --- 四隅の表示(スマホでは隠す) --- */
+.s-hud {
+    position: fixed;
+    bottom: 16px;
+    z-index: 15;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    pointer-events: none;
+    font-variant-numeric: tabular-nums;
+}
+.s-hud.left {
+    left: 20px;
+}
+.s-hud.right {
+    right: 20px;
+}
+@media (max-width: 720px) {
+    .s-hud,
+    .s-rt-code {
+        display: none;
+    }
 }
 .s-hero canvas {
     position: absolute;
@@ -755,11 +1010,8 @@ html[data-motion="off"] .s-draw {
     min-height: 48px;
     padding: 8px 20px;
     box-sizing: border-box;
-    border-radius: 12px;
-    border: 1px solid var(--glass-line);
-    background: var(--glass);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
+    /* カプセル型。質感は .s-lg */
+    border-radius: 999px;
     color: var(--fg);
     font-family: var(--mono);
     font-size: 15px;
@@ -802,14 +1054,17 @@ html[data-motion="off"] .s-draw {
 
 /* デモ(プレイグラウンドとダッシュボード) */
 .s-demo {
-    margin: 48px auto 0;
+    margin: 0 auto;
     max-width: 1080px;
     text-align: left;
 }
+/* デモのタブ: カプセルの中にボタンを並べる。質感は .s-lg */
 .s-tabs {
-    display: flex;
+    display: inline-flex;
     gap: 4px;
-    margin: 0 0 12px 4px;
+    margin: 0 0 14px;
+    padding: 4px;
+    border-radius: 999px;
 }
 .s-panel {
     border-radius: 16px;
@@ -882,7 +1137,7 @@ html[data-motion="off"] .s-draw {
 .s-pg-form input {
     min-height: 40px;
     box-sizing: border-box;
-    border-radius: 10px;
+    border-radius: 6px;
     border: 1px solid var(--line-2);
     background: var(--bg);
     color: var(--fg);
@@ -902,7 +1157,7 @@ html[data-motion="off"] .s-draw {
     min-height: 40px;
     padding: 0 16px;
     border: 0;
-    border-radius: 10px;
+    border-radius: 6px;
     background: var(--fg);
     color: var(--bg);
     font-family: var(--sans);
@@ -924,7 +1179,7 @@ html[data-motion="off"] .s-draw {
 .s-quick button {
     min-height: 32px;
     padding: 0 10px;
-    border-radius: 8px;
+    border-radius: 6px;
     border: 1px solid var(--line);
     background: transparent;
     color: var(--fg-2);
@@ -934,7 +1189,7 @@ html[data-motion="off"] .s-draw {
 .s-res {
     flex: 1 1 auto;
     min-height: 200px;
-    border-radius: 12px;
+    border-radius: 6px;
     border: 1px solid var(--line);
     background: var(--bg);
     overflow: hidden;
@@ -975,7 +1230,7 @@ html[data-motion="off"] .s-draw {
 .s-open-err {
     min-height: 36px;
     padding: 0 12px;
-    border-radius: 8px;
+    border-radius: 6px;
     border: 1px solid var(--accent);
     background: var(--hl);
     color: var(--accent-text);
@@ -989,7 +1244,7 @@ html[data-motion="off"] .s-draw {
     gap: 8px;
     min-height: 40px;
     padding: 0 14px;
-    border-radius: 10px;
+    border-radius: 6px;
     border: 1px dashed var(--line-3);
     background: transparent;
     color: var(--fg-2);
@@ -1014,7 +1269,7 @@ html[data-motion="off"] .s-draw {
     align-items: center;
     gap: 8px;
     padding: 4px 14px;
-    border-radius: 8px;
+    border-radius: 6px;
     background: var(--surface);
     font-family: var(--mono);
 }
@@ -1116,7 +1371,6 @@ html[data-motion="off"] .s-draw {
 }
 .s-marquee {
     display: flex;
-    gap: 72px;
     width: max-content;
     font-family: var(--display);
     font-weight: 600;
@@ -1129,11 +1383,21 @@ html[data-motion="off"] .s-draw {
 .s-marquee-sec:focus-within .s-marquee {
     animation-play-state: paused;
 }
+.s-marquee-box {
+    display: flex;
+    flex: none;
+    /* 大きさの違う文字(Web Standard だけ等幅の小さい字)を、文字の下の線で揃える */
+    align-items: baseline;
+}
+/* 間隔は右の余白で作る(最後の項目にも付ける)。-50% がちょうど箱1つ分になる */
+.s-marquee-box > span {
+    flex: none;
+    padding-right: 72px;
+}
 .s-marquee .std {
     font-family: var(--mono);
     font-size: 14px;
     color: var(--accent-text);
-    align-self: center;
 }
 
 /* --- 数字 --- */
@@ -1161,7 +1425,7 @@ html[data-motion="off"] .s-draw {
     letter-spacing: -0.04em;
     line-height: 1;
 }
-.s-number span {
+.s-number > span {
     font-size: 13px;
     color: var(--muted);
 }
@@ -1390,7 +1654,7 @@ html[data-motion="off"] .s-draw {
     box-sizing: border-box;
     display: flex;
     align-items: center;
-    border-radius: 10px;
+    border-radius: 6px;
     background: var(--bg);
     border: 1px solid var(--line-2);
     font-size: 13px;
@@ -1581,7 +1845,7 @@ html[data-motion="off"] .s-draw {
 }
 .s-code {
     margin: 0;
-    border-radius: 14px;
+    border-radius: 6px;
     background: var(--code);
     padding: 28px 32px;
     font-family: var(--mono);
@@ -1609,7 +1873,7 @@ html[data-motion="off"] .s-draw {
     font-family: var(--mono);
     font-size: 13px;
     border: 1px solid var(--line);
-    border-radius: 14px;
+    border-radius: 6px;
     overflow: hidden;
     background: var(--bg);
 }
@@ -1674,16 +1938,19 @@ html[data-motion="off"] .s-draw {
     align-items: flex-end;
     justify-content: space-between;
 }
-.s-round {
-    width: 44px;
-    height: 44px;
-    border-radius: 50%;
-    border: 1px solid var(--line-2);
-    background: var(--bg);
+/* PREV / NEXT のような、文字だけのボタン */
+.s-text-btn {
+    min-height: 44px;
+    padding: 0 8px;
+    border: 0;
+    background: transparent;
     color: var(--fg);
     display: flex;
     align-items: center;
-    justify-content: center;
+    gap: 10px;
+    font-family: var(--mono);
+    font-size: 13px;
+    letter-spacing: 0.12em;
 }
 .s-car-view {
     margin-top: 48px;
@@ -1773,31 +2040,6 @@ html[data-motion="off"] .s-draw {
     .s-slide pre {
         padding: 28px 24px;
     }
-}
-
-/* --- ブランチの図 --- */
-
-.s-git-box {
-    margin-top: 48px;
-    border-radius: 20px;
-    overflow-x: auto;
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-}
-.s-git {
-    display: block;
-    width: 100%;
-    min-width: 880px;
-    height: auto;
-}
-.s-git text {
-    font-family: var(--mono);
-    font-size: 12px;
-}
-.s-gping {
-    transform-box: fill-box;
-    transform-origin: center;
-    animation: s-gping 2s ease-out infinite;
 }
 
 /* --- タイムライン --- */
@@ -1943,15 +2185,8 @@ html[data-motion="off"] .s-draw {
     color: var(--muted);
 }
 .s-tl-side {
-    flex: 1 1 300px;
+    flex: 1 1 100%;
     min-width: 0;
-    position: sticky;
-    top: 120px;
-}
-@media (max-width: 860px) {
-    .s-tl-side {
-        position: static;
-    }
 }
 
 /* --- 最後の CTA とフッター --- */

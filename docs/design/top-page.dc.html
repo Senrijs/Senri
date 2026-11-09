@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <title>Senri トップページ</title>
 <script src="./support.js"></script>
+<script src="/_blob/4af5da73c6f094eb28fa386a5c23c497"></script>
 </head>
 <body>
 <x-dc>
@@ -16,7 +17,7 @@ body{margin:0;background:#FFFFFF}
 .s-root{
 --bg:#FFFFFF;--fg:#111418;--fg-2:#3A3F46;--muted:#5B616A;--muted-2:#6B7079;
 --surface:#F5F6F8;--surface-2:#F7F8FA;--line:#ECEDEF;--line-2:#DADCE0;--line-3:#B8BCC3;
---glass:rgba(255,255,255,0.55);--glass-strong:rgba(255,255,255,0.84);--glass-line:rgba(255,255,255,0.85);--glass-hl:rgba(255,255,255,0.9);
+--glass:rgba(255,255,255,0.78);--glass-strong:rgba(255,255,255,0.84);--glass-line:rgba(255,255,255,0.85);--glass-hl:rgba(255,255,255,0.9);
 --nav:rgba(255,255,255,0.8);--hl:rgba(227,65,43,0.08);--hl-strong:#FFE3DE;--accent-text:#B5321F;--green:#1F8A4C;--blue:#1C5FB8;
 --particle:rgba(17,20,24,0.22);--grain-blend:multiply;--grain-op:0.08;--shadow:rgba(17,20,24,0.08);--glow:rgba(227,65,43,0.18);
 --bar1:#FBE3DF;--bar2:#F8CFC8;--bar3:#F4B3A8;--bar4:#EE8E7F;--code:#0E1013;--code-2:#14171C;
@@ -24,14 +25,14 @@ background:var(--bg);color:var(--fg);transition:background-color .3s,color .3s}
 .s-root[data-theme="dark"]{
 --bg:#0B0C0E;--fg:#F2F3F5;--fg-2:#C9CDD3;--muted:#9AA0A8;--muted-2:#8A9099;
 --surface:#121418;--surface-2:#17191E;--line:#23262C;--line-2:#2E3238;--line-3:#4A4F57;
---glass:rgba(30,33,38,0.55);--glass-strong:rgba(22,25,30,0.88);--glass-line:rgba(255,255,255,0.09);--glass-hl:rgba(255,255,255,0.06);
+--glass:rgba(30,33,38,0.82);--glass-strong:rgba(22,25,30,0.88);--glass-line:rgba(255,255,255,0.09);--glass-hl:rgba(255,255,255,0.06);
 --nav:rgba(11,12,14,0.75);--hl:rgba(255,106,82,0.12);--hl-strong:rgba(255,106,82,0.24);--accent-text:#FF8A7A;--green:#7FD6A0;--blue:#82AAFF;
 --particle:rgba(242,243,245,0.28);--grain-blend:overlay;--grain-op:0.14;--shadow:rgba(0,0,0,0.45);--glow:rgba(255,106,82,0.16);
 --bar1:#3A1E1A;--bar2:#5A2A22;--bar3:#7A342A;--bar4:#A8463A;--code:#07080A;--code-2:#0E1013}
 @media (prefers-color-scheme: dark){.s-root[data-theme="auto"]{
 --bg:#0B0C0E;--fg:#F2F3F5;--fg-2:#C9CDD3;--muted:#9AA0A8;--muted-2:#8A9099;
 --surface:#121418;--surface-2:#17191E;--line:#23262C;--line-2:#2E3238;--line-3:#4A4F57;
---glass:rgba(30,33,38,0.55);--glass-strong:rgba(22,25,30,0.88);--glass-line:rgba(255,255,255,0.09);--glass-hl:rgba(255,255,255,0.06);
+--glass:rgba(30,33,38,0.82);--glass-strong:rgba(22,25,30,0.88);--glass-line:rgba(255,255,255,0.09);--glass-hl:rgba(255,255,255,0.06);
 --nav:rgba(11,12,14,0.75);--hl:rgba(255,106,82,0.12);--hl-strong:rgba(255,106,82,0.24);--accent-text:#FF8A7A;--green:#7FD6A0;--blue:#82AAFF;
 --particle:rgba(242,243,245,0.28);--grain-blend:overlay;--grain-op:0.14;--shadow:rgba(0,0,0,0.45);--glow:rgba(255,106,82,0.16);
 --bar1:#3A1E1A;--bar2:#5A2A22;--bar3:#7A342A;--bar4:#A8463A;--code:#07080A;--code-2:#0E1013}}
@@ -44,7 +45,7 @@ background:var(--bg);color:var(--fg);transition:background-color .3s,color .3s}
 @keyframes s-slide{0%{left:0;opacity:0}10%{opacity:1}90%{opacity:1}100%{left:100%;opacity:0}}
 @keyframes s-beacon{0%{transform:scale(1);opacity:.7}100%{transform:scale(3.2);opacity:0}}
 .s-up{animation:s-up .9s cubic-bezier(.2,.7,.2,1) both}.d1{animation-delay:.08s}.d2{animation-delay:.18s}.d3{animation-delay:.3s}.d4{animation-delay:.45s}
-.s-marquee{animation:s-marquee 28s linear infinite}
+.s-marquee{animation:s-marquee 84s linear infinite}
 .s-spin{animation:s-spin .8s linear infinite;transform-origin:50% 50%}
 .s-caret{animation:s-blink 1s step-end infinite}
 .s-match{animation:s-glow 2.4s ease-in-out infinite}
@@ -53,6 +54,15 @@ background:var(--bg);color:var(--fg);transition:background-color .3s,color .3s}
 .s-beacon::after{content:"";position:absolute;inset:0;border-radius:50%;background:inherit;animation:s-beacon 2s cubic-bezier(.2,.6,.4,1) infinite}
 .s-tilt{transition:transform .25s ease-out}
 .s-ghost{visibility:hidden}
+.s-lg{position:relative;isolation:isolate;background:linear-gradient(180deg,rgba(255,255,255,.66),rgba(255,255,255,.34));backdrop-filter:blur(16px) saturate(180%);-webkit-backdrop-filter:blur(16px) saturate(180%);border:1px solid rgba(255,255,255,.7);box-shadow:inset 0 1px 0 rgba(255,255,255,.95),inset 0 -1px 1px rgba(255,255,255,.35),0 10px 30px rgba(17,20,24,.10),0 1px 2px rgba(17,20,24,.06)}
+.s-spec{isolation:isolate}
+.s-lg::before,.s-spec::before{content:"";position:absolute;inset:0;z-index:-1;border-radius:inherit;pointer-events:none;background:radial-gradient(120% 90% at 18% 0%,rgba(255,255,255,.6),rgba(255,255,255,0) 46%)}
+.s-root[data-theme="dark"] .s-lg{background:linear-gradient(180deg,rgba(44,48,56,.62),rgba(20,22,26,.46));border-color:rgba(255,255,255,.12);box-shadow:inset 0 1px 0 rgba(255,255,255,.16),inset 0 -1px 1px rgba(255,255,255,.04),0 10px 30px rgba(0,0,0,.45)}
+.s-root[data-theme="dark"] .s-lg::before,.s-root[data-theme="dark"] .s-spec::before{background:radial-gradient(120% 90% at 18% 0%,rgba(255,255,255,.12),rgba(255,255,255,0) 46%)}
+@media (prefers-color-scheme: dark){.s-root[data-theme="auto"] .s-lg{background:linear-gradient(180deg,rgba(44,48,56,.62),rgba(20,22,26,.46));border-color:rgba(255,255,255,.12);box-shadow:inset 0 1px 0 rgba(255,255,255,.16),inset 0 -1px 1px rgba(255,255,255,.04),0 10px 30px rgba(0,0,0,.45)}.s-root[data-theme="auto"] .s-lg::before,.s-root[data-theme="auto"] .s-spec::before{background:radial-gradient(120% 90% at 18% 0%,rgba(255,255,255,.12),rgba(255,255,255,0) 46%)}}
+@keyframes s-liftup{0%{transform:translateY(0)}28%{transform:translateY(-14px)}100%{transform:translateY(0)}}
+.s-liftup{animation:s-liftup .6s cubic-bezier(.3,.7,.3,1)}
+@media (prefers-reduced-motion: reduce){.s-liftup{animation:none}}
 .s-root button{transition:transform .12s ease-out}.s-root button:active{transform:scale(.97)}
 .s-root :focus-visible{outline:2px solid #E3412B;outline-offset:3px;border-radius:6px}
 .s-skip{position:absolute;left:16px;top:-60px;z-index:60;padding:10px 16px;border-radius:10px;background:var(--fg);color:var(--bg) !important;font-size:14px;transition:top .2s}.s-skip:focus{top:12px}
@@ -72,10 +82,32 @@ background:var(--bg);color:var(--fg);transition:background-color .3s,color .3s}
 @keyframes s-prog{from{transform:scaleX(0)}to{transform:scaleX(1)}}
 }
 .s-grid4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr))}
+@keyframes st-in{from{opacity:0;transform:translateY(16px);filter:blur(8px)}to{opacity:1;transform:none;filter:none}}
+.st-in{animation:st-in .6s cubic-bezier(.2,.7,.2,1) both}
+.st-node{transition:background-color .35s ease,border-color .35s ease,color .35s ease,box-shadow .35s ease}
+@media (max-width: 860px){.st-stage{flex-direction:column !important;justify-content:center !important;gap:28px !important}.st-copy{flex:none !important;max-width:none !important}}
+@media (prefers-reduced-motion: reduce){.st-in{animation:none}.st-node{transition:none}}
+.st-short{display:none}
+@media (max-width: 600px){.st-full{display:none}.st-short{display:inline}.st-node{font-size:10px;min-width:0 !important;padding:0 6px !important;height:28px !important;top:39px !important}}
 .s-show-sm{display:none}
 @keyframes s-menu{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}
-.s-menu{animation:s-menu .25s ease-out both}
-@media (max-width: 720px){.s-show-sm{display:inline-flex !important}}
+@keyframes s-menu-pop{0%{opacity:0;transform:translateY(-6px) scale(.12,.06)}55%{opacity:1;transform:scale(1.015,1.02)}100%{opacity:1;transform:none}}
+.s-menu{animation:s-menu-pop .5s cubic-bezier(.3,1.15,.4,1) both;transform-origin:calc(100% - 26px) -12px}
+.s-menu li{animation:s-in-item .4s ease-out both}.s-menu li:nth-child(1){animation-delay:.12s}.s-menu li:nth-child(2){animation-delay:.16s}.s-menu li:nth-child(3){animation-delay:.2s}.s-menu li:nth-child(4){animation-delay:.24s}
+@keyframes s-in-item{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+.s-big{display:block;margin-bottom:18px;font-family:'Inter',sans-serif;font-weight:800;font-size:clamp(56px,10.5vw,164px);line-height:.9;letter-spacing:-0.055em;color:var(--fg)}
+.s-root h2:has(> .s-big){font-size:clamp(17px,1.8vw,22px) !important;font-weight:700 !important;letter-spacing:0 !important;line-height:1.6 !important;color:var(--muted)}
+#journey .s-big{color:#F2F3F5}
+.s-root h2:has(> .s-big){flex:1 1 100% !important;max-width:100%}
+#timeline .s-sticky{flex:1 1 100% !important;position:static !important}
+.s-big{overflow-wrap:anywhere}
+.s-ch{display:inline-block;white-space:pre;animation:s-ch .7s cubic-bezier(.2,.7,.2,1) both}
+@keyframes s-ch{from{opacity:0;filter:blur(12px);transform:translateY(.35em)}to{opacity:1;filter:none;transform:none}}
+.s-hud{position:fixed;bottom:16px;z-index:15;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.08em;color:var(--muted);pointer-events:none;font-variant-numeric:tabular-nums}
+.s-row{transition:background-color .2s ease}.s-row:hover{background:var(--surface)}.s-row:hover .s-row-arrow{transform:translateX(4px);color:var(--accent-text)}.s-row-arrow{transition:transform .2s ease,color .2s ease}
+@media (max-width: 720px){.s-hud{display:none}.s-rt-code{display:none}}
+@media (prefers-reduced-motion: reduce){.s-menu,.s-menu li,.s-ch{animation:none}}
+@media (max-width: 720px){.s-show-sm{display:inline-flex !important}.s-navgap{gap:8px !important}.s-navsearch,.s-burger{width:40px !important;height:40px !important;min-height:40px !important;padding:0 !important;border-radius:50% !important;justify-content:center !important;border:1px solid var(--line-2) !important;background:var(--glass) !important;color:var(--fg) !important}}
 @media (min-width: 721px){.s-menu{display:none}}
 @keyframes s-gping{0%{transform:scale(1);opacity:.6}100%{transform:scale(3);opacity:0}}
 .s-gping{transform-box:fill-box;transform-origin:center;animation:s-gping 2s ease-out infinite}
@@ -106,21 +138,21 @@ background:var(--bg);color:var(--fg);transition:background-color .3s,color .3s}
 <a class="s-skip" href="#top">{{t.skip}}</a>
 <div class="s-progress" aria-hidden="true" style="position: fixed; top: 0; left: 0; width: 100%; height: 2px; background: {{accent}}; transform-origin: 0 50%; transform: scaleX(0); z-index: 45"></div>
 
-<header style="position: sticky; top: 0; z-index: 20; background: var(--nav); backdrop-filter: saturate(180%) blur(18px); -webkit-backdrop-filter: saturate(180%) blur(18px); border-bottom: 1px solid var(--line)">
-<nav style="max-width: 1200px; margin: 0 auto; padding: 0 24px; min-height: 56px; display: flex; align-items: center; justify-content: space-between; gap: 16px" aria-label="{{t.nav}}">
+<header style="position: sticky; top: 0; z-index: 20; padding: 10px 16px 0; pointer-events: none">
+<nav class="s-lg" style="pointer-events: auto; max-width: 1120px; margin: 0 auto; padding: 0 8px 0 20px; min-height: 56px; border-radius: 999px; display: flex; align-items: center; justify-content: space-between; gap: 16px" aria-label="{{t.nav}}">
 <a href="#top" aria-label="Senri" style="display: flex; align-items: center; min-height: 44px"><svg width="76" height="24" viewBox="2.8 -48.82 155.42 49.38" aria-hidden="true" style="display: block"><path style="fill: var(--fg)" d="M15.51 0.56Q11.7 0.56 8.85 -0.64Q5.99 -1.85 4.4 -3.98Q2.8 -6.1 2.8 -8.96H11.03Q11.03 -7.39 12.21 -6.61Q13.38 -5.82 15.51 -5.82H17.98Q20.27 -5.82 21.53 -6.61Q22.79 -7.39 22.79 -8.85Q22.79 -10.25 21.78 -10.89Q20.78 -11.54 18.7 -11.76L11.65 -12.6Q7.56 -13.1 5.38 -15.65Q3.19 -18.2 3.19 -22.01Q3.19 -31.36 15.18 -31.36H17.81Q23.46 -31.36 26.82 -28.9Q30.18 -26.43 30.18 -22.29H21.95Q21.95 -23.63 20.86 -24.36Q19.77 -25.09 17.81 -25.09H15.18Q13.22 -25.09 12.21 -24.36Q11.2 -23.63 11.2 -22.34Q11.2 -21.06 12.18 -20.61Q13.16 -20.16 14.95 -19.94L21.67 -19.1Q26.21 -18.54 28.5 -15.9Q30.8 -13.27 30.8 -8.96Q30.8 -4.42 27.55 -1.93Q24.3 0.56 17.98 0.56Z M48.78 0.56Q44.69 0.56 41.64 -0.98Q38.58 -2.52 36.93 -5.29Q35.28 -8.06 35.28 -11.76V-19.04Q35.28 -22.74 36.93 -25.51Q38.58 -28.28 41.64 -29.82Q44.69 -31.36 48.78 -31.36Q52.86 -31.36 55.86 -29.82Q58.86 -28.28 60.51 -25.51Q62.16 -22.74 62.16 -19.04V-13.33H43.29V-11.76Q43.29 -8.85 44.66 -7.5Q46.03 -6.16 48.78 -6.16Q50.57 -6.16 51.91 -6.72Q53.26 -7.28 53.48 -8.4H61.71Q60.82 -4.37 57.29 -1.9Q53.76 0.56 48.78 0.56ZM43.29 -19.04V-18.31L54.15 -18.42V-19.15Q54.15 -22.01 52.84 -23.58Q51.52 -25.14 48.78 -25.14Q46.03 -25.14 44.66 -23.52Q43.29 -21.9 43.29 -19.04Z M67.54 0V-30.8H75.66V-25.2Q76.33 -28 78.54 -29.68Q80.75 -31.36 83.94 -31.36Q88.42 -31.36 91.14 -28.22Q93.86 -25.09 93.86 -19.88V0H85.46V-19.04Q85.46 -21.45 84.2 -22.76Q82.94 -24.08 80.7 -24.08Q78.46 -24.08 77.2 -22.76Q75.94 -21.45 75.94 -19.04V0Z M100.58 0V-30.8H108.7V-24.98Q109.37 -27.94 111.64 -29.65Q113.9 -31.36 117.32 -31.36Q121.97 -31.36 124.6 -28.22Q127.23 -25.09 127.23 -19.6V-16.52H118.83V-19.04Q118.83 -21.45 117.54 -22.76Q116.26 -24.08 113.9 -24.08Q111.55 -24.08 110.26 -22.6Q108.98 -21.11 108.98 -18.37V0Z"></path><polygon fill="{{accent}}" points="127.65,-0.29 137.36,-0.29 151.92,-34.26 142.21,-34.26"></polygon><polygon fill="{{accent}}" points="144.73,-40.09 154.44,-40.09 158.22,-48.82 148.52,-48.82"></polygon></svg></a>
-<div style="display: flex; align-items: center; gap: 24px; font-size: 14px">
-<a class="s-link" href="#docs">{{t.docs}}</a>
+<div class="s-navgap" style="display: flex; align-items: center; gap: 24px; font-size: 14px">
+<a class="s-link s-hide-sm" href="#docs">{{t.docs}}</a>
 <a class="s-link s-hide-sm" href="#timeline">{{t.navTl}}</a>
 <a class="s-link s-hide-sm" href="#blog">{{t.navBlog}}</a>
 <a class="s-link s-hide-sm" href="https://github.com/Senrijs/Senri">GitHub</a>
-<button type="button" onClick="{{openSearch}}" aria-label="{{t.search}}" aria-haspopup="dialog" aria-keyshortcuts="Meta+K Control+K" style="display: inline-flex; align-items: center; gap: 8px; min-height: 36px; padding: 0 8px 0 12px; border-radius: 999px; border: 1px solid var(--line-2); background: var(--glass); color: var(--muted); font-size: 13px; cursor: pointer"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-4-4"></path></svg><span class="s-hide-sm">{{t.searchShort}}</span><kbd class="s-hide-sm" style="padding: 2px 6px; border-radius: 6px; border: 1px solid var(--line-2); font-family: 'JetBrains Mono', monospace; font-size: 11px">⌘K</kbd></button>
+<button type="button" class="s-navsearch" onClick="{{openSearch}}" aria-label="{{t.search}}" aria-haspopup="dialog" aria-keyshortcuts="Meta+K Control+K" style="display: inline-flex; align-items: center; gap: 8px; min-height: 36px; padding: 0 8px 0 12px; border-radius: 999px; border: 1px solid var(--line-2); background: var(--glass); color: var(--muted); font-size: 13px; cursor: pointer"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-4-4"></path></svg><span class="s-hide-sm">{{t.searchShort}}</span><kbd class="s-hide-sm" style="padding: 2px 6px; border-radius: 6px; border: 1px solid var(--line-2); font-family: 'JetBrains Mono', monospace; font-size: 11px">⌘K</kbd></button>
 <button type="button" class="s-hide-sm" onClick="{{toggleLang}}" aria-label="{{t.langAria}}" style="min-width: 44px; min-height: 36px; padding: 0 10px; border-radius: 999px; border: 1px solid var(--line-2); background: transparent; color: var(--fg-2); font-family: 'JetBrains Mono', monospace; font-size: 12px; cursor: pointer">{{t.langBtn}}</button>
 <button type="button" class="s-hide-sm" onClick="{{toggleTheme}}" aria-label="{{themeAria}}" style="width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--line-2); background: transparent; color: var(--fg-2); cursor: pointer; display: flex; align-items: center; justify-content: center"><sc-if value="{{isDark}}" hint-placeholder-val="{{ false }}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2"></path><path d="M12 20v2"></path><path d="M4.9 4.9l1.4 1.4"></path><path d="M17.7 17.7l1.4 1.4"></path><path d="M2 12h2"></path><path d="M20 12h2"></path><path d="M4.9 19.1l1.4-1.4"></path><path d="M17.7 6.3l1.4-1.4"></path></svg></sc-if><sc-if value="{{isLight}}" hint-placeholder-val="{{ true }}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"></path></svg></sc-if></button>
-<button type="button" class="s-show-sm" onClick="{{toggleMenu}}" aria-expanded="{{menuExp}}" aria-controls="s-menu" aria-label="{{menuAria}}" style="width: 44px; height: 44px; border-radius: 12px; border: 1px solid var(--line-2); background: var(--glass); color: var(--fg); cursor: pointer; align-items: center; justify-content: center"><sc-if value="{{menuClosed}}" hint-placeholder-val="{{ true }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16"></path><path d="M4 12h16"></path><path d="M4 17h16"></path></svg></sc-if><sc-if value="{{menuOpen}}" hint-placeholder-val="{{ false }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12"></path><path d="M18 6L6 18"></path></svg></sc-if></button>
+<button type="button" class="s-show-sm s-burger" onClick="{{toggleMenu}}" aria-expanded="{{menuExp}}" aria-controls="s-menu" aria-label="{{menuAria}}" style="width: 44px; height: 44px; border-radius: 6px; border: 1px solid var(--line-2); background: var(--glass); color: var(--fg); cursor: pointer; align-items: center; justify-content: center"><sc-if value="{{menuClosed}}" hint-placeholder-val="{{ true }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16"></path><path d="M4 12h16"></path><path d="M4 17h16"></path></svg></sc-if><sc-if value="{{menuOpen}}" hint-placeholder-val="{{ false }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12"></path><path d="M18 6L6 18"></path></svg></sc-if></button>
 </div>
 </nav>
-<sc-if value="{{menuOpen}}" hint-placeholder-val="{{ false }}"><div id="s-menu" class="s-menu" style="position: absolute; left: 0; right: 0; top: 100%; padding: 8px 16px 20px; background: var(--glass-strong); backdrop-filter: blur(24px) saturate(160%); -webkit-backdrop-filter: blur(24px) saturate(160%); border-bottom: 1px solid var(--line); box-shadow: 0 24px 48px var(--shadow)">
+<sc-if value="{{menuOpen}}" hint-placeholder-val="{{ false }}"><div id="s-menu" class="s-menu s-lg" style="position: absolute; left: 16px; right: 16px; top: calc(100% + 8px); padding: 8px 16px 20px; border-radius: 24px; pointer-events: auto">
 <ul style="margin: 0; padding: 0; list-style: none">
 <li><a href="#docs" onClick="{{closeMenu}}" style="display: flex; align-items: center; min-height: 52px; padding: 0 8px; font-size: 17px; font-weight: 700; border-bottom: 1px solid var(--line)">{{t.docs}}</a></li>
 <li><a href="#timeline" onClick="{{closeMenu}}" style="display: flex; align-items: center; min-height: 52px; padding: 0 8px; font-size: 17px; font-weight: 700; border-bottom: 1px solid var(--line)">{{t.navTl}}</a></li>
@@ -128,25 +160,28 @@ background:var(--bg);color:var(--fg);transition:background-color .3s,color .3s}
 <li><a href="https://github.com/Senrijs/Senri" style="display: flex; align-items: center; min-height: 52px; padding: 0 8px; font-size: 17px; font-weight: 700; border-bottom: 1px solid var(--line)">GitHub</a></li>
 </ul>
 <div style="display: flex; gap: 8px; margin-top: 16px">
-<button type="button" onClick="{{toggleLang}}" aria-label="{{t.langAria}}" style="flex: 1 1 0; min-height: 44px; border-radius: 12px; border: 1px solid var(--line-2); background: transparent; color: var(--fg); font-size: 14px; cursor: pointer">{{t.fLang}}</button>
-<button type="button" onClick="{{toggleTheme}}" aria-label="{{themeAria}}" style="flex: 1 1 0; min-height: 44px; border-radius: 12px; border: 1px solid var(--line-2); background: transparent; color: var(--fg); font-size: 14px; cursor: pointer">{{themeLabel}}</button>
+<button type="button" onClick="{{toggleLang}}" aria-label="{{t.langAria}}" style="flex: 1 1 0; min-height: 44px; border-radius: 6px; border: 1px solid var(--line-2); background: transparent; color: var(--fg); font-size: 14px; cursor: pointer">{{t.fLang}}</button>
+<button type="button" onClick="{{toggleTheme}}" aria-label="{{themeAria}}" style="flex: 1 1 0; min-height: 44px; border-radius: 6px; border: 1px solid var(--line-2); background: transparent; color: var(--fg); font-size: 14px; cursor: pointer">{{themeLabel}}</button>
 </div>
 </div></sc-if>
 </header>
 
 <!-- ヒーロー -->
-<section id="top" onMouseMove="{{heroMove}}" onMouseLeave="{{heroLeave}}" style="position: relative; isolation: isolate; overflow: hidden; padding: 112px 24px 96px; text-align: center">
+<section id="top" ref="{{heroRef}}" style="position: relative; height: 170vh">
+<div onMouseMove="{{heroMove}}" onMouseLeave="{{heroLeave}}" style="position: sticky; top: 0; height: 100vh; box-sizing: border-box; isolation: isolate; overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 56px 24px 0; text-align: center">
 <canvas ref="{{cvRef}}" aria-hidden="true" style="position: absolute; inset: 0; width: 100%; height: 100%; z-index: -1; pointer-events: none"></canvas>
+<svg aria-hidden="true" style="position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: -1; opacity: var(--grain-op); mix-blend-mode: var(--grain-blend)"><filter id="s-grain"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" stitchTiles="stitch"></feTurbulence><feColorMatrix type="saturate" values="0"></feColorMatrix></filter><rect width="100%" height="100%" filter="url(#s-grain)"></rect></svg>
 <div aria-hidden="true" style="position: absolute; left: 50%; bottom: -160px; width: 1000px; height: 520px; transform: translateX(-50%); background: radial-gradient(closest-side, var(--glow), rgba(227,65,43,0)); z-index: -1; pointer-events: none"></div>
-<a href="#timeline" class="s-up" style="display: inline-flex; align-items: center; gap: 10px; padding: 6px 14px; border-radius: 999px; border: 1px solid var(--glass-line); background: var(--glass); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--fg-2)"><span class="s-beacon" style="background: var(--green)"></span>{{t.badge}}</a>
+<div ref="{{heroInnerRef}}" style="will-change: transform, opacity">
+<a href="#timeline" class="s-up s-lg" style="display: inline-flex; align-items: center; gap: 10px; padding: 6px 14px; border-radius: 999px; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--fg-2)"><span class="s-beacon" style="background: var(--green)"></span>{{t.badge}}</a>
 <h1 class="s-up d1" style="margin: 28px auto 0; max-width: 980px; font-family: 'Inter', 'Noto Sans JP', sans-serif; font-weight: 800; font-size: clamp(42px, 8vw, 108px); line-height: 1.02; letter-spacing: -0.05em">{{t.h1a}}<br>{{t.h1b}}</h1>
 <p class="s-up d2" style="margin: 28px auto 0; max-width: 620px; font-size: clamp(16px, 1.6vw, 19px); line-height: 1.8; color: var(--muted)">{{t.heroP}}</p>
 <div class="s-up d3" style="margin-top: 40px; display: flex; justify-content: center; gap: 4px; flex-wrap: wrap" role="group" aria-label="{{t.pmGroup}}">
 <sc-for list="{{pms}}" as="pm" hint-placeholder-count="5"><button type="button" onClick="{{pm.pick}}" aria-pressed="{{pm.pressed}}" style="min-height: 36px; padding: 0 14px; border: 0; border-radius: 999px; background: {{pm.bg}}; color: {{pm.fg}}; font-family: 'JetBrains Mono', monospace; font-size: 13px; cursor: pointer">{{pm.label}}</button></sc-for>
 </div>
 <div class="s-up d3" style="margin-top: 12px; display: flex; justify-content: center; align-items: center; gap: 12px; flex-wrap: wrap">
-<button type="button" class="s-cmd" onClick="{{copy}}" aria-label="{{t.copyAria}}" style="display: inline-flex; align-items: center; gap: 12px; max-width: 100%; min-height: 48px; padding: 8px 20px; box-sizing: border-box; border-radius: 12px; border: 1px solid var(--glass-line); background: var(--glass); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); color: var(--fg); font-family: 'JetBrains Mono', monospace; font-size: 15px; text-align: left; overflow-wrap: anywhere; cursor: pointer"><span style="color: var(--muted-2)">$</span>{{cmd}}<sc-if value="{{copied}}" hint-placeholder-val="{{ false }}"><span style="font-size: 13px; color: var(--green)">Copied!</span></sc-if><sc-if value="{{notCopied}}" hint-placeholder-val="{{ true }}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; color: var(--muted-2)"><rect x="9" y="9" width="11" height="11" rx="2"></rect><path d="M5 15V5a1 1 0 0 1 1-1h10"></path></svg></sc-if></button>
-<a class="s-btn" href="#docs" style="display: inline-flex; align-items: center; min-height: 48px; padding: 0 24px; border-radius: 12px; background: var(--fg); color: var(--bg); font-weight: 700; font-size: 15px">{{t.docs}}</a>
+<button type="button" class="s-cmd s-lg" onClick="{{copy}}" aria-label="{{t.copyAria}}" style="display: inline-flex; align-items: center; gap: 12px; max-width: 100%; min-height: 48px; padding: 8px 20px; box-sizing: border-box; border-radius: 999px; color: var(--fg); font-family: 'JetBrains Mono', monospace; font-size: 15px; text-align: left; overflow-wrap: anywhere; cursor: pointer"><span style="color: var(--muted-2)">$</span>{{cmd}}<sc-if value="{{copied}}" hint-placeholder-val="{{ false }}"><span style="font-size: 13px; color: var(--green)">Copied!</span></sc-if><sc-if value="{{notCopied}}" hint-placeholder-val="{{ true }}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; color: var(--muted-2)"><rect x="9" y="9" width="11" height="11" rx="2"></rect><path d="M5 15V5a1 1 0 0 1 1-1h10"></path></svg></sc-if></button>
+<a class="s-btn" href="#docs" style="display: inline-flex; align-items: center; min-height: 48px; padding: 0 24px; border-radius: 6px; background: var(--fg); color: var(--bg); font-weight: 700; font-size: 15px">{{t.docs}}</a>
 </div>
 
 <div class="s-up d3" style="margin-top: 20px; display: flex; justify-content: center; align-items: center; gap: 8px 18px; flex-wrap: wrap; font-size: 13px; color: var(--muted)">
@@ -154,9 +189,49 @@ background:var(--bg);color:var(--fg);transition:background-color .3s,color .3s}
 <span aria-hidden="true">·</span>
 <a class="s-link" href="https://www.npmjs.com/package/@senrijs/senri" aria-label="{{t.dl}}" style="display: inline-flex; align-items: center; gap: 6px; color: var(--muted)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v12"></path><path d="M6 11l6 6 6-6"></path><path d="M5 20h14"></path></svg><b style="color: var(--fg)">[DL]</b> {{t.perWeek}}</a>
 </div>
+</div>
+<div ref="{{cueRef}}" aria-hidden="true" style="position: absolute; bottom: 28px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 8px; font-size: 12px; color: var(--muted)">{{t.cue}}<span style="width: 1px; height: 40px; background: linear-gradient(var(--muted), transparent)"></span></div>
+</div>
+</section>
 
-<div class="s-up d4" style="margin: 48px auto 0; max-width: 1080px; text-align: left">
-<div role="tablist" aria-label="{{t.demo}}" style="display: flex; gap: 4px; margin: 0 0 12px 4px">
+<!-- リクエストの旅 -->
+<section id="journey" ref="{{journeyRef}}" aria-label="{{t.jAria}}" style="position: relative; height: 520vh; background: #0B0C0E; color: #F2F3F5">
+<div class="st-stage" style="position: sticky; top: 0; height: 100vh; box-sizing: border-box; padding: 88px 24px 40px; max-width: 1200px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 56px">
+<div class="st-copy" style="flex: 0 1 380px; max-width: 380px">
+<ol aria-label="{{t.jScenes}}" style="margin: 0 0 28px; padding: 0; list-style: none; display: flex; gap: 8px">
+<sc-for list="{{jsteps}}" as="s" hint-placeholder-count="5"><li aria-current="{{s.cur}}" style="height: 4px; width: {{s.w}}; border-radius: 6px; background: {{s.bg}}; transition: width .4s ease, background-color .4s ease"></li></sc-for>
+</ol>
+<p style="margin: 0; font-family: 'JetBrains Mono', monospace; font-size: 13px; letter-spacing: 0.14em; color: #FF8A7A">{{jNo}}</p>
+<h2 aria-label="{{jTitle}}" style="margin: 14px 0 0; font-family: 'Inter', 'Noto Sans JP', sans-serif; font-weight: 800; font-size: clamp(32px, 4.2vw, 56px); line-height: 1.08; letter-spacing: -0.04em"><sc-if value="{{j0}}" hint-placeholder-val="{{ true }}"><span aria-hidden="true"><sc-for list="{{jc0}}" as="ch" hint-placeholder-count="8"><span class="s-ch" style="animation-delay: {{ch.d}}">{{ch.c}}</span></sc-for></span></sc-if><sc-if value="{{j1}}" hint-placeholder-val="{{ false }}"><span aria-hidden="true"><sc-for list="{{jc1}}" as="ch" hint-placeholder-count="6"><span class="s-ch" style="animation-delay: {{ch.d}}">{{ch.c}}</span></sc-for></span></sc-if><sc-if value="{{j2}}" hint-placeholder-val="{{ false }}"><span aria-hidden="true"><sc-for list="{{jc2}}" as="ch" hint-placeholder-count="9"><span class="s-ch" style="animation-delay: {{ch.d}}">{{ch.c}}</span></sc-for></span></sc-if><sc-if value="{{j3}}" hint-placeholder-val="{{ false }}"><span aria-hidden="true"><sc-for list="{{jc3}}" as="ch" hint-placeholder-count="9"><span class="s-ch" style="animation-delay: {{ch.d}}">{{ch.c}}</span></sc-for></span></sc-if><sc-if value="{{j4}}" hint-placeholder-val="{{ false }}"><span aria-hidden="true"><sc-for list="{{jc4}}" as="ch" hint-placeholder-count="9"><span class="s-ch" style="animation-delay: {{ch.d}}">{{ch.c}}</span></sc-for></span></sc-if></h2>
+<p style="margin: 20px 0 0; font-size: 16px; line-height: 1.8; color: #A6ACB4">{{jBody}}</p>
+</div>
+<div role="img" aria-label="{{jStageAria}}" style="flex: 1 1 620px; min-width: 0; max-width: 680px; width: 100%">
+<div style="position: relative; height: 150px; font-family: 'JetBrains Mono', monospace; font-size: 12px">
+<div style="position: absolute; left: 4%; right: 10%; top: 52px; height: 2px; background: rgba(255,255,255,0.10)"></div>
+<div ref="{{trailRef}}" style="position: absolute; left: 4%; top: 52px; height: 2px; width: 0; background: #E3412B; box-shadow: 0 0 12px rgba(227,65,43,0.6)"></div>
+<div style="position: absolute; left: 4%; right: 10%; top: 108px; height: 2px; background: rgba(255,255,255,0.06)"></div>
+<div ref="{{backRef}}" style="position: absolute; right: 10%; top: 108px; height: 2px; width: 0; background: #7FD6A0; box-shadow: 0 0 12px rgba(127,214,160,0.5)"></div>
+<sc-for list="{{jnodes}}" as="n" hint-placeholder-count="6"><div class="st-node" style="position: absolute; left: {{n.x}}; top: 36px; transform: translateX(-50%); min-width: 60px; height: 34px; padding: 0 10px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; border-radius: 10px; border: 1px solid {{n.line}}; background: {{n.bg}}; color: {{n.fg}}; box-shadow: {{n.glow}}; white-space: nowrap"><span class="st-full">{{n.label}}</span><span class="st-short" aria-hidden="true">{{n.short}}</span></div></sc-for>
+<div ref="{{pktRef}}" style="position: absolute; left: 4%; top: 8px; transform: translateX(-50%); padding: 3px 8px; border-radius: 999px; background: #E3412B; color: #FFFFFF; font-size: 11px; white-space: nowrap; box-shadow: 0 6px 20px rgba(227,65,43,0.45)">GET /users/42</div>
+<div ref="{{resRef}}" style="position: absolute; left: 90%; top: 120px; transform: translateX(-50%); opacity: 0; padding: 3px 8px; border-radius: 999px; background: #7FD6A0; color: #0B0C0E; font-size: 11px; font-weight: 700; white-space: nowrap; box-shadow: 0 6px 20px rgba(127,214,160,0.4)">200 OK</div>
+</div>
+<div style="margin-top: 24px; min-height: 260px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.04); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); padding: 24px 28px; box-sizing: border-box; font-family: 'JetBrains Mono', monospace; font-size: 13px; line-height: 1.8">
+<sc-if value="{{j0}}" hint-placeholder-val="{{ true }}"><div class="st-in"><div style="color: #8A9099">→ request</div><div style="margin-top: 8px; font-size: 20px; color: #F2F3F5"><span style="color: #7FD6A0">GET</span> /users/42</div><div style="margin-top: 16px; color: #8A9099">accept: application/json</div><div style="color: #8A9099">user-agent: curl/8.7</div></div></sc-if>
+<sc-if value="{{j1}}" hint-placeholder-val="{{ false }}"><div class="st-in" style="display: flex; flex-direction: column; gap: 8px"><div style="color: #8A9099">router</div><div style="opacity: 0.45; white-space: pre"><span style="color: #7FD6A0">GET</span>    /</div><div style="opacity: 0.45; white-space: pre"><span style="color: #7DD3E8">POST</span>   /users</div><div style="padding: 6px 10px; margin: 0 -10px; border-radius: 8px; background: rgba(227,65,43,0.14); border: 1px solid rgba(227,65,43,0.5); white-space: pre"><span style="color: #7FD6A0">GET</span>    /users/<b style="color: #FF8A7A">:id</b>   <span style="color: #8A9099">→ id = "42"</span></div><div style="opacity: 0.45; white-space: pre"><span style="color: #FF6B5E">DELETE</span> /users/:id</div></div></sc-if>
+<sc-if value="{{j2}}" hint-placeholder-val="{{ false }}"><div class="st-in" style="display: flex; flex-direction: column; gap: 10px"><div style="color: #8A9099">middleware</div><sc-for list="{{jmws}}" as="m" hint-placeholder-count="3"><div style="display: grid; grid-template-columns: 110px minmax(0, 1fr) 40px; align-items: center; gap: 14px"><span style="color: {{m.fg}}">{{m.name}}</span><span style="height: 8px; border-radius: 6px; background: rgba(255,255,255,0.06); overflow: hidden"><span style="display: block; height: 100%; width: {{m.w}}; background: #E3412B; border-radius: 6px"></span></span><span style="color: #8A9099; text-align: right">{{m.mark}}</span></div></sc-for></div></sc-if>
+<sc-if value="{{j3}}" hint-placeholder-val="{{ false }}"><div class="st-in"><div style="color: #8A9099">handler</div><pre style="margin: 10px 0 0; font: inherit; font-size: 15px; color: #D7DAE0; white-space: pre-wrap">app.<span style="color: #82AAFF">get</span>(<span style="color: #C3E88D">"/users/:id"</span>, ({ id }) =&gt; ({ id }));</pre><div style="margin-top: 18px; color: #8A9099">return →</div><pre style="margin: 6px 0 0; font: inherit; color: #F2F3F5">{ "id": "42" }</pre></div></sc-if>
+<sc-if value="{{j4}}" hint-placeholder-val="{{ false }}"><div class="st-in" style="display: flex; flex-direction: column; gap: 10px"><div style="display: flex; justify-content: space-between"><span style="color: #8A9099">← response</span><span><span style="color: #7FD6A0; font-weight: 700">200</span> <span style="color: #8A9099">· 3 ms</span></span></div><sc-for list="{{jbars}}" as="b" hint-placeholder-count="4"><div style="display: grid; grid-template-columns: 110px minmax(0, 1fr); align-items: center; gap: 14px"><span style="color: #A6ACB4">{{b.name}}</span><span style="height: 14px; border-radius: 4px; margin-left: {{b.ml}}; width: {{b.w}}; background: {{b.bg}}"></span></div></sc-for><div style="margin-top: 6px; color: #8A9099">{{t.jDash}}</div></div></sc-if>
+</div>
+</div>
+</div>
+</section>
+
+<!-- デモ -->
+<section class="s-sec" aria-labelledby="demo-title" style="padding: 140px 24px">
+<div style="max-width: 1200px; margin: 0 auto">
+<h2 id="demo-title" class="s-reveal" style="margin: 0 0 40px; font-family: 'Inter', 'Noto Sans JP', sans-serif; font-weight: 800; font-size: clamp(32px, 4vw, 52px); line-height: 1.12; letter-spacing: -0.04em"><span class="s-big" aria-hidden="true">TRY IT</span>{{t.demoA}}{{t.demoB}}</h2>
+<div style="max-width: 1080px; margin: 0 auto; text-align: left">
+<div role="tablist" aria-label="{{t.demo}}" class="s-lg" style="display: inline-flex; gap: 4px; margin: 0 0 14px; padding: 4px; border-radius: 999px">
 <button type="button" role="tab" aria-selected="{{tabPlaySel}}" onClick="{{showPlay}}" style="min-height: 36px; padding: 0 14px; border: 0; border-radius: 999px; background: {{tabPlayBg}}; color: {{tabPlayFg}}; font-size: 13px; cursor: pointer">{{t.pgTab}}</button>
 <button type="button" role="tab" aria-selected="{{tabDashSel}}" onClick="{{showDash}}" style="min-height: 36px; padding: 0 14px; border: 0; border-radius: 999px; background: {{tabDashBg}}; color: {{tabDashFg}}; font-size: 13px; cursor: pointer">{{t.dashTab}}</button>
 </div>
@@ -179,7 +254,7 @@ background:var(--bg);color:var(--fg);transition:background-color .3s,color .3s}
 <div style="display: flex; gap: 6px; flex-wrap: wrap">
 <sc-for list="{{quick}}" as="q" hint-placeholder-count="4"><button type="button" onClick="{{q.go}}" style="min-height: 32px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--line); background: transparent; color: var(--fg-2); font: inherit; font-size: 12px; cursor: pointer">{{q.label}}</button></sc-for>
 </div>
-<div aria-live="polite" style="flex: 1 1 auto; min-height: 200px; border-radius: 12px; border: 1px solid var(--line); background: var(--bg); overflow: hidden; display: flex; flex-direction: column">
+<div aria-live="polite" style="flex: 1 1 auto; min-height: 200px; border-radius: 6px; border: 1px solid var(--line); background: var(--bg); overflow: hidden; display: flex; flex-direction: column">
 <div style="display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--line)"><span style="font-size: 11px; letter-spacing: 0.06em; color: var(--muted)">{{t.resp}}</span><span style="margin-left: auto; color: {{resColor}}; font-weight: 700">{{resStatus}}</span><span style="color: var(--muted)">{{resMs}}</span></div>
 <sc-if value="{{resType}}" hint-placeholder-val="{{ true }}"><div style="padding: 8px 14px 0; color: var(--muted); font-size: 12px">content-type: {{resType}}</div></sc-if>
 <sc-if value="{{resLoc}}" hint-placeholder-val="{{ false }}"><div style="padding: 8px 14px 0; color: var(--muted); font-size: 12px; overflow-wrap: anywhere">location: {{resLoc}}</div></sc-if>
@@ -223,13 +298,23 @@ background:var(--bg);color:var(--fg);transition:background-color .3s,color .3s}
 </div>
 </div></sc-if>
 </div>
+</div>
 </section>
 
 <!-- ランタイム -->
 <section style="border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 26px 0; overflow: hidden" aria-label="{{t.runtimes}}">
-<div class="s-marquee" style="display: flex; gap: 72px; width: max-content; font-family: 'Inter', sans-serif; font-weight: 600; font-size: 20px; color: var(--muted-2); white-space: nowrap">
-<span>Bun</span><span>Node.js</span><span>Deno</span><span>Cloudflare Workers</span><span>Browser</span><span style="font-family: 'JetBrains Mono', monospace; font-size: 14px; color: var(--accent-text)">● Web Standard</span>
-<span aria-hidden="true">Bun</span><span aria-hidden="true">Node.js</span><span aria-hidden="true">Deno</span><span aria-hidden="true">Cloudflare Workers</span><span aria-hidden="true">Browser</span><span aria-hidden="true" style="font-family: 'JetBrains Mono', monospace; font-size: 14px; color: var(--accent-text)">● Web Standard</span>
+<!-- 継ぎ目なしのループ: 同じ中身の箱を2つ並べ、全体を -50%(ちょうど箱1つ分)動かす。間隔は gap ではなく各項目の右の余白で作るので、-50% がずれない。箱1つが広い画面より長くなるよう、中身は3回繰り返す -->
+<div class="s-marquee" style="display: flex; width: max-content; font-family: 'Inter', sans-serif; font-weight: 600; font-size: 20px; color: var(--muted-2); white-space: nowrap">
+<div style="display: flex; align-items: baseline; flex: none">
+<span style="padding-right: 72px">Bun</span><span style="padding-right: 72px">Node.js</span><span style="padding-right: 72px">Deno</span><span style="padding-right: 72px">Cloudflare Workers</span><span style="padding-right: 72px">Browser</span><span style="padding-right: 72px; font-family: 'JetBrains Mono', monospace; font-size: 14px; color: var(--accent-text)">● Web Standard</span>
+<span aria-hidden="true" style="padding-right: 72px">Bun</span><span aria-hidden="true" style="padding-right: 72px">Node.js</span><span aria-hidden="true" style="padding-right: 72px">Deno</span><span aria-hidden="true" style="padding-right: 72px">Cloudflare Workers</span><span aria-hidden="true" style="padding-right: 72px">Browser</span><span aria-hidden="true" style="padding-right: 72px; font-family: 'JetBrains Mono', monospace; font-size: 14px; color: var(--accent-text)">● Web Standard</span>
+<span aria-hidden="true" style="padding-right: 72px">Bun</span><span aria-hidden="true" style="padding-right: 72px">Node.js</span><span aria-hidden="true" style="padding-right: 72px">Deno</span><span aria-hidden="true" style="padding-right: 72px">Cloudflare Workers</span><span aria-hidden="true" style="padding-right: 72px">Browser</span><span aria-hidden="true" style="padding-right: 72px; font-family: 'JetBrains Mono', monospace; font-size: 14px; color: var(--accent-text)">● Web Standard</span>
+</div>
+<div aria-hidden="true" style="display: flex; align-items: baseline; flex: none">
+<span style="padding-right: 72px">Bun</span><span style="padding-right: 72px">Node.js</span><span style="padding-right: 72px">Deno</span><span style="padding-right: 72px">Cloudflare Workers</span><span style="padding-right: 72px">Browser</span><span style="padding-right: 72px; font-family: 'JetBrains Mono', monospace; font-size: 14px; color: var(--accent-text)">● Web Standard</span>
+<span style="padding-right: 72px">Bun</span><span style="padding-right: 72px">Node.js</span><span style="padding-right: 72px">Deno</span><span style="padding-right: 72px">Cloudflare Workers</span><span style="padding-right: 72px">Browser</span><span style="padding-right: 72px; font-family: 'JetBrains Mono', monospace; font-size: 14px; color: var(--accent-text)">● Web Standard</span>
+<span style="padding-right: 72px">Bun</span><span style="padding-right: 72px">Node.js</span><span style="padding-right: 72px">Deno</span><span style="padding-right: 72px">Cloudflare Workers</span><span style="padding-right: 72px">Browser</span><span style="padding-right: 72px; font-family: 'JetBrains Mono', monospace; font-size: 14px; color: var(--accent-text)">● Web Standard</span>
+</div>
 </div>
 </section>
 
@@ -243,11 +328,26 @@ background:var(--bg);color:var(--fg);transition:background-color .3s,color .3s}
 </div>
 </section>
 
+<!-- ランタイムの表 -->
+<section class="s-sec" aria-labelledby="rt-title" style="padding: 140px 24px 40px">
+<div style="max-width: 1200px; margin: 0 auto">
+<h2 id="rt-title" class="s-reveal" style="margin: 0 0 48px"><span class="s-big" aria-hidden="true">RUNTIMES</span>{{t.rtTable}}</h2>
+<div role="table" aria-label="{{t.rtTable}}" style="font-family: 'JetBrains Mono', monospace; font-size: 14px">
+<div role="row" style="display: grid; grid-template-columns: 64px minmax(0, 1.2fr) minmax(0, 1fr) 32px; gap: 16px; padding: 0 12px 12px; font-size: 11px; letter-spacing: 0.12em; color: var(--muted); border-bottom: 1px solid var(--fg)"><span role="columnheader">NO.</span><span role="columnheader">RUNTIME</span><span role="columnheader" class="s-rt-code">START</span><span></span></div>
+<a role="row" class="s-row" href="#docs" style="display: grid; grid-template-columns: 64px minmax(0, 1.2fr) minmax(0, 1fr) 32px; gap: 16px; align-items: center; min-height: 64px; padding: 0 12px; border-bottom: 1px solid var(--line)"><span role="cell" style="color: var(--muted)">01</span><span role="cell" style="font-family: 'Inter', sans-serif; font-weight: 700; font-size: 20px">Bun</span><span role="cell" class="s-rt-code" style="color: var(--muted)">serve(app)</span><span class="s-row-arrow" aria-hidden="true">→</span></a>
+<a role="row" class="s-row" href="#docs" style="display: grid; grid-template-columns: 64px minmax(0, 1.2fr) minmax(0, 1fr) 32px; gap: 16px; align-items: center; min-height: 64px; padding: 0 12px; border-bottom: 1px solid var(--line)"><span role="cell" style="color: var(--muted)">02</span><span role="cell" style="font-family: 'Inter', sans-serif; font-weight: 700; font-size: 20px">Node.js</span><span role="cell" class="s-rt-code" style="color: var(--muted)">serve(app)</span><span class="s-row-arrow" aria-hidden="true">→</span></a>
+<a role="row" class="s-row" href="#docs" style="display: grid; grid-template-columns: 64px minmax(0, 1.2fr) minmax(0, 1fr) 32px; gap: 16px; align-items: center; min-height: 64px; padding: 0 12px; border-bottom: 1px solid var(--line)"><span role="cell" style="color: var(--muted)">03</span><span role="cell" style="font-family: 'Inter', sans-serif; font-weight: 700; font-size: 20px">Deno</span><span role="cell" class="s-rt-code" style="color: var(--muted)">serve(app)</span><span class="s-row-arrow" aria-hidden="true">→</span></a>
+<a role="row" class="s-row" href="#docs" style="display: grid; grid-template-columns: 64px minmax(0, 1.2fr) minmax(0, 1fr) 32px; gap: 16px; align-items: center; min-height: 64px; padding: 0 12px; border-bottom: 1px solid var(--line)"><span role="cell" style="color: var(--muted)">04</span><span role="cell" style="font-family: 'Inter', sans-serif; font-weight: 700; font-size: 20px">Cloudflare Workers</span><span role="cell" class="s-rt-code" style="color: var(--muted)">export default app</span><span class="s-row-arrow" aria-hidden="true">→</span></a>
+<a role="row" class="s-row" href="#docs" style="display: grid; grid-template-columns: 64px minmax(0, 1.2fr) minmax(0, 1fr) 32px; gap: 16px; align-items: center; min-height: 64px; padding: 0 12px; border-bottom: 1px solid var(--line)"><span role="cell" style="color: var(--muted)">05</span><span role="cell" style="font-family: 'Inter', sans-serif; font-weight: 700; font-size: 20px">Browser <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 400; color: var(--muted)">Service Worker</span></span><span role="cell" class="s-rt-code" style="color: var(--muted)">app.fetch(request)</span><span class="s-row-arrow" aria-hidden="true">→</span></a>
+</div>
+</div>
+</section>
+
 <!-- CLI -->
 <section class="s-sec" style="position: relative; isolation: isolate; overflow: hidden; padding: 140px 24px">
 <div aria-hidden="true" style="position: absolute; right: -6%; top: 10%; width: 720px; height: 620px; background: radial-gradient(closest-side, var(--glow), rgba(227,65,43,0)); z-index: -1; pointer-events: none"></div>
 <div style="max-width: 1200px; margin: 0 auto; display: flex; flex-wrap: wrap; gap: 56px; align-items: center">
-<h2 class="s-reveal" style="flex: 1 1 320px; min-width: 0; margin: 0; font-family: 'Inter', 'Noto Sans JP', sans-serif; font-weight: 800; font-size: clamp(34px, 4.4vw, 56px); line-height: 1.1; letter-spacing: -0.04em">{{t.cliA}}<br>{{t.cliB}}</h2>
+<h2 class="s-reveal" style="flex: 1 1 320px; min-width: 0; margin: 0; font-family: 'Inter', 'Noto Sans JP', sans-serif; font-weight: 800; font-size: clamp(34px, 4.4vw, 56px); line-height: 1.1; letter-spacing: -0.04em"><span class="s-big" aria-hidden="true">START</span>{{t.cliA}}{{t.cliB}}</h2>
 <div role="img" aria-label="{{t.cliAria}}" style="flex: 1 1 560px; min-width: 0; border-radius: 16px; background: rgba(14,16,19,0.9); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.08); overflow: hidden; box-shadow: 0 24px 60px var(--shadow)">
 <div style="display: flex; align-items: center; gap: 8px; padding: 14px 18px; border-bottom: 1px solid rgba(255,255,255,0.06)">
 <span style="width: 11px; height: 11px; border-radius: 50%; background: #3A3D44"></span><span style="width: 11px; height: 11px; border-radius: 50%; background: #3A3D44"></span><span style="width: 11px; height: 11px; border-radius: 50%; background: #3A3D44"></span>
@@ -274,7 +374,7 @@ background:var(--bg);color:var(--fg);transition:background-color .3s,color .3s}
 <!-- 層 -->
 <section class="s-sec" style="background: var(--surface); padding: 140px 24px">
 <div style="max-width: 1200px; margin: 0 auto; display: flex; flex-wrap: wrap; gap: 56px; align-items: center">
-<h2 class="s-reveal" style="flex: 1 1 320px; min-width: 0; margin: 0; font-family: 'Inter', 'Noto Sans JP', sans-serif; font-weight: 800; font-size: clamp(32px, 4vw, 52px); line-height: 1.12; letter-spacing: -0.04em">{{t.layA}}<br>{{t.layB}}</h2>
+<h2 class="s-reveal" style="flex: 1 1 320px; min-width: 0; margin: 0; font-family: 'Inter', 'Noto Sans JP', sans-serif; font-weight: 800; font-size: clamp(32px, 4vw, 52px); line-height: 1.12; letter-spacing: -0.04em"><span class="s-big" aria-hidden="true">LAYERS</span>{{t.layA}}{{t.layB}}</h2>
 <div role="img" aria-label="{{t.layAria}}" style="flex: 1 1 560px; min-width: 0; display: flex; flex-direction: column; align-items: center; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--muted)">
 <div style="padding: 10px 18px; border: 1px dashed var(--line-3)">Ippo <span style="color: var(--muted-2)">· {{t.dev}}</span></div>
 <div style="width: 1px; height: 36px; background: var(--line-3)"></div>
@@ -303,7 +403,7 @@ background:var(--bg);color:var(--fg);transition:background-color .3s,color .3s}
 <!-- ルートの木 -->
 <section class="s-sec" style="padding: 140px 24px">
 <div style="max-width: 1200px; margin: 0 auto">
-<h2 class="s-reveal" style="margin: 0; font-family: 'Inter', 'Noto Sans JP', sans-serif; font-weight: 800; font-size: clamp(32px, 4vw, 52px); line-height: 1.12; letter-spacing: -0.04em">{{t.rtA}}<br>{{t.rtB}}</h2>
+<h2 class="s-reveal" style="margin: 0; font-family: 'Inter', 'Noto Sans JP', sans-serif; font-weight: 800; font-size: clamp(32px, 4vw, 52px); line-height: 1.12; letter-spacing: -0.04em"><span class="s-big" aria-hidden="true">ROUTING</span>{{t.rtA}}{{t.rtB}}</h2>
 <div role="img" aria-label="{{t.rtAria}}" style="margin-top: 56px; border-radius: 20px; border: 1px solid var(--line); overflow-x: auto">
 <div style="position: relative; width: 860px; height: 380px; margin: 0 auto">
 <div style="position: absolute; left: 200px; top: 189px; width: 48px; height: 2px; background: var(--line-3)"></div>
@@ -339,37 +439,45 @@ background:var(--bg);color:var(--fg);transition:background-color .3s,color .3s}
 </section>
 
 <!-- 特長 -->
-<section class="s-sec" style="position: relative; isolation: isolate; overflow: hidden; background: var(--surface); padding: 140px 24px">
+<section id="features" ref="{{galleryRef}}" aria-labelledby="feat-title" style="position: relative; height: 340vh; background: var(--surface)">
+<div style="position: sticky; top: 0; height: 100vh; overflow: hidden; isolation: isolate; display: flex; flex-direction: column; justify-content: center">
 <div aria-hidden="true" style="position: absolute; left: -8%; top: 18%; width: 680px; height: 680px; background: radial-gradient(closest-side, var(--glow), rgba(227,65,43,0)); z-index: -1; pointer-events: none"></div>
 <div aria-hidden="true" style="position: absolute; right: -6%; bottom: -12%; width: 600px; height: 600px; background: radial-gradient(closest-side, rgba(255,150,80,0.2), rgba(255,150,80,0)); z-index: -1; pointer-events: none"></div>
-<div style="max-width: 1200px; margin: 0 auto">
-<h2 class="s-reveal" style="margin: 0; font-family: 'Inter', 'Noto Sans JP', sans-serif; font-weight: 800; font-size: clamp(34px, 4.4vw, 56px); line-height: 1.1; letter-spacing: -0.04em">{{t.featH}}</h2>
-<div class="s-grid4" style="margin-top: 56px; gap: 16px">
-<button type="button" class="s-tilt {{cls0}}" onClick="{{open0}}" aria-expanded="{{exp0}}" aria-haspopup="dialog" onMouseMove="{{move0}}" onMouseLeave="{{leave0}}" style="text-align: left; font: inherit; color: inherit; cursor: pointer; width: 100%; position: relative; overflow: hidden; border-radius: 20px; background: var(--glass); backdrop-filter: blur(20px) saturate(160%); -webkit-backdrop-filter: blur(20px) saturate(160%); border: 1px solid var(--glass-line); box-shadow: inset 0 1px 0 var(--glass-hl), 0 20px 50px var(--shadow); padding: 28px; min-height: 200px; box-sizing: border-box; display: flex; flex-direction: column; gap: 10px; transform: {{tf0}}">
+<div style="padding: 0 max(24px, calc((100vw - 1200px) / 2))"><h2 id="feat-title" style="margin: 0; font-family: 'Inter', 'Noto Sans JP', sans-serif; font-weight: 800; font-size: clamp(34px, 4.4vw, 56px); line-height: 1.1; letter-spacing: -0.04em"><span class="s-big" aria-hidden="true">FEATURES</span>{{t.featH}}</h2></div>
+<div style="margin-top: 40px; display: flex; align-items: stretch; gap: 24px; padding-left: {{trackPad}}; will-change: transform" ref="{{trackRef}}">
+<button type="button" class="s-tilt {{cls0}}" onClick="{{open0}}" aria-expanded="{{exp0}}" aria-haspopup="dialog" onMouseMove="{{move0}}" onMouseLeave="{{leave0}}" style="text-align: left; font: inherit; color: inherit; cursor: pointer; width: 100%; position: relative; overflow: hidden; border-radius: 20px; background: var(--glass); border: 1px solid var(--glass-line); box-shadow: inset 0 1px 0 var(--glass-hl), 0 20px 50px var(--shadow); padding: 28px; flex: 0 0 {{cardW}}; height: min(54vh, 440px); box-sizing: border-box; display: flex; flex-direction: column; gap: 10px; transform: {{tf0}}">
 <span aria-hidden="true" style="position: absolute; inset: 0; pointer-events: none; background: {{gl0}}"></span>
 <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="margin-bottom: auto"><circle cx="12" cy="12" r="9"></circle><path d="M3 12h18"></path><path d="M12 3a14 14 0 0 1 0 18"></path><path d="M12 3a14 14 0 0 0 0 18"></path></svg>
 <span style="display: block; font-size: 18px; font-weight: 700">{{t.f0t}}</span>
 <span style="display: block; font-size: 14px; color: var(--muted)">{{t.f0d}}</span>
+<span style="display: block; margin-top: 18px; padding: 18px 20px; border-radius: 6px; background: var(--code); color: #D7DAE0; font-family: 'JetBrains Mono', monospace; font-size: 13px; line-height: 1.8; white-space: pre; overflow: hidden"><span style="color: #8A9099">// Bun · Node.js · Deno</span>
+<span style="color: #82AAFF">serve</span>(app);
+<span style="color: #8A9099">// Cloudflare Workers</span>
+<span style="color: #C792EA">export default</span> app;</span>
 </button>
-<button type="button" class="s-tilt {{cls1}}" onClick="{{open1}}" aria-expanded="{{exp1}}" aria-haspopup="dialog" onMouseMove="{{move1}}" onMouseLeave="{{leave1}}" style="text-align: left; font: inherit; color: inherit; cursor: pointer; width: 100%; position: relative; overflow: hidden; border-radius: 20px; background: var(--glass); backdrop-filter: blur(20px) saturate(160%); -webkit-backdrop-filter: blur(20px) saturate(160%); border: 1px solid var(--glass-line); box-shadow: inset 0 1px 0 var(--glass-hl), 0 20px 50px var(--shadow); padding: 28px; min-height: 200px; box-sizing: border-box; display: flex; flex-direction: column; gap: 10px; transform: {{tf1}}">
+<button type="button" class="s-tilt {{cls1}}" onClick="{{open1}}" aria-expanded="{{exp1}}" aria-haspopup="dialog" onMouseMove="{{move1}}" onMouseLeave="{{leave1}}" style="text-align: left; font: inherit; color: inherit; cursor: pointer; width: 100%; position: relative; overflow: hidden; border-radius: 20px; background: var(--glass); border: 1px solid var(--glass-line); box-shadow: inset 0 1px 0 var(--glass-hl), 0 20px 50px var(--shadow); padding: 28px; flex: 0 0 {{cardW}}; height: min(54vh, 440px); box-sizing: border-box; display: flex; flex-direction: column; gap: 10px; transform: {{tf1}}">
 <span aria-hidden="true" style="position: absolute; inset: 0; pointer-events: none; background: {{gl1}}"></span>
 <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="margin-bottom: auto"><path d="M12 3l9 16H3z"></path><path d="M12 10v4"></path><path d="M12 17h.01"></path></svg>
 <span style="display: block; font-size: 18px; font-weight: 700">{{t.f1t}}</span>
 <span style="display: block; font-size: 14px; color: var(--muted)">{{t.f1d}}</span>
+<span style="display: block; margin-top: 18px; border-radius: 6px; border: 1px solid var(--line); overflow: hidden; background: var(--bg); font-family: 'JetBrains Mono', monospace; font-size: 12px"><span style="display: block; padding: 10px 14px; color: var(--accent-text); font-weight: 700; border-bottom: 1px solid var(--line)">TypeError: Cannot read properties of undefined</span><span style="display: block; padding: 8px 14px; background: var(--hl-strong); font-weight: 700; white-space: pre">9    return { name: user.name };</span></span>
 </button>
-<button type="button" class="s-tilt {{cls2}}" onClick="{{open2}}" aria-expanded="{{exp2}}" aria-haspopup="dialog" onMouseMove="{{move2}}" onMouseLeave="{{leave2}}" style="text-align: left; font: inherit; color: inherit; cursor: pointer; width: 100%; position: relative; overflow: hidden; border-radius: 20px; background: var(--glass); backdrop-filter: blur(20px) saturate(160%); -webkit-backdrop-filter: blur(20px) saturate(160%); border: 1px solid var(--glass-line); box-shadow: inset 0 1px 0 var(--glass-hl), 0 20px 50px var(--shadow); padding: 28px; min-height: 200px; box-sizing: border-box; display: flex; flex-direction: column; gap: 10px; transform: {{tf2}}">
+<button type="button" class="s-tilt {{cls2}}" onClick="{{open2}}" aria-expanded="{{exp2}}" aria-haspopup="dialog" onMouseMove="{{move2}}" onMouseLeave="{{leave2}}" style="text-align: left; font: inherit; color: inherit; cursor: pointer; width: 100%; position: relative; overflow: hidden; border-radius: 20px; background: var(--glass); border: 1px solid var(--glass-line); box-shadow: inset 0 1px 0 var(--glass-hl), 0 20px 50px var(--shadow); padding: 28px; flex: 0 0 {{cardW}}; height: min(54vh, 440px); box-sizing: border-box; display: flex; flex-direction: column; gap: 10px; transform: {{tf2}}">
 <span aria-hidden="true" style="position: absolute; inset: 0; pointer-events: none; background: {{gl2}}"></span>
 <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="margin-bottom: auto"><path d="M3 12h4l3-8 4 16 3-8h4"></path></svg>
 <span style="display: block; font-size: 18px; font-weight: 700">{{t.f2t}}</span>
 <span style="display: block; font-size: 14px; color: var(--muted)"><code style="font-family: 'JetBrains Mono', monospace; font-size: 13px">/_senri</code> {{t.f2d}}</span>
+<span style="display: flex; flex-direction: column; gap: 8px; margin-top: 18px; font-family: 'JetBrains Mono', monospace; font-size: 12px"><span style="display: grid; grid-template-columns: 90px minmax(0, 1fr); align-items: center; gap: 12px"><span style="color: var(--muted)">requestId</span><span style="display: block; height: 12px; border-radius: 4px; background: var(--bar1)"></span></span><span style="display: grid; grid-template-columns: 90px minmax(0, 1fr); align-items: center; gap: 12px"><span style="color: var(--muted)">cors</span><span style="display: block; height: 12px; border-radius: 4px; margin-left: 4%; width: 92%; background: var(--bar2)"></span></span><span style="display: grid; grid-template-columns: 90px minmax(0, 1fr); align-items: center; gap: 12px"><span style="color: var(--muted)">auth</span><span style="display: block; height: 12px; border-radius: 4px; margin-left: 10%; width: 80%; background: var(--bar4)"></span></span><span style="display: grid; grid-template-columns: 90px minmax(0, 1fr); align-items: center; gap: 12px"><span style="font-weight: 700">handler</span><span style="display: block; height: 12px; border-radius: 4px; margin-left: 16%; width: 62%; background: {{accent}}"></span></span></span>
 </button>
-<button type="button" class="s-tilt {{cls3}}" onClick="{{open3}}" aria-expanded="{{exp3}}" aria-haspopup="dialog" onMouseMove="{{move3}}" onMouseLeave="{{leave3}}" style="text-align: left; font: inherit; color: inherit; cursor: pointer; width: 100%; position: relative; overflow: hidden; border-radius: 20px; background: var(--glass); backdrop-filter: blur(20px) saturate(160%); -webkit-backdrop-filter: blur(20px) saturate(160%); border: 1px solid var(--glass-line); box-shadow: inset 0 1px 0 var(--glass-hl), 0 20px 50px var(--shadow); padding: 28px; min-height: 200px; box-sizing: border-box; display: flex; flex-direction: column; gap: 10px; transform: {{tf3}}">
+<button type="button" class="s-tilt {{cls3}}" onClick="{{open3}}" aria-expanded="{{exp3}}" aria-haspopup="dialog" onMouseMove="{{move3}}" onMouseLeave="{{leave3}}" style="text-align: left; font: inherit; color: inherit; cursor: pointer; width: 100%; position: relative; overflow: hidden; border-radius: 20px; background: var(--glass); border: 1px solid var(--glass-line); box-shadow: inset 0 1px 0 var(--glass-hl), 0 20px 50px var(--shadow); padding: 28px; flex: 0 0 {{cardW}}; height: min(54vh, 440px); box-sizing: border-box; display: flex; flex-direction: column; gap: 10px; transform: {{tf3}}">
 <span aria-hidden="true" style="position: absolute; inset: 0; pointer-events: none; background: {{gl3}}"></span>
 <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="margin-bottom: auto"><path d="M4 7h16"></path><path d="M4 12h16"></path><path d="M4 17h10"></path></svg>
 <span style="display: block; font-size: 18px; font-weight: 700">{{t.f3t}}</span>
 <span style="display: block; font-size: 14px; color: var(--muted)">{{t.f3d}}</span>
+<span style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; font-family: 'JetBrains Mono', monospace; font-size: 13px"><span style="padding: 6px 12px; border-radius: 999px; background: var(--surface)">cors</span><span style="padding: 6px 12px; border-radius: 999px; background: var(--surface)">secureHeaders</span><span style="padding: 6px 12px; border-radius: 999px; background: var(--surface)">compress</span><span style="padding: 6px 12px; border-radius: 999px; background: var(--surface)">rateLimit</span><span style="padding: 6px 12px; border-radius: 999px; background: var(--surface)">etag</span><span style="padding: 6px 12px; border-radius: 999px; background: var(--surface)">requestId</span></span>
 </button>
 </div>
+<div style="margin-top: 28px; padding: 0 max(24px, calc((100vw - 1200px) / 2))"><div style="height: 2px; max-width: 240px; background: var(--line-2); border-radius: 6px; overflow: hidden"><div ref="{{galBarRef}}" style="height: 100%; width: 0; background: var(--fg)"></div></div></div>
 </div>
 </section>
 
@@ -377,10 +485,10 @@ background:var(--bg);color:var(--fg);transition:background-color .3s,color .3s}
 <section class="s-sec" style="padding: 140px 24px" aria-roledescription="carousel" aria-label="{{t.carH}}">
 <div style="max-width: 1200px; margin: 0 auto">
 <div style="display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-end; justify-content: space-between">
-<h2 class="s-reveal" style="margin: 0; font-family: 'Inter', 'Noto Sans JP', sans-serif; font-weight: 800; font-size: clamp(32px, 4vw, 52px); line-height: 1.12; letter-spacing: -0.04em">{{t.carH}}</h2>
+<h2 class="s-reveal" style="margin: 0; font-family: 'Inter', 'Noto Sans JP', sans-serif; font-weight: 800; font-size: clamp(32px, 4vw, 52px); line-height: 1.12; letter-spacing: -0.04em"><span class="s-big" aria-hidden="true">PATTERNS</span>{{t.carH}}</h2>
 <div style="display: flex; gap: 8px">
-<button type="button" onClick="{{prev}}" aria-label="{{t.prev}}" style="width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--line-2); background: var(--bg); color: var(--fg); cursor: pointer; display: flex; align-items: center; justify-content: center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"></path></svg></button>
-<button type="button" onClick="{{next}}" aria-label="{{t.next}}" style="width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--line-2); background: var(--bg); color: var(--fg); cursor: pointer; display: flex; align-items: center; justify-content: center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></button>
+<button type="button" onClick="{{prev}}" aria-label="{{t.prev}}" style="min-height: 44px; padding: 0 8px; border: 0; background: transparent; color: var(--fg); cursor: pointer; display: flex; align-items: center; gap: 10px; font-family: 'JetBrains Mono', monospace; font-size: 13px; letter-spacing: 0.12em"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"></path></svg>PREV</button>
+<button type="button" onClick="{{next}}" aria-label="{{t.next}}" style="min-height: 44px; padding: 0 8px; border: 0; background: transparent; color: var(--fg); cursor: pointer; display: flex; align-items: center; gap: 10px; font-family: 'JetBrains Mono', monospace; font-size: 13px; letter-spacing: 0.12em">NEXT<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></button>
 </div>
 </div>
 <div onMouseEnter="{{pauseCar}}" onMouseLeave="{{resumeCar}}" aria-live="polite" style="margin-top: 48px; overflow: hidden; border-radius: 24px">
@@ -413,62 +521,7 @@ app.<span style="color: #82AAFF">use</span>(<span style="color: #82AAFF">cors</s
 </div>
 </div>
 <div style="margin-top: 24px; display: flex; justify-content: center; gap: 8px">
-<sc-for list="{{dots}}" as="dot" hint-placeholder-count="4"><button type="button" onClick="{{dot.pick}}" aria-label="{{dot.label}}" aria-current="{{dot.current}}" style="width: 44px; height: 24px; border: 0; background: transparent; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0"><span style="display: block; height: 6px; border-radius: 999px; width: {{dot.w}}; background: {{dot.bg}}; transition: width .3s"></span></button></sc-for>
-</div>
-</div>
-</section>
-
-<!-- 開発の様子(ブランチの図) -->
-<section class="s-sec" style="padding: 140px 24px 120px">
-<div style="max-width: 1200px; margin: 0 auto">
-<div style="display: flex; flex-wrap: wrap; gap: 16px 48px; align-items: flex-end; justify-content: space-between">
-<h2 class="s-reveal" style="margin: 0; font-family: 'Inter', 'Noto Sans JP', sans-serif; font-weight: 800; font-size: clamp(32px, 4vw, 52px); line-height: 1.12; letter-spacing: -0.04em">{{t.gitA}}<br>{{t.gitB}}</h2>
-<a class="s-link" href="https://github.com/Senrijs/Senri/pulls?q=is%3Apr+is%3Amerged" style="font-size: 14px; color: var(--muted)">{{t.gitLink}}</a>
-</div>
-<div style="margin-top: 48px; border-radius: 20px; border: 1px solid var(--glass-line); background: var(--glass); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); box-shadow: inset 0 1px 0 var(--glass-hl), 0 12px 32px var(--shadow); overflow-x: auto">
-<svg class="s-git" role="img" aria-label="{{t.gitAria}}" viewBox="0 0 1120 300" style="display: block; width: 100%; min-width: 880px; height: auto">
-<path class="s-draw" d="M40 150 H1060" fill="none" style="stroke: var(--fg); stroke-width: 2.5"></path>
-<path class="s-draw" d="M100 150 C130 150 120 70 160 70 H220 C260 70 250 150 280 150" fill="none" style="stroke: {{accent}}; stroke-width: 2.5"></path>
-<path class="s-draw" d="M360 150 C390 150 380 230 410 230 H420 C455 230 450 150 480 150" fill="none" style="stroke: #3B82F6; stroke-width: 2.5"></path>
-<path class="s-draw" d="M500 150 C525 150 515 70 545 70 H550 C580 70 575 150 600 150" fill="none" style="stroke: #22A06B; stroke-width: 2.5"></path>
-<path class="s-draw" d="M660 150 C690 150 680 230 720 230 H780 C820 230 810 150 840 150" fill="none" style="stroke: #9B6BF2; stroke-width: 2.5"></path>
-<path class="s-draw" d="M900 150 C925 150 915 70 950 70 H960 C990 70 985 150 1000 150" fill="none" style="stroke: #F08A24; stroke-width: 2.5"></path>
-<g class="s-cm">
-<circle cx="160" cy="70" r="6" style="fill: var(--bg); stroke: {{accent}}; stroke-width: 2.5"></circle>
-<circle cx="220" cy="70" r="6" style="fill: var(--bg); stroke: {{accent}}; stroke-width: 2.5"></circle>
-<circle cx="420" cy="230" r="6" style="fill: var(--bg); stroke: #3B82F6; stroke-width: 2.5"></circle>
-<circle cx="550" cy="70" r="6" style="fill: var(--bg); stroke: #22A06B; stroke-width: 2.5"></circle>
-<circle cx="720" cy="230" r="6" style="fill: var(--bg); stroke: #9B6BF2; stroke-width: 2.5"></circle>
-<circle cx="780" cy="230" r="6" style="fill: var(--bg); stroke: #9B6BF2; stroke-width: 2.5"></circle>
-<circle cx="960" cy="70" r="6" style="fill: var(--bg); stroke: #F08A24; stroke-width: 2.5"></circle>
-<circle cx="60" cy="150" r="6" style="fill: var(--bg); stroke: var(--fg); stroke-width: 2.5"></circle>
-<circle cx="280" cy="150" r="7" style="fill: {{accent}}"></circle>
-<circle cx="330" cy="150" r="6" style="fill: var(--bg); stroke: var(--fg); stroke-width: 2.5"></circle>
-<circle cx="480" cy="150" r="7" style="fill: #3B82F6"></circle>
-<circle cx="600" cy="150" r="7" style="fill: #22A06B"></circle>
-<circle cx="640" cy="150" r="6" style="fill: var(--bg); stroke: var(--fg); stroke-width: 2.5"></circle>
-<circle cx="840" cy="150" r="7" style="fill: #9B6BF2"></circle>
-<circle cx="880" cy="150" r="6" style="fill: var(--bg); stroke: var(--fg); stroke-width: 2.5"></circle>
-<circle cx="1000" cy="150" r="7" style="fill: #F08A24"></circle>
-<text x="60" y="126" text-anchor="middle" style="fill: var(--muted); font-size: 12px">v0.2.15</text>
-<text x="330" y="126" text-anchor="middle" style="fill: var(--muted); font-size: 12px">v0.2.16</text>
-<text x="640" y="126" text-anchor="middle" style="fill: var(--muted); font-size: 12px">v0.2.17</text>
-<text x="880" y="126" text-anchor="middle" style="fill: var(--muted); font-size: 12px">v0.2.18</text>
-<text x="280" y="180" text-anchor="middle" style="fill: var(--fg-2); font-size: 12px">#61</text>
-<text x="492" y="180" text-anchor="start" style="fill: var(--fg-2); font-size: 12px">#63</text>
-<text x="600" y="180" text-anchor="middle" style="fill: var(--fg-2); font-size: 12px">#65</text>
-<text x="852" y="180" text-anchor="start" style="fill: var(--fg-2); font-size: 12px">#66</text>
-<text x="1000" y="180" text-anchor="middle" style="fill: var(--fg-2); font-size: 12px">#68</text>
-<text x="160" y="50" style="fill: var(--muted); font-size: 12px">feat/i18n-dev</text>
-<text x="410" y="258" style="fill: var(--muted); font-size: 12px">fix/english-messages</text>
-<text x="530" y="50" style="fill: var(--muted); font-size: 12px">fix/flaky-tests</text>
-<text x="700" y="258" style="fill: var(--muted); font-size: 12px">feat/multipart-stream</text>
-<text x="930" y="50" style="fill: var(--muted); font-size: 12px">feat/docs-website</text>
-</g>
-<circle class="s-gping" cx="1060" cy="150" r="7" style="fill: {{accent}}"></circle>
-<circle cx="1060" cy="150" r="7" style="fill: {{accent}}"></circle>
-<text x="1060" y="126" text-anchor="middle" style="fill: var(--fg); font-size: 12px; font-weight: 700">main</text>
-</svg>
+<sc-for list="{{dots}}" as="dot" hint-placeholder-count="4"><button type="button" onClick="{{dot.pick}}" aria-label="{{dot.label}}" aria-current="{{dot.current}}" style="width: 44px; height: 24px; border: 0; background: transparent; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0"><span style="display: block; height: 6px; border-radius: 6px; width: {{dot.w}}; background: {{dot.bg}}; transition: width .3s"></span></button></sc-for>
 </div>
 </div>
 </section>
@@ -478,7 +531,7 @@ app.<span style="color: #82AAFF">use</span>(<span style="color: #82AAFF">cors</s
 <div aria-hidden="true" style="position: absolute; right: -10%; top: 30%; width: 700px; height: 700px; background: radial-gradient(closest-side, var(--glow), rgba(227,65,43,0)); z-index: -1; pointer-events: none"></div>
 <div style="max-width: 1200px; margin: 0 auto; display: flex; flex-wrap: wrap; gap: 48px 64px; align-items: flex-start">
 <div class="s-sticky" style="flex: 1 1 300px; min-width: 0; position: sticky; top: 120px">
-<h2 id="tl-title" class="s-reveal" style="margin: 0; font-family: 'Inter', 'Noto Sans JP', sans-serif; font-weight: 800; font-size: clamp(32px, 4vw, 52px); line-height: 1.12; letter-spacing: -0.04em">{{t.tlA}}<br>{{t.tlB}}</h2>
+<h2 id="tl-title" class="s-reveal" style="margin: 0; font-family: 'Inter', 'Noto Sans JP', sans-serif; font-weight: 800; font-size: clamp(32px, 4vw, 52px); line-height: 1.12; letter-spacing: -0.04em"><span class="s-big" aria-hidden="true">TIMELINE</span>{{t.tlA}}{{t.tlB}}</h2>
 <a class="s-link" href="https://github.com/Senrijs/Senri/releases" style="display: inline-block; margin-top: 24px; font-size: 14px; color: var(--muted)">{{t.tlAll}}</a>
 </div>
 <ol style="flex: 2 1 520px; min-width: 0; list-style: none; margin: 0; padding: 0; position: relative">
@@ -489,19 +542,19 @@ app.<span style="color: #82AAFF">use</span>(<span style="color: #82AAFF">cors</s
 </li>
 <li class="s-tl-item" style="position: relative; display: grid; grid-template-columns: 16px minmax(0, 1fr); gap: 24px; padding-bottom: 28px">
 <span class="s-tl-dot" aria-hidden="true" style="width: 16px; height: 16px; margin-top: 22px; border-radius: 50%; background: var(--line-2); border: 3px solid var(--surface); box-sizing: border-box"></span>
-<div class="s-tl-card" style="border-radius: 18px; background: var(--glass); backdrop-filter: blur(20px) saturate(160%); -webkit-backdrop-filter: blur(20px) saturate(160%); border: 1px solid var(--glass-line); box-shadow: inset 0 1px 0 var(--glass-hl), 0 8px 24px var(--shadow); padding: 20px 24px"><span style="display: block; font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--muted)">v0.2.11</span><span style="display: block; margin-top: 6px; font-size: 18px; font-weight: 700">{{t.e1t}}</span><span style="display: block; margin-top: 4px; font-size: 14px; color: var(--muted)">{{t.e1d}}</span></div>
+<div class="s-tl-card" style="border-radius: 18px; background: var(--glass); border: 1px solid var(--glass-line); box-shadow: inset 0 1px 0 var(--glass-hl), 0 8px 24px var(--shadow); padding: 20px 24px"><span style="display: block; font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--muted)">v0.2.11</span><span style="display: block; margin-top: 6px; font-size: 18px; font-weight: 700">{{t.e1t}}</span><span style="display: block; margin-top: 4px; font-size: 14px; color: var(--muted)">{{t.e1d}}</span></div>
 </li>
 <li class="s-tl-item" style="position: relative; display: grid; grid-template-columns: 16px minmax(0, 1fr); gap: 24px; padding-bottom: 28px">
 <span class="s-tl-dot" aria-hidden="true" style="width: 16px; height: 16px; margin-top: 22px; border-radius: 50%; background: var(--line-2); border: 3px solid var(--surface); box-sizing: border-box"></span>
-<div class="s-tl-card" style="border-radius: 18px; background: var(--glass); backdrop-filter: blur(20px) saturate(160%); -webkit-backdrop-filter: blur(20px) saturate(160%); border: 1px solid var(--glass-line); box-shadow: inset 0 1px 0 var(--glass-hl), 0 8px 24px var(--shadow); padding: 20px 24px"><span style="display: block; font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--muted)">v0.2.16 · <time datetime="2026-11-07">2026-11-07</time></span><span style="display: block; margin-top: 6px; font-size: 18px; font-weight: 700">{{t.e2t}}</span><span style="display: block; margin-top: 4px; font-size: 14px; color: var(--muted)">{{t.e2d}}</span></div>
+<div class="s-tl-card" style="border-radius: 18px; background: var(--glass); border: 1px solid var(--glass-line); box-shadow: inset 0 1px 0 var(--glass-hl), 0 8px 24px var(--shadow); padding: 20px 24px"><span style="display: block; font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--muted)">v0.2.16 · <time datetime="2026-11-07">2026-11-07</time></span><span style="display: block; margin-top: 6px; font-size: 18px; font-weight: 700">{{t.e2t}}</span><span style="display: block; margin-top: 4px; font-size: 14px; color: var(--muted)">{{t.e2d}}</span></div>
 </li>
 <li class="s-tl-item" style="position: relative; display: grid; grid-template-columns: 16px minmax(0, 1fr); gap: 24px; padding-bottom: 28px">
 <span class="s-tl-dot" aria-hidden="true" style="width: 16px; height: 16px; margin-top: 22px; border-radius: 50%; background: var(--line-2); border: 3px solid var(--surface); box-sizing: border-box"></span>
-<div class="s-tl-card" style="border-radius: 18px; background: var(--glass); backdrop-filter: blur(20px) saturate(160%); -webkit-backdrop-filter: blur(20px) saturate(160%); border: 1px solid var(--glass-line); box-shadow: inset 0 1px 0 var(--glass-hl), 0 8px 24px var(--shadow); padding: 20px 24px"><span style="display: block; font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--muted)">v0.2.18 · <time datetime="2026-11-08">2026-11-08</time></span><span style="display: block; margin-top: 6px; font-size: 18px; font-weight: 700">{{t.e3t}}</span><span style="display: block; margin-top: 4px; font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--muted)">multipart(c)</span></div>
+<div class="s-tl-card" style="border-radius: 18px; background: var(--glass); border: 1px solid var(--glass-line); box-shadow: inset 0 1px 0 var(--glass-hl), 0 8px 24px var(--shadow); padding: 20px 24px"><span style="display: block; font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--muted)">v0.2.18 · <time datetime="2026-11-08">2026-11-08</time></span><span style="display: block; margin-top: 6px; font-size: 18px; font-weight: 700">{{t.e3t}}</span><span style="display: block; margin-top: 4px; font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--muted)">multipart(c)</span></div>
 </li>
 <li class="s-tl-item" style="position: relative; display: grid; grid-template-columns: 16px minmax(0, 1fr); gap: 24px; padding-bottom: 28px" aria-current="step">
 <span style="display: flex; align-items: center; justify-content: center; width: 16px; height: 16px; margin-top: 22px"><span class="s-beacon" aria-hidden="true" style="width: 12px; height: 12px; background: {{accent}}; box-shadow: 0 0 0 3px var(--surface)"></span></span>
-<div class="s-tl-card" style="border-radius: 18px; background: var(--glass); backdrop-filter: blur(20px) saturate(160%); -webkit-backdrop-filter: blur(20px) saturate(160%); border: 1.5px solid {{accent}}; box-shadow: 0 8px 24px var(--shadow); padding: 20px 24px"><span style="display: flex; gap: 10px; align-items: center; font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--muted)"><time datetime="2026-11-08">2026-11-08</time><span style="padding: 2px 8px; border-radius: 999px; background: var(--fg); color: var(--bg); font-size: 11px">{{t.now}}</span></span><span style="display: block; margin-top: 6px; font-size: 18px; font-weight: 700">{{t.e4t}}</span><span style="display: block; margin-top: 4px; font-size: 14px; color: var(--muted)">{{t.e4d}}</span></div>
+<div class="s-tl-card" style="border-radius: 18px; background: var(--glass); border: 1.5px solid {{accent}}; box-shadow: 0 8px 24px var(--shadow); padding: 20px 24px"><span style="display: flex; gap: 10px; align-items: center; font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--muted)"><time datetime="2026-11-08">2026-11-08</time><span style="padding: 2px 8px; border-radius: 999px; background: var(--fg); color: var(--bg); font-size: 11px">{{t.now}}</span></span><span style="display: block; margin-top: 6px; font-size: 18px; font-weight: 700">{{t.e4t}}</span><span style="display: block; margin-top: 4px; font-size: 14px; color: var(--muted)">{{t.e4d}}</span></div>
 </li>
 <li class="s-tl-item" style="position: relative; display: grid; grid-template-columns: 16px minmax(0, 1fr); gap: 24px; padding-bottom: 28px">
 <span aria-hidden="true" style="width: 16px; height: 16px; margin-top: 22px; border-radius: 50%; background: var(--surface); border: 2px dashed var(--line-3); box-sizing: border-box"></span>
@@ -516,12 +569,14 @@ app.<span style="color: #82AAFF">use</span>(<span style="color: #82AAFF">cors</s
 </section>
 
 <!-- CTA -->
-<section class="s-sec" style="padding: 160px 24px 140px; text-align: center">
+<section class="s-sec" ref="{{ctaRef}}" onMouseMove="{{ctaMove}}" style="position: relative; isolation: isolate; overflow: hidden; padding: 220px 24px 200px; text-align: center">
+<div ref="{{threeRef}}" aria-hidden="true" style="position: absolute; inset: 0; z-index: -1; pointer-events: none"></div>
+<div aria-hidden="true" style="position: absolute; inset: 0; z-index: -1; pointer-events: none; background: linear-gradient(var(--bg), rgba(0,0,0,0) 22%, rgba(0,0,0,0) 78%, var(--bg))"></div>
 <p style="margin: 0 0 20px; font-size: 14px; color: var(--muted)">{{t.proverb}}</p>
 <h2 class="s-reveal" style="margin: 0 auto; font-family: 'Inter', 'Noto Sans JP', sans-serif; font-weight: 800; font-size: clamp(38px, 6vw, 84px); line-height: 1.05; letter-spacing: -0.05em">{{t.ctaH}}</h2>
 <div style="margin-top: 40px; display: flex; justify-content: center; gap: 12px; flex-wrap: wrap">
-<a class="s-btn" href="#docs" style="display: inline-flex; align-items: center; min-height: 48px; padding: 0 28px; border-radius: 12px; background: var(--fg); color: var(--bg); font-weight: 700; font-size: 15px">{{t.docs}}</a>
-<a class="s-btn" href="https://github.com/Senrijs/Senri" style="display: inline-flex; align-items: center; min-height: 48px; padding: 0 28px; border-radius: 12px; border: 1px solid var(--line-2); background: var(--bg); font-weight: 600; font-size: 15px">GitHub</a>
+<a class="s-btn" href="#docs" style="display: inline-flex; align-items: center; min-height: 48px; padding: 0 28px; border-radius: 6px; background: var(--fg); color: var(--bg); font-weight: 700; font-size: 15px">{{t.docs}}</a>
+<a class="s-btn" href="https://github.com/Senrijs/Senri" style="display: inline-flex; align-items: center; min-height: 48px; padding: 0 28px; border-radius: 6px; border: 1px solid var(--line-2); background: var(--bg); font-weight: 600; font-size: 15px">GitHub</a>
 </div>
 </section>
 
@@ -546,7 +601,7 @@ app.<span style="color: #82AAFF">use</span>(<span style="color: #82AAFF">cors</s
 
 <sc-if value="{{searchOn}}" hint-placeholder-val="{{ false }}">
 <button type="button" onClick="{{closeSearch}}" aria-label="{{t.close}}" tabindex="-1" style="position: fixed; inset: 0; z-index: 37; border: 0; padding: 0; cursor: default; background: rgba(17,20,24,0.32); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px)"></button>
-<div role="dialog" aria-modal="true" aria-label="{{t.search}}" onKeyDown="{{searchKey}}" class="s-pal" style="position: fixed; z-index: 38; top: 12vh; left: 50%; width: min(620px, calc(100vw - 32px)); transform: translateX(-50%); border-radius: 18px; background: var(--glass-strong); backdrop-filter: blur(24px) saturate(160%); -webkit-backdrop-filter: blur(24px) saturate(160%); border: 1px solid var(--glass-line); box-shadow: 0 40px 120px rgba(17,20,24,0.3); overflow: hidden">
+<div role="dialog" aria-modal="true" aria-label="{{t.search}}" onKeyDown="{{searchKey}}" class="s-pal s-spec" style="position: fixed; z-index: 38; top: 12vh; left: 50%; width: min(620px, calc(100vw - 32px)); transform: translateX(-50%); border-radius: 18px; background: var(--glass-strong); backdrop-filter: blur(24px) saturate(160%); -webkit-backdrop-filter: blur(24px) saturate(160%); border: 1px solid var(--glass-line); box-shadow: 0 40px 120px rgba(17,20,24,0.3); overflow: hidden">
 <div style="display: flex; align-items: center; gap: 12px; padding: 0 18px; border-bottom: 1px solid var(--line)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" style="color: var(--muted)"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-4-4"></path></svg><input type="search" ref="{{searchRef}}" aria-label="{{t.search}}" placeholder="{{t.searchPh}}" value="{{query}}" onChange="{{onQuery}}" style="flex: 1 1 auto; min-width: 0; height: 56px; border: 0; background: transparent; color: var(--fg); font: inherit; font-size: 16px; outline: none"><kbd style="padding: 2px 6px; border-radius: 6px; border: 1px solid var(--line-2); font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--muted)">esc</kbd></div>
 <ul role="listbox" aria-label="{{t.search}}" style="margin: 0; padding: 8px; list-style: none; max-height: 50vh; overflow: auto">
 <sc-for list="{{results}}" as="r" hint-placeholder-count="5"><li><a href="#docs" onClick="{{closeSearch}}" style="display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 8px 12px; border-radius: 10px; font-size: 14px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color: var(--muted)"><path d="M6 3h9l3 3v15H6z"></path><path d="M9 10h6"></path><path d="M9 14h6"></path></svg><span style="flex: 1 1 auto">{{r.title}}</span><span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--muted)">{{r.path}}</span></a></li></sc-for>
@@ -557,25 +612,27 @@ app.<span style="color: #82AAFF">use</span>(<span style="color: #82AAFF">cors</s
 
 <sc-if value="{{ovOn}}" hint-placeholder-val="{{ false }}">
 <button type="button" onClick="{{close}}" aria-label="{{t.close}}" tabindex="-1" style="position: fixed; inset: 0; z-index: 35; border: 0; padding: 0; cursor: default; background: {{ovBg}}; backdrop-filter: blur({{ovBlur}}); -webkit-backdrop-filter: blur({{ovBlur}}); transition: background .4s, backdrop-filter .4s"></button>
-<div role="dialog" aria-modal="true" aria-label="{{ovTitle}}" onKeyDown="{{ovKey}}" style="position: fixed; z-index: 36; top: {{ovTop}}; left: {{ovLeft}}; width: {{ovW}}; height: {{ovH}}; transform: {{ovTf}}; border-radius: {{ovR}}; box-sizing: border-box; padding: 28px 32px; overflow: auto; background: var(--glass-strong); backdrop-filter: blur(24px) saturate(160%); -webkit-backdrop-filter: blur(24px) saturate(160%); border: 1px solid var(--glass-line); box-shadow: {{ovShadow}}; transition: top .55s cubic-bezier(.3,1.12,.4,1), left .55s cubic-bezier(.3,1.12,.4,1), width .55s cubic-bezier(.3,1.12,.4,1), height .55s cubic-bezier(.3,1.12,.4,1), transform .18s ease-out, border-radius .55s, box-shadow .3s; display: flex; flex-direction: column; gap: 10px">
+<div role="dialog" aria-modal="true" aria-label="{{ovTitle}}" onKeyDown="{{ovKey}}" class="s-spec {{ovCls}}" style="position: fixed; z-index: 36; top: {{ovTop}}; left: {{ovLeft}}; width: {{ovW}}; height: {{ovH}}; transform: {{ovTf}}; border-radius: {{ovR}}; box-sizing: border-box; padding: 28px 32px; overflow: auto; background: var(--glass-strong); backdrop-filter: blur(24px) saturate(160%); -webkit-backdrop-filter: blur(24px) saturate(160%); border: 1px solid var(--glass-line); box-shadow: {{ovShadow}}; transition: top .55s cubic-bezier(.3,1.12,.4,1), left .55s cubic-bezier(.3,1.12,.4,1), width .55s cubic-bezier(.3,1.12,.4,1), height .55s cubic-bezier(.3,1.12,.4,1), transform .18s ease-out, border-radius .55s, box-shadow .3s; display: flex; flex-direction: column; gap: 10px">
 <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 16px"><div><span style="display: block; font-size: 22px; font-weight: 700">{{ovTitle}}</span><span style="display: block; margin-top: 6px; font-size: 14px; color: var(--muted)">{{ovDesc}}</span></div><button type="button" ref="{{closeRef}}" onClick="{{close}}" aria-label="{{t.close}}" style="flex: none; width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--line-2); background: var(--glass); color: var(--fg); cursor: pointer; display: flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12"></path><path d="M18 6L6 18"></path></svg></button></div>
 <div style="margin-top: 16px; opacity: {{ovFade}}; transform: {{ovFadeTf}}; transition: opacity .35s .2s, transform .35s .2s">
-<sc-if value="{{ov0}}" hint-placeholder-val="{{ false }}"><pre style="margin: 0; border-radius: 14px; background: var(--code); padding: 28px 32px; font-family: 'JetBrains Mono', monospace; font-size: 15px; line-height: 1.85; color: #D7DAE0; overflow-x: auto"><span style="color: #8A9099">// Bun · Node.js · Deno</span>
+<sc-if value="{{ov0}}" hint-placeholder-val="{{ false }}"><pre style="margin: 0; border-radius: 6px; background: var(--code); padding: 28px 32px; font-family: 'JetBrains Mono', monospace; font-size: 15px; line-height: 1.85; color: #D7DAE0; overflow-x: auto"><span style="color: #8A9099">// Bun · Node.js · Deno</span>
 <span style="color: #82AAFF">serve</span>(app);
 
 <span style="color: #8A9099">// Cloudflare Workers</span>
 <span style="color: #C792EA">export default</span> app;</pre></sc-if>
-<sc-if value="{{ov1}}" hint-placeholder-val="{{ false }}"><div style="font-family: 'JetBrains Mono', monospace; font-size: 13px; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; background: var(--bg)"><div style="padding: 14px 18px; border-bottom: 1px solid var(--line); color: var(--accent-text); font-weight: 700">TypeError: Cannot read properties of undefined (reading 'name')</div><div style="padding: 12px 0; line-height: 1.9; white-space: pre; overflow-x: auto"><div style="padding: 0 18px; color: var(--muted)"> 7  app.get("/me", (_, c) =&gt; {</div><div style="padding: 0 18px"> 8    const user = c.get("user");</div><div style="padding: 0 18px; background: var(--hl-strong); font-weight: 700"> 9    return { name: user.name };</div><div style="padding: 0 18px; color: var(--muted)">10  });</div></div><div style="padding: 14px 18px; border-top: 1px solid var(--line); font-family: 'Noto Sans JP', sans-serif; font-size: 14px; line-height: 1.8; color: var(--fg-2)">{{t.err1}}<code style="font-family: 'JetBrains Mono', monospace">name</code>{{t.err2}}<code style="font-family: 'JetBrains Mono', monospace">c.get()</code>{{t.err3}}<code style="font-family: 'JetBrains Mono', monospace">await</code>{{t.err4}}</div></div></sc-if>
+<sc-if value="{{ov1}}" hint-placeholder-val="{{ false }}"><div style="font-family: 'JetBrains Mono', monospace; font-size: 13px; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; background: var(--bg)"><div style="padding: 14px 18px; border-bottom: 1px solid var(--line); color: var(--accent-text); font-weight: 700">TypeError: Cannot read properties of undefined (reading 'name')</div><div style="padding: 12px 0; line-height: 1.9; white-space: pre; overflow-x: auto"><div style="padding: 0 18px; color: var(--muted)"> 7  app.get("/me", (_, c) =&gt; {</div><div style="padding: 0 18px"> 8    const user = c.get("user");</div><div style="padding: 0 18px; background: var(--hl-strong); font-weight: 700"> 9    return { name: user.name };</div><div style="padding: 0 18px; color: var(--muted)">10  });</div></div><div style="padding: 14px 18px; border-top: 1px solid var(--line); font-family: 'Noto Sans JP', sans-serif; font-size: 14px; line-height: 1.8; color: var(--fg-2)">{{t.err1}}<code style="font-family: 'JetBrains Mono', monospace">name</code>{{t.err2}}<code style="font-family: 'JetBrains Mono', monospace">c.get()</code>{{t.err3}}<code style="font-family: 'JetBrains Mono', monospace">await</code>{{t.err4}}</div></div></sc-if>
 <sc-if value="{{ov2}}" hint-placeholder-val="{{ false }}"><div style="display: flex; flex-direction: column; gap: 16px; font-family: 'JetBrains Mono', monospace; font-size: 13px"><dl style="margin: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px 24px"><div><dt style="font-size: 11px; color: var(--muted)">{{t.kvMethod}}</dt><dd style="margin: 4px 0 0; color: var(--green); font-weight: 700">GET</dd></div><div><dt style="font-size: 11px; color: var(--muted)">{{t.kvPath}}</dt><dd style="margin: 4px 0 0">/users/42</dd></div><div><dt style="font-size: 11px; color: var(--muted)">{{t.kvStatus}}</dt><dd style="margin: 4px 0 0">200</dd></div><div><dt style="font-size: 11px; color: var(--muted)">{{t.kvTime}}</dt><dd style="margin: 4px 0 0">3 ms</dd></div></dl><div style="display: grid; grid-template-columns: 120px minmax(0, 1fr); align-items: center; gap: 16px"><span style="color: var(--muted)">requestId</span><div style="height: 20px; border-radius: 5px; background: var(--bar1); width: 100%"></div></div><div style="display: grid; grid-template-columns: 120px minmax(0, 1fr); align-items: center; gap: 16px"><span style="color: var(--muted)">cors</span><div style="height: 20px; border-radius: 5px; background: var(--bar2); margin-left: 4%; width: 92%"></div></div><div style="display: grid; grid-template-columns: 120px minmax(0, 1fr); align-items: center; gap: 16px"><span style="color: var(--muted)">auth</span><div style="height: 20px; border-radius: 5px; background: var(--bar4); margin-left: 10%; width: 80%"></div></div><div style="display: grid; grid-template-columns: 120px minmax(0, 1fr); align-items: center; gap: 16px"><span style="font-weight: 700">handler</span><div style="height: 20px; border-radius: 5px; background: {{accent}}; margin-left: 16%; width: 62%"></div></div></div></sc-if>
-<sc-if value="{{ov4}}" hint-placeholder-val="{{ false }}"><div style="font-family: 'JetBrains Mono', monospace; font-size: 13px; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; background: var(--bg)"><div style="padding: 18px 20px; border-bottom: 1px solid var(--line)"><div style="font-size: 12px; color: var(--muted)">500 · {{errWhere}}</div><div style="margin-top: 6px; font-size: 18px; font-weight: 700; color: var(--accent-text); overflow-wrap: anywhere">{{errName}}: {{errMsg}}</div></div><div style="padding: 12px 0; line-height: 1.9; white-space: pre; overflow-x: auto"><sc-for list="{{errFrame}}" as="ln" hint-placeholder-count="4"><div style="padding: 0 20px; background: {{ln.bg}}; color: {{ln.fg}}; font-weight: {{ln.fw}}">{{ln.n}}  {{ln.text}}</div></sc-for></div><div style="padding: 14px 20px; border-top: 1px solid var(--line); font-family: 'Noto Sans JP', sans-serif; font-size: 14px; line-height: 1.8; color: var(--fg-2)">{{errHint}}</div><div style="padding: 12px 20px; border-top: 1px solid var(--line); font-size: 12px; color: var(--muted)">/_senri →</div></div></sc-if>
-<sc-if value="{{ov3}}" hint-placeholder-val="{{ false }}"><pre style="margin: 0; border-radius: 14px; background: var(--code); padding: 28px 32px; font-family: 'JetBrains Mono', monospace; font-size: 15px; line-height: 1.85; color: #D7DAE0; overflow-x: auto">app.<span style="color: #82AAFF">use</span>(<span style="color: #82AAFF">requestId</span>());
+<sc-if value="{{ov4}}" hint-placeholder-val="{{ false }}"><div style="font-family: 'JetBrains Mono', monospace; font-size: 13px; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; background: var(--bg)"><div style="padding: 18px 20px; border-bottom: 1px solid var(--line)"><div style="font-size: 12px; color: var(--muted)">500 · {{errWhere}}</div><div style="margin-top: 6px; font-size: 18px; font-weight: 700; color: var(--accent-text); overflow-wrap: anywhere">{{errName}}: {{errMsg}}</div></div><div style="padding: 12px 0; line-height: 1.9; white-space: pre; overflow-x: auto"><sc-for list="{{errFrame}}" as="ln" hint-placeholder-count="4"><div style="padding: 0 20px; background: {{ln.bg}}; color: {{ln.fg}}; font-weight: {{ln.fw}}">{{ln.n}}  {{ln.text}}</div></sc-for></div><div style="padding: 14px 20px; border-top: 1px solid var(--line); font-family: 'Noto Sans JP', sans-serif; font-size: 14px; line-height: 1.8; color: var(--fg-2)">{{errHint}}</div><div style="padding: 12px 20px; border-top: 1px solid var(--line); font-size: 12px; color: var(--muted)">/_senri →</div></div></sc-if>
+<sc-if value="{{ov3}}" hint-placeholder-val="{{ false }}"><pre style="margin: 0; border-radius: 6px; background: var(--code); padding: 28px 32px; font-family: 'JetBrains Mono', monospace; font-size: 15px; line-height: 1.85; color: #D7DAE0; overflow-x: auto">app.<span style="color: #82AAFF">use</span>(<span style="color: #82AAFF">requestId</span>());
 app.<span style="color: #82AAFF">use</span>(<span style="color: #82AAFF">cors</span>());
 app.<span style="color: #82AAFF">use</span>(<span style="color: #82AAFF">compress</span>());
 app.<span style="color: #82AAFF">use</span>(<span style="color: #C3E88D">"/api/*"</span>, <span style="color: #82AAFF">rateLimit</span>());</pre></sc-if>
 </div>
 </div>
 </sc-if>
-<svg aria-hidden="true" style="position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 40; opacity: var(--grain-op); mix-blend-mode: var(--grain-blend)"><filter id="s-grain"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" stitchTiles="stitch"></feTurbulence><feColorMatrix type="saturate" values="0"></feColorMatrix></filter><rect width="100%" height="100%" filter="url(#s-grain)"></rect></svg>
+
+<div class="s-hud" aria-hidden="true" style="left: 20px">senr/ — v0.2.18</div>
+<div class="s-hud" aria-hidden="true" ref="{{clockRef}}" style="right: 20px">----/--/-- --:--:--</div>
 </div>
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#E3412B","options":["#E3412B","#FF6A52","#FF8A3D","#2F6BFF"]},"$preview":{"width":1440,"height":7600}}'>
@@ -592,17 +649,19 @@ runtimes: '対応ランタイム', nRt: 'ランタイム', nSize: '最小アプ�
 cliA: '起動して、', cliB: 'すぐ見える。', cliAria: 'npm create senri で作って起動すると、ルートの一覧とリクエストのログが流れるターミナル',
 layA: '画面から、', layB: 'ランタイムまで。', dev: '開発中', layAria: 'ランタイムの中で Senri がリクエストを requestId、cors、auth、handler の順に通し、レスポンスを返す図。上に開発中の Ippo がつながる',
 rtA: '枝分かれしても、', rtB: 'まっすぐ届く。', rtAria: 'app から /users、/posts、/api/* に分かれるルートの木。GET /users/42 が GET /users/:id にマッチする',
-featH: '必要なものだけ。', f0t: 'どこでも同じコード', f0d: 'Request と Response だけで動く', f1t: '教えてくれるエラー', f1d: '原因の行と直し方を、日英で',
-f2t: 'ダッシュボード', f2d: 'で時間の内訳', f3t: '標準のミドルウェア', f3d: 'cors · compress · rateLimit ほか',
-o0: '書き換えるのは、起動するところだけ。', o1: '開発中のエラー画面の例。', o2: 'どのミドルウェアで時間がかかったか。', o3: 'import して use するだけ。',
+featH: '必要なものだけ。', f0t: 'どこでも同じコード', f0d: 'Request と Response だけで動きます', f1t: '教えてくれるエラー', f1d: '原因の行と直し方を、日英で教えてくれます',
+f2t: 'ダッシュボード', f2d: 'で時間の内訳が見られます', f3t: '標準のミドルウェア', f3d: 'cors · compress · rateLimit ほか',
+o0: '書き換えるのは、起動するところだけです。', o1: '開発中のエラー画面の例です。', o2: 'どのミドルウェアで時間がかかったかが分かります。', o3: 'import して use するだけです。',
 err1: 'undefined か null から ', err2: ' を読もうとしました。値をセットしていない ', err3: ' や ', err4: ' の抜けがよくある原因です。', close: '閉じる',
 carH: 'よくある使い方。', prev: '前へ', next: '次へ', show: ' を表示',
-s0t: '返すだけで JSON', s0d: 'オブジェクトを返せば、そのまま JSON のレスポンスになる。', s1t: '1行で守る', s1d: 'CORS もセキュリティのヘッダーも、use するだけ。',
-s2t: '流し続ける', s2d: 'Server-Sent Events も、切れないための heartbeat も最初から。', s3t: '大きいファイルも少しずつ', s3d: 'メモリに全部載せずに、パーツを1つずつ読む。',
-tlA: '一歩ずつ、', tlB: 'ここまで。', tlAll: 'すべてのリリース →', tlBefore: 'それ以前', tlB1: '0.1 から 0.2.10 までの細かい変更は ', tlB2: ' に。',
+s0t: '返すだけで JSON', s0d: 'オブジェクトを返せば、そのまま JSON のレスポンスになります。', s1t: '1行で守る', s1d: 'CORS もセキュリティのヘッダーも、use するだけです。',
+s2t: '流し続ける', s2d: 'Server-Sent Events も、切れないための heartbeat も最初から入っています。', s3t: '大きいファイルも少しずつ', s3d: 'メモリに全部載せずに、パーツを1つずつ読みます。',
+tlA: '一歩ずつ、', tlB: 'ここまで。', tlAll: 'すべてのリリース →', tlBefore: 'それ以前', tlB1: '0.1 から 0.2.10 までの細かい変更は ', tlB2: ' にまとめています。',
 e1t: 'Node.js を正攻法で速く', e1d: '手元の計測で約 4 倍', e2t: '開発ページが日英対応', e2d: 'SSE の heartbeat を既定で ON', e3t: 'マルチパートを少しずつ読む',
-e4t: 'senri.skyia.jp を公開', e4d: 'ドキュメントは日本語と英語', now: 'いまここ', planned: '予定', e5t: '型付きクライアントと OpenAPI', e6t: 'メタフレームワークの一歩目',
+e4t: 'senri.skyia.jp を公開', e4d: 'ドキュメントは日本語と英語で読めます', now: 'いまここ', planned: '予定', e5t: '型付きクライアントと OpenAPI', e6t: 'メタフレームワークの一歩目',
 proverb: '千里の道も、一歩から。', ctaH: 'はじめよう。',
+cue: 'スクロール', rtTable: 'どのランタイムでも、同じコードで。', demoA: 'その場で、', demoB: '試してみる。', jAria: 'リクエストの旅', jScenes: '場面', jDash: '/_senri で、いつでも見られます', jStage: 'GET /users/42 が Router、requestId、cors、auth、handler の順に進み、200 OK が戻ってくる図。今の場面: ',
+jCopy: [['リクエストが届く', 'GET /users/42。Web 標準の Request が、そのまま Senri に渡されます。'], ['ルートを探す', '枝分かれしたルートから、/users/:id にまっすぐたどり着きます。id は型つきで受け取れます。'], ['ミドルウェアをくぐる', 'requestId、cors、auth。玉ねぎの皮を1枚ずつくぐるように、順番に通っていきます。'], ['ハンドラーが答える', '返したいものを返すだけです。オブジェクトは、そのまま JSON になります。'], ['レスポンスが戻る', 'Response が来た道を戻っていきます。どこで何ミリ秒かかったかは、ダッシュボードで見られます。']],
 gitA: '毎日、', gitB: '少しずつ前へ。', gitLink: 'GitHub で見る →', gitAria: 'main から機能ごとにブランチを切り、プルリクエストでマージして、リリースのタグを付けていく開発の流れの図。#61 日英対応、#63 英語化、#65 テストの修正、#66 マルチパート、#68 ドキュメントサイト',
 stars: 'GitHub のスター', dl: 'npm の週間ダウンロード', perWeek: '/ 週', demo: 'デモ', pgTab: 'プレイグラウンド', dashTab: 'ダッシュボード', pgNote: 'ブラウザの中で動いています',
 pgCode: 'コード', pgMethod: 'メソッド', pgPath: 'パス', send: '送信', resp: 'レスポンス', boom: 'わざとエラーを出す', openErr: 'エラー画面を開く', maybe: 'もしかして',
@@ -632,6 +691,8 @@ tlA: 'Step by step,', tlB: 'so far.', tlAll: 'All releases →', tlBefore: 'Earl
 e1t: 'A faster Node.js, no tricks', e1d: 'About 4× in our benchmark', e2t: 'Dev pages in English and Japanese', e2d: 'SSE heartbeat on by default', e3t: 'Streaming multipart',
 e4t: 'senri.skyia.jp is live', e4d: 'Docs in Japanese and English', now: 'Now', planned: 'Planned', e5t: 'Typed client and OpenAPI', e6t: 'The first step of a meta-framework',
 proverb: 'A journey of a thousand miles begins with a single step.', ctaH: 'Get started.',
+cue: 'Scroll', rtTable: 'The same code on every runtime.', demoA: 'Try it', demoB: 'right here.', jAria: 'The journey of a request', jScenes: 'Scenes', jDash: 'Always visible at /_senri', jStage: 'GET /users/42 moves through Router, requestId, cors, auth and the handler, then 200 OK comes back. Current scene: ',
+jCopy: [['A request arrives', 'GET /users/42. A web-standard Request goes straight into Senri.'], ['Finding the route', 'Through a branching tree of routes, straight to /users/:id. The id comes typed.'], ['Through the middleware', 'requestId, cors, auth. Layer by layer, like peeling an onion.'], ['The handler answers', 'Return what you want to return. An object becomes JSON.'], ['The response goes back', 'The Response travels back the way it came. The dashboard shows where every millisecond went.']],
 gitA: 'Every day,', gitB: 'a little further.', gitLink: 'See it on GitHub →', gitAria: 'A development flow where feature branches leave main, merge back through pull requests and get release tags. #61 i18n, #63 English messages, #65 test fixes, #66 multipart, #68 docs site',
 stars: 'GitHub stars', dl: 'npm weekly downloads', perWeek: '/ week', demo: 'Demo', pgTab: 'Playground', dashTab: 'Dashboard', pgNote: 'Running in your browser',
 pgCode: 'Code', pgMethod: 'Method', pgPath: 'Path', send: 'Send', resp: 'Response', boom: 'Throw an error on purpose', openErr: 'Open the error page', maybe: 'Did you mean',
@@ -644,7 +705,38 @@ fDocs: 'Docs', fStart: 'Getting started', fRouting: 'Routing', fMw: 'Middleware'
 }
 constructor(props) {
 super(props);
+this.heroRef = (el) => { this.heroEl = el; };
+this.journeyRef = (el) => { this.journeyEl = el; };
+this.galleryRef = (el) => { this.galleryEl = el; };
+this.onScroll = () => {
+if (this.sraf) return;
+this.sraf = requestAnimationFrame(() => {
+this.sraf = 0;
+const vh = window.innerHeight;
+const prog = (el) => {
+if (!el) return 0;
+const r = el.getBoundingClientRect();
+const span = r.height - vh;
+return span <= 0 ? 0 : Math.min(1, Math.max(0, -r.top / span));
+};
+this.applyScroll(prog(this.heroEl), prog(this.journeyEl), prog(this.galleryEl), window.innerWidth);
+});
+};
+this.heroInnerRef = (el) => { this.heroInner = el; };
+this.clockRef = (el) => { this.clockEl = el; };
+this.threeRef = (el) => { this.threeEl = el; };
+this.ctaRef = (el) => { this.ctaEl = el; };
+this.ctaMouse = { x: 0, y: 0 };
+this.ctaMove = (e) => { const r = e.currentTarget.getBoundingClientRect(); this.ctaMouse = { x: (e.clientX - r.left) / r.width - 0.5, y: (e.clientY - r.top) / r.height - 0.5 }; };
+this.cueRef = (el) => { this.cueEl = el; };
+this.trailRef = (el) => { this.trailEl = el; };
+this.backRef = (el) => { this.backEl = el; };
+this.pktRef = (el) => { this.pktEl = el; };
+this.resRef = (el) => { this.resEl = el; };
+this.trackRef = (el) => { this.trackEl = el; };
+this.galBarRef = (el) => { this.galBarEl = el; };
 this.state = {
+jStep: 0, jMask: 'c-----', mwQ: [0, 0, 0], barQ: 0, cardW: 520, pad: 120,
 step: 0, logs: [], slide: 0, copied: false, pm: 0, ov: null, lang: 'ja', theme: null, tilt: [null, null, null, null],
 menuOpen: false, heroTab: 'play', method: 'GET', path: '/users/42', res: null, err: null, searchOn: false, query: '',
 code: 'import { createApp } from "@senrijs/senri";\n\nconst app = createApp();\n\napp.get("/hello", () => ({ message: "Hello, Senri!" }));\n\napp.get("/users/:id", (_, c) => ({ id: c.req.param("id") }));\n\napp.get("/never-gonna-give-you-up", (_, c) =>\n  c.redirect("https://www.youtube.com/watch?v=dQw4w9WgXcQ"),\n);\n\napp.get("/me", (_, c) => {\n  const user = c.get("user");\n  return { name: user.name };\n});\n\nexport default app;\n',
@@ -691,7 +783,7 @@ startParticles() {
 const reduce = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const loop = () => {
 const cv = this.cv;
-if (cv) {
+if (cv && !this.heroOff && !document.hidden) {
 const r = cv.getBoundingClientRect();
 const dpr = window.devicePixelRatio || 1;
 const w = Math.max(1, Math.round(r.width));
@@ -710,7 +802,9 @@ ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 ctx.clearRect(0, 0, w, h);
 const m = this.mouse;
 const accent = this.props.accent ?? '#E3412B';
-const base = getComputedStyle(cv).getPropertyValue('--particle').trim() || 'rgba(17,20,24,0.22)';
+this.pFrame = (this.pFrame || 0) + 1;
+if (!this.pColor || this.pFrame % 30 === 0) this.pColor = getComputedStyle(cv).getPropertyValue('--particle').trim() || 'rgba(17,20,24,0.22)';
+const base = this.pColor;
 for (const p of this.ps) {
 const ox = p.x - m.x;
 const oy = p.y - m.y;
@@ -742,6 +836,13 @@ componentDidMount() {
 this.t1 = setInterval(() => this.tick(), 700);
 this.t2 = setInterval(() => { if (!this.carPaused) this.setState((s) => ({ slide: (s.slide + 1) % 4 })); }, 4800);
 this.startParticles();
+const tickClock = () => { if (!this.clockEl) return; const d = new Date(); const p = (n) => String(n).padStart(2, '0'); this.clockEl.textContent = d.getFullYear() + '/' + p(d.getMonth() + 1) + '/' + p(d.getDate()) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds()); };
+tickClock();
+this.tClock = setInterval(tickClock, 1000);
+try { this.startThree(); } catch (e) {}
+window.addEventListener('scroll', this.onScroll, { passive: true });
+window.addEventListener('resize', this.onScroll);
+this.onScroll();
 }
 componentDidUpdate(prevProps, prevState) {
 if (this.state.searchOn && !prevState.searchOn && this.searchInput) this.searchInput.focus();
@@ -753,6 +854,167 @@ clearInterval(this.t2);
 clearTimeout(this.t3);
 clearTimeout(this.t4);
 cancelAnimationFrame(this.raf);
+cancelAnimationFrame(this.sraf);
+clearInterval(this.tClock);
+cancelAnimationFrame(this.traf);
+if (this.threeResize) window.removeEventListener('resize', this.threeResize);
+if (this.renderer) this.renderer.dispose();
+window.removeEventListener('scroll', this.onScroll);
+window.removeEventListener('resize', this.onScroll);
+}
+startThree() {
+const THREE = window.THREE;
+const el = this.threeEl;
+if (!THREE || !el) return;
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+renderer.domElement.style.cssText = 'display:block;width:100%;height:100%';
+el.appendChild(renderer.domElement);
+this.renderer = renderer;
+const scene = new THREE.Scene();
+scene.fog = new THREE.Fog(0xffffff, 8, 52);
+const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 100);
+camera.position.set(0, 1.4, 7);
+const accent = this.props.accent ?? '#E3412B';
+const N = 2600;
+const pos = new Float32Array(N * 3);
+const spd = new Float32Array(N);
+for (let i = 0; i < N; i++) {
+const x = (Math.random() - 0.5) * 20;
+pos[i * 3] = x;
+pos[i * 3 + 1] = -0.7 + Math.random() * 0.12 + Math.abs(x) * 0.05;
+pos[i * 3 + 2] = -60 + Math.random() * 67;
+spd[i] = 0.025 + Math.random() * 0.025;
+}
+const geo = new THREE.BufferGeometry();
+geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+const mat = new THREE.PointsMaterial({ size: 0.055, color: 0x111418, transparent: true, opacity: 0.5, depthWrite: false });
+scene.add(new THREE.Points(geo, mat));
+const M = 40;
+const rp = new Float32Array(M * 6);
+const rz = new Float32Array(M);
+const rx = new Float32Array(M);
+const rs = new Float32Array(M);
+for (let i = 0; i < M; i++) { rx[i] = (Math.random() - 0.5) * 1.6; rz[i] = -60 + Math.random() * 67; rs[i] = 0.16 + Math.random() * 0.14; }
+const rgeo = new THREE.BufferGeometry();
+rgeo.setAttribute('position', new THREE.BufferAttribute(rp, 3));
+const rmat = new THREE.LineBasicMaterial({ color: accent, transparent: true, opacity: 0.85 });
+scene.add(new THREE.LineSegments(rgeo, rmat));
+const laneGeo = new THREE.BufferGeometry();
+laneGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array([-1.1, -0.66, -60, -1.1, -0.66, 7, 1.1, -0.66, -60, 1.1, -0.66, 7]), 3));
+const laneMat = new THREE.LineBasicMaterial({ color: 0x111418, transparent: true, opacity: 0.18 });
+scene.add(new THREE.LineSegments(laneGeo, laneMat));
+const resize = () => { const w = el.clientWidth || 1, h = el.clientHeight || 1; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); };
+resize();
+this.threeResize = resize;
+window.addEventListener('resize', resize);
+const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+let frame = 0;
+const loop = () => {
+this.traf = requestAnimationFrame(loop);
+const r = this.ctaEl ? this.ctaEl.getBoundingClientRect() : null;
+if (!r || r.bottom < 0 || r.top > window.innerHeight || document.hidden) return;
+if (frame++ % 45 === 0) {
+const cs = getComputedStyle(el);
+const fg = cs.getPropertyValue('--fg').trim() || '#111418';
+const bg = cs.getPropertyValue('--bg').trim() || '#ffffff';
+try { mat.color.set(fg); laneMat.color.set(fg); scene.fog.color.set(bg); } catch (e) {}
+}
+if (!reduce || frame === 1) {
+for (let i = 0; i < N; i++) { const k = i * 3 + 2; pos[k] += reduce ? 0 : spd[i]; if (pos[k] > 7) pos[k] -= 67; }
+geo.attributes.position.needsUpdate = true;
+for (let i = 0; i < M; i++) {
+if (!reduce) { rz[i] += rs[i]; if (rz[i] > 7) { rz[i] -= 67; rx[i] = (Math.random() - 0.5) * 1.6; } }
+const o = i * 6;
+rp[o] = rx[i]; rp[o + 1] = -0.62; rp[o + 2] = rz[i];
+rp[o + 3] = rx[i]; rp[o + 4] = -0.62; rp[o + 5] = rz[i] - 1.4;
+}
+rgeo.attributes.position.needsUpdate = true;
+}
+camera.position.x += (this.ctaMouse.x * 1.6 - camera.position.x) * 0.04;
+camera.position.y += ((1.4 - this.ctaMouse.y * 0.8) - camera.position.y) * 0.04;
+camera.lookAt(0, 0.2, -20);
+renderer.render(scene, camera);
+};
+loop();
+}
+applyScroll(h, p, g, vw) {
+this.heroOff = h >= 0.99;
+const seg = (a, b) => Math.min(1, Math.max(0, (p - a) / (b - a)));
+const lerp = (a, b, k) => a + (b - a) * k;
+const ease = (k) => k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
+if (this.heroInner) { this.heroInner.style.transform = 'scale(' + (1 - h * 0.25).toFixed(3) + ') translateY(' + Math.round(-h * 60) + 'px)'; this.heroInner.style.opacity = Math.max(0, 1 - h * 1.4).toFixed(3); }
+if (this.cueEl) this.cueEl.style.opacity = Math.max(0, 1 - h * 6).toFixed(3);
+const step = Math.min(4, Math.floor(p * 5));
+const nx = [4, 22, 42, 57, 72, 90];
+let x;
+if (p < 0.2) x = lerp(4, 22, ease(seg(0.02, 0.18)));
+else if (p < 0.4) x = 22;
+else if (p < 0.6) x = lerp(22, 72, ease(seg(0.4, 0.58)));
+else if (p < 0.8) x = lerp(72, 90, ease(seg(0.6, 0.7)));
+else x = 90;
+const back = ease(seg(0.8, 0.96));
+const resX = lerp(90, 4, back);
+if (this.pktEl) { this.pktEl.style.left = x.toFixed(2) + '%'; this.pktEl.style.opacity = step < 4 ? '1' : Math.max(0, 1 - back * 3).toFixed(2); }
+if (this.resEl) { this.resEl.style.left = resX.toFixed(2) + '%'; this.resEl.style.opacity = step === 4 ? '1' : '0'; }
+if (this.trailEl) this.trailEl.style.width = Math.max(0, x - 4).toFixed(2) + '%';
+if (this.backEl) this.backEl.style.width = Math.max(0, 90 - resX).toFixed(2) + '%';
+const mask = nx.map((n) => (Math.abs(x - n) < 3 && step < 4) ? 'c' : (x >= n - 0.5 || step === 4) ? 'o' : '-').join('');
+const mwT = seg(0.4, 0.58);
+const mwQ = [0, 0.33, 0.66].map((s) => Math.round(Math.min(1, Math.max(0, (mwT - s) / 0.34)) * 10));
+const barQ = Math.round(seg(0.82, 0.98) * 10);
+const cardW = Math.min(520, Math.round(vw * 0.82));
+const pad = Math.max(24, Math.round((vw - Math.min(1200, vw - 48)) / 2));
+if (this.trackEl) this.trackEl.style.transform = 'translateX(' + (-Math.round((cardW + 24) * 3 * ease(g))) + 'px)';
+if (this.galBarEl) this.galBarEl.style.width = Math.round(g * 100) + '%';
+const s = this.state;
+if (s.jStep !== step || s.jMask !== mask || s.mwQ.join() !== mwQ.join() || s.barQ !== barQ || s.cardW !== cardW || s.pad !== pad) {
+this.setState({ jStep: step, jMask: mask, mwQ, barQ, cardW, pad });
+}
+}
+storyVals(t) {
+const h = 0, p = this.state.jStep / 5 + 0.0001, g = 0, vw = this.state.cardW / 0.72;
+const seg = (a, b) => Math.min(1, Math.max(0, (p - a) / (b - a)));
+const lerp = (a, b, k) => a + (b - a) * k;
+const ease = (k) => k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
+const step = Math.min(4, Math.floor(p * 5));
+const defs = [['Request', 4], ['Router', 22], ['requestId', 42], ['cors', 57], ['auth', 72], ['handler', 90]];
+let x;
+if (p < 0.2) x = lerp(4, 22, ease(seg(0.02, 0.18)));
+else if (p < 0.4) x = 22;
+else if (p < 0.6) x = lerp(22, 72, ease(seg(0.4, 0.58)));
+else if (p < 0.8) x = lerp(72, 90, ease(seg(0.6, 0.7)));
+else x = 90;
+const back = ease(seg(0.8, 0.96));
+const resX = lerp(90, 4, back);
+const scene = t.jCopy[this.state.jStep];
+const mwT = seg(0.4, 0.58);
+const bt = seg(0.82, 0.98);
+const cardW = Math.min(820, Math.round(vw * 0.72));
+const pad = Math.max(24, Math.round((vw - Math.min(1200, vw - 48)) / 2));
+const shift = (cardW + 24) * 3 * ease(g);
+return {
+heroRef: this.heroRef, journeyRef: this.journeyRef, galleryRef: this.galleryRef,
+heroScale: (1 - h * 0.25).toFixed(3), heroY: Math.round(-h * 60) + 'px', heroOp: Math.max(0, 1 - h * 1.4).toFixed(3), heroBlur: (h * 10).toFixed(1) + 'px', cueOp: Math.max(0, 1 - h * 6).toFixed(3),
+jsteps: [0, 1, 2, 3, 4].map((i) => ({ cur: i === step ? 'step' : 'false', w: i === step ? '32px' : '12px', bg: i <= step ? '#E3412B' : 'rgba(255,255,255,0.18)' })),
+jNo: '0' + (this.state.jStep + 1) + ' — 05',
+jc0: t.jCopy[0][0].split('').map((c, k) => ({ c, d: k * 40 + 'ms' })), jc1: t.jCopy[1][0].split('').map((c, k) => ({ c, d: k * 40 + 'ms' })), jc2: t.jCopy[2][0].split('').map((c, k) => ({ c, d: k * 40 + 'ms' })), jc3: t.jCopy[3][0].split('').map((c, k) => ({ c, d: k * 40 + 'ms' })), jc4: t.jCopy[4][0].split('').map((c, k) => ({ c, d: k * 40 + 'ms' })),
+clockRef: this.clockRef, threeRef: this.threeRef, ctaRef: this.ctaRef, ctaMove: this.ctaMove, jTitle: scene[0], jBody: scene[1],
+jStageAria: t.jStage + scene[0],
+jnodes: defs.map(([label, nx], i) => {
+const ch = this.state.jMask.charAt(i);
+const on = ch !== '-';
+const cur = ch === 'c';
+return { label, short: ['Req', 'Route', 'ID', 'CORS', 'Auth', 'Handle'][i], x: nx + '%', bg: cur ? '#E3412B' : on ? 'rgba(227,65,43,0.16)' : 'rgba(255,255,255,0.04)', line: on ? 'rgba(227,65,43,0.7)' : 'rgba(255,255,255,0.12)', fg: cur ? '#FFFFFF' : on ? '#FFD3CC' : '#8A9099', glow: cur ? '0 0 0 6px rgba(227,65,43,0.18), 0 8px 30px rgba(227,65,43,0.4)' : 'none' };
+}),
+jmws: [['requestId', 0], ['cors', 0.33], ['auth', 0.66]].map(([name, s], i) => { const k = this.state.mwQ[i] / 10; return { name, w: Math.round(k * 100) + '%', fg: k > 0 ? '#F2F3F5' : '#5B616A', mark: k >= 1 ? '✓' : '' }; }),
+jbars: [['requestId', 0, 100, '#5A2A22'], ['cors', 4, 92, '#7A342A'], ['auth', 10, 80, '#A8463A'], ['handler', 16, 62, '#E3412B']].map(([name, ml, w, bg]) => ({ name, ml: ml + '%', w: Math.round(w * this.state.barQ / 10) + '%', bg })),
+pktX: x + '%', pktOp: step < 4 ? 1 : Math.max(0, 1 - back * 3).toFixed(2), resX: resX + '%', resOp: step === 4 ? 1 : 0,
+trailW: Math.max(0, x - 4).toFixed(1) + '%', backW: Math.max(0, 90 - resX).toFixed(1) + '%',
+j0: step === 0, j1: step === 1, j2: step === 2, j3: step === 3, j4: step === 4,
+cardW: this.state.cardW + 'px', trackPad: this.state.pad + 'px',
+heroInnerRef: this.heroInnerRef, cueRef: this.cueRef, trailRef: this.trailRef, backRef: this.backRef, pktRef: this.pktRef, resRef: this.resRef, trackRef: this.trackRef, galBarRef: this.galBarRef,
+};
 }
 tick() {
 const s = this.state;
@@ -779,23 +1041,26 @@ return (e) => {
 const r = e.currentTarget.getBoundingClientRect();
 const x = (e.clientX - r.left) / r.width - 0.5;
 const y = (e.clientY - r.top) / r.height - 0.5;
-const t = this.state.tilt.slice();
-t[i] = { rx: -y * 12, ry: x * 12, gx: (x + 0.5) * 100, gy: (y + 0.5) * 100 };
-this.setState({ tilt: t });
+const el = e.currentTarget;
+el.style.transform = 'perspective(900px) rotateX(' + (-y * 10).toFixed(2) + 'deg) rotateY(' + (x * 10).toFixed(2) + 'deg)';
+const glare = el.firstElementChild;
+if (glare) glare.style.background = 'radial-gradient(420px circle at ' + ((x + 0.5) * 100).toFixed(1) + '% ' + ((y + 0.5) * 100).toFixed(1) + '%, rgba(227,65,43,0.10), rgba(255,255,255,0) 60%)';
 };
 }
 mkLeave(i) {
-return () => {
-const t = this.state.tilt.slice();
-t[i] = null;
-this.setState({ tilt: t });
+return (e) => {
+const el = e.currentTarget;
+el.style.transform = 'perspective(900px) rotateX(0deg) rotateY(0deg)';
+const glare = el.firstElementChild;
+if (glare) glare.style.background = 'transparent';
 };
 }
 openOv(i, b, el) {
 this.opener = el;
 clearTimeout(this.t4);
-this.setState({ ov: { i, phase: 'lift', r: { top: b.top, left: b.left, width: b.width, height: b.height } } });
-this.t4 = setTimeout(() => this.setState((s) => (s.ov ? { ov: Object.assign({}, s.ov, { phase: 'open' }) } : null)), 180);
+cancelAnimationFrame(this.orf);
+this.setState({ ov: { i, phase: 'start', r: { top: b.top, left: b.left, width: b.width, height: b.height } } });
+this.orf = requestAnimationFrame(() => { this.orf = requestAnimationFrame(() => this.setState((s) => (s.ov ? { ov: Object.assign({}, s.ov, { phase: 'open' }) } : null))); });
 }
 mkOpen(i) {
 return (e) => this.openOv(i, e.currentTarget.getBoundingClientRect(), e.currentTarget);
@@ -934,6 +1199,7 @@ const cmds = [
 const labels = ['JSON API', 'Middleware', 'SSE', 'Upload'];
 const script = [{ text: '$ npm create senri@latest my-app' }, { text: '$ cd my-app && bun run dev' }];
 return {
+...this.storyVals(t),
 accent, t,
 theme: this.state.theme || 'auto',
 isDark: dark, isLight: !dark,
@@ -999,7 +1265,7 @@ resColor: st >= 500 ? 'var(--accent-text)' : st >= 400 ? '#C28A10' : st >= 300 ?
 resMs: res ? res.ms : '',
 resType: res && res.type ? res.type : '',
 resLoc: res && res.loc ? res.loc : '',
-resBody: res ? resBody : (this.state.lang === 'ja' ? '送信を押すか、下のパスを選んでね' : 'Press Send or pick a path below'),
+resBody: res ? resBody : (this.state.lang === 'ja' ? '送信を押すか、下のパスを選んでください' : 'Press Send or pick a path below'),
 hasErr: !!err,
 errName: err ? err.name : '', errMsg: err ? err.message : '', errWhere: err ? err.where : '',
 errFrame: err ? err.frame.map((l) => ({ n: l.n, text: l.text, bg: l.hl ? 'var(--hl-strong)' : 'transparent', fg: l.hl ? 'var(--fg)' : 'var(--muted)', fw: l.hl ? 700 : 400 })) : [],
@@ -1008,7 +1274,8 @@ searchOn: this.state.searchOn, query: this.state.query, results, noResults: resu
 openSearch: this.openSearch, closeSearch: this.closeSearch, searchKey: this.searchKey, onQuery: this.onQuery, searchRef: this.searchRef,
 ovTitle: ov ? ovTitles[ov.i] : '', ovDesc: ov ? ovDescs[ov.i] : '',
 ovTop: ovBox.top + 'px', ovLeft: ovBox.left + 'px', ovW: ovBox.width + 'px', ovH: ovBox.height + 'px',
-ovTf: ov && ov.phase === 'lift' ? 'translateY(-12px) scale(1.03)' : 'none',
+ovTf: 'none',
+ovCls: ov && ov.phase === 'open' ? 's-liftup' : '',
 ovR: ov && ov.phase === 'open' ? '28px' : '20px',
 ovShadow: ov && ov.phase === 'lift' ? '0 30px 60px rgba(17,20,24,0.18)' : '0 40px 120px rgba(17,20,24,0.25)',
 ovBg: ov && ov.phase === 'open' ? 'rgba(17,20,24,0.32)' : 'rgba(17,20,24,0)',

@@ -103,13 +103,15 @@ export function Carousel({ lang }: { lang: Lang }) {
         <section className="s-sec" aria-roledescription="carousel" aria-label={t.carH}>
             <div className="s-wrap">
                 <div className="s-car-head">
-                    <BlurHeading className="s-h2" lang={lang} lines={[t.carH]} />
+                    <BlurHeading className="s-h2 s-h2-big" lang={lang} big="PATTERNS" lines={[t.carH]} />
                     <div style={{ display: "flex", gap: 8 }}>
-                        <button type="button" className="s-round" onClick={() => go(slide - 1)} aria-label={t.prev}>
-                            <ChevronIcon dir="left" size={18} />
+                        <button type="button" className="s-text-btn" onClick={() => go(slide - 1)} aria-label={t.prev}>
+                            <ChevronIcon dir="left" size={16} strokeWidth={1.6} />
+                            PREV
                         </button>
-                        <button type="button" className="s-round" onClick={() => go(slide + 1)} aria-label={t.next}>
-                            <ChevronIcon size={18} />
+                        <button type="button" className="s-text-btn" onClick={() => go(slide + 1)} aria-label={t.next}>
+                            NEXT
+                            <ChevronIcon size={16} strokeWidth={1.6} />
                         </button>
                     </div>
                 </div>

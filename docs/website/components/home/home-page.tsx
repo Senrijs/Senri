@@ -1,7 +1,7 @@
 // トップページ。docs/design/top-page.dc.html を部品にしたもの
 // 動かない部分はここで HTML にし、動く部分(パーティクル、コピー、デモ、CLI、カード、カルーセル)だけをクライアントの部品にする
 import Link from "next/link";
-import type { CSSProperties } from "react";
+import { type CSSProperties, Fragment } from "react";
 import data from "@/lib/home/generated.json";
 import { homeDict } from "@/lib/home/dict";
 import { segments } from "@/lib/home/segments";
@@ -13,6 +13,7 @@ import { CountUp } from "./count-up";
 import { CliLog } from "./cli-log";
 import { Demo } from "./demo";
 import { Features } from "./features";
+import { HeroStage } from "./hero-stage";
 import { ChevronIcon, DownloadIcon, StarIcon } from "./icons";
 import { Install } from "./install";
 import { Particles } from "./particles";
@@ -27,13 +28,23 @@ export function HomePage({ lang }: { lang: Lang }) {
     return (
         <main id="main">
             <Hero lang={lang} docs={docs} />
+            {/* リクエストの旅は、あとの PR でここに入る */}
+
+            <section className="s-sec" aria-labelledby="demo-title">
+                <div className="s-wrap">
+                    <BlurHeading id="demo-title" className="s-h2 s-h2-big" lang={lang} big="TRY IT" lines={[t.demoA, t.demoB]} />
+                    <Demo lang={lang} recordings={home.playground[lang]} port={home.port} />
+                </div>
+            </section>
+
             <Marquee lang={lang} />
             <Numbers lang={lang} />
+            <RuntimeTable lang={lang} />
 
             <section className="s-sec" style={{ overflow: "hidden" }}>
                 <div className="s-glow" style={{ right: "-6%", top: "10%", width: 720, height: 620 }} aria-hidden="true" />
                 <div className="s-wrap s-split">
-                    <BlurHeading className="s-h2 lg" lang={lang} lines={[t.cliA, t.cliB]} />
+                    <BlurHeading className="s-h2 s-h2-big" lang={lang} big="START" lines={[t.cliA, t.cliB]} />
                     <CliLog banner={home.cli.banner[lang]} logs={home.cli.logs} label={t.cliAria} />
                 </div>
             </section>
@@ -41,7 +52,7 @@ export function HomePage({ lang }: { lang: Lang }) {
             <Layers lang={lang} />
             <RouteTree lang={lang} />
 
-            <section className="s-sec s-alt" style={{ overflow: "hidden" }}>
+            <section className="s-sec s-alt" aria-labelledby="feat-title" style={{ overflow: "hidden" }}>
                 <div className="s-glow" style={{ left: "-8%", top: "18%", width: 680, height: 680 }} aria-hidden="true" />
                 <div
                     className="s-glow"
@@ -49,13 +60,13 @@ export function HomePage({ lang }: { lang: Lang }) {
                     aria-hidden="true"
                 />
                 <div className="s-wrap">
-                    <BlurHeading className="s-h2 lg" lang={lang} lines={[t.featH]} />
+                    <BlurHeading id="feat-title" className="s-h2 s-h2-big" lang={lang} big="FEATURES" lines={[t.featH]} />
+                    {/* 横に流れるギャラリーは、あとの PR で作る */}
                     <Features lang={lang} error={boom} />
                 </div>
             </section>
 
             <Carousel lang={lang} />
-            <GitGraph lang={lang} />
             <Timeline lang={lang} />
 
             <section className="s-cta">
@@ -82,9 +93,12 @@ function Hero({ lang, docs }: { lang: Lang; docs: string }) {
     const fmt = (n: number) => n.toLocaleString("en-US");
     return (
         <section className="s-hero">
+            <HeroStage cue={t.cue}>
             <Particles />
+            <div className="s-grain" aria-hidden="true" />
             <div className="s-glow" style={{ left: "50%", bottom: -160, width: 1000, height: 520, transform: "translateX(-50%)" }} aria-hidden="true" />
-            <Link href="#timeline" className="s-badge s-up">
+            <div className="s-hero-inner" data-hero-inner>
+            <Link href="#timeline" className="s-badge s-lg s-up">
                 <span className="s-beacon" style={{ background: "var(--green)" }} aria-hidden="true" />
                 {badge}
             </Link>
@@ -108,7 +122,8 @@ function Hero({ lang, docs }: { lang: Lang; docs: string }) {
                     ) : null}
                 </div>
             ) : null}
-            <Demo lang={lang} recordings={home.playground[lang]} port={home.port} />
+            </div>
+            </HeroStage>
         </section>
     );
 }
@@ -116,7 +131,8 @@ function Hero({ lang, docs }: { lang: Lang; docs: string }) {
 // ヒーローの見出し。ぼやけた文字が下からふわっと出る(日本語は1文字ずつ、英語は1単語ずつ)
 // いちばん大きな表示なので、JavaScript を待たずに CSS だけで動かす(home.css の .s-blur-seg)
 function HeroTitle({ lang, lines }: { lang: Lang; lines: string[] }) {
-    const step = lang === "ja" ? 0.035 : 0.08;
+    // 日英とも 40ms ずつ(components/home/text-reveal.tsx と同じ決まり)
+    const step = 0.04;
     let i = 0;
     return (
         <h1 className="s-h1">
@@ -129,7 +145,7 @@ function HeroTitle({ lang, lines }: { lang: Lang; lines: string[] }) {
                             /^\s+$/.test(seg) ? (
                                 <span key={i++}>{seg}</span>
                             ) : (
-                                <span key={i} className="s-blur-seg" style={{ animationDelay: `${(0.08 + i++ * step).toFixed(3)}s` }}>
+                                <span key={i} className="s-blur-seg" style={{ animationDelay: `${(i++ * step).toFixed(3)}s` }}>
                                     {seg}
                                 </span>
                             ),
@@ -141,26 +157,38 @@ function HeroTitle({ lang, lines }: { lang: Lang; lines: string[] }) {
     );
 }
 
+// ランタイムの帯。継ぎ目なくループさせる:
+// - 同じ中身の箱を2つ並べ、外側を translateX(0) → translateX(-50%)(ちょうど箱1つ分)で動かす
+// - 間隔は gap ではなく各項目の右の余白で作る(最後の項目にも付けて、箱の終わりと次の箱の始まりも同じ間隔に)
+// - 箱1つが広い画面(約 4000px まで)より長くなるよう、箱の中で項目を 4 回繰り返す。速さは前と同じ(1 回 28 秒 × 4)
+// - 読み上げは最初の1回分だけ。繰り返した分と2つ目の箱は aria-hidden
+const MARQUEE_REPEAT = 4;
+
 function Marquee({ lang }: { lang: Lang }) {
     const t = homeDict[lang];
     const items = ["Bun", "Node.js", "Deno", "Cloudflare Workers", "Browser"];
-    const row = (hidden: boolean) => (
-        <>
+    const set = (key: string, hidden: boolean) => (
+        <Fragment key={key}>
             {items.map((name) => (
-                <span key={name + hidden} aria-hidden={hidden || undefined}>
+                <span key={name} aria-hidden={hidden || undefined}>
                     {name}
                 </span>
             ))}
             <span className="std" aria-hidden={hidden || undefined}>
                 ● Web Standard
             </span>
-        </>
+        </Fragment>
+    );
+    const box = (n: number) => (
+        <div className="s-marquee-box" aria-hidden={n > 0 || undefined}>
+            {Array.from({ length: MARQUEE_REPEAT }, (_, i) => set(String(i), n > 0 || i > 0))}
+        </div>
     );
     return (
         <section className="s-marquee-sec" aria-label={t.runtimes}>
-            <div className="s-marquee">
-                {row(false)}
-                {row(true)}
+            <div className="s-marquee" style={{ animationDuration: `${28 * MARQUEE_REPEAT}s` }}>
+                {box(0)}
+                {box(1)}
             </div>
         </section>
     );
@@ -190,12 +218,63 @@ function Numbers({ lang }: { lang: Lang }) {
     );
 }
 
+// どのランタイムでも同じコード。起動の書き方は README とテンプレートのとおり(Browser は Service Worker の fetch イベントで app.fetch)
+function RuntimeTable({ lang }: { lang: Lang }) {
+    const t = homeDict[lang];
+    const rows: [string, string, string | null, string][] = [
+        ["Bun", "serve(app)", null, "/docs/runtimes/bun"],
+        ["Node.js", "serve(app)", null, "/docs/runtimes/node"],
+        ["Deno", "serve(app)", null, "/docs/runtimes/deno"],
+        ["Cloudflare Workers", "export default app", null, "/docs/runtimes/cloudflare-workers"],
+        ["Browser", "app.fetch(request)", "Service Worker", "/docs/runtimes/browser"],
+    ];
+    return (
+        <section className="s-sec s-rt-sec" aria-labelledby="rt-title">
+            <div className="s-wrap">
+                <BlurHeading id="rt-title" className="s-h2 s-h2-big" lang={lang} big="RUNTIMES" lines={[t.rtTable]} />
+                <table className="s-rt">
+                    <caption className="sr-only">{t.rtTable}</caption>
+                    <thead>
+                        <tr>
+                            <th scope="col">NO.</th>
+                            <th scope="col">RUNTIME</th>
+                            <th scope="col" className="s-rt-code">
+                                START
+                            </th>
+                            <th aria-hidden="true" />
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {rows.map(([name, code, note, href], i) => (
+                            <tr key={name}>
+                                <td className="no">{String(i + 1).padStart(2, "0")}</td>
+                                <th scope="row">
+                                    <Link href={localePath(lang, href)} className="name">
+                                        {name}
+                                        {note ? <span className="note"> {note}</span> : null}
+                                    </Link>
+                                </th>
+                                <td className="s-rt-code">
+                                    <code>{code}</code>
+                                </td>
+                                <td className="arrow" aria-hidden="true">
+                                    →
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    );
+}
+
 function Layers({ lang }: { lang: Lang }) {
     const t = homeDict[lang];
     return (
         <section className="s-sec s-alt">
             <div className="s-wrap s-split">
-                <BlurHeading className="s-h2" lang={lang} lines={[t.layA, t.layB]} />
+                <BlurHeading className="s-h2 s-h2-big" lang={lang} big="LAYERS" lines={[t.layA, t.layB]} />
                 <div className="s-layers" role="img" aria-label={t.layAria}>
                     <div className="ippo">
                         Ippo <span>· {t.dev}</span>
@@ -251,7 +330,7 @@ function RouteTree({ lang }: { lang: Lang }) {
     return (
         <section className="s-sec">
             <div className="s-wrap">
-                <BlurHeading className="s-h2" lang={lang} lines={[t.rtA, t.rtB]} />
+                <BlurHeading className="s-h2 s-h2-big" lang={lang} big="ROUTING" lines={[t.rtA, t.rtB]} />
                 <div className="s-tree-box" role="img" aria-label={t.rtAria}>
                     <div className="s-tree">
                         {lines.map(([left, top, width, height, on], i) => (
@@ -302,106 +381,6 @@ function RouteTree({ lang }: { lang: Lang }) {
     );
 }
 
-// main から機能ごとにブランチを切り、マージしてリリースのタグを付ける流れ(#61 から #68 まで。ブランチ名は本物)
-function GitGraph({ lang }: { lang: Lang }) {
-    const t = homeDict[lang];
-    const accent = "var(--accent)";
-    const branches: { d: string; color: string }[] = [
-        { d: "M100 150 C130 150 120 70 160 70 H220 C260 70 250 150 280 150", color: accent },
-        { d: "M360 150 C390 150 380 230 410 230 H420 C455 230 450 150 480 150", color: "#3B82F6" },
-        { d: "M500 150 C525 150 515 70 545 70 H550 C580 70 575 150 600 150", color: "#22A06B" },
-        { d: "M660 150 C690 150 680 230 720 230 H780 C820 230 810 150 840 150", color: "#9B6BF2" },
-        { d: "M900 150 C925 150 915 70 950 70 H960 C990 70 985 150 1000 150", color: "#F08A24" },
-    ];
-    const commits: [number, number, string][] = [
-        [160, 70, accent],
-        [220, 70, accent],
-        [420, 230, "#3B82F6"],
-        [550, 70, "#22A06B"],
-        [720, 230, "#9B6BF2"],
-        [780, 230, "#9B6BF2"],
-        [960, 70, "#F08A24"],
-    ];
-    const merges: [number, string][] = [
-        [280, accent],
-        [480, "#3B82F6"],
-        [600, "#22A06B"],
-        [840, "#9B6BF2"],
-        [1000, "#F08A24"],
-    ];
-    const tags: [number, string][] = [
-        [60, "v0.2.15"],
-        [330, "v0.2.16"],
-        [640, "v0.2.17"],
-        [880, "v0.2.18"],
-    ];
-    const prs: [number, string, "middle" | "start"][] = [
-        [280, "#61", "middle"],
-        [492, "#63", "start"],
-        [600, "#65", "middle"],
-        [852, "#66", "start"],
-        [1000, "#68", "middle"],
-    ];
-    const names: [number, number, string][] = [
-        [160, 50, "feat/i18n-dev-and-sse-heartbeat"],
-        [410, 258, "fix/english-runtime-messages"],
-        [530, 50, "fix/flaky-tests"],
-        [700, 258, "feat/multipart-stream"],
-        [930, 50, "feat/docs-website"],
-    ];
-    return (
-        <section className="s-sec" style={{ paddingBottom: 120 }}>
-            <div className="s-wrap">
-                <div className="s-car-head" style={{ gap: "16px 48px" }}>
-                    <BlurHeading className="s-h2" lang={lang} lines={[t.gitA, t.gitB]} />
-                    <a className="s-link" href={`${githubUrl}/pulls?q=is%3Apr+is%3Amerged`} style={{ fontSize: 14, color: "var(--muted)" }}>
-                        {t.gitLink}
-                    </a>
-                </div>
-                <div className="s-git-box s-glass">
-                    <svg className="s-git" role="img" aria-label={t.gitAria} viewBox="0 0 1120 300">
-                        <path className="s-draw" d="M40 150 H1060" fill="none" style={{ stroke: "var(--fg)", strokeWidth: 2.5 }} />
-                        {branches.map((b) => (
-                            <path key={b.d} className="s-draw" d={b.d} fill="none" style={{ stroke: b.color, strokeWidth: 2.5 }} />
-                        ))}
-                        <g className="s-cm">
-                            {commits.map(([cx, cy, color]) => (
-                                <circle key={`${cx}-${cy}`} cx={cx} cy={cy} r="6" style={{ fill: "var(--bg)", stroke: color, strokeWidth: 2.5 }} />
-                            ))}
-                            {tags.map(([x]) => (
-                                <circle key={x} cx={x} cy="150" r="6" style={{ fill: "var(--bg)", stroke: "var(--fg)", strokeWidth: 2.5 }} />
-                            ))}
-                            {merges.map(([x, color]) => (
-                                <circle key={x} cx={x} cy="150" r="7" style={{ fill: color }} />
-                            ))}
-                            {tags.map(([x, label]) => (
-                                <text key={label} x={x} y="126" textAnchor="middle" style={{ fill: "var(--muted)" }}>
-                                    {label}
-                                </text>
-                            ))}
-                            {prs.map(([x, label, anchor]) => (
-                                <text key={label} x={x} y="180" textAnchor={anchor} style={{ fill: "var(--fg-2)" }}>
-                                    {label}
-                                </text>
-                            ))}
-                            {names.map(([x, y, label]) => (
-                                <text key={label} x={x} y={y} style={{ fill: "var(--muted)" }}>
-                                    {label}
-                                </text>
-                            ))}
-                        </g>
-                        <circle className="s-gping" cx="1060" cy="150" r="7" style={{ fill: accent }} />
-                        <circle cx="1060" cy="150" r="7" style={{ fill: accent }} />
-                        <text x="1060" y="126" textAnchor="middle" style={{ fill: "var(--fg)", fontWeight: 700 }}>
-                            main
-                        </text>
-                    </svg>
-                </div>
-            </div>
-        </section>
-    );
-}
-
 function Timeline({ lang }: { lang: Lang }) {
     const t = homeDict[lang];
     const date = (iso: string) => <time dateTime={iso}>{iso}</time>;
@@ -410,7 +389,7 @@ function Timeline({ lang }: { lang: Lang }) {
             <div className="s-glow" style={{ right: "-10%", top: "30%", width: 700, height: 700 }} aria-hidden="true" />
             <div className="s-wrap" style={{ display: "flex", flexWrap: "wrap", gap: "48px 64px", alignItems: "flex-start" }}>
                 <div className="s-tl-side">
-                    <BlurHeading id="tl-title" className="s-h2" lang={lang} lines={[t.tlA, t.tlB]} />
+                    <BlurHeading id="tl-title" className="s-h2 s-h2-big" lang={lang} big="TIMELINE" lines={[t.tlA, t.tlB]} />
                     <a className="s-link" href={`${githubUrl}/releases`} style={{ display: "inline-block", marginTop: 24, fontSize: 14, color: "var(--muted)" }}>
                         {t.tlAll}
                     </a>

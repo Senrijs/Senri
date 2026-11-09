@@ -65,7 +65,7 @@ export function Install({ lang, docsHref }: { lang: Lang; docsHref: string }) {
                 ))}
             </div>
             <div className="s-cta-row s-up d3">
-                <button type="button" className="s-cmd" onClick={copy} aria-label={`${t.copyAria}: ${COMMANDS[pm]![1]}`}>
+                <button type="button" className="s-cmd s-lg" onClick={copy} aria-label={`${t.copyAria}: ${COMMANDS[pm]![1]}`}>
                     <span className="prompt">$</span>
                     {COMMANDS[pm]![1]}
                     {copied ? <span className="ok">Copied!</span> : <CopyIcon />}

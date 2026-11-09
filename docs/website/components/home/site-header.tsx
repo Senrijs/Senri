@@ -1,5 +1,6 @@
 "use client";
-// サイトのナビ(トップとブログ)。幅が狭いときはハンバーガーメニューにする
+// サイトのナビ(トップとブログ)。浮かぶカプセル型。幅が狭いときはハンバーガーメニューにする
+// メニューは、ボタンの位置から下に向かってぼわんと広がる(home.css の s-menu-pop)
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { homeDict } from "@/lib/home/dict";
@@ -14,7 +15,7 @@ export function SiteHeader({ lang, wordmark }: { lang: Lang; wordmark: React.Rea
     const [open, setOpen] = useState(false);
     const button = useRef<HTMLButtonElement>(null);
     const links = [
-        { href: localePath(lang, "/docs"), text: t.docs, always: true },
+        { href: localePath(lang, "/docs"), text: t.docs },
         { href: `${localePath(lang, "/")}#timeline`, text: t.navTl },
         { href: localePath(lang, "/blog"), text: t.navBlog },
         { href: githubUrl, text: "GitHub" },
@@ -34,13 +35,13 @@ export function SiteHeader({ lang, wordmark }: { lang: Lang; wordmark: React.Rea
 
     return (
         <header className="s-header">
-            <nav className="s-nav" aria-label={t.nav}>
+            <nav className="s-nav s-lg" aria-label={t.nav}>
                 <Link href={localePath(lang, "/")} aria-label="Senri" className="s-wordmark">
                     {wordmark}
                 </Link>
                 <div className="s-nav-links">
                     {links.map((l) => (
-                        <Link key={l.href} className={l.always ? "s-link" : "s-link s-hide-sm"} href={l.href}>
+                        <Link key={l.href} className="s-link s-hide-sm" href={l.href}>
                             {l.text}
                         </Link>
                     ))}
@@ -61,7 +62,7 @@ export function SiteHeader({ lang, wordmark }: { lang: Lang; wordmark: React.Rea
                 </div>
             </nav>
             {open ? (
-                <div id="s-menu" className="s-menu">
+                <div id="s-menu" className="s-menu s-lg">
                     <ul>
                         {links.map((l) => (
                             <li key={l.href}>
