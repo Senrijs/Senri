@@ -17,6 +17,7 @@ import { Features } from "./features";
 import { Gallery } from "./gallery";
 import { HeroStage } from "./hero-stage";
 import { ChevronIcon, DownloadIcon, StarIcon } from "./icons";
+import { Horizon } from "./horizon";
 import { Install } from "./install";
 import { Journey } from "./journey";
 import { Particles } from "./particles";
@@ -63,6 +64,8 @@ export function HomePage({ lang }: { lang: Lang }) {
             <Timeline lang={lang} />
 
             <section className="s-cta">
+                <Horizon />
+                <div className="s-cta-fade" aria-hidden="true" />
                 <p>{t.proverb}</p>
                 <BlurHeading lang={lang} lines={[t.ctaH]} />
                 <div className="row">

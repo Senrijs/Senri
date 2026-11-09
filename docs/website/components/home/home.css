@@ -2754,8 +2754,27 @@ html[data-motion="off"] .s-gal-bar {
 /* --- 最後の CTA とフッター --- */
 
 .s-cta {
-    padding: 160px 24px 140px;
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    padding: 220px 24px 200px;
     text-align: center;
+}
+/* 背景の点の道(components/home/horizon.tsx)と、上下を背景の色に溶かすグラデーション */
+.s-horizon {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -1;
+    pointer-events: none;
+}
+.s-cta-fade {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background: linear-gradient(var(--bg), rgba(0, 0, 0, 0) 22%, rgba(0, 0, 0, 0) 78%, var(--bg));
 }
 .s-cta p {
     margin: 0 0 20px;
