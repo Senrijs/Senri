@@ -30,8 +30,8 @@ export function Demo({ lang, recordings, port }: { lang: Lang; recordings: Recor
 
     const labels: Record<Tab, string> = { play: t.pgTab, dash: t.dashTab };
     return (
-        <div className="s-demo s-up d4">
-            <div className="s-tabs" role="tablist" aria-label={t.demo} onKeyDown={onKey}>
+        <div className="s-demo">
+            <div className="s-tabs s-lg" role="tablist" aria-label={t.demo} onKeyDown={onKey}>
                 {TABS.map((id, i) => (
                     <button
                         key={id}

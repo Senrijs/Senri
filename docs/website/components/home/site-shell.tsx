@@ -1,11 +1,15 @@
-// トップページとブログの外側: 本文へ移動のリンク、読んだ量のバー、ナビ、フッター、グレイン
+// トップページとブログの外側: 本文へ移動のリンク、読んだ量のバー、ナビ、フッター、四隅の表示
+// グレインは画面全体には重ねない(ヒーローの中だけ。components/home/home-page.tsx)
 // 中のページは <main id="main"> を置く
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { homeDict } from "@/lib/home/dict";
 import { type Lang, localePath } from "@/lib/i18n";
+import data from "@/lib/home/generated.json";
+import type { HomeData } from "@/lib/home/types";
 import { githubUrl } from "@/lib/shared";
 import { LangLink, MotionButton, ThemeButton } from "./controls";
+import { Clock } from "./clock";
 import { MotionRoot } from "./motion-root";
 import { SiteHeader } from "./site-header";
 import { Wordmark } from "./wordmark";
@@ -23,7 +27,11 @@ export function SiteShell({ lang, children }: { lang: Lang; children: ReactNode 
             <SiteHeader lang={lang} wordmark={<Wordmark height={24} />} />
             {children}
             <SiteFooter lang={lang} />
-            <div className="s-grain" aria-hidden="true" />
+            {/* 四隅の表示(飾りなので読み上げない。スマホでは隠す) */}
+            <div className="s-hud left" aria-hidden="true">
+                senr/ — v{(data as HomeData).version}
+            </div>
+            <Clock className="s-hud right" />
         </div>
         </MotionRoot>
     );

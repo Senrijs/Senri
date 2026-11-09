@@ -1,6 +1,8 @@
 "use client";
 // ヒーローの背景のパーティクル。マウスから逃げて、近くのものはアクセント色になる
 // 画面の外にあるときとタブが裏にあるときは止める。動きを止める設定では、1回だけ描く
+// 軽くするため: 大きさは ResizeObserver で覚えておき(毎コマ測らない)、テーマの色はテーマが変わったときだけ読む。
+// 点は色ごとに1つのパスにまとめて、1回で塗る。高解像度の画面でも、描く細かさは 1.5 倍まで
 import { useEffect, useRef } from "react";
 import { useStill } from "./motion";
 
@@ -31,16 +33,26 @@ export function Particles() {
             mouse = { x: -9999, y: -9999 };
         };
 
-        function frame() {
+        let w = 1;
+        let h = 1;
+        let dpr = 1;
+        let base = "rgba(17,20,24,0.22)";
+        const readColor = () => {
+            base = getComputedStyle(cv).getPropertyValue("--particle").trim() || base;
+        };
+        const resize = () => {
             const r = cv.getBoundingClientRect();
-            const dpr = window.devicePixelRatio || 1;
-            const w = Math.max(1, Math.round(r.width));
-            const h = Math.max(1, Math.round(r.height));
-            if (cv.width !== w * dpr || cv.height !== h * dpr) {
-                cv.width = w * dpr;
-                cv.height = h * dpr;
-                ps = null;
-            }
+            dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+            w = Math.max(1, Math.round(r.width));
+            h = Math.max(1, Math.round(r.height));
+            cv.width = Math.round(w * dpr);
+            cv.height = Math.round(h * dpr);
+            ps = null;
+        };
+        readColor();
+        resize();
+
+        function frame() {
             if (!ps) {
                 const n = Math.min(170, Math.round((w * h) / 7000));
                 ps = Array.from({ length: n }, () => {
@@ -50,7 +62,8 @@ export function Particles() {
             }
             ctx!.setTransform(dpr, 0, 0, dpr, 0, 0);
             ctx!.clearRect(0, 0, w, h);
-            const base = getComputedStyle(cv).getPropertyValue("--particle").trim() || "rgba(17,20,24,0.22)";
+            const far = new Path2D();
+            const close = new Path2D();
             for (const p of ps) {
                 const ox = p.x - mouse.x;
                 const oy = p.y - mouse.y;
@@ -72,11 +85,15 @@ export function Particles() {
                     if (p.y > h + 10) p.y = -10;
                 }
                 const near = d2 < 40000;
-                ctx!.fillStyle = near ? ACCENT : base;
-                ctx!.beginPath();
-                ctx!.arc(p.x, p.y, near ? p.r + 0.7 : p.r, 0, Math.PI * 2);
-                ctx!.fill();
+                const path = near ? close : far;
+                const r = near ? p.r + 0.7 : p.r;
+                path.moveTo(p.x + r, p.y);
+                path.arc(p.x, p.y, r, 0, Math.PI * 2);
             }
+            ctx!.fillStyle = base;
+            ctx!.fill(far);
+            ctx!.fillStyle = ACCENT;
+            ctx!.fill(close);
         }
 
         function loop() {
@@ -95,8 +112,16 @@ export function Particles() {
         document.addEventListener("visibilitychange", resume);
         section.addEventListener("mousemove", onMove);
         section.addEventListener("mouseleave", onLeave);
-        // テーマが変わったら色を描き直す(止まっているとき)
-        const mo = new MutationObserver(() => still && frame());
+        // テーマが変わったら色を読み直す(止まっているときは描き直す)
+        const mo = new MutationObserver(() => {
+            readColor();
+            if (still) frame();
+        });
+        const ro = new ResizeObserver(() => {
+            resize();
+            if (still) frame();
+        });
+        ro.observe(cv);
         mo.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
         raf = requestAnimationFrame(loop);
 
@@ -104,6 +129,7 @@ export function Particles() {
             cancelAnimationFrame(raf);
             io.disconnect();
             mo.disconnect();
+            ro.disconnect();
             document.removeEventListener("visibilitychange", resume);
             section.removeEventListener("mousemove", onMove);
             section.removeEventListener("mouseleave", onLeave);
