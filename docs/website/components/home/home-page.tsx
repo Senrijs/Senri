@@ -16,6 +16,7 @@ import { Features } from "./features";
 import { HeroStage } from "./hero-stage";
 import { ChevronIcon, DownloadIcon, StarIcon } from "./icons";
 import { Install } from "./install";
+import { Journey } from "./journey";
 import { Particles } from "./particles";
 import { BlurHeading } from "./text-reveal";
 
@@ -28,7 +29,7 @@ export function HomePage({ lang }: { lang: Lang }) {
     return (
         <main id="main">
             <Hero lang={lang} docs={docs} />
-            {/* リクエストの旅は、あとの PR でここに入る */}
+            <Journey lang={lang} />
 
             <section className="s-sec" aria-labelledby="demo-title">
                 <div className="s-wrap">
