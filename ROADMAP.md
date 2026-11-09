@@ -64,7 +64,7 @@ See the [CHANGELOG](./CHANGELOG.md) for details.
 - [x] Response helper: `c.notFound()`
 - [x] SSE / streaming helpers (`stream()`, `streamText()` and `streamSSE()` from `@senrijs/senri/streaming`; not Context methods, so apps that do not use them stay small)
 - [x] File uploads: size and type validation (`uploadLimit()`)
-- [ ] File uploads: receiving large files as a stream, without holding them in memory
+- [x] File uploads: receiving large files as a stream, without holding them in memory (`multipart()` from `@senrijs/senri/multipart`)
 - [x] Middleware: request ID (`requestId()`)
 - [x] Middleware: timeout (`timeout()`)
 - [x] Middleware: Basic / Bearer auth (`basicAuth()`, `bearerAuth()`)
@@ -77,9 +77,9 @@ See the [CHANGELOG](./CHANGELOG.md) for details.
 - [x] Middleware: cache headers (`cache()`)
 - [x] Middleware: language detection (`languageDetector()`)
 - [x] Middleware: pretty JSON (`prettyJSON()`)
-- [ ] Performance: a fast path for string responses, HTTP benchmarks with oha (after the helpers)
+- [ ] Performance: a fast path for string responses, HTTP benchmarks with wrk (after the helpers)
 - [x] Trusted-proxy support (`trustProxy()`; counts proxies from the right and never trusts the first `X-Forwarded-For` value)
-- [ ] Documentation site (senri.skyia.jp)
+- [ ] Documentation site (senri.skyia.jp): the top page, 404 page and playground are live; the docs content is still to come
 
 ## 0.3.0 — All the way to production
 

@@ -64,7 +64,7 @@ Senri がこれから向かう先です。バージョンは目標であって�
 - [x] レスポンスのヘルパー: `c.notFound()`
 - [x] SSE / ストリーミングのヘルパー(`@senrijs/senri/streaming` の `stream()`、`streamText()`、`streamSSE()`。Context のメソッドにせず、使わないアプリを太らせない)
 - [x] ファイルアップロード: サイズと種類の検証(`uploadLimit()`)
-- [ ] ファイルアップロード: 大きなファイルをメモリに載せず、ストリームで受信する
+- [x] ファイルアップロード: 大きなファイルをメモリに載せず、ストリームで受信する(`@senrijs/senri/multipart` の `multipart()`)
 - [x] ミドルウェア: リクエスト ID(`requestId()`)
 - [x] ミドルウェア: タイムアウト(`timeout()`)
 - [x] ミドルウェア: Basic / Bearer 認証(`basicAuth()`、`bearerAuth()`)
@@ -77,9 +77,9 @@ Senri がこれから向かう先です。バージョンは目標であって�
 - [x] ミドルウェア: キャッシュのヘッダー(`cache()`)
 - [x] ミドルウェア: 言語判定(`languageDetector()`)
 - [x] ミドルウェア: Pretty JSON(`prettyJSON()`)
-- [ ] 性能: 文字列を返すときの速い道、oha での HTTP のベンチマーク(ヘルパーのあと)
+- [ ] 性能: 文字列を返すときの速い道、wrk での HTTP のベンチマーク(ヘルパーのあと)
 - [x] プロキシ対応(`trustProxy()`。右から数えて、`X-Forwarded-For` の先頭は信じない)
-- [ ] ドキュメントサイト(senri.skyia.jp)
+- [ ] ドキュメントサイト(senri.skyia.jp): トップページ、404、プレイグラウンドまで公開。ドキュメントの中身はこれから
 
 ## 0.3.0 — 本番まで届く
 

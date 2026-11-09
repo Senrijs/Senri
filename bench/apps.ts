@@ -1,6 +1,7 @@
 // ベンチマークで使う、同じルート一式の Senri / Hono / Elysia アプリ
 // どれも本番モード(開発用の計測・記録なし)、ミドルウェアなし、ハンドラーはテキストを返すだけ
 import { createApp } from "../src/index.ts";
+import { createApp as createApp029 } from "senri-0.2.9";
 import { Hono } from "hono";
 import { Elysia } from "elysia";
 
@@ -46,7 +47,35 @@ const text = (s: string) => () => s;
 export function senriApp() {
     const app = createApp();
     for (const [method, path] of ROUTES) app.on(method, path, text(path));
-    return { name: "senri", fetch: (req: Request) => app.fetch(req) };
+    // app: Node のアダプター(@senrijs/senri/node)に渡すため
+    return { name: "senri", fetch: (req: Request) => app.fetch(req), app };
+}
+
+// 0.2.9(Node の近道 #44・#46・#47 より前)。npm から別名で入れている。「Node.js で約 4 倍」を確かめ直すため
+export function senri029App() {
+    const app = createApp029();
+    for (const [method, path] of ROUTES) app.on(method, path, text(path));
+    return { name: "senri-0.2.9", fetch: (req: Request) => app.fetch(req), app };
+}
+
+// 素のサーバー(フレームワークなし)。上限の目安
+// ルーターの代わりに、測るリクエストの「メソッド + パス」から答えを引く表を使う
+export const RAW_ANSWERS = new Map(REQUESTS.filter(([, , , route]) => route !== null).map(([, method, path, route]) => [`${method} ${path}`, route!]));
+
+export function rawAnswer(method: string, url: string): string | undefined {
+    const start = url.indexOf("/", url.indexOf("//") + 2);
+    const end = url.indexOf("?", start);
+    return RAW_ANSWERS.get(`${method} ${end === -1 ? url.slice(start) : url.slice(start, end)}`);
+}
+
+export function rawApp() {
+    return {
+        name: "raw",
+        fetch: (req: Request) => {
+            const body = rawAnswer(req.method, req.url);
+            return body === undefined ? new Response("Not Found", { status: 404 }) : new Response(body);
+        },
+    };
 }
 
 export function honoApp() {
@@ -63,4 +92,5 @@ export function elysiaApp() {
     return { name: "elysia", fetch: (req: Request) => app.handle(req) };
 }
 
-export const APPS = [senriApp, honoApp, elysiaApp];
+// fetch で動かせるもの(Bun.serve と Deno.serve で使う)
+export const APPS = [senriApp, honoApp, elysiaApp, rawApp, senri029App];
