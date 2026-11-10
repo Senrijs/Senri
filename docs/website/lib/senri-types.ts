@@ -19,6 +19,7 @@ export const senriExports: Record<string, string> = {
     "@senrijs/senri/testing": "src/testing.ts",
     "@senrijs/senri/websocket": "src/websocket.ts",
     "@senrijs/senri/openapi": "src/openapi.ts",
+    "@senrijs/senri/otel": "src/otel.ts",
     "@senrijs/senri/node": "adapters/node/index.ts",
     "@senrijs/senri/serve": "adapters/serve/index.ts",
     "@senrijs/senri/static": "adapters/static/index.ts",

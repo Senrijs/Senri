@@ -3,6 +3,8 @@ import { devtools } from "../../src/dev/index.ts";
 import { getSignedCookie, setSignedCookie } from "../../src/cookie.ts";
 import { getIp } from "../../src/ip.ts";
 import { upgradeWebSocket } from "../../src/websocket.ts";
+import { otel } from "../../src/otel.ts";
+import { fakeApi, recorded } from "./otel-check.ts";
 import { checkJwtAlgorithms } from "./jwt-check.ts";
 import { contextStorage, getContext } from "../../adapters/context-storage/index.ts";
 import { multipart } from "../../src/multipart.ts";
@@ -112,6 +114,14 @@ app.get(
         },
     })),
 );
+// OpenTelemetry: /otel の下だけトレースする(smoke 用に、span の名前と親を記録するだけのものを渡している)
+app.use("/otel", otel({ api: fakeApi, middlewareSpans: true }));
+app.use("/otel", async function audit(_, next) {
+    return next();
+});
+app.get("/otel/users/:id", ({ id }) => `user ${id}`);
+// 直前までに記録した span を返して、空にする
+app.get("/otel-spans", () => recorded.splice(0).map((s) => `${s.name} < ${s.parent}${s.status ? ` (${s.status})` : ""}`));
 app.get("/page", (_, c) => c.html("<h1>こんにちは!</h1>"));
 // ログインしたら Cookie を付けて、別のページへ
 app.get("/login", (_, c) => {

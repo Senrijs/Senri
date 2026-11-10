@@ -86,7 +86,7 @@ See the [CHANGELOG](./CHANGELOG.md) for details.
 - [ ] Typed client (RPC)
 - [ ] OpenAPI generation
 - [ ] Testing helpers
-- [ ] OpenTelemetry: the onion timeline becomes production traces
+- [x] OpenTelemetry: the onion timeline becomes production traces
 - [ ] Prometheus metrics
 - [x] WebSocket
 - [x] JWT
