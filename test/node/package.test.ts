@@ -24,6 +24,13 @@ describe("パッケージ", () => {
         assert.deepEqual([typeof problem, typeof problemDetails, typeof ProblemError], ["function", "function", "function"]);
     });
 
+    test('"@senrijs/senri/jwt" で JWT が使える', async () => {
+        assert.match(import.meta.resolve("@senrijs/senri/jwt"), /\/dist\/src\/jwt\.js$/);
+        const { jwt, signJwt, verifyJwt, JwtError } = await import("@senrijs/senri/jwt");
+
+        assert.deepEqual([typeof jwt, typeof signJwt, typeof verifyJwt, typeof JwtError], ["function", "function", "function", "function"]);
+    });
+
     test('"@senrijs/senri/node" で Node アダプターが使える', async () => {
         assert.match(import.meta.resolve("@senrijs/senri/node"), /\/dist\/adapters\/node\/index\.js$/);
         const { serve } = await import("@senrijs/senri/node");

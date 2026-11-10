@@ -10,6 +10,7 @@
     "./streaming": "./src/streaming.ts",
     "./multipart": "./src/multipart.ts",
     "./problem": "./src/problem.ts",
+    "./jwt": "./src/jwt.ts",
     "./node": "./adapters/node/index.ts",
     "./serve": "./adapters/serve/index.ts",
     "./static": "./adapters/static/index.ts"

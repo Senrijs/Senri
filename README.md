@@ -463,6 +463,27 @@ app.use("/photos", uploadLimit({ maxTotalSize: 20 * 1024 * 1024, types: ["image/
 - `secureHeaders()`: Content-Security-Policy と Cross-Origin-Embedder-Policy は既定でオフです(アプリによって壊れやすいので)
 - `serveStatic()`: ドットファイルは既定で配りません。root の外(シンボリックリンクを含む)には出ません。`prefix: "/static/*"` は `prefix: "/static"` と同じ意味です
 
+### JWT
+
+`@senrijs/senri/jwt` で、JWT の署名と確認ができます。暗号は Web Crypto だけで、Bun・Deno・Node.js・Cloudflare Workers・ブラウザで動きます。
+
+```ts
+import { jwt, signJwt, verifyJwt, type JwtVariables } from "@senrijs/senri/jwt";
+
+const app = createApp<JwtVariables>();
+app.post("/login", async () => ({ token: await signJwt({ sub: "42" }, env.JWT_SECRET, { alg: "HS256", expiresIn: 3600 }) }));
+app.use("/api", jwt({ keys: env.JWT_SECRET, algorithms: ["HS256"] }));   // Authorization: Bearer <token>(cookie: "名前" で Cookie から)
+app.get("/api/me", (_, c) => c.get("jwtPayload"));
+```
+
+- **`algorithms` は必須です。** トークンの `alg` が、この中にあるときだけ確かめます。`none` は受け付けません
+- 対応するアルゴリズム: HS256 / HS384 / HS512、RS256 / RS384 / RS512、PS256 / PS384 / PS512、ES256 / ES384、EdDSA と Ed25519(RFC 9864。どちらも Ed25519 の署名)。ES512 にはまだ対応していません
+- 鍵: 文字列は HMAC の秘密鍵です(HS256 は 32 バイト以上、HS384 は 48、HS512 は 64。短いと TypeError)。ほかのアルゴリズムには、PEM(`PUBLIC KEY` / `PRIVATE KEY`)、JWK、`CryptoKey` を渡します。PEM の公開鍵が HMAC の秘密鍵として使われることはありません(アルゴリズムの取り違えの攻撃を防ぐため)
+- 鍵の入れ替え: `keys: [{ kid: "2026-11", key: newKey }, { kid: "2026-10", key: oldKey }]` のように配列で渡します。`signJwt` は `kid` をヘッダーに入れ、`verifyJwt` はトークンの `kid` と同じ鍵(と `kid` のない鍵)だけを試します。JWKS の `keys` は、そのまま渡せます
+- `exp`・`nbf` があれば確かめます(`clockTolerance` で時計のずれを許す)。`issuer`・`audience`・`subject`・`maxAge` も指定できます。期限を必ず付けたいときは、`signJwt` の `expiresIn` を使ってください
+- だめなトークンは `JwtError`(401 の `HttpError`)で、`WWW-Authenticate: Bearer error="invalid_token"` が付きます。`err.reason` で理由(`expired`・`signature` など)が分かります
+- 外の JWKS の URL から鍵を取ってくる機能と、暗号化(JWE)はありません
+
 ## エラー
 
 ```ts
