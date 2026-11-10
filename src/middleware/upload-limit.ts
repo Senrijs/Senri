@@ -167,9 +167,22 @@ const RESERVED = /^(?:con|prn|aux|nul|com\d|lpt\d)(?:\.|$)/i;
 export function safeFileName(name: string, fallback: string = "file"): string {
     let safe = (name.split(/[\\/]/).pop() ?? "").replace(/[\x00-\x1f\x7f<>:"|?*]/g, "");
     // 先頭の . は隠しファイルと .. を、末尾の . と空白は Windows が無視する
-    safe = safe.replace(/^[.\s]+/, "").replace(/[.\s]+$/, "");
+    safe = trimEnd(safe.replace(/^[.\s]+/, ""));
     if (RESERVED.test(safe)) safe = `_${safe}`;
     // 多くのファイルシステムの上限。文字単位で切って、サロゲートを壊さない
-    safe = Array.from(safe).slice(0, 200).join("");
+    // 切ったところが . や空白で終わることがあるので、もう一度末尾を削る
+    // 200 文字は、UTF-16 の単位で多くても 400。先に切っておけば、長い名前でも大きな配列を作らない
+    safe = trimEnd(Array.from(safe.slice(0, 400)).slice(0, 200).join(""));
     return safe === "" ? fallback : safe;
+}
+
+// 1 文字ずつ見る(. と空白)。/[.\s]+$/ は、. や空白が長く続いて最後が別の文字のとき、
+// 始まる位置ごとに読み直すので、時間が長さの 2 乗になる(10 万文字で 10 秒ほど)。後ろから見れば、長さに比例する
+const TRAILING = /[.\s]/;
+
+function trimEnd(s: string): string {
+    let end = s.length;
+    // \s にサロゲートペアの文字はないので、UTF-16 の単位で見てよい
+    while (end > 0 && TRAILING.test(s[end - 1]!)) end--;
+    return s.slice(0, end);
 }
