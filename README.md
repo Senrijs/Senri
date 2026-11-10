@@ -463,6 +463,35 @@ app.get("/items/:id", ({ id }, c) => {
 - `app.route()` でつないだアプリから呼んでも、親のハンドラーが使われます
 - 開発モードの 404 に「もしかして」が出るのは、ルートがなかったときだけです
 
+### Problem Details(RFC 9457)
+
+エラーを `application/problem+json` で返したいときは、`@senrijs/senri/problem` を使います。選んだときだけ変わり、既定のエラーの形(テキスト)はそのままです。
+
+```ts
+import { ProblemError, problem, problemDetails } from "@senrijs/senri/problem";
+
+const problems = problemDetails();         // problemDetails({ validationErrors: true }) で、バリデーションのどこが違うかも返す
+app.onError(problems.onError);
+app.notFound(problems.notFound);
+
+app.post("/transfer", () => {
+    throw new ProblemError(403, {
+        type: "https://example.com/probs/out-of-credit",
+        title: "You do not have enough credit.",
+        detail: "Your current balance is 30, but that costs 50.",
+        extensions: { balance: 30 },
+    });
+});
+app.get("/legacy", (_, c) => problem(c, { status: 410, detail: "Use /v2 instead." })); // 投げずに返す
+```
+
+- `type` を省くと `about:blank` になり、`title` は status の名前(`"Not Found"` など)になります
+- `ProblemError` 以外の `HttpError`(ルーターの 405、`basicAuth()` の 401、`rateLimit()` の 429 など)は、`message` が status だけ(`"405 Method Not Allowed"`)なら `detail` を付けず、それ以外なら `detail` にします。`Allow`・`WWW-Authenticate`・`Retry-After` などのヘッダーは残ります
+- `HttpError` でないエラーは、既定と同じく中身を出さず、`title` だけの 500 にします
+- バリデーションのエラーの中身(`errors`)は、スキーマの作りが外から見えるので、既定では出しません
+- `ProblemError` は `HttpError` なので、`problemDetails()` を使わないアプリでは、`detail`(なければ `title`)をテキストで返すふつうのエラーになります
+- ほかの `app.onError` と同じく、開発モードのエラーページや 404 ページも置き換わります。開発中は使わず、本番だけで設定することもできます
+
 ## 開発モード
 
 ```ts

@@ -3,6 +3,7 @@ import { devtools } from "../../src/dev/index.ts";
 import { getSignedCookie, setSignedCookie } from "../../src/cookie.ts";
 import { getIp } from "../../src/ip.ts";
 import { multipart } from "../../src/multipart.ts";
+import { problem } from "../../src/problem.ts";
 
 // examples は手元で動かすものなので開発モード
 export const app = createApp({ dev: devtools() });
@@ -75,6 +76,11 @@ app.get("/signed", async (_, c) => {
     const user = await getSignedCookie(c, "user", "example-secret");
     await setSignedCookie(c, "user", "42", "example-secret");
     return String(user);
+});
+// Problem Details(RFC 9457)の形で返す
+app.get("/legacy", (_, c) => {
+    c.header("x-docs", "/v2");
+    return problem(c, { status: 410, detail: "Use /v2 instead.", since: "2026-01-01" });
 });
 app.get("/page", (_, c) => c.html("<h1>こんにちは!</h1>"));
 // ログインしたら Cookie を付けて、別のページへ

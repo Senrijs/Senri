@@ -13,6 +13,7 @@ export const senriExports: Record<string, string> = {
     "@senrijs/senri/ip": "src/ip.ts",
     "@senrijs/senri/streaming": "src/streaming.ts",
     "@senrijs/senri/multipart": "src/multipart.ts",
+    "@senrijs/senri/problem": "src/problem.ts",
     "@senrijs/senri/node": "adapters/node/index.ts",
     "@senrijs/senri/serve": "adapters/serve/index.ts",
     "@senrijs/senri/static": "adapters/static/index.ts",

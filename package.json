@@ -55,6 +55,10 @@
       "types": "./dist/src/multipart.d.ts",
       "import": "./dist/src/multipart.js"
     },
+    "./problem": {
+      "types": "./dist/src/problem.d.ts",
+      "import": "./dist/src/problem.js"
+    },
     "./node": {
       "types": "./dist/adapters/node/index.d.ts",
       "import": "./dist/adapters/node/index.js"
