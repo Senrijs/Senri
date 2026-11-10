@@ -308,6 +308,34 @@ describe("safeFileName()", () => {
         }
     });
 
+    test("長い悪い入力でも、すぐ終わる(末尾の . と空白を削る時間が、長さの 2 乗にならない)", () => {
+        // 以前の /[.\s]+$/ は、. や空白が長く続いて最後が別の文字のとき、10 万文字で 10 秒ほどかかった
+        const cases: [string, string][] = [
+            [" ".repeat(100_000) + "x", "x"],
+            [".".repeat(100_000) + "x", "x"],
+            [". ".repeat(50_000) + "x", "x"],
+            // 先頭が別の文字なら、先頭の削りでは消えない。200 文字で切ると . と空白だけが残るので、削って "a"
+            ["a" + " ".repeat(100_000) + "x", "a"],
+            ["a" + ".".repeat(100_000) + "x", "a"],
+            // タブは制御文字なので、先に消える
+            ["a" + "\t".repeat(100_000) + "x", "ax"],
+            ["a" + "　".repeat(100_000) + "x", "a"],
+            // 末尾だけが長いとき
+            ["a.png" + ". ".repeat(100_000), "a.png"],
+        ];
+        for (const [name, expected] of cases) {
+            const started = performance.now();
+            const safe = safeFileName(name);
+            expect(performance.now() - started).toBeLessThan(200);
+            expect(safe).toBe(expected);
+        }
+    });
+
+    test("200 文字で切ったところが . や空白で終わったら、そこも削る", () => {
+        expect(safeFileName("a".repeat(199) + " b")).toBe("a".repeat(199));
+        expect(safeFileName("a".repeat(198) + ". b")).toBe("a".repeat(198));
+    });
+
     test("fallback を変えられる。長い名前は切る。文字を壊さない", () => {
         expect(safeFileName("..", "upload")).toBe("upload");
         expect(safeFileName("a".repeat(500)).length).toBe(200);
