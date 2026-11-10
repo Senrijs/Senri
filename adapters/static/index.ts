@@ -15,12 +15,11 @@
  */
 // 静的ファイル配信(senri/static)。node:fs を使うので本体とは別の入口にしている
 // Bun / Deno / Node で動く。Cloudflare Workers ではファイルを読めないので、wrangler の Static Assets を使う
-import { createReadStream } from "node:fs";
-import { readdir, realpath, stat } from "node:fs/promises";
+import { type FileHandle, open, readdir, realpath, stat } from "node:fs/promises";
 import { extname, join, relative, resolve, sep } from "node:path";
 import process from "node:process";
 import { Readable } from "node:stream";
-import type { Middleware } from "../../src/index.ts";
+import type { Context, Middleware } from "../../src/index.ts";
 import { matchesEtag } from "../../src/middleware/response.ts";
 import { headerOf, markPlainSafe, methodOf } from "../../src/plain.ts";
 import { middlewarePath, splitPattern } from "../../src/router.ts";
@@ -107,8 +106,9 @@ async function hasExactName(dir: string, name: string): Promise<boolean> {
 
 /**
  * Middleware that serves files from a directory for GET and HEAD. When there is no matching file, it calls `next()`.
- * - Never serves files outside `root`, including through symbolic links. This assumes that people you do not
- *   trust cannot change the contents of `root` (files and links are checked before they are read)
+ * - Never serves files outside `root`, including through symbolic links. The check is made after the file is opened,
+ *   on the opened file itself, so a link swapped in while a request is being handled does not lead outside either.
+ *   Hard links are not detected: a hard link inside `root` to a file outside it is served like any other file
  * - Sends a weak `ETag` and `Last-Modified`, and answers 304 to `If-None-Match` / `If-Modified-Since`
  * - `Content-Type` comes from the file extension (`application/octet-stream` if unknown)
  * - On Windows and macOS, a path must spell each name exactly as on disk (case, short 8.3 names and trailing dots
@@ -158,27 +158,47 @@ export function serveStatic(options: ServeStaticOptions): Middleware {
         if (rel.startsWith("..") || resolve(root, rel) !== file) return next();
 
         let names = rest;
-        let info = await stat(file).catch(() => null);
-        if (info?.isDirectory()) {
+        const found = await stat(file).catch(() => null);
+        if (found?.isDirectory()) {
             if (index === false) return next();
             file = join(file, index);
             names = [...rest, ...index.split("/").filter(Boolean)];
-            info = await stat(file).catch(() => null);
         }
-        if (!info?.isFile()) return next();
 
+        // 先にファイルを開いて、開いたもの自体を確かめる(確かめてから開くと、そのあいだにリンクを差し替えられる)
+        const handle = await open(file, "r").catch(() => null);
+        if (handle === null) return next();
+        let res: Response | null = null;
+        try {
+            res = await respond(c, handle, file, names, method);
+        } finally {
+            // 本文をハンドルから読むとき(GET の 200)は、読み終わるか途中で切れたときにストリームが閉じる
+            if (res?.body == null) await handle.close().catch(() => {});
+        }
+        return res ?? next();
+    });
+
+    // 開いたファイルが配ってよいものなら、そのレスポンスを返す。だめなら null
+    async function respond(c: Context, handle: FileHandle, file: string, names: string[], method: string): Promise<Response | null> {
+        const info = await handle.stat({ bigint: true });
+        if (!info.isFile()) return null;
+
+        // 実体のパスが root の中にあり、そこにあるファイルが開いたものと同じか
         const real = await realpath(file).catch(() => null);
         const base = await realRoot;
-        if (real === null || (real !== base && !real.startsWith(base.endsWith(sep) ? base : base + sep))) return next();
+        if (real === null || (real !== base && !real.startsWith(base.endsWith(sep) ? base : base + sep))) return null;
+        const atReal = await stat(real, { bigint: true }).catch(() => null);
+        if (atReal === null || atReal.ino !== info.ino || atReal.dev !== info.dev) return null;
         // root の中のシンボリックリンクが .env などを指していることもあるので、実体のパスでもドットファイルを確かめる
-        if (!options.dotfiles && relative(base, real).split(sep).some((s) => s.startsWith("."))) return next();
+        if (!options.dotfiles && relative(base, real).split(sep).some((s) => s.startsWith("."))) return null;
         if (LOOSE_NAMES) {
             for (let i = 0; i < names.length; i++) {
-                if (!(await hasExactName(join(root, ...names.slice(0, i)), names[i]!))) return next();
+                if (!(await hasExactName(join(root, ...names.slice(0, i)), names[i]!))) return null;
             }
         }
 
-        const etag = `W/"${info.size.toString(16)}-${Math.floor(info.mtimeMs).toString(16)}"`;
+        const mtimeMs = Number(info.mtimeMs);
+        const etag = `W/"${info.size.toString(16)}-${mtimeMs.toString(16)}"`;
         const lastModified = info.mtime.toUTCString();
         const headers = new Headers({ etag, "last-modified": lastModified });
         if (options.cacheControl) headers.set("cache-control", options.cacheControl);
@@ -189,14 +209,15 @@ export function serveStatic(options: ServeStaticOptions): Middleware {
         const notModified =
             ifNoneMatch !== null
                 ? matchesEtag(ifNoneMatch, etag)
-                : ifModifiedSince !== null && Math.floor(info.mtimeMs / 1000) <= Date.parse(ifModifiedSince) / 1000;
+                : ifModifiedSince !== null && Math.floor(mtimeMs / 1000) <= Date.parse(ifModifiedSince) / 1000;
         if (notModified) return new Response(null, { status: 304, headers });
 
         headers.set("content-type", MIME[extname(file).toLowerCase()] ?? "application/octet-stream");
         headers.set("content-length", String(info.size));
         if (method === "HEAD") return new Response(null, { status: 200, headers });
 
-        const body = Readable.toWeb(createReadStream(file)) as unknown as ReadableStream<Uint8Array>;
+        // 開いたハンドルから読む(パスで開き直さない)
+        const body = Readable.toWeb(handle.createReadStream()) as unknown as ReadableStream<Uint8Array>;
         return new Response(body, { status: 200, headers });
-    });
+    }
 }
