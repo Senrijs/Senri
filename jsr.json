@@ -1,6 +1,6 @@
 {
   "name": "@senrijs/senri",
-  "version": "0.2.19",
+  "version": "0.2.20",
   "license": "MIT",
   "exports": {
     ".": "./src/index.ts",
