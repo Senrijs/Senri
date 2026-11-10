@@ -19,6 +19,14 @@ on:
         required: true
         type: string
 
+# 既定の権限は読むだけにする。書き込みが要るものは、ジョブごとに付けている
+# (どのジョブも自分の permissions を持っているので、ここを書いても、それぞれのジョブの権限は変わらない)
+# - release-please: contents / pull-requests / issues の write(タグ・Release・リリースの PR・ラベル)
+# - publish / publish-create-senri: contents: read と id-token: write(JSR と npm の OIDC)
+# - check-release: pull-requests: read
+permissions:
+  contents: read
+
 # リリースの PR の更新と公開が、同時に2つ走らないようにする
 concurrency:
   group: publish

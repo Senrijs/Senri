@@ -103,7 +103,7 @@ describe("streamSSE() と Node", () => {
         const text = await raw(await listen(app), request("GET", "/"));
 
         assert.ok(text.includes(": connected"));
-        assert.ok(text.includes("event: a\r\n".replace("\r", "")));
+        assert.ok(text.includes("event: a\n"));
         assert.ok(text.includes("data: x\ndata: y\n"));
     });
 

@@ -21,6 +21,11 @@ on:
       - "jsr.json"
       - ".github/workflows/website.yml"
 
+# ビルドして確かめるだけなので、リポジトリを読めれば足りる
+# (github.token は、scripts/home-data.ts が公開リポジトリのスター数を読むのに使う。読むだけなので、ほかの権限は要らない)
+permissions:
+  contents: read
+
 jobs:
   build:
     runs-on: ubuntu-latest
