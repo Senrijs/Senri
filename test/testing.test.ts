@@ -97,4 +97,21 @@ describe("request()", () => {
         await expect(request(app, "GET/old")).rejects.toThrow("Invalid route");
         await expect(request(app, "GET old")).rejects.toThrow("Invalid route");
     });
+
+    test("baseUrl の末尾の \"/\" は、いくつあっても削る", async () => {
+        const seen: string[] = [];
+        const spy = { fetch: (req: Request) => (seen.push(req.url), new Response("")) };
+        await request(spy, "GET /a", {}, { baseUrl: "https://example.com/api///" });
+        expect(seen).toEqual(["https://example.com/api/a"]);
+    });
+
+    test("\"/\" が長く続いて最後が別の文字の baseUrl でも、すぐ終わる(時間が長さの 2 乗にならない)", async () => {
+        // 以前の /\/+$/ は、始まる位置ごとに読み直すので、10 万文字で十数秒かかった
+        const spy = { fetch: () => new Response("") };
+        for (const baseUrl of ["http://x" + "/".repeat(100_000) + "a", "http://x" + "/".repeat(100_000)]) {
+            const started = performance.now();
+            await request(spy, "GET /a", {}, { baseUrl });
+            expect(performance.now() - started).toBeLessThan(100);
+        }
+    });
 });

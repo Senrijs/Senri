@@ -132,10 +132,13 @@ export async function request(app: TestApp, route: string, init: RequestInit = {
     const space = route.indexOf(" ");
     const path = route.slice(space + 1);
     if (space <= 0 || !path.startsWith("/")) throw new TypeError(`Invalid route: "${route}" (e.g. "GET /hello")`);
-    const base = (options.baseUrl ?? "http://localhost").replace(/\/+$/, "");
+    // 末尾の "/" を削る。正規表現(/\/+$/)だと、"/" が長く続いて最後が別の文字のとき、時間が長さの 2 乗になる
+    const base = options.baseUrl ?? "http://localhost";
+    let end = base.length;
+    while (end > 0 && base.charCodeAt(end - 1) === 47) end--; // "/"
     const shared = typeof options.headers === "function" ? await options.headers() : options.headers;
     const headers = new Headers(shared);
     new Headers(init.headers).forEach((value, key) => headers.set(key, value));
-    const req = new Request(base + path, { ...init, method: route.slice(0, space).toUpperCase(), headers });
+    const req = new Request(base.slice(0, end) + path, { ...init, method: route.slice(0, space).toUpperCase(), headers });
     return appFetch(app, options)(req);
 }
