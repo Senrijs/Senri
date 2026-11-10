@@ -1,8 +1,9 @@
 // CSRF 対策(よそのサイトのページから、ログイン中の利用者になりすまして POST などを送らせない)
 // トークンは使わず、ブラウザが付ける Sec-Fetch-Site と Origin で判定する(Go の net/http の CrossOriginProtection と同じ考え方)
-import type { Context, Middleware } from "../context.ts";
+import type { Middleware } from "../context.ts";
 import { HttpError, senriError } from "../errors.ts";
-import { headerOf, markPlainSafe, methodOf, urlOf } from "../plain.ts";
+import { headerOf, markPlainSafe, methodOf } from "../plain.ts";
+import { originMatcher, sameHost, type OriginOption } from "./origin.ts";
 
 /** Options for {@link csrf}. */
 export type CsrfOptions = {
@@ -11,35 +12,11 @@ export type CsrfOptions = {
      * Other origins allowed to send requests, such as `"https://admin.example.com"` (scheme, host and port only),
      * or a function that decides. Requests from the same origin are always allowed.
      */
-    origin?: string | readonly string[] | ((origin: string, c: Context) => boolean);
+    origin?: OriginOption;
 };
 
 // 状態を変えないメソッド。これらは確かめない
 const SAFE = new Set(["GET", "HEAD", "OPTIONS"]);
-
-function originMatcher(origin: CsrfOptions["origin"]): (value: string, c: Context) => boolean {
-    if (origin === undefined) return () => false;
-    if (typeof origin === "function") return (value, c) => origin(value, c) === true;
-    const list = typeof origin === "string" ? [origin] : origin;
-    if (!Array.isArray(list) || list.some((o) => typeof o !== "string" || !/^[a-z][a-z0-9+.-]*:\/\/[^/?#\s]+$/i.test(o))) {
-        throw senriError("csrf_origin", new TypeError('csrf(): origin must be like "https://example.com" (no path or trailing slash)'));
-    }
-    const allowed = new Set(list.map((o) => o.toLowerCase()));
-    return (value) => allowed.has(value.toLowerCase());
-}
-
-// Origin のホスト(とポート)が、リクエストのホストと同じか
-// スキームは比べない(TLS を終えるプロキシの後ろでは、アプリから見たリクエストが http になるため。Go と同じ)
-function sameHost(origin: string, c: Context): boolean {
-    let originHost: string;
-    try {
-        originHost = new URL(origin).host;
-    } catch {
-        return false;
-    }
-    const host = headerOf(c, "host") ?? new URL(urlOf(c)).host;
-    return originHost !== "" && originHost === host.toLowerCase();
-}
 
 /**
  * Middleware that protects against cross-site request forgery (CSRF), without tokens. For methods other than GET, HEAD
@@ -68,7 +45,7 @@ function sameHost(origin: string, c: Context): boolean {
  * ```
  */
 export function csrf(options: CsrfOptions = {}): Middleware {
-    const trusted = originMatcher(options.origin);
+    const trusted = originMatcher(options.origin, "csrf_origin", "csrf()");
 
     return markPlainSafe<Middleware>(async function csrf(c, next) {
         if (SAFE.has(methodOf(c))) return next();

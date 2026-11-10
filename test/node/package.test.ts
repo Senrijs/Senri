@@ -45,6 +45,13 @@ describe("パッケージ", () => {
         assert.equal(typeof client, "function");
     });
 
+    test('"@senrijs/senri/websocket" で WebSocket が使える', async () => {
+        assert.match(import.meta.resolve("@senrijs/senri/websocket"), /\/dist\/src\/websocket\.js$/);
+        const { upgradeWebSocket, websocket } = await import("@senrijs/senri/websocket");
+
+        assert.deepEqual([typeof upgradeWebSocket, typeof websocket.open], ["function", "function"]);
+    });
+
     test('"@senrijs/senri/node" で Node アダプターが使える', async () => {
         assert.match(import.meta.resolve("@senrijs/senri/node"), /\/dist\/adapters\/node\/index\.js$/);
         const { serve } = await import("@senrijs/senri/node");

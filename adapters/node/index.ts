@@ -14,7 +14,8 @@
  *
  * @module
  */
-import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
+import { createServer, ServerResponse, type IncomingMessage, type Server } from "node:http";
+import type { Socket } from "node:net";
 import type { Duplex } from "node:stream";
 import type { TLSSocket } from "node:tls";
 import { Readable } from "node:stream";
@@ -25,6 +26,9 @@ import { lazyContext, plainOf, type Context, type HandlerResult } from "../../sr
 import { HttpError } from "../../src/errors.ts";
 import { checkMaxRequestBodySize, countBytes } from "../../src/middleware/body-limit.ts";
 import { isPlainSafe, PlainResponse, type LazyRequest } from "../../src/plain.ts";
+import { terminalLang } from "../../src/lang.ts";
+import { NODE_MESSAGES } from "./messages.ts";
+import { attachNodeSocket, NODE_UPGRADE, UPGRADE_MARKER, type NodeUpgradeSlot } from "../../src/websocket.ts";
 
 type App = {
     // 2つ目の引数には、接続元のアドレスを Deno の info と同じ形で渡す(ダッシュボードの localhost 制限で使う)
@@ -194,6 +198,74 @@ function writeFailure(res: ServerResponse, err: unknown) {
         for (const name of res.getHeaderNames()) res.removeHeader(name);
         res.statusCode = 500;
         res.end("500 Internal Server Error");
+    }
+}
+
+/**
+ * The part of the `ws` package's `WebSocketServer` that {@link serve} uses. Create it with `noServer: true`.
+ * Senri does not depend on `ws`; this type only describes what it calls.
+ */
+export type WebSocketServerLike = {
+    /** Completes the WebSocket handshake on the socket (from `ws`). */
+    handleUpgrade(req: IncomingMessage, socket: Duplex, head: Buffer, callback: (socket: any, req: IncomingMessage) => void): void;
+    /** `ws` emits `connection` for each upgraded socket; Senri does too, so existing listeners keep working. */
+    emit?(event: "connection", socket: unknown, req: IncomingMessage): boolean;
+    /** The options the server was created with (`maxPayload` is checked in development mode). */
+    options?: { maxPayload?: number };
+};
+
+// ws の maxPayload の既定(100 MiB)
+const WS_DEFAULT_MAX_PAYLOAD = 100 * 1024 * 1024;
+
+
+// Upgrade ヘッダーのあるリクエスト(upgrade イベント)。アプリをふつうに動かし(ミドルウェアや認証も通る)、
+// ルートが upgradeWebSocket() なら ws に渡す。それ以外の応答(401・404 など)は、そのままソケットに書いて閉じる
+async function serveUpgrade(app: App, req: IncomingMessage, socket: Duplex, head: Buffer, wss: WebSocketServerLike | undefined) {
+    // クライアントが先に切ったときなど。聞いていないと、プロセスごと落ちる
+    socket.on("error", () => {});
+    const controller = new AbortController();
+    socket.once("close", () => controller.abort());
+    const slot: NodeUpgradeSlot = { server: wss ?? null };
+
+    // upgrade しないときは、ふつうの応答をこのソケットに書く
+    const respond = () => {
+        const res = new ServerResponse(req);
+        res.assignSocket(socket as Socket);
+        res.shouldKeepAlive = false;
+        res.once("finish", () => socket.end());
+        return res;
+    };
+
+    let request: Request;
+    try {
+        request = toRequest(req, controller.signal);
+    } catch {
+        const res = respond();
+        res.statusCode = 400;
+        res.end("400 Bad Request");
+        return;
+    }
+    let response: Response;
+    try {
+        const info = { ...connectionInfo(req), [NODE_UPGRADE]: slot };
+        response = await app.fetch(request, info as ReturnType<typeof connectionInfo>);
+    } catch (err) {
+        if (!controller.signal.aborted) writeFailure(respond(), err);
+        return;
+    }
+    const events = slot.pending;
+    if (events && wss && response.headers.has(UPGRADE_MARKER)) {
+        wss.handleUpgrade(req, socket, head, (ws) => {
+            wss.emit?.("connection", ws, req);
+            attachNodeSocket(events, ws);
+        });
+        return;
+    }
+    const res = respond();
+    try {
+        await writeResponse(res, response);
+    } catch (err) {
+        if (!controller.signal.aborted) writeFailure(res, err);
     }
 }
 
@@ -384,9 +456,20 @@ async function serveLazily(core: AppCore, req: IncomingMessage, res: ServerRespo
  */
 export function serve(
     app: App,
-    options: { port: number; hostname?: string | undefined; maxRequestBodySize?: number | undefined },
+    options: {
+        port: number;
+        hostname?: string | undefined;
+        maxRequestBodySize?: number | undefined;
+        webSocketServer?: WebSocketServerLike | undefined;
+    },
 ): Server {
     const core = nodeCoreOf(app);
+    const wss = options.webSocketServer;
+    // 開発モードのアプリ(createApp() で作り、開発モードなので core を持たない)で、maxPayload が ws の既定のままなら知らせる
+    const devApp = !core && typeof (app as { routeList?: unknown }).routeList === "function";
+    if (devApp && wss && (wss.options?.maxPayload ?? WS_DEFAULT_MAX_PAYLOAD) === WS_DEFAULT_MAX_PAYLOAD) {
+        console.warn(`[senri] ${NODE_MESSAGES[terminalLang()].maxPayload}`);
+    }
     const max = checkMaxRequestBodySize(options.maxRequestBodySize);
     const server = createServer((req, res) => {
         if (NOT_IMPLEMENTED.has(req.method ?? "")) {
@@ -404,6 +487,10 @@ export function serve(
         }
         return core ? serveLazily(core, req, res, cap) : serveWithFetch(app, req, res, cap);
     });
+
+    // Upgrade ヘッダーのあるリクエスト(WebSocket など)。webSocketServer を渡していなくても、アプリには届ける
+    // (upgradeWebSocket() のルートなら、開発モードで「webSocketServer を渡して」と分かるように)
+    server.on("upgrade", (req: IncomingMessage, socket: Duplex, head: Buffer) => void serveUpgrade(app, req, socket, head, wss));
 
     // CONNECT は request ではなく connect イベントで来る(聞いていないと、何も返さずに切ってしまう)
     server.on("connect", (_req, socket: Duplex) => notImplemented(socket));

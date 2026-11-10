@@ -122,6 +122,7 @@ describe("辞書", () => {
             "src/dev/explain.ts",
             "src/dev/page.generated.ts",
             "adapters/serve/messages.ts",
+            "adapters/node/messages.ts",
             "ui/src/sample.ts",
         ];
         const walk = (dir: string): string[] =>
