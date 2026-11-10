@@ -67,6 +67,10 @@
       "types": "./dist/src/client.d.ts",
       "import": "./dist/src/client.js"
     },
+    "./testing": {
+      "types": "./dist/src/testing.d.ts",
+      "import": "./dist/src/testing.js"
+    },
     "./node": {
       "types": "./dist/adapters/node/index.d.ts",
       "import": "./dist/adapters/node/index.js"

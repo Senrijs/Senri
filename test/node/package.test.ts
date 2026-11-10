@@ -45,6 +45,13 @@ describe("パッケージ", () => {
         assert.equal(typeof client, "function");
     });
 
+    test('"@senrijs/senri/testing" でテスト用ヘルパーが使える', async () => {
+        assert.match(import.meta.resolve("@senrijs/senri/testing"), /\/dist\/src\/testing\.js$/);
+        const { testClient, request } = await import("@senrijs/senri/testing");
+
+        assert.deepEqual([typeof testClient, typeof request], ["function", "function"]);
+    });
+
     test('"@senrijs/senri/node" で Node アダプターが使える', async () => {
         assert.match(import.meta.resolve("@senrijs/senri/node"), /\/dist\/adapters\/node\/index\.js$/);
         const { serve } = await import("@senrijs/senri/node");

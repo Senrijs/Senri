@@ -366,6 +366,27 @@ await api("POST /users", { body: { name: "a" } });             // ボディは�
 - `data` の型はハンドラーの戻り値です。`Date` は `string` になるなど、JSON にしたあとの形にします。`onError`・ミドルウェア・`notFound` の応答は型に入らず、`error`(`unknown`)に入ります
 - `fetch` を差し替えられます。`client<Api>("http://localhost", { fetch: (req) => app.fetch(req) })` とすれば、サーバーを立てずに呼べます
 
+### テスト(@senrijs/senri/testing)
+
+```ts
+import { request, testClient } from "@senrijs/senri/testing";
+
+// 型付きクライアントで、サーバーを立てずに app.fetch を呼ぶ
+const api = testClient<Api>(app, { cookies: true });
+await api("POST /login", { body: { user: "a", password: "x" } });
+const me = await api("GET /me");                       // ログインの Cookie が付く
+expect(me.status).toBe(200);
+
+// 表にないルートや、型付きでは送れないリクエストは request() で(Response が返る)
+const res = await request(app, "POST /upload", { body: form });
+expect(res.status).toBe(413);
+```
+
+- 接続元は `127.0.0.1` として渡します(`getIp()`・`ipRestriction()`・開発モードの localhost 判定が、本物のサーバーと同じに動きます)。`{ ip }` で変えられます
+- Cloudflare Workers のアプリは `{ env, ctx }` を渡します(`c.env`・`c.executionCtx`)。このときは、Workers と同じく接続元は渡しません
+- `{ cookies: true }` で、前の応答の `Set-Cookie` を次のリクエストに付けます(名前ごとに 1 つ。domain と path は見ません)
+- `{ headers }` で、毎回付けるヘッダーを決められます
+
 ### パスのルール
 
 - 末尾スラッシュと連続スラッシュは無視します。`/users`、`/users/`、`//users` はどれも同じです

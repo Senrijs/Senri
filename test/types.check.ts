@@ -2,6 +2,7 @@
 // 「ts-expect-error」のコメントは、次の行が型エラーになることを期待する。エラーにならなければ、そちらがエラーになる
 import { type } from "arktype";
 import { client, type ClientData, type ClientResult } from "../src/client.ts";
+import { request, testClient } from "../src/testing.ts";
 import * as v from "valibot";
 import { z } from "zod";
 import {
@@ -482,3 +483,17 @@ async function clientTypes() {
     await typedApi("GET /nope");
 }
 void clientTypes;
+
+// --- テスト用ヘルパー(@senrijs/senri/testing) ---
+
+async function testingTypes() {
+    // testClient は、型付きクライアントと同じ型
+    const t = testClient<typeof clientRoutes>(app, { cookies: true, ip: "10.0.0.1" });
+    const res = await t("GET /users/:id", { params: { id: "1" } });
+    if (res.ok) same<typeof res.data.id, string>(true);
+    // @ts-expect-error 表にないルート
+    await t("GET /nope");
+    // request は Response を返す
+    same<Awaited<ReturnType<typeof request>>, Response>(true);
+}
+void testingTypes;
