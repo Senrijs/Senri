@@ -77,7 +77,7 @@ See the [CHANGELOG](./CHANGELOG.md) for details.
 - [x] Middleware: cache headers (`cache()`)
 - [x] Middleware: language detection (`languageDetector()`)
 - [x] Middleware: pretty JSON (`prettyJSON()`)
-- [ ] Performance: a fast path for string responses, HTTP benchmarks with wrk (after the helpers)
+- [x] Performance: a fast path for string responses (no Request or Response on Node.js, including the default 404), no Host header read on Bun, HTTP benchmarks with wrk (Bun, Node.js and Deno)
 - [x] Trusted-proxy support (`trustProxy()`; counts proxies from the right and never trusts the first `X-Forwarded-For` value)
 - [ ] Documentation site (senri.skyia.jp): the top page, 404 page and playground are live; the docs content is still to come
 

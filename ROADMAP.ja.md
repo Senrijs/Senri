@@ -77,7 +77,7 @@ Senri がこれから向かう先です。バージョンは目標であって�
 - [x] ミドルウェア: キャッシュのヘッダー(`cache()`)
 - [x] ミドルウェア: 言語判定(`languageDetector()`)
 - [x] ミドルウェア: Pretty JSON(`prettyJSON()`)
-- [ ] 性能: 文字列を返すときの速い道、wrk での HTTP のベンチマーク(ヘルパーのあと)
+- [x] 性能: 文字列を返すときの速い道(Node.js で Request も Response も作らない。既定の 404 も)、Bun で Host を読まない、wrk での HTTP のベンチマーク(Bun・Node.js・Deno)
 - [x] プロキシ対応(`trustProxy()`。右から数えて、`X-Forwarded-For` の先頭は信じない)
 - [ ] ドキュメントサイト(senri.skyia.jp): トップページ、404、プレイグラウンドまで公開。ドキュメントの中身はこれから
 
