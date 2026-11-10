@@ -63,6 +63,10 @@
       "types": "./dist/src/jwt.d.ts",
       "import": "./dist/src/jwt.js"
     },
+    "./client": {
+      "types": "./dist/src/client.d.ts",
+      "import": "./dist/src/client.js"
+    },
     "./node": {
       "types": "./dist/adapters/node/index.d.ts",
       "import": "./dist/adapters/node/index.js"

@@ -38,6 +38,13 @@ describe("パッケージ", () => {
         assert.deepEqual([typeof contextStorage, typeof getContext, typeof tryGetContext], ["function", "function", "function"]);
     });
 
+    test('"@senrijs/senri/client" で型付きクライアントが使える', async () => {
+        assert.match(import.meta.resolve("@senrijs/senri/client"), /\/dist\/src\/client\.js$/);
+        const { client } = await import("@senrijs/senri/client");
+
+        assert.equal(typeof client, "function");
+    });
+
     test('"@senrijs/senri/node" で Node アダプターが使える', async () => {
         assert.match(import.meta.resolve("@senrijs/senri/node"), /\/dist\/adapters\/node\/index\.js$/);
         const { serve } = await import("@senrijs/senri/node");

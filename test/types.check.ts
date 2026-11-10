@@ -1,6 +1,7 @@
 // 型だけのテスト。bun test では実行せず、bun check(bun run typecheck)で確かめる
 // 「ts-expect-error」のコメントは、次の行が型エラーになることを期待する。エラーにならなければ、そちらがエラーになる
 import { type } from "arktype";
+import { client, type ClientData, type ClientResult } from "../src/client.ts";
 import * as v from "valibot";
 import { z } from "zod";
 import {
@@ -436,3 +437,48 @@ app.routes(adminTable);
 
 // 型を決めていないミドルウェア(logger() など)を並べても、型は壊れない
 defineRoutes({ "GET /log": endpoint({ use: [logger()] }, () => "ok") });
+
+// --- 型付きクライアント(@senrijs/senri/client) ---
+
+const clientRoutes = defineRoutes({
+    "GET /users/:id": ({ id }) => ({ id, at: new Date(), tags: new Set<string>(), note: undefined as string | undefined, skip: () => 1 }),
+    "POST /users": endpoint({ body: userSchema, query: z.object({ dry: z.string().optional() }) }, (_, c) => ({ created: c.valid("body").name })),
+    "GET /text": () => "hi",
+    "GET /bytes": () => new Uint8Array([1]),
+    "GET /raw": () => new Response("x"),
+    "GET /async": async () => [1, 2] as const,
+});
+const typedApi = client<typeof clientRoutes>("https://example.com");
+
+async function clientTypes() {
+    const user = await typedApi("GET /users/:id", { params: { id: "1" } });
+    if (user.ok) {
+        // JSON にしたあとの形: Date → string、Set → {}、undefined になりうるものは省略可能、関数は消える
+        same<typeof user.data, { id: string; at: string; tags: {}; note?: string }>(true);
+    } else {
+        same<typeof user.error, unknown>(true);
+    }
+    same<Awaited<ReturnType<typeof typedApi<"GET /text">>>, ClientResult<string>>(true);
+    same<ClientData<typeof clientRoutes, "GET /bytes">, Blob>(true);
+    same<ClientData<typeof clientRoutes, "GET /raw">, unknown>(true);
+    same<ClientData<typeof clientRoutes, "GET /async">, readonly [1, 2]>(true);
+
+    // 何も要らないルートは、2 つ目の引数を省ける
+    await typedApi("GET /text");
+    // ボディはスキーマの入力の型。クエリもスキーマがあればその型
+    await typedApi("POST /users", { body: { name: "a" }, query: { dry: "1" } });
+    // パラメーターは数でもよい(文字列にして送る)
+    await typedApi("GET /users/:id", { params: { id: 1 } });
+
+    // @ts-expect-error パラメーターが要るルートは、省けない
+    await typedApi("GET /users/:id");
+    // @ts-expect-error パラメーターの名前違い
+    await typedApi("GET /users/:id", { params: { userId: "1" } });
+    // @ts-expect-error ボディのスキーマがあるルートは、ボディを省けない
+    await typedApi("POST /users", {});
+    // @ts-expect-error ボディの型が違う
+    await typedApi("POST /users", { body: { name: 1 } });
+    // @ts-expect-error 表にないルート
+    await typedApi("GET /nope");
+}
+void clientTypes;
