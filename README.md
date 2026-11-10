@@ -368,6 +368,26 @@ app.post("/search", async (_, c) => {
   - `maxAge` はブラウザに捨ててもらうだけなので、同じ値を後から送り直すことはできます。期限を守らせたいときは、値に期限を入れて確かめてください
   - Bun・Deno・Node.js・Cloudflare Workers・ブラウザ(Service Worker。`crypto.subtle` は HTTPS か localhost でだけ使えます)で動きます
 
+### どこからでも `c` を取る(Context Storage)
+
+```ts
+import { contextStorage, getContext } from "@senrijs/senri/context-storage";
+
+app.use(contextStorage());                        // ほかのミドルウェアより先に
+
+// c を引数で渡さなくても、いま処理しているリクエストの c が取れる(await のあとでも)
+function currentUser() {
+    return getContext().req.headers.get("x-user");
+}
+app.get("/me", () => currentUser());
+```
+
+- `AsyncLocalStorage`(`node:async_hooks`)を使います。Bun・Deno・Node.js はそのまま動きます
+- **Cloudflare Workers では、wrangler の設定に `nodejs_als`(または `nodejs_compat`)の互換性フラグを付けてください。** 古い compatibility date では、付けないと `No such module "node:async_hooks"` で起動しません。wrangler を使わずに自分でまとめるときは、`node:*` をまとめずに残してください
+- **ブラウザ(Service Worker)では使えません。** ブラウザには `node:async_hooks` がないので、この入口を読み込めません。`c` を引数で渡してください
+- 後ろのミドルウェア、ハンドラー、`contextStorage()` より内側で起きたエラーの `onError`、`app.notFound`、ストリームの中から取れます。`contextStorage()` より前のミドルウェアや、リクエストの外(起動時など)では、`getContext()` は例外(`code: "no_context"`)、`tryGetContext()` は `undefined` です
+- ハンドラーで始めたタイマーは、レスポンスのあとでもそのリクエストの `c` が見えます(`AsyncLocalStorage` の性質)。そこでは使い続けないでください
+
 ## バリデーション
 
 ルートにスキーマを渡すと、ハンドラーを呼ぶ前に確かめます。[Standard Schema](https://standardschema.dev) に対応したライブラリ(Zod・Valibot・ArkType など)のスキーマが、そのまま使えます。

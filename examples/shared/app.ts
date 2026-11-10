@@ -3,6 +3,7 @@ import { devtools } from "../../src/dev/index.ts";
 import { getSignedCookie, setSignedCookie } from "../../src/cookie.ts";
 import { getIp } from "../../src/ip.ts";
 import { checkJwtAlgorithms } from "./jwt-check.ts";
+import { contextStorage, getContext } from "../../adapters/context-storage/index.ts";
 import { multipart } from "../../src/multipart.ts";
 import { problem } from "../../src/problem.ts";
 
@@ -88,6 +89,14 @@ app.use("/csrf", csrf());
 app.post("/csrf", () => "accepted");
 // JWT: すべてのアルゴリズムで、署名して確かめられるか(通ったアルゴリズムの名前を返す)
 app.get("/jwt", async () => (await checkJwtAlgorithms()).join(","));
+// Context Storage: c を渡さずに、await のあとでもいまのリクエストの c を取る
+// (Workers では nodejs_als か nodejs_compat のフラグが要る。examples/workers/config.capnp で付けている)
+const currentPath = () => getContext().path;
+app.use("/context", contextStorage());
+app.get("/context/:id", async () => {
+    await new Promise((resolve) => setTimeout(resolve, 1));
+    return currentPath();
+});
 app.get("/page", (_, c) => c.html("<h1>こんにちは!</h1>"));
 // ログインしたら Cookie を付けて、別のページへ
 app.get("/login", (_, c) => {

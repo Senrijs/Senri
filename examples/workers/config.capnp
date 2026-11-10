@@ -1,5 +1,5 @@
 # workerd で examples/workers を動かす設定(scripts/smoke.ts が使う)
-# worker.js は bun build でまとめたもの: bun build examples/workers/index.ts --outfile examples/workers/dist/worker.js
+# worker.js は bun build でまとめたもの: bun build examples/workers/index.ts --target browser --format esm --external 'node:*' --outfile examples/workers/dist/worker.js
 using Workerd = import "/workerd/workerd.capnp";
 
 const config :Workerd.Config = (
@@ -10,5 +10,7 @@ const config :Workerd.Config = (
 const worker :Workerd.Worker = (
   modules = [(name = "worker.js", esModule = embed "dist/worker.js")],
   compatibilityDate = "2026-10-01",
+  # @senrijs/senri/context-storage(AsyncLocalStorage)を使うため。今の compatibility date ではなくても動くが、古い日付では要る
+  compatibilityFlags = ["nodejs_als"],
   bindings = [(name = "GREETING", text = "Workers から、こんにちは")],
 );

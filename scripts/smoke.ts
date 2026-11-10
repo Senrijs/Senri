@@ -29,7 +29,8 @@ const RUNTIMES: Record<string, { command: string[]; port: number; note: RegExp |
     node: { command: ["node", "examples/node/index.ts"], port: ENV_PORT, note: ENV_NOTE },
     // ポートは examples/workers/config.capnp で決めている
     workers: {
-        build: ["bun", "build", "examples/workers/index.ts", "--target", "browser", "--format", "esm", "--outfile", "examples/workers/dist/worker.js"],
+        // node:async_hooks(Context Storage)は workerd が nodejs_als のフラグで用意するので、node:* はまとめずに残す(wrangler と同じ。"node:async_hooks" と1つだけ書くと、Bun は空のものに置き換える)
+        build: ["bun", "build", "examples/workers/index.ts", "--target", "browser", "--format", "esm", "--external", "node:*", "--outfile", "examples/workers/dist/worker.js"],
         command: ["workerd", "serve", "examples/workers/config.capnp"],
         port: 3929,
         note: null,
@@ -154,6 +155,7 @@ const CHECKS: Check[] = [
     },
     { name: "csrf()(古いブラウザ・よそ)", path: "/csrf", init: { method: "POST", headers: { origin: "https://evil.example" } }, status: 403 },
     { name: "JWT(すべてのアルゴリズム)", path: "/jwt", status: 200, body: "HS256,HS384,HS512,RS256,RS384,RS512,PS256,PS384,PS512,ES256,ES384,EdDSA,Ed25519" },
+    { name: "Context Storage(await のあとの getContext())", path: "/context/42", status: 200, body: "/context/42" },
     { name: "日本語パラメーター", path: "/users/山田", status: 200, body: "user 山田" },
     { name: "c.html()", path: "/page", status: 200, body: "<h1>こんにちは!</h1>", type: "text/html; charset=utf-8" },
     {

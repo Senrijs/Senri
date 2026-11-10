@@ -31,6 +31,13 @@ describe("パッケージ", () => {
         assert.deepEqual([typeof jwt, typeof signJwt, typeof verifyJwt, typeof JwtError], ["function", "function", "function", "function"]);
     });
 
+    test('"@senrijs/senri/context-storage" で Context Storage が使える', async () => {
+        assert.match(import.meta.resolve("@senrijs/senri/context-storage"), /\/dist\/adapters\/context-storage\/index\.js$/);
+        const { contextStorage, getContext, tryGetContext } = await import("@senrijs/senri/context-storage");
+
+        assert.deepEqual([typeof contextStorage, typeof getContext, typeof tryGetContext], ["function", "function", "function"]);
+    });
+
     test('"@senrijs/senri/node" で Node アダプターが使える', async () => {
         assert.match(import.meta.resolve("@senrijs/senri/node"), /\/dist\/adapters\/node\/index\.js$/);
         const { serve } = await import("@senrijs/senri/node");
