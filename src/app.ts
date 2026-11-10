@@ -15,7 +15,7 @@ import {
 } from "./router.ts";
 import { compose, type Layer } from "./compose.ts";
 import { createMatcher } from "./matcher.ts";
-import { routeHandler, type RouteSchemas, type Validated, type ValidatedParams } from "./validate.ts";
+import { routeHandler, type RouteSchemas, type StandardSchemaV1, type Validated, type ValidatedParams } from "./validate.ts";
 import { groupEntries, joinPath, type GroupEntry, type Router } from "./group.ts";
 import { isEndpoint, type TableShape } from "./routes.ts";
 import {
@@ -255,6 +255,9 @@ export type DevInstalled = {
     // 登録時のエラーに、日本語の説明を付ける
     /** Adds an explanation to an error thrown while registering, and returns the error to throw. */
     explain(err: unknown): unknown;
+    // endpoint({ response }) のルートで、ハンドラーの戻り値をスキーマで確かめるハンドラーにする
+    /** Wraps the handler of a route with a `response` schema to check its return value. */
+    watchResponse?(route: string, schema: StandardSchemaV1, handler: Handler): Handler;
 };
 
 // 0.1 の createApp({ dev: true }) は使えなくなった。どう書き換えるかを案内する
@@ -470,10 +473,13 @@ export function createApp<V extends object = Record<string, unknown>>(options: A
                 const [method, path] = key.split(" ");
                 if (!method || !path) throw senriError("route_key", `Invalid route key: "${key}" (e.g. "GET /hello")`);
                 if (isEndpoint(value)) {
-                    // use はミドルウェア。スキーマ(params / query / body)とは分けて渡す(開発モードがスキーマのキーを確かめるため)
-                    const { use, ...schemas } = value.schemas;
+                    // スキーマ(params / query / body)と、それ以外(use はミドルウェア、ほかは OpenAPI 用)を分ける
+                    // (開発モードがスキーマのキーを確かめるため)
+                    const { use, response, responses, bodyType, openapi, ...schemas } = value.schemas;
                     // スキーマがなければ、確かめる処理で包まない(use だけのルート)
-                    const handler = Object.keys(schemas).length === 0 ? (value.handler as Handler) : routeHandler(path, schemas, value.handler as Handler);
+                    let handler = Object.keys(schemas).length === 0 ? (value.handler as Handler) : routeHandler(path, schemas, value.handler as Handler);
+                    // 開発モードでは、ハンドラーの戻り値を response のスキーマで確かめる(本番では確かめない)
+                    if (response && devHooks?.watchResponse) handler = devHooks.watchResponse(`${method.toUpperCase()} ${path}`, response, handler);
                     add(method.toUpperCase(), path, handler, schemas, use as readonly Middleware[] | undefined);
                 }
                 else if (typeof value === "function") add(method.toUpperCase(), path, value as Handler);

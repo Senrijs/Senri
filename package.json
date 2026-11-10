@@ -67,6 +67,10 @@
       "types": "./dist/src/client.d.ts",
       "import": "./dist/src/client.js"
     },
+    "./openapi": {
+      "types": "./dist/src/openapi.d.ts",
+      "import": "./dist/src/openapi.js"
+    },
     "./node": {
       "types": "./dist/adapters/node/index.d.ts",
       "import": "./dist/adapters/node/index.js"
