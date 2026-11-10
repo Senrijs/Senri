@@ -1,4 +1,4 @@
-import { compress, createApp, health, logger, type StandardSchemaV1 } from "../../src/index.ts";
+import { compress, createApp, csrf, health, logger, type StandardSchemaV1 } from "../../src/index.ts";
 import { devtools } from "../../src/dev/index.ts";
 import { getSignedCookie, setSignedCookie } from "../../src/cookie.ts";
 import { getIp } from "../../src/ip.ts";
@@ -82,6 +82,9 @@ app.get("/legacy", (_, c) => {
     c.header("x-docs", "/v2");
     return problem(c, { status: 410, detail: "Use /v2 instead.", since: "2026-01-01" });
 });
+// CSRF 対策: よそのサイトのページからの POST は 403
+app.use("/csrf", csrf());
+app.post("/csrf", () => "accepted");
 app.get("/page", (_, c) => c.html("<h1>こんにちは!</h1>"));
 // ログインしたら Cookie を付けて、別のページへ
 app.get("/login", (_, c) => {

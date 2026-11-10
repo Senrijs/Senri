@@ -201,6 +201,8 @@ const devOnError =
                     return c.text(serverMessage(langOf(c), "res.queryNoBody"));
                 case "query_no_type":
                     return c.text(serverMessage(langOf(c), "res.queryNoType"));
+                case "csrf_rejected":
+                    return c.text(serverMessage(langOf(c), "res.csrfRejected", { method: c.req.method, origin: c.req.headers.get("origin") ?? "?" }));
             }
             return c.text(err.message);
         }

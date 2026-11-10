@@ -42,8 +42,8 @@ type Check = {
     only?: string[];
     except?: string[];
     path: string;
-    // 本文がストリームのときは、毎回作り直す(1回しか読めないため)
-    init?: RequestInit | (() => RequestInit);
+    // 本文がストリームのときは、毎回作り直す(1回しか読めないため)。base はアプリの URL(http://localhost:<port>)
+    init?: RequestInit | ((base: string) => RequestInit);
     status: number;
     body?: string;
     cookies?: string[];
@@ -130,6 +130,29 @@ const CHECKS: Check[] = [
         type: "application/problem+json",
         body: `{"type":"about:blank","title":"Gone","status":410,"detail":"Use /v2 instead.","since":"2026-01-01"}`,
     },
+    { name: "csrf()(ブラウザ以外)", path: "/csrf", init: { method: "POST" }, status: 200, body: "accepted" },
+    {
+        name: "csrf()(同じオリジン)",
+        path: "/csrf",
+        init: { method: "POST", headers: { "sec-fetch-site": "same-origin" } },
+        status: 200,
+        body: "accepted",
+    },
+    {
+        name: "csrf()(よそのサイト)",
+        path: "/csrf",
+        init: { method: "POST", headers: { "sec-fetch-site": "cross-site", origin: "https://evil.example" } },
+        status: 403,
+    },
+    // Sec-Fetch-Site のない古いブラウザ: Origin のホストを Host と比べる
+    {
+        name: "csrf()(古いブラウザ・同じホスト)",
+        path: "/csrf",
+        init: (base) => ({ method: "POST", headers: { origin: base } }),
+        status: 200,
+        body: "accepted",
+    },
+    { name: "csrf()(古いブラウザ・よそ)", path: "/csrf", init: { method: "POST", headers: { origin: "https://evil.example" } }, status: 403 },
     { name: "日本語パラメーター", path: "/users/山田", status: 200, body: "user 山田" },
     { name: "c.html()", path: "/page", status: 200, body: "<h1>こんにちは!</h1>", type: "text/html; charset=utf-8" },
     {
@@ -414,7 +437,7 @@ async function smoke(runtime: string): Promise<boolean> {
         for (const check of CHECKS) {
             if (check.only && !check.only.includes(runtime)) continue;
             if (check.except?.includes(runtime)) continue;
-            const res = await fetch(`${base}${check.path}`, typeof check.init === "function" ? check.init() : check.init);
+            const res = await fetch(`${base}${check.path}`, typeof check.init === "function" ? check.init(base) : check.init);
             const body = await res.text();
             const cookies = res.headers.getSetCookie();
             let reason: string | null = null;
