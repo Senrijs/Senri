@@ -276,6 +276,38 @@ app.route(posts);
 app.route("/admin", adminApp);                             // 別の createApp() をつなぐこともできる
 ```
 
+### ルートの表(defineRoutes)
+
+ルートを表にまとめて定義すると、ルートの型(パス・パラメーター・スキーマ・ハンドラーの戻り値)を持ったまま、ファイルの外に出せます。
+
+```ts
+import { createApp, defineRoutes, endpoint, mergeRoutes } from "@senrijs/senri";
+import { z } from "zod";
+
+// キーは "メソッド /パス"。パラメーターはキーから型が付く
+export const userRoutes = defineRoutes({
+    "GET /users/:id": ({ id }) => ({ id }),
+    // スキーマを付けるルートは endpoint(schemas, handler) で包む(app.post(path, schemas, handler) と同じ引数)
+    "POST /users": endpoint({ body: z.object({ name: z.string() }) }, (_, c) => ({ created: c.valid("body").name })),
+});
+
+// 前置きは 2 段で書く。前置きのパラメーターも、中のハンドラーで型が付く
+export const orgRoutes = defineRoutes("/orgs/:orgId")({
+    "GET /": ({ orgId }) => `org ${orgId}`,                    // "GET /orgs/:orgId"
+    "GET /members/:memberId": ({ orgId, memberId }) => ({ orgId, memberId }),
+});
+
+// 表を合わせる(同じキーが 2 つあればエラー)
+export const routes = mergeRoutes(userRoutes, orgRoutes);
+
+const app = createApp();
+app.routes(routes);
+```
+
+- 前置きは `/` で始め、`/` で終わらないように書きます(`"/users"`)
+- `c.get()` に型を付けるときは、前置きと一緒にアプリの型を渡します: `defineRoutes<"/admin", Vars>("/admin")({ ... })`
+- パスの書き方の確認と、同じルートの 2 回登録の確認は、`app.routes()` に渡したときに `app.get()` と同じく行います
+
 ### パスのルール
 
 - 末尾スラッシュと連続スラッシュは無視します。`/users`、`/users/`、`//users` はどれも同じです
