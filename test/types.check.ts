@@ -5,6 +5,9 @@ import * as v from "valibot";
 import { z } from "zod";
 import {
     createApp,
+    defineRoutes,
+    endpoint,
+    mergeRoutes,
     logger,
     type Context,
     type ExecutionContext,
@@ -335,4 +338,71 @@ app.get("/v6", (_, c) => {
     // @ts-expect-error スキーマを渡していない
     c.valid("body");
     return "x";
+});
+
+// --- defineRoutes() / endpoint() / mergeRoutes() ---
+
+// 型が同じかを確かめる(違えば、代入の行がエラーになる)
+type Same<A, B> = (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2 ? true : false;
+const same = <A, B>(ok: Same<A, B>) => ok;
+
+const userSchema = z.object({ name: z.string() });
+const idSchema = z.object({ id: z.coerce.number() });
+
+const table = defineRoutes({
+    // キーのパスから、パラメーターが推論される
+    "GET /users/:id": ({ id }) => ({ id, upper: id.toUpperCase() }),
+    // スキーマ付き: c.valid() に型が付く
+    "POST /users": endpoint({ body: userSchema }, (_, c) => ({ created: c.valid("body").name })),
+    // params のスキーマがあれば、その出力の型
+    "GET /items/:id": endpoint({ params: idSchema }, ({ id }) => ({ next: id + 1 })),
+    "GET /text": () => "hi",
+});
+// キーと、ハンドラーの戻り値の型が残る
+same<keyof typeof table, "GET /users/:id" | "POST /users" | "GET /items/:id" | "GET /text">(true);
+same<ReturnType<(typeof table)["GET /users/:id"]>, { id: string; upper: string }>(true);
+same<ReturnType<(typeof table)["POST /users"]["handler"]>, { created: string }>(true);
+same<ReturnType<(typeof table)["GET /items/:id"]["handler"]>, { next: number }>(true);
+
+// 前置きは 2 段。前置きのパラメーターも、中のハンドラーで型が付く
+const orgs = defineRoutes("/orgs/:orgId")({
+    "GET /": ({ orgId }) => orgId,
+    "GET /members/:memberId": ({ orgId, memberId }) => ({ orgId, memberId }),
+    "POST /members": endpoint({ body: userSchema }, ({ orgId }, c) => `${orgId} ${c.valid("body").name}`),
+});
+same<keyof typeof orgs, "GET /orgs/:orgId" | "GET /orgs/:orgId/members/:memberId" | "POST /orgs/:orgId/members">(true);
+
+// mergeRoutes() の型は、表を合わせたもの
+const merged = mergeRoutes(table, orgs);
+same<keyof typeof merged, keyof typeof table | keyof typeof orgs>(true);
+
+// app.routes() に渡せる
+app.routes(table);
+app.routes(merged);
+
+// c.get() の型は、前置きと一緒にアプリの型を渡すと付く
+const admin = defineRoutes<"/admin", { user: { name: string } }>("/admin")({
+    "GET /me": (_, c) => c.get("user")?.name ?? "",
+});
+same<ReturnType<(typeof admin)["GET /admin/me"]>, string>(true);
+
+defineRoutes({
+    // @ts-expect-error パスにないパラメーターは使えない
+    "GET /x/:id": ({ nope }) => nope,
+});
+defineRoutes("/orgs/:orgId")({
+    // @ts-expect-error 前置きにないパラメーターは使えない
+    "GET /x": ({ teamId }) => teamId,
+});
+// @ts-expect-error メソッドとパスの間にスペースがない(エラーは呼び出しの行に出る)
+defineRoutes({
+    "GET/x": () => "x",
+});
+defineRoutes({
+    // @ts-expect-error スキーマを渡していないものは c.valid() で読めない
+    "POST /x": endpoint({ body: userSchema }, (_, c) => c.valid("query")),
+});
+// @ts-expect-error 関数を返す(呼び忘れ)のは型エラー(エラーは呼び出しの行に出る)
+defineRoutes({
+    "GET /fn": () => () => 1,
 });

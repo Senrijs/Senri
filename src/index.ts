@@ -41,7 +41,18 @@ export {
 } from "./context.ts";
 export { HttpError, type ErrorHandler, type NotFoundHandler } from "./errors.ts";
 export {
+    defineRoutes,
+    endpoint,
+    mergeRoutes,
+    type Endpoint,
+    type RouteParams,
+    type Routes,
+    type RoutesTable,
+    type TableShape,
+} from "./routes.ts";
+export {
     ValidationError,
+    type InferInput,
     type InferOutput,
     type RouteSchemas,
     type StandardIssue,

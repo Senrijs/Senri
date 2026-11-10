@@ -17,6 +17,7 @@ import { compose, type Layer } from "./compose.ts";
 import { createMatcher } from "./matcher.ts";
 import { routeHandler, type RouteSchemas, type Validated, type ValidatedParams } from "./validate.ts";
 import { groupEntries, joinPath, type GroupEntry, type Router } from "./group.ts";
+import { isEndpoint, type TableShape } from "./routes.ts";
 import {
     defaultNotFound,
     defaultOnError,
@@ -163,6 +164,12 @@ export type App<V extends object = Record<string, unknown>> = {
     on: OnMethod<V>;
     /** Adds routes from a table keyed by `"METHOD /path"`: `app.routes({ "GET /hello": () => "hi" })`. */
     routes<K extends string>(table: RouteTable<K, V>): void;
+    /**
+     * Adds routes from a table made with {@link defineRoutes}, including routes with schemas made with {@link endpoint}.
+     * The same checks as {@link App.get} apply to each route.
+     */
+    // キーの書き方は、defineRoutes() と同じく型で確かめる(表のハンドラーの c.get() の型は、表を作ったときのもの)
+    routes<const T extends object>(table: T & NoInfer<TableShape<"", T, any>>): void;
     /**
      * Mounts a router from {@link createRouter}, or another app under a prefix: `app.route("/api", api)`.
      * What is registered at this point is copied into this app.
@@ -450,11 +457,14 @@ export function createApp<V extends object = Record<string, unknown>>(options: A
         }) as OnMethod<V>,
 
         // K はテーブルのキーから推論される。各キーのパスからパラメーターの型が決まる
-        routes: guard(<K extends string>(table: RouteTable<K, V>) => {
-            for (const [key, handler] of Object.entries(table) as [string, Handler][]) {
+        // 値は、ハンドラーか、defineRoutes() の表の endpoint()(スキーマ付き)
+        routes: guard((table: object) => {
+            for (const [key, value] of Object.entries(table)) {
                 const [method, path] = key.split(" ");
                 if (!method || !path) throw senriError("route_key", `Invalid route key: "${key}" (e.g. "GET /hello")`);
-                add(method.toUpperCase(), path, handler);
+                if (isEndpoint(value)) add(method.toUpperCase(), path, routeHandler(path, value.schemas, value.handler as Handler), value.schemas);
+                else if (typeof value === "function") add(method.toUpperCase(), path, value as Handler);
+                else throw senriError("route_value", `Invalid route: "${key}"`);
             }
         }) as App<V>["routes"],
 

@@ -40,6 +40,10 @@ export type StandardIssue = {
     readonly path?: readonly (PropertyKey | { readonly key: PropertyKey })[] | undefined;
 };
 
+// 送る側(クライアント)が渡す型。変換の前の形
+/** The input type of a {@link StandardSchemaV1} (before any transforms): what a client sends. */
+export type InferInput<S> = S extends StandardSchemaV1<infer Input, any> ? Input : never;
+
 /** The output type of a {@link StandardSchemaV1} (after any transforms). */
 export type InferOutput<S> = S extends StandardSchemaV1<any, infer Output> ? Output : never;
 
