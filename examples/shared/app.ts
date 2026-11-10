@@ -1,5 +1,6 @@
 import { compress, createApp, health, logger, type StandardSchemaV1 } from "../../src/index.ts";
 import { devtools } from "../../src/dev/index.ts";
+import { getSignedCookie, setSignedCookie } from "../../src/cookie.ts";
 import { getIp } from "../../src/ip.ts";
 import { multipart } from "../../src/multipart.ts";
 
@@ -67,6 +68,13 @@ app.get("/cookies", (_, c) => {
     c.header("set-cookie", "a=1");
     c.header("set-cookie", "b=2");
     return "ok";
+});
+// 署名付き Cookie: 送られてきたものを確かめて返し、新しく署名したものを付ける
+// (秘密鍵は、本物のアプリではコードに書かず、環境変数や c.env から読む)
+app.get("/signed", async (_, c) => {
+    const user = await getSignedCookie(c, "user", "example-secret");
+    await setSignedCookie(c, "user", "42", "example-secret");
+    return String(user);
 });
 app.get("/page", (_, c) => c.html("<h1>こんにちは!</h1>"));
 // ログインしたら Cookie を付けて、別のページへ

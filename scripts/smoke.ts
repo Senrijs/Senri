@@ -58,6 +58,10 @@ type Check = {
 
 const browser = { accept: "text/html,application/xhtml+xml,*/*;q=0.8" };
 
+// 署名付き Cookie(/signed)の正しい値。どのランタイムでも、Web Crypto の HMAC-SHA256 で同じ署名になるはず
+const SIGNED_KEY = await crypto.subtle.importKey("raw", new TextEncoder().encode("example-secret"), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+const SIGNED_USER = `42.${Buffer.from(await crypto.subtle.sign("HMAC", SIGNED_KEY, new TextEncoder().encode("user=42"))).toString("base64url")}`;
+
 // multipart() の確かめに送る本文。64 KiB を 256 回、ストリームで(fetch はチャンク転送で送る)
 const UPLOAD_BOUNDARY = "----senri-smoke";
 const UPLOAD_CHUNK = 64 * 1024;
@@ -104,6 +108,21 @@ const CHECKS: Check[] = [
         },
     },
     { name: "Set-Cookie 2つ", path: "/cookies", status: 200, cookies: ["a=1", "b=2"] },
+    {
+        name: "署名付き Cookie(付ける)",
+        path: "/signed",
+        status: 200,
+        body: "undefined",
+        cookies: [`user=${SIGNED_USER}; Path=/; HttpOnly; SameSite=Lax`],
+    },
+    { name: "署名付き Cookie(確かめる)", path: "/signed", init: { headers: { cookie: `user=${SIGNED_USER}` } }, status: 200, body: "42" },
+    {
+        name: "署名付き Cookie(書き換え)",
+        path: "/signed",
+        init: { headers: { cookie: `user=43${SIGNED_USER.slice(2)}` } },
+        status: 200,
+        body: "false",
+    },
     { name: "日本語パラメーター", path: "/users/山田", status: 200, body: "user 山田" },
     { name: "c.html()", path: "/page", status: 200, body: "<h1>こんにちは!</h1>", type: "text/html; charset=utf-8" },
     {
