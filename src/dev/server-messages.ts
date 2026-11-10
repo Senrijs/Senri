@@ -16,6 +16,7 @@ const en = {
     "res.methodNotAllowed": "405 Method Not Allowed: {method} {path}\nAllowed: {allow}",
     "res.queryNoBody": "400 Bad Request: this QUERY request has no body\nQUERY is a method that sends the search conditions in the body",
     "res.queryNoType": "415 Unsupported Media Type: this QUERY request has no Content-Type\nSpecify the format of the body (for example, Content-Type: application/json)",
+    "res.csrfRejected": "403 Forbidden: csrf() rejected a {method} request from another origin ({origin})\nIf you trust that origin, add it with csrf({ origin: [...] })",
     "res.didYouMean": "Did you mean: {method} {path} ?",
     "res.validation": "400 Bad Request: {target} failed schema validation",
 
@@ -46,6 +47,7 @@ const ja: Record<ServerMessageKey, string> = {
     "res.methodNotAllowed": "405 Method Not Allowed: {method} {path}\n{allow} ならあります",
     "res.queryNoBody": "400 Bad Request: QUERY リクエストにボディがありません\nQUERY は、検索の条件をボディに入れて送るメソッドです",
     "res.queryNoType": "415 Unsupported Media Type: QUERY リクエストに Content-Type がありません\nボディの形式を指定してください(例: Content-Type: application/json)",
+    "res.csrfRejected": "403 Forbidden: よそのオリジン({origin})からの {method} リクエストを、csrf() が拒否しました\n信頼できるオリジンなら、csrf({ origin: [...] }) に足してください",
     "res.didYouMean": "もしかして: {method} {path} ?",
     "res.validation": "400 Bad Request: {target}が、スキーマに合いません",
 

@@ -10,7 +10,7 @@ import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import { extname, join } from "node:path";
 import { chromium } from "playwright";
-import { createApp } from "../src/index.ts";
+import { createApp, csrf } from "../src/index.ts";
 import { deleteCookie, getSignedCookie, setCookie, setSignedCookie } from "../src/cookie.ts";
 import { serve as serveNode } from "../adapters/node/index.ts";
 
@@ -70,8 +70,8 @@ try {
     });
     const page = await context.newPage();
     page.on("pageerror", (err) => errors.push(`pageerror: ${err.message}`));
-    // わざと 404 / 410 を返させている URL(/nope・/api/nope・/api/problem)の「Failed to load resource」だけは数えない
-    const expected404 = (url: string) => /\/(api\/)?nope$|\/api\/problem$/.test(url);
+    // わざと 404 / 410 / 403 を返させている URL(/nope・/api/nope・/api/problem・/csrf)の「Failed to load resource」だけは数えない
+    const expected404 = (url: string) => /\/(api\/)?nope$|\/api\/problem$|\/csrf$/.test(url);
     page.on("console", (msg) => {
         if (msg.type() !== "error") return;
         if (msg.text().startsWith("Failed to load resource") && expected404(msg.location().url)) return;
@@ -211,6 +211,20 @@ try {
         return c.redirect("/after-login", 303);
     });
     cookieApp.get("/after-login", () => "ログインしました");
+    // csrf(): ブラウザが付ける Sec-Fetch-Site / Origin で判定できるか。よそのオリジンからの応答は読めないので、サーバー側で status を記録する
+    const csrfStatuses: number[] = [];
+    cookieApp.use("/csrf", async (_, next) => {
+        try {
+            const res = await next();
+            csrfStatuses.push(res.status);
+            return res;
+        } catch (err) {
+            csrfStatuses.push((err as { status?: number }).status ?? 500);
+            throw err;
+        }
+    });
+    cookieApp.use("/csrf", csrf());
+    cookieApp.post("/csrf", () => "accepted");
     // 署名付き Cookie: ブラウザが値を変えずに保存して、送り返すか(. や日本語を含む値)
     cookieApp.get("/signed", async (_, c) => {
         const value = await getSignedCookie(c, "signed", "browser-secret");
@@ -234,6 +248,12 @@ try {
         check("Cookie: ログイン後のリダイレクトで付く", page.url() === `${cookieBase}/after-login` && JSON.stringify(afterLogin) === `["session"]`, `${page.url()} ${JSON.stringify(afterLogin)}`);
         const firstSigned = await (await page.goto(`${cookieBase}/signed`))!.text();
         const secondSigned = await (await page.goto(`${cookieBase}/signed`))!.text();
+        // 同じオリジンのページから(cookieBase)と、よそのオリジンのページから(base。ポートが違う)
+        await page.evaluate(() => fetch("/csrf", { method: "POST", body: "a=1" }));
+        await page.goto(base);
+        await page.evaluate((url) => fetch(url, { method: "POST", mode: "no-cors", body: "a=1" }).catch(() => null), `${cookieBase}/csrf`);
+        check("csrf(): 同じオリジンからは通し、よそのオリジンからは 403", JSON.stringify(csrfStatuses) === "[200,403]", JSON.stringify(csrfStatuses));
+        await page.goto(`${cookieBase}/after-login`);
         check("Cookie: 署名付き Cookie が往復する", firstSigned === "undefined" && secondSigned === "日本語.値", `${firstSigned} ${secondSigned}`);
     } finally {
         cookieServer.close();

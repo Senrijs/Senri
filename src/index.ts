@@ -54,6 +54,7 @@ export type { Layer, Timing, Trace } from "./compose.ts";
 export { logger, showRoutes, type LoggerOptions } from "./logger.ts";
 export { health, type HealthOptions } from "./health.ts";
 export { cors, type CorsOptions } from "./middleware/cors.ts";
+export { csrf, type CsrfOptions } from "./middleware/csrf.ts";
 export { secureHeaders, type SecureHeadersOptions } from "./middleware/secure-headers.ts";
 export { bodyLimit, type BodyLimitOptions } from "./middleware/body-limit.ts";
 export { requestId, type RequestIdOptions, type RequestIdVariables } from "./middleware/request-id.ts";
