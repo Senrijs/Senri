@@ -17,6 +17,7 @@ import * as cookie from "../../../src/cookie.ts";
 import * as streaming from "../../../src/streaming.ts";
 import * as multipart from "../../../src/multipart.ts";
 import * as problem from "../../../src/problem.ts";
+import * as jwt from "../../../src/jwt.ts";
 
 const MAX_BODY = 100 * 1024;
 const FILE = "app.ts";
@@ -53,6 +54,7 @@ const MODULES: Record<string, unknown> = {
     "@senrijs/senri/streaming": streaming,
     "@senrijs/senri/multipart": multipart,
     "@senrijs/senri/problem": problem,
+    "@senrijs/senri/jwt": jwt,
 };
 
 // new Function は前に行を足すので、スタックの行番号から引く数を、このブラウザで調べる

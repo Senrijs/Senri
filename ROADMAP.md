@@ -89,7 +89,7 @@ See the [CHANGELOG](./CHANGELOG.md) for details.
 - [ ] OpenTelemetry: the onion timeline becomes production traces
 - [ ] Prometheus metrics
 - [ ] WebSocket
-- [ ] JWT
+- [x] JWT
 - [x] CSRF protection
 - [x] Signed cookies
 - [x] Problem Details (RFC 9457) error responses

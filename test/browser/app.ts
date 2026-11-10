@@ -2,6 +2,7 @@
 // createApp は、ページでも Service Worker でも @senrijs/senri のものを渡す
 import type { App } from "../../src/index.ts";
 import { problem } from "../../src/problem.ts";
+import { checkJwtAlgorithms } from "../../examples/shared/jwt-check.ts";
 
 export function setup(app: App) {
     app.use(async (c, next) => {
@@ -21,5 +22,6 @@ export function setup(app: App) {
     app.get("/api/item/nope", (_, c) => c.notFound());
     app.get("/api/wild/*", ({ "*": rest }) => `wild: ${rest}`);
     app.get("/api/problem", (_, c) => problem(c, { status: 410, detail: "gone" }));
+    app.get("/api/jwt", async () => (await checkJwtAlgorithms()).join(","));
     return app;
 }

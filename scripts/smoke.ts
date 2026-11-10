@@ -153,6 +153,7 @@ const CHECKS: Check[] = [
         body: "accepted",
     },
     { name: "csrf()(古いブラウザ・よそ)", path: "/csrf", init: { method: "POST", headers: { origin: "https://evil.example" } }, status: 403 },
+    { name: "JWT(すべてのアルゴリズム)", path: "/jwt", status: 200, body: "HS256,HS384,HS512,RS256,RS384,RS512,PS256,PS384,PS512,ES256,ES384,EdDSA,Ed25519" },
     { name: "日本語パラメーター", path: "/users/山田", status: 200, body: "user 山田" },
     { name: "c.html()", path: "/page", status: 200, body: "<h1>こんにちは!</h1>", type: "text/html; charset=utf-8" },
     {

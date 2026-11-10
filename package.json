@@ -59,6 +59,10 @@
       "types": "./dist/src/problem.d.ts",
       "import": "./dist/src/problem.js"
     },
+    "./jwt": {
+      "types": "./dist/src/jwt.d.ts",
+      "import": "./dist/src/jwt.js"
+    },
     "./node": {
       "types": "./dist/adapters/node/index.d.ts",
       "import": "./dist/adapters/node/index.js"

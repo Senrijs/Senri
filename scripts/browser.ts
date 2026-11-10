@@ -105,6 +105,7 @@ try {
             wild: await call("/api/wild/a/%E3%81%82"),
             wildPost: await call("/api/wild/a", { method: "POST" }),
             problem: await call("/api/problem"),
+            jwt: await call("/api/jwt"),
         };
     });
     check("ページ: 文字列 → text/plain", inPage.text.body === "こんにちは" && inPage.text.type === "text/plain; charset=utf-8", JSON.stringify(inPage.text));
@@ -124,6 +125,8 @@ try {
             inPage.problem.mark === "browser",
         JSON.stringify(inPage.problem),
     );
+    const ALL_JWT = "HS256,HS384,HS512,RS256,RS384,RS512,PS256,PS384,PS512,ES256,ES384,EdDSA,Ed25519";
+    check("ページ: JWT(すべてのアルゴリズム)", inPage.jwt.body === ALL_JWT, inPage.jwt.body);
     check("ページ: c.html()", inPage.page.body === "<h1>こんにちは</h1>" && inPage.page.type === "text/html; charset=utf-8", JSON.stringify(inPage.page));
     check("ページ: c.redirect() の相対パス", inPage.go.status === 302 && inPage.go.location === "/api/hello" && inPage.go.body === "", JSON.stringify(inPage.go));
     check("ページ: c.redirect() の日本語ドメイン", inPage.idn.location === "https://xn--r8jz45g.jp/%E3%83%91%E3%82%B9", JSON.stringify(inPage.idn));
@@ -151,6 +154,7 @@ try {
         const notFound = await fetch("/api/item/nope");
         const wild = await fetch("/api/wild/a/b");
         const gone = await fetch("/api/problem");
+        const jwt = await fetch("/api/jwt");
         // redirect: "manual" だと中身の見えない opaqueredirect になるので、たどった結果で確かめる
         const follow = async (path: string) => {
             const r = await fetch(path);
@@ -165,6 +169,7 @@ try {
             notFound: { status: notFound.status, mark: notFound.headers.get("x-senri"), body: await notFound.text() },
             wild: await wild.text(),
             problem: { status: gone.status, type: gone.headers.get("content-type"), body: await gone.text() },
+            jwt: await jwt.text(),
             go: await follow("/api/go"),
             japanese: await follow("/api/go/japanese"),
         };
@@ -188,6 +193,7 @@ try {
                 viaWorker.problem.body === `{"type":"about:blank","title":"Gone","status":410,"detail":"gone"}`,
             JSON.stringify(viaWorker.problem),
         );
+        check("Service Worker: JWT(すべてのアルゴリズム)", viaWorker.jwt === ALL_JWT, viaWorker.jwt);
         check("Service Worker: c.redirect() の相対パス", viaWorker.go.redirected && viaWorker.go.path === "/api/hello" && viaWorker.go.body === "こんにちは", JSON.stringify(viaWorker.go));
         check("Service Worker: c.redirect() の日本語のパス", viaWorker.japanese.redirected && viaWorker.japanese.body === "日本語のルート", JSON.stringify(viaWorker.japanese));
     }
