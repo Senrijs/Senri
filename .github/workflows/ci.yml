@@ -4,6 +4,10 @@ on:
   push:
   pull_request:
 
+# テストを回すだけなので、リポジトリを読めれば足りる
+permissions:
+  contents: read
+
 jobs:
   test:
     runs-on: ubuntu-latest

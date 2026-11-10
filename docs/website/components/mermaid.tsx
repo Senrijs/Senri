@@ -33,7 +33,7 @@ function MermaidContent({ chart }: { chart: string }) {
         theme: resolvedTheme === "dark" ? "dark" : "default",
     });
     const { svg, bindFunctions } = use(
-        cachePromise(`${chart}-${resolvedTheme}`, () => mermaid.render(id.replaceAll(":", ""), chart.replaceAll("\n", "\n"))),
+        cachePromise(`${chart}-${resolvedTheme}`, () => mermaid.render(id.replaceAll(":", ""), chart)),
     );
     return (
         <div
