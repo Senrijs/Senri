@@ -156,6 +156,23 @@ const CHECKS: Check[] = [
     { name: "csrf()(古いブラウザ・よそ)", path: "/csrf", init: { method: "POST", headers: { origin: "https://evil.example" } }, status: 403 },
     { name: "JWT(すべてのアルゴリズム)", path: "/jwt", status: 200, body: "HS256,HS384,HS512,RS256,RS384,RS512,PS256,PS384,PS512,ES256,ES384,EdDSA,Ed25519" },
     { name: "Context Storage(await のあとの getContext())", path: "/context/42", status: 200, body: "/context/42" },
+    {
+        name: "OpenTelemetry(リクエスト)",
+        path: "/otel/users/1",
+        init: { headers: { traceparent: "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01" } },
+        status: 200,
+        body: "user 1",
+    },
+    {
+        name: "OpenTelemetry(span の入れ子)",
+        path: "/otel-spans",
+        status: 200,
+        body: JSON.stringify([
+            "handler GET /otel/users/:id < middleware audit",
+            "middleware audit < GET /otel/users/:id",
+            "GET /otel/users/:id < remote 00f067aa0ba902b7 (200)",
+        ]),
+    },
     { name: "日本語パラメーター", path: "/users/山田", status: 200, body: "user 山田" },
     { name: "c.html()", path: "/page", status: 200, body: "<h1>こんにちは!</h1>", type: "text/html; charset=utf-8" },
     {

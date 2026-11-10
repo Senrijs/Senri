@@ -28,6 +28,7 @@ serve(app);   // Bun でも Deno でも Node.js でも
 - **返した値がレスポンスになる。** 文字列はテキスト、オブジェクトは JSON。`Response` もそのまま返せます
 - **型はパスから。** `/users/:id` と書けば、ハンドラーの `id` に型が付きます。[Standard Schema](https://standardschema.dev)(Zod・Valibot・ArkType など)で、パラメーター・クエリ・ボディも確かめられます
 - **開発モードが親切。** エラーページ(該当コード・ヒント・エディタで開く)、404 の「もしかして」、リクエストを玉ねぎのように見られるダッシュボード(`/_senri`)、層ごとの `Server-Timing`
+- **本番でも玉ねぎが見える。** `otel({ api, middlewareSpans: true })` の 1 行で、ミドルウェアとハンドラーが入れ子の span になって、OpenTelemetry のトレースに出ます([本番のトレース](#本番のトレースopentelemetry))
 - **どこでも動く。** Web 標準の API だけで書いていて、`eval` も `new Function` も使いません。ブラウザの Service Worker でも動きます
 
 ## はじめる
@@ -580,7 +581,7 @@ const app = createApp({ dev: devtools() });
 
 - 500 の本文にエラーメッセージ、404 に「もしかして: GET /hello ?」、405 にどのメソッドならあるか、バリデーションの 400 に違うところの一覧、登録時のエラーに詳しい説明
 - **エラーページと 404 ページ**: ブラウザから開いたとき(`Accept` に `text/html` があるとき)だけ。エラーが起きた行の前後のコード、ヒント、スタックトレース、ミドルウェアを通った順番と時間。エラーの場所は VS Code・Cursor・WebStorm・Zed で開けます
-- **ダッシュボード(`/_senri`)**: 直近 200 件のリクエストをリアルタイムで。玉ねぎタイムライン(ミドルウェアごとの自分の時間と下流込みの時間)、ルートとミドルウェアの一覧
+- **ダッシュボード(`/_senri`)**: 直近 200 件のリクエストをリアルタイムで。玉ねぎタイムライン(ミドルウェアごとの自分の時間と下流込みの時間)、ルートとミドルウェアの一覧。本番では、同じ玉ねぎを [OpenTelemetry のトレース](#本番のトレースopentelemetry)で見られます
 - **`Server-Timing` ヘッダー**: 層ごとの時間が、ブラウザの開発者ツールの「タイミング」に出ます
 - **書き間違いの警告**: 最初のリクエストのときに、どのルートにも当たらないパス指定のミドルウェア(`app.use("/admni", ...)`)と、ほかのフレームワークの書き方に見えるパス(`/a?`、`/[id]`、`/{id}`)を、コンソールとダッシュボードで知らせます。同じ警告は1回だけです。ルートなしで自分で返すミドルウェアなら、無視して構いません
 
@@ -632,6 +633,31 @@ Deno では、`NODE_ENV` を読む許可(`--allow-env=NODE_ENV`)がないと本�
 - **同じ PC(localhost)からしか開けません。** 接続元がループバックで、かつ `Host` も `localhost` などのときだけです。それ以外は `/_senri` がないものとして扱います(ふつうの 404)
 - 接続元は `app.fetch` の2つ目の引数から取ります。`fetch: (req) => app.fetch(req)` のように包むと渡らないので、`(req, info) => app.fetch(req, info)` としてください
 - Docker などのコンテナの中で動かすと、接続元が localhost に見えないので、ダッシュボードは開けません
+
+## 本番のトレース(OpenTelemetry)
+
+```ts
+import * as api from "@opentelemetry/api";
+import { otel } from "@senrijs/senri/otel";
+
+app.use(otel({ api, middlewareSpans: true }));    // いちばん先に登録する
+```
+
+**`middlewareSpans: true` の 1 つで、開発モードの玉ねぎタイムラインが、そのまま本番のトレースになります。** ミドルウェアごと(`middleware <名前>`)とハンドラー(`handler GET /users/:id`)の span が、動いた順に入れ子で並びます。どの層で時間がかかったか、どの層で例外が起きたか(その span がエラーになります)を、Jaeger や Grafana Tempo などで見られます。見え方の例です(時間は例です)。
+
+```text
+GET /users/:id                    ████████████████████  12.3 ms
+└ middleware logger               ███████████████████   12.1 ms
+  └ middleware auth               ██████████████        9.0 ms
+    └ handler GET /users/:id        ███████████         7.2 ms
+```
+
+- Senri は OpenTelemetry に依存しません。使っている `@opentelemetry/api` を渡してください。送り先(エクスポーター)や SDK の設定は、いつもどおり OpenTelemetry の側で行います
+- リクエストごとの server span: 名前はルートのパターン(`GET /users/:id`。ルートがなければ `GET`)。属性は HTTP の semantic conventions(`http.request.method`・`http.route`・`http.response.status_code`・`url.path`・`url.scheme`・`server.address`・`user_agent.original`)。受け取った `traceparent` のトレースを続けます
+- 5xx と、ミドルウェアやハンドラーの例外は、span をエラーにして例外を記録します。4xx はエラーにしません
+- context manager(Node.js などの `AsyncLocalStorage`)があれば、ハンドラーの中で作った span は Senri の server span の子になります
+- `middlewareSpans` は既定でオフです(層ごとに span を作るぶん、送るデータが増えるため)。`otel()` より前に登録したミドルウェアは、子 span になりません
+- Bun・Deno・Node.js・Cloudflare Workers・ブラウザで動きます。`tracer` を省くと `api.trace.getTracer("@senrijs/senri")` を使います
 
 ## 性能
 

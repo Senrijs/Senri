@@ -38,6 +38,13 @@ describe("パッケージ", () => {
         assert.deepEqual([typeof contextStorage, typeof getContext, typeof tryGetContext], ["function", "function", "function"]);
     });
 
+    test('"@senrijs/senri/otel" で OpenTelemetry が使える', async () => {
+        assert.match(import.meta.resolve("@senrijs/senri/otel"), /\/dist\/src\/otel\.js$/);
+        const { otel } = await import("@senrijs/senri/otel");
+
+        assert.equal(typeof otel, "function");
+    });
+
     test('"@senrijs/senri/node" で Node アダプターが使える', async () => {
         assert.match(import.meta.resolve("@senrijs/senri/node"), /\/dist\/adapters\/node\/index\.js$/);
         const { serve } = await import("@senrijs/senri/node");

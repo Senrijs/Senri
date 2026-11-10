@@ -63,6 +63,10 @@
       "types": "./dist/src/jwt.d.ts",
       "import": "./dist/src/jwt.js"
     },
+    "./otel": {
+      "types": "./dist/src/otel.d.ts",
+      "import": "./dist/src/otel.js"
+    },
     "./node": {
       "types": "./dist/adapters/node/index.d.ts",
       "import": "./dist/adapters/node/index.js"
@@ -97,6 +101,10 @@
     "size": "bun scripts/size.ts"
   },
   "devDependencies": {
+    "@opentelemetry/api": "1.9.1",
+    "@opentelemetry/context-async-hooks": "2.12.0",
+    "@opentelemetry/core": "2.12.0",
+    "@opentelemetry/sdk-trace-base": "2.12.0",
     "@types/bun": "latest",
     "@types/node": "^26.6.5",
     "@vitejs/plugin-vue": "6.0.10",

@@ -86,7 +86,7 @@ Senri がこれから向かう先です。バージョンは目標であって�
 - [ ] 型付きクライアント(RPC)
 - [ ] OpenAPI の生成
 - [ ] テスト用ヘルパー
-- [ ] OpenTelemetry: 玉ねぎタイムラインが、そのまま本番のトレースに
+- [x] OpenTelemetry: 玉ねぎタイムラインが、そのまま本番のトレースに
 - [ ] Prometheus メトリクス
 - [ ] WebSocket
 - [x] JWT

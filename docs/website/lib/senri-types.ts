@@ -15,6 +15,7 @@ export const senriExports: Record<string, string> = {
     "@senrijs/senri/multipart": "src/multipart.ts",
     "@senrijs/senri/problem": "src/problem.ts",
     "@senrijs/senri/jwt": "src/jwt.ts",
+    "@senrijs/senri/otel": "src/otel.ts",
     "@senrijs/senri/node": "adapters/node/index.ts",
     "@senrijs/senri/serve": "adapters/serve/index.ts",
     "@senrijs/senri/static": "adapters/static/index.ts",
