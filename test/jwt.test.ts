@@ -2,6 +2,7 @@ import { afterEach, describe, expect, setSystemTime, test } from "bun:test";
 import { createApp } from "../src/index.ts";
 import { jwt, JwtError, signJwt, verifyJwt, type JwtAlgorithm, type JwtJwk, type JwtPayload, type JwtVariables } from "../src/jwt.ts";
 import { explainText } from "../src/dev/explain.ts";
+import { problemDetails } from "../src/problem.ts";
 
 const SECRET = "a-secret-that-is-at-least-32-bytes-long!!";
 const SECRET_64 = "x".repeat(64);
@@ -110,6 +111,22 @@ describe("signJwt() / verifyJwt()", () => {
         expect(await reason(verifyJwt(token, keys.verify, { algorithms: ["RS256", "HS256"] }))).toBe("key");
     });
 
+    test("取り違えの攻撃: 前に空白や改行のある PEM も、HMAC の秘密鍵にしない", async () => {
+        const keys = await keyPair("RS256");
+        for (const prefix of ["\n", "\r\n", "  ", "\t\n"]) {
+            const publicPem = prefix + (await pem(keys.verify as CryptoKey, "PUBLIC KEY"));
+            const hmac = await crypto.subtle.importKey("raw", new TextEncoder().encode(publicPem), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+            const input = `${b64url(JSON.stringify({ alg: "HS256", typ: "JWT" }))}.${b64url(JSON.stringify({ sub: "admin" }))}`;
+            const signature = Buffer.from(await crypto.subtle.sign("HMAC", hmac, new TextEncoder().encode(input))).toString("base64url");
+            expect(await reason(verifyJwt(`${input}.${signature}`, publicPem, { algorithms: ["RS256", "HS256"] }))).toBe("key");
+            // 同じ鍵で、RS256 の正しいトークンは確かめられる
+            const good = await signJwt({ sub: "1" }, keys.sign, { alg: "RS256" });
+            expect((await verifyJwt(good, publicPem, { algorithms: ["RS256", "HS256"] })).sub).toBe("1");
+        }
+        // jwt() も、前に改行のある PEM を短い HMAC の秘密鍵として扱わない(作るときに TypeError にしない)
+        expect(() => jwt({ keys: "\n" + "-----BEGIN PUBLIC KEY-----", algorithms: ["HS256", "RS256"] })).not.toThrow();
+    });
+
     test("HMAC の秘密鍵の文字列は、RS256 などの鍵にならない", async () => {
         const keys = await keyPair("RS256");
         const token = await signJwt({}, keys.sign, { alg: "RS256" });
@@ -169,6 +186,37 @@ describe("signJwt() / verifyJwt()", () => {
         expect(await reason(verifyJwt(token, { ...jwk, alg: "RS512" }, { algorithms: ["RS256"] }))).toBe("key");
         expect(await reason(verifyJwt(token, { ...jwk, use: "enc" }, { algorithms: ["RS256"] }))).toBe("key");
         expect(await verifyJwt(token, { ...jwk, alg: "RS256", use: "sig" }, { algorithms: ["RS256"] })).toBeDefined();
+    });
+
+    test("長い悪い PEM でも、すぐに TypeError になる(時間が入力の長さに比例する)", async () => {
+        // 前の正規表現では、"-----BEGIN PUBLIC KEY-----" のあとにタブが 5000 個で 17 秒かかった(2 乗以上)
+        // 10 万個なら終わらないので、テストの時間の上限(5 秒)で落ちる
+        const token = await signJwt({}, (await keyPair("RS256")).sign, { alg: "RS256" });
+        const n = 100_000;
+        const inputs = [
+            "-----BEGIN -----" + "\t".repeat(n),
+            "-----BEGIN PUBLIC KEY-----" + "\t".repeat(n),
+            "-----BEGIN PUBLIC KEY-----" + "\t".repeat(n) + "-----END PRIVATE KEY-----",
+            "-----BEGIN PUBLIC KEY-----" + "A\t".repeat(n),
+            "-----BEGIN PUBLIC KEY-----\n" + "A".repeat(n + 1) + "\n-----END PUBLIC KEY-----",
+            "-----BEGIN " + "A ".repeat(n),
+            "-----BEGIN PUBLIC KEY-----" + "-----END ".repeat(n),
+        ];
+        for (const key of inputs) {
+            const err = await rejects(verifyJwt(token, key, { algorithms: ["RS256"] }));
+            expect((err as { code?: string }).code).toBe("jwt_key");
+        }
+        // HMAC のときは PEM として読まない(-----BEGIN で始まる文字列は、鍵として使わないだけ)
+        const hmac = await signJwt({}, SECRET, { alg: "HS256" });
+        expect(await reason(verifyJwt(hmac, "-----BEGIN PUBLIC KEY-----" + "\t".repeat(n), { algorithms: ["HS256"] }))).toBe("key");
+    });
+
+    test("PEM: 前後の空白と、行の途中の空白(CRLF など)は無視する", async () => {
+        const keys = await keyPair("ES256");
+        const token = await signJwt({}, keys.sign, { alg: "ES256" });
+        const text = await pem(keys.verify as CryptoKey, "PUBLIC KEY");
+        const crlf = "\r\n  " + text.replaceAll("\n", "\r\n") + "\r\n\r\n";
+        expect(await verifyJwt(token, crlf, { algorithms: ["ES256"] })).toBeDefined();
     });
 
     test("PKCS #1 の PEM(RSA PUBLIC KEY)は TypeError で、変換を案内する", async () => {
@@ -342,6 +390,14 @@ describe("jwt() ミドルウェア", () => {
         const app = makeApp({ cookie: "session" });
         expect(await (await get(app, "/api/me", { cookie: `session=${token}` })).json()).toEqual({ sub: "7" });
         expect((await get(app, "/api/me", { authorization: `Bearer ${token}` })).status).toBe(401);
+    });
+
+    test("Problem Details と組み合わせられる", async () => {
+        const app = makeApp();
+        app.onError(problemDetails().onError);
+        const res = await get(app, "/api/me", { authorization: "Bearer x.y.z" });
+        expect(res.headers.get("www-authenticate")).toBe('Bearer error="invalid_token"');
+        expect(await res.json()).toEqual({ type: "about:blank", title: "Unauthorized", status: 401, detail: "malformed token" });
     });
 
     test("JwtError なので、app.onError で本文を変えられる(WWW-Authenticate は残る)", async () => {

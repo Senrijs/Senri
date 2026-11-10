@@ -220,7 +220,30 @@ function entriesOf(keys: JwtKey | readonly JwtKey[]): Entry[] {
     return list.map(entryOf);
 }
 
-const PEM = /^-----BEGIN ([A-Z ]+)-----\s*([A-Za-z0-9+/=\s]+?)\s*-----END \1-----\s*$/;
+// PEM の形の文字列か。前の空白や改行(ファイルやテンプレート文字列から読んだもの)は飛ばして見る
+// これが「HMAC の秘密鍵として使わない」の判定にもなるので、先頭の空白で見逃してはいけない
+const looksLikePem = (key: string): boolean => key.trimStart().startsWith("-----BEGIN");
+
+// PEM("-----BEGIN <label>-----" と "-----END <label>-----" に挟まれた base64)を読む。読めなければ null
+// 正規表現で全体を一度に読むと、悪い入力で 2 乗の時間がかかることがある。位置を探して切り出すので、どんな入力でも線形
+function parsePem(text: string): { label: string; der: Uint8Array<ArrayBuffer> } | null {
+    const pem = text.trim();
+    const BEGIN = "-----BEGIN ";
+    if (!pem.startsWith(BEGIN)) return null;
+    const labelEnd = pem.indexOf("-----", BEGIN.length);
+    if (labelEnd === -1) return null;
+    const label = pem.slice(BEGIN.length, labelEnd);
+    if (!/^[A-Z][A-Z ]*$/.test(label)) return null;
+    const footer = `-----END ${label}-----`;
+    const bodyStart = labelEnd + 5;
+    if (!pem.endsWith(footer) || pem.length - footer.length < bodyStart) return null;
+    const body = pem.slice(bodyStart, pem.length - footer.length).replace(/\s/g, "");
+    if (body.length === 0 || body.length % 4 !== 0 || !/^[A-Za-z0-9+/]+={0,2}$/.test(body)) return null;
+    const binary = atob(body);
+    const der = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) der[i] = binary.charCodeAt(i);
+    return { label, der };
+}
 
 // 読み込んだ鍵を覚えておく(毎回 importKey しない)。文字列の鍵は増え続けないよう、多くなったら捨てる
 const objectKeys = new WeakMap<object, Map<string, Promise<CryptoKey | null>>>();
@@ -264,30 +287,27 @@ function fits(key: CryptoKey, alg: JwtAlgorithm, usage: "sign" | "verify"): bool
 
 async function importString(key: string, alg: JwtAlgorithm, usage: "sign" | "verify"): Promise<CryptoKey | null> {
     const spec = SPECS[alg];
-    const pem = PEM.exec(key);
     if (spec.name === "HMAC") {
         // PEM の公開鍵を HMAC の秘密鍵として使わせない(アルゴリズムの取り違えの攻撃)
-        if (key.startsWith("-----BEGIN")) return null;
+        if (looksLikePem(key)) return null;
         const bytes = encoder.encode(key);
         if (bytes.length < hashBytes(spec.hash)) {
             throw keyError(`the ${alg} secret must be at least ${hashBytes(spec.hash)} bytes (RFC 7518)`);
         }
         return crypto.subtle.importKey("raw", bytes, importParams(spec), false, [usage]);
     }
-    if (pem === null) {
-        // HMAC の秘密鍵(PEM でない文字列)は、ほかのアルゴリズムの鍵には使わない
-        if (!key.startsWith("-----BEGIN")) return null;
-        throw keyError("could not read the PEM key");
-    }
-    const label = pem[1];
+    // HMAC の秘密鍵(PEM でない文字列)は、ほかのアルゴリズムの鍵には使わない
+    if (!looksLikePem(key)) return null;
+    const pem = parsePem(key);
+    if (pem === null) throw keyError("could not read the PEM key");
+    const label = pem.label;
     const format = label === "PUBLIC KEY" ? "spki" : label === "PRIVATE KEY" ? "pkcs8" : null;
     if (format === null) {
         throw keyError(`PEM "${label}" is not supported. Use "PUBLIC KEY" (SPKI) or "PRIVATE KEY" (PKCS #8)`);
     }
     if ((format === "spki") !== (usage === "verify")) return null;
-    const der = Uint8Array.from(atob(pem[2]!.replace(/\s+/g, "")), (ch) => ch.charCodeAt(0));
     try {
-        return await crypto.subtle.importKey(format, der, importParams(spec), false, [usage]);
+        return await crypto.subtle.importKey(format, pem.der, importParams(spec), false, [usage]);
     } catch {
         // ほかの種類の鍵(EC の鍵を RS256 で、など)は、この alg には使えない
         return null;
@@ -552,7 +572,7 @@ export function jwt(options: JwtOptions): Middleware {
     const algorithms = checkAlgorithms(options?.algorithms);
     // 短すぎる HMAC の秘密鍵は、最初のリクエストを待たずに、作るときに知らせる
     for (const entry of entriesOf(options.keys)) {
-        if (typeof entry.key !== "string" || entry.key.startsWith("-----BEGIN")) continue;
+        if (typeof entry.key !== "string" || looksLikePem(entry.key)) continue;
         for (const alg of algorithms) {
             const spec = SPECS[alg];
             if (spec.name === "HMAC" && encoder.encode(entry.key).length < hashBytes(spec.hash)) {
