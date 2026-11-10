@@ -1,3 +1,4 @@
+import type { Layer } from "./compose.ts";
 import type { Handler } from "./context.ts";
 import { HttpError, senriError } from "./errors.ts";
 
@@ -9,6 +10,8 @@ export type Route = {
     paramNames: string[];
     method: string;
     handler: Handler;
+    // このルートだけのミドルウェア(endpoint() / defineRoutes() の use)。アプリのミドルウェアの後ろで動く
+    use?: Layer[];
 };
 
 // "/users/:id/posts" → "" | "users" | ":id" | "posts"

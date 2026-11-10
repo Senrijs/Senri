@@ -406,3 +406,33 @@ defineRoutes({
 defineRoutes({
     "GET /fn": () => () => 1,
 });
+
+// --- ルートごとのミドルウェア(use) ---
+
+declare const authUser: Middleware<{ user: { name: string } }>;
+declare const withTenant: Middleware<{ tenant: string }>;
+
+// endpoint() の use: ミドルウェアが c.set() する変数に、型が付く
+const withUse = defineRoutes({
+    "GET /me": endpoint({ use: [authUser] }, (_, c) => c.get("user")?.name ?? ""),
+    // use とスキーマを一緒に
+    "POST /posts": endpoint({ use: [authUser, withTenant], body: userSchema }, (_, c) => ({
+        by: c.get("user")?.name ?? "",
+        tenant: c.get("tenant") ?? "",
+        title: c.valid("body").name,
+    })),
+});
+same<ReturnType<(typeof withUse)["GET /me"]["handler"]>, string>(true);
+same<ReturnType<(typeof withUse)["POST /posts"]["handler"]>, { by: string; tenant: string; title: string }>(true);
+
+// 表の use: 表の全部のルートで、変数に型が付く。ハンドラーだけの値も endpoint() の形になる
+const adminTable = defineRoutes("/admin", { use: [authUser] })({
+    "GET /me": (_, c) => c.get("user")?.name ?? "",
+    "GET /tenant": endpoint({ use: [withTenant] }, (_, c) => `${c.get("user")?.name} ${c.get("tenant")}`),
+});
+same<keyof typeof adminTable, "GET /admin/me" | "GET /admin/tenant">(true);
+same<ReturnType<(typeof adminTable)["GET /admin/me"]["handler"]>, string>(true);
+app.routes(adminTable);
+
+// 型を決めていないミドルウェア(logger() など)を並べても、型は壊れない
+defineRoutes({ "GET /log": endpoint({ use: [logger()] }, () => "ok") });

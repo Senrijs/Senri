@@ -41,10 +41,14 @@ function routeRows(d: Dashboard): RouteRow[] {
         return {
             method: r.method,
             path: r.path,
-            middlewares: middlewares.map((m) => ({
-                name: m.name,
-                applies: applies(m.path === null ? null : splitPattern(m.path), segments),
-            })),
+            middlewares: [
+                ...middlewares.map((m) => ({
+                    name: m.name,
+                    applies: applies(m.path === null ? null : splitPattern(m.path), segments),
+                })),
+                // ルートに付けたもの(endpoint() / defineRoutes() の use)は、このルートでは必ず動く
+                ...(r.use ?? []).map((name) => ({ name, applies: "yes" as const })),
+            ],
         };
     });
 }

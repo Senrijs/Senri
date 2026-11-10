@@ -10,7 +10,8 @@ import { eventStream } from "./sse.ts";
 
 // ルートとミドルウェアのタブに出すもの(アプリから受け取る)
 export type DashboardSource = {
-    routes(): { method: string; path: string }[];
+    // use: そのルートだけのミドルウェアの名前(endpoint() / defineRoutes() の use)
+    routes(): { method: string; path: string; use?: string[] | undefined }[];
     middlewares(): { name: string; path: string | null; anonymous: boolean }[];
 };
 

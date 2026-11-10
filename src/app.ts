@@ -223,8 +223,9 @@ export type AppCore = {
     // ルートを決める / かかるミドルウェアを集める / いちばん内側の処理(本番の fetch と同じもの)
     /** Decides how the request is handled (route, 404, 405, ...). `method` defaults to `c.req.method`. */
     resolve(c: Context, method?: string): Resolved;
-    /** The middleware that applies to the request. */
-    layers(c: Context): Layer[];
+    // resolved を渡すと、当たったルートに付けたミドルウェア(endpoint() / defineRoutes() の use)も後ろに足す
+    /** The middleware that applies to the request; with `resolved`, followed by the matched route's own middleware. */
+    layers(c: Context, resolved?: Resolved): Layer[];
     /** The innermost step after all middleware (the same as in production). */
     inner(c: Context, resolved: Resolved): Response | Promise<Response>;
     // いまの onError を通して、例外をレスポンスにする
@@ -316,7 +317,8 @@ export function createApp<V extends object = Record<string, unknown>>(options: A
         ) as RouteMethod<V>;
     }
 
-    function add(rawMethod: string, path: string, handler: Handler, schemas?: RouteSchemas) {
+    // use: このルートだけのミドルウェア(endpoint() / defineRoutes() の use)
+    function add(rawMethod: string, path: string, handler: Handler, schemas?: RouteSchemas, use?: readonly Middleware[]) {
         // app.all() の印の "ALL" だけはそのまま。ほかは名前を確かめて大文字にする
         const method = rawMethod === "ALL" ? rawMethod : normalizeMethod(rawMethod);
         devHooks?.checkRoute(method, path, schemas);
@@ -331,6 +333,8 @@ export function createApp<V extends object = Record<string, unknown>>(options: A
 
         const paramNames = segments.filter((s) => s.startsWith(":") || s === "*").map((s) => (s === "*" ? s : s.slice(1)));
         const route: Route = { path, segments, paramNames, method, handler };
+        // 名前は app.use() と同じく関数の名前(無名なら anonymous)。登録順(order)は持たない(ダッシュボードの集計は app.use() のものだけ)
+        if (use && use.length > 0) route.use = use.map((mw) => ({ name: mw.name || "anonymous", mw }));
         // routes は一覧(routeList や 404 の「もしかして」)用で、登録順。探すのは matcher(Trie)で行う
         routes.push(route);
         matcher.add(route);
@@ -385,8 +389,10 @@ export function createApp<V extends object = Record<string, unknown>>(options: A
     // ミドルウェアがないときに毎回配列を作らないよう、共有の空配列を返す(中身は変えない)
     const NO_LAYERS: Layer[] = [];
 
-    function applicableMiddlewares(c: Context): Layer[] {
-        if (middlewares.length === 0) return NO_LAYERS;
+    // resolved を渡すと、当たったルートのミドルウェア(route.use)を、アプリのミドルウェアの後ろに足す
+    function applicableMiddlewares(c: Context, resolved?: Resolved): Layer[] {
+        const own = resolved?.kind === "route" ? resolved.route.use : undefined;
+        if (middlewares.length === 0) return own ?? NO_LAYERS;
         let segments: readonly string[] | null;
         try {
             segments = c.segments;
@@ -403,6 +409,7 @@ export function createApp<V extends object = Record<string, unknown>>(options: A
                 layers.push({ name, mw, order: i + 1 });
             }
         }
+        if (own) layers.push(...own);
         return layers;
     }
 
@@ -462,7 +469,13 @@ export function createApp<V extends object = Record<string, unknown>>(options: A
             for (const [key, value] of Object.entries(table)) {
                 const [method, path] = key.split(" ");
                 if (!method || !path) throw senriError("route_key", `Invalid route key: "${key}" (e.g. "GET /hello")`);
-                if (isEndpoint(value)) add(method.toUpperCase(), path, routeHandler(path, value.schemas, value.handler as Handler), value.schemas);
+                if (isEndpoint(value)) {
+                    // use はミドルウェア。スキーマ(params / query / body)とは分けて渡す(開発モードがスキーマのキーを確かめるため)
+                    const { use, ...schemas } = value.schemas;
+                    // スキーマがなければ、確かめる処理で包まない(use だけのルート)
+                    const handler = Object.keys(schemas).length === 0 ? (value.handler as Handler) : routeHandler(path, schemas, value.handler as Handler);
+                    add(method.toUpperCase(), path, handler, schemas, use as readonly Middleware[] | undefined);
+                }
                 else if (typeof value === "function") add(method.toUpperCase(), path, value as Handler);
                 else throw senriError("route_value", `Invalid route: "${key}"`);
             }
@@ -510,7 +523,7 @@ export function createApp<V extends object = Record<string, unknown>>(options: A
                     c.params = resolved.params;
                 }
                 const fail = (err: unknown) => handleError(err, c, onError, notFound);
-                const layers = applicableMiddlewares(c);
+                const layers = applicableMiddlewares(c, resolved);
                 if (layers.length > 0) {
                     return compose(layers, c, () => inner(c, resolved), fail).then((res) => c.finalize(res));
                 }

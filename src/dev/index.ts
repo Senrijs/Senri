@@ -263,7 +263,7 @@ function install(core: AppCore, scope: Scope, nodeEnv: string | undefined, fixed
         ? null
         : createDashboard(
               {
-                  routes: () => sortedRoutes().map((r) => ({ method: r.method, path: r.path })),
+                  routes: () => sortedRoutes().map((r) => ({ method: r.method, path: r.path, use: r.use?.map((l) => l.name) })),
                   middlewares: () => app.middlewareList(),
               },
               langOfRequest,
@@ -296,7 +296,7 @@ function install(core: AppCore, scope: Scope, nodeEnv: string | undefined, fixed
         }
 
         // ハンドラー・notFound・toResponse のどこで投げても、compose が onError に集める
-        const layers = core.layers(c);
+        const layers = core.layers(c, resolved);
         const innerName = INNER_NAME[resolved.kind];
         const res = await compose(
             layers,
@@ -332,7 +332,7 @@ function install(core: AppCore, scope: Scope, nodeEnv: string | undefined, fixed
             c.route = resolved.route.path;
             c.params = resolved.params;
         }
-        return compose(core.layers(c), c, () => core.inner(c, resolved), (err) => core.fail(err, c)).then((res) => c.finalize(res));
+        return compose(core.layers(c, resolved), c, () => core.inner(c, resolved), (err) => core.fail(err, c)).then((res) => c.finalize(res));
     }
 
     const pageOnError = withErrorPage(devOnError(langOf), true);

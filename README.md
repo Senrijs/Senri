@@ -308,6 +308,31 @@ app.routes(routes);
 - `c.get()` に型を付けるときは、前置きと一緒にアプリの型を渡します: `defineRoutes<"/admin", Vars>("/admin")({ ... })`
 - パスの書き方の確認と、同じルートの 2 回登録の確認は、`app.routes()` に渡したときに `app.get()` と同じく行います
 
+#### ルートごとのミドルウェア
+
+```ts
+const auth: Middleware<{ user: User }> = async (c, next) => {
+    const user = await findUser(c.req.headers.get("authorization"));
+    if (!user) {
+        c.status(401);
+        return "ログインしてね";
+    }
+    c.set("user", user);
+    await next();
+};
+
+// 表の全部のルートに付ける(前置きがなければ "")
+export const adminRoutes = defineRoutes("/admin", { use: [auth] })({
+    "GET /me": (_, c) => c.get("user"),                                         // User | undefined
+    // このルートだけに付ける
+    "DELETE /users/:id": endpoint({ use: [requireOwner], params: idSchema }, ({ id }) => deleteUser(id)),
+});
+```
+
+- 動く順番は、アプリの `app.use()` → 表の `use` → ルートの `use` → スキーマの確認 → ハンドラーです。ミドルウェアが値を返したら、スキーマの確認(本文を読む)の前に止まります
+- ミドルウェアを `Middleware<{ user: User }>` のように書くと、`c.get("user")` に型が付きます
+- そのルートに当たったリクエストでだけ動きます。開発モードのタイムラインと、ダッシュボードの「ルート」の行にも出ます
+
 ### パスのルール
 
 - 末尾スラッシュと連続スラッシュは無視します。`/users`、`/users/`、`//users` はどれも同じです
