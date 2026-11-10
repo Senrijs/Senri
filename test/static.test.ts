@@ -138,6 +138,45 @@ describe("serveStatic()", () => {
         expect(await (await makeApp({ dotfiles: true }).fetch(req("/config.txt"))).text()).toBe("SECRET=1");
     });
 
+    test("確かめているあいだにリンクを root の外へ差し替えられても、外のファイルは配らない", async () => {
+        // swap.txt を「root の中を指すリンク」と「root の外を指すリンク」に入れ替え続けながら、何度も取りに行く
+        // (確かめてからパスで開き直す作りだと、そのあいだに差し替えられて外のファイルを配ることがある)
+        const inside = join(root, "inside.txt");
+        await writeFile(inside, "inside");
+        const swap = join(root, "swap.txt");
+        try {
+            await symlink(inside, swap);
+        } catch {
+            // Windows では権限がないとシンボリックリンクを作れない
+            return;
+        }
+        const app = makeApp();
+        let done = false;
+        const swapper = (async () => {
+            for (let i = 0; !done; i++) {
+                const tmp = join(root, `swap-${i}.tmp`);
+                await symlink(i % 2 === 0 ? join(dir, "secret.txt") : inside, tmp);
+                await rename(tmp, swap);
+            }
+        })();
+        const bodies = new Set<string>();
+        try {
+            for (let round = 0; round < 200; round++) {
+                const results = await Promise.all(
+                    Array.from({ length: 4 }, async () => {
+                        const res = await app.fetch(req("/swap.txt"));
+                        return res.status === 200 ? await res.text() : String(res.status);
+                    }),
+                );
+                for (const body of results) bodies.add(body);
+            }
+        } finally {
+            done = true;
+            await swapper;
+        }
+        expect(bodies.has("outside")).toBe(false);
+    });
+
     test("prefix の下だけで配る", async () => {
         const app = makeApp({ prefix: "/static" });
         expect(await (await app.fetch(req("/static/app.js"))).text()).toBe("console.log(1)");

@@ -94,7 +94,7 @@ See the [CHANGELOG](./CHANGELOG.md) for details.
 - [ ] Problem Details (RFC 9457) error responses
 - [ ] Context storage (access `c` anywhere)
 - [ ] API cleanup: hide unintentionally public exports (`parseCookies`, `serializeCookie`, `deletionCookie`, `resolvePort`, `DEFAULT_PORT`, `PortSource`, `isLocalUrl`), and stop public types from referring to private ones
-- [ ] `serveStatic` symlink hardening (re-check that the opened file is inside the root)
+- [x] `serveStatic` symlink hardening (re-check that the opened file is inside the root)
 
 ## 0.4.0 — Deploy anywhere
 
