@@ -18,6 +18,7 @@ export const senriExports: Record<string, string> = {
     "@senrijs/senri/node": "adapters/node/index.ts",
     "@senrijs/senri/serve": "adapters/serve/index.ts",
     "@senrijs/senri/static": "adapters/static/index.ts",
+    "@senrijs/senri/context-storage": "adapters/context-storage/index.ts",
 };
 
 export const senriCompilerOptions = {

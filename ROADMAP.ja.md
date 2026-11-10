@@ -93,7 +93,7 @@ Senri がこれから向かう先です。バージョンは目標であって�
 - [x] CSRF 対策
 - [x] 署名付き Cookie
 - [x] Problem Details(RFC 9457)形式のエラーレスポンス
-- [ ] Context Storage(どこからでも `c` を取れる)
+- [x] Context Storage(どこからでも `c` を取れる)
 - [ ] API の整理: 意図せず公開されているもの(`parseCookies`・`serializeCookie`・`deletionCookie`・`resolvePort`・`DEFAULT_PORT`・`PortSource`・`isLocalUrl`)を隠し、公開の型が非公開の型を参照しないようにする
 - [x] `serveStatic` のシンボリックリンクへの対策(ファイルを開いたあとで、root の中かを確かめ直す)
 

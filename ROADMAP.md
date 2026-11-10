@@ -93,7 +93,7 @@ See the [CHANGELOG](./CHANGELOG.md) for details.
 - [x] CSRF protection
 - [x] Signed cookies
 - [x] Problem Details (RFC 9457) error responses
-- [ ] Context storage (access `c` anywhere)
+- [x] Context storage (access `c` anywhere)
 - [ ] API cleanup: hide unintentionally public exports (`parseCookies`, `serializeCookie`, `deletionCookie`, `resolvePort`, `DEFAULT_PORT`, `PortSource`, `isLocalUrl`), and stop public types from referring to private ones
 - [x] `serveStatic` symlink hardening (re-check that the opened file is inside the root)
 
