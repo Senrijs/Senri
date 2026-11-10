@@ -17,6 +17,8 @@ const en = {
     "res.queryNoBody": "400 Bad Request: this QUERY request has no body\nQUERY is a method that sends the search conditions in the body",
     "res.queryNoType": "415 Unsupported Media Type: this QUERY request has no Content-Type\nSpecify the format of the body (for example, Content-Type: application/json)",
     "res.csrfRejected": "403 Forbidden: csrf() rejected a {method} request from another origin ({origin})\nIf you trust that origin, add it with csrf({ origin: [...] })",
+    "res.websocketOriginRejected": "403 Forbidden: upgradeWebSocket() rejected a connection from a page on another origin ({origin})\nIf you trust that origin, add it with upgradeWebSocket(..., { origin: [...] })",
+    "res.websocketNotUpgrade": "426 Upgrade Required: {path} is a WebSocket route. Connect with a WebSocket client (new WebSocket(\"ws://...\")), not a normal request",
     "res.didYouMean": "Did you mean: {method} {path} ?",
     "res.validation": "400 Bad Request: {target} failed schema validation",
 
@@ -48,6 +50,8 @@ const ja: Record<ServerMessageKey, string> = {
     "res.queryNoBody": "400 Bad Request: QUERY リクエストにボディがありません\nQUERY は、検索の条件をボディに入れて送るメソッドです",
     "res.queryNoType": "415 Unsupported Media Type: QUERY リクエストに Content-Type がありません\nボディの形式を指定してください(例: Content-Type: application/json)",
     "res.csrfRejected": "403 Forbidden: よそのオリジン({origin})からの {method} リクエストを、csrf() が拒否しました\n信頼できるオリジンなら、csrf({ origin: [...] }) に足してください",
+    "res.websocketOriginRejected": "403 Forbidden: よそのオリジン({origin})のページからの接続を、upgradeWebSocket() が拒否しました\n信頼できるオリジンなら、upgradeWebSocket(..., { origin: [...] }) に足してください",
+    "res.websocketNotUpgrade": "426 Upgrade Required: {path} は WebSocket のルートです。ふつうのリクエストではなく、WebSocket のクライアント(new WebSocket(\"ws://...\"))でつないでください",
     "res.didYouMean": "もしかして: {method} {path} ?",
     "res.validation": "400 Bad Request: {target}が、スキーマに合いません",
 

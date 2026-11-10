@@ -13,6 +13,7 @@
     "./jwt": "./src/jwt.ts",
     "./client": "./src/client.ts",
     "./testing": "./src/testing.ts",
+    "./websocket": "./src/websocket.ts",
     "./node": "./adapters/node/index.ts",
     "./serve": "./adapters/serve/index.ts",
     "./static": "./adapters/static/index.ts",

@@ -2,6 +2,7 @@ import { compress, createApp, csrf, health, logger, type StandardSchemaV1 } from
 import { devtools } from "../../src/dev/index.ts";
 import { getSignedCookie, setSignedCookie } from "../../src/cookie.ts";
 import { getIp } from "../../src/ip.ts";
+import { upgradeWebSocket } from "../../src/websocket.ts";
 import { checkJwtAlgorithms } from "./jwt-check.ts";
 import { contextStorage, getContext } from "../../adapters/context-storage/index.ts";
 import { multipart } from "../../src/multipart.ts";
@@ -97,6 +98,20 @@ app.get("/context/:id", async () => {
     await new Promise((resolve) => setTimeout(resolve, 1));
     return currentPath();
 });
+
+// WebSocket: つないだらあいさつし、文字はエコー、バイナリはそのまま返す
+// (Node.js では examples/node/index.ts で ws の WebSocketServer を serve() に渡している)
+app.get(
+    "/ws",
+    upgradeWebSocket((c) => ({
+        onOpen(ws) {
+            ws.send(`hello ${c.query("name") ?? "guest"}`);
+        },
+        onMessage(data, ws) {
+            ws.send(typeof data === "string" ? `echo: ${data}` : data);
+        },
+    })),
+);
 app.get("/page", (_, c) => c.html("<h1>こんにちは!</h1>"));
 // ログインしたら Cookie を付けて、別のページへ
 app.get("/login", (_, c) => {

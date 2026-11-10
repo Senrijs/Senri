@@ -203,6 +203,10 @@ const devOnError =
                     return c.text(serverMessage(langOf(c), "res.queryNoType"));
                 case "csrf_rejected":
                     return c.text(serverMessage(langOf(c), "res.csrfRejected", { method: c.req.method, origin: c.req.headers.get("origin") ?? "?" }));
+                case "websocket_origin_rejected":
+                    return c.text(serverMessage(langOf(c), "res.websocketOriginRejected", { origin: c.req.headers.get("origin") ?? "?" }));
+                case "websocket_not_upgrade":
+                    return c.text(serverMessage(langOf(c), "res.websocketNotUpgrade", { path: c.path }));
             }
             return c.text(err.message);
         }

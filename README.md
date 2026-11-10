@@ -467,6 +467,46 @@ app.get("/me", () => currentUser());
 - 後ろのミドルウェア、ハンドラー、`contextStorage()` より内側で起きたエラーの `onError`、`app.notFound`、ストリームの中から取れます。`contextStorage()` より前のミドルウェアや、リクエストの外(起動時など)では、`getContext()` は例外(`code: "no_context"`)、`tryGetContext()` は `undefined` です
 - ハンドラーで始めたタイマーは、レスポンスのあとでもそのリクエストの `c` が見えます(`AsyncLocalStorage` の性質)。そこでは使い続けないでください
 
+### WebSocket
+
+```ts
+import { upgradeWebSocket } from "@senrijs/senri/websocket";
+
+app.get(
+    "/chat",
+    upgradeWebSocket((c) => ({
+        onOpen(ws) { ws.send(`hello ${c.query("name")}`); },
+        onMessage(data, ws) { ws.send(data); },          // data: 文字は string、バイナリは Uint8Array
+        onClose(code, reason, ws) {},
+        onError(error, ws) {},                            // ほかのハンドラーが投げたものも、ここに届く
+    })),
+);
+```
+
+ルートの書き方はどのランタイムでも同じです。ランタイムごとに要るものは、次のとおりです。
+
+| ランタイム | 要るもの | 1 つのメッセージの上限 |
+| --- | --- | --- |
+| Bun | `@senrijs/senri/serve` の `serve()` なら何も要りません。`Bun.serve` を自分で呼ぶときは `websocket` を渡します: `Bun.serve({ fetch: app.fetch, websocket })` | 16 MiB(Bun の既定) |
+| Deno | 何も要りません | Deno の既定 |
+| Node.js | `ws` パッケージを入れて、`serve()` に渡します(下の例) | `ws` の `maxPayload`(既定は 100 MiB なので、必ず付けてください) |
+| Cloudflare Workers | 何も要りません | 1 MiB(Workers の上限) |
+| ブラウザ(Service Worker) | 使えません(501) | |
+
+```ts
+// Node.js: Senri は WebSocket のフレームを自分では読まず、実績のある ws に任せます(Senri の依存は増えません)
+import { WebSocketServer } from "ws";
+import { serve } from "@senrijs/senri/serve";       // @senrijs/senri/node の serve() でも同じ
+
+serve(app, { webSocketServer: new WebSocketServer({ noServer: true, maxPayload: 1024 * 1024 }) });
+```
+
+- **よそのサイトのページからの接続は、既定で 403 にします**(CSWSH 対策)。`Origin` のホストが `Host` と同じときだけ通し、ほかは `upgradeWebSocket(create, { origin: ["https://app.example.com"] })` で足します。`Origin` のない接続(ブラウザ以外)は通します。`csrf()` と同じ考え方です
+- ミドルウェアは、ふつうのリクエストと同じに動きます。認証のミドルウェアが 401 を返せば、upgrade しません
+- `Upgrade: websocket` のないリクエストは 426 です
+- Node.js で `webSocketServer` を渡していないと、WebSocket のルートは 500 になります(開発モードでは渡し方を出します)。開発モードで、渡した `WebSocketServer` の `maxPayload` が `ws` の既定(100 MiB)のままなら、起動時に注意を出します
+- サブプロトコル(`Sec-WebSocket-Protocol`)の取り決めと、圧縮(permessage-deflate)の設定は、まだありません。Node.js の圧縮は `ws` の設定どおりです
+
 ## バリデーション
 
 ルートにスキーマを渡すと、ハンドラーを呼ぶ前に確かめます。[Standard Schema](https://standardschema.dev) に対応したライブラリ(Zod・Valibot・ArkType など)のスキーマが、そのまま使えます。
