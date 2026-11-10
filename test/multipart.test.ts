@@ -398,7 +398,8 @@ describe("multipart()(Bun、本物の HTTP)", () => {
                     const { done, value } = await reader.read();
                     if (done) break;
                     size += value.length;
-                    for (const byte of value) sum += byte;
+                    // for...of は Bun で 32 MiB に 1 秒ほどかかり、負荷があると時間の上限に届いていた。添字のループは約 10 倍速い
+                    for (let j = 0; j < value.length; j++) sum += value[j]!;
                 }
                 out.push([part.name, size, sum]);
             }
@@ -424,5 +425,6 @@ describe("multipart()(Bun、本物の HTTP)", () => {
         } finally {
             server.stop(true);
         }
-    });
+        // 32 MiB を本物の HTTP で送るので、負荷のあるマシンでは既定の 5 秒を超えることがある(ふだんは 1 秒ほど)
+    }, 30_000);
 });
