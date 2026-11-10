@@ -123,6 +123,13 @@ const CHECKS: Check[] = [
         status: 200,
         body: "false",
     },
+    {
+        name: "Problem Details(problem())",
+        path: "/legacy",
+        status: 410,
+        type: "application/problem+json",
+        body: `{"type":"about:blank","title":"Gone","status":410,"detail":"Use /v2 instead.","since":"2026-01-01"}`,
+    },
     { name: "日本語パラメーター", path: "/users/山田", status: 200, body: "user 山田" },
     { name: "c.html()", path: "/page", status: 200, body: "<h1>こんにちは!</h1>", type: "text/html; charset=utf-8" },
     {

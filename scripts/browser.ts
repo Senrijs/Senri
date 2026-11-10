@@ -70,8 +70,8 @@ try {
     });
     const page = await context.newPage();
     page.on("pageerror", (err) => errors.push(`pageerror: ${err.message}`));
-    // わざと 404 を返させている URL(/nope と /api/nope)の「Failed to load resource」だけは数えない
-    const expected404 = (url: string) => /\/(api\/)?nope$/.test(url);
+    // わざと 404 / 410 を返させている URL(/nope・/api/nope・/api/problem)の「Failed to load resource」だけは数えない
+    const expected404 = (url: string) => /\/(api\/)?nope$|\/api\/problem$/.test(url);
     page.on("console", (msg) => {
         if (msg.type() !== "error") return;
         if (msg.text().startsWith("Failed to load resource") && expected404(msg.location().url)) return;
@@ -104,6 +104,7 @@ try {
             notFound: await call("/api/item/nope"),
             wild: await call("/api/wild/a/%E3%81%82"),
             wildPost: await call("/api/wild/a", { method: "POST" }),
+            problem: await call("/api/problem"),
         };
     });
     check("ページ: 文字列 → text/plain", inPage.text.body === "こんにちは" && inPage.text.type === "text/plain; charset=utf-8", JSON.stringify(inPage.text));
@@ -115,6 +116,14 @@ try {
     check("ページ: ワイルドカード", inPage.wild.status === 200 && inPage.wild.body === "wild: a/あ", JSON.stringify(inPage.wild));
     check("ページ: ワイルドカード(メソッドが違えば 404)", inPage.wildPost.status === 404, JSON.stringify(inPage.wildPost));
     check("ページ: c.notFound()", inPage.notFound.status === 404 && inPage.notFound.body === "404 Not Found" && inPage.notFound.mark === "browser", JSON.stringify(inPage.notFound));
+    check(
+        "ページ: Problem Details(problem())",
+        inPage.problem.status === 410 &&
+            inPage.problem.type === "application/problem+json" &&
+            inPage.problem.body === `{"type":"about:blank","title":"Gone","status":410,"detail":"gone"}` &&
+            inPage.problem.mark === "browser",
+        JSON.stringify(inPage.problem),
+    );
     check("ページ: c.html()", inPage.page.body === "<h1>こんにちは</h1>" && inPage.page.type === "text/html; charset=utf-8", JSON.stringify(inPage.page));
     check("ページ: c.redirect() の相対パス", inPage.go.status === 302 && inPage.go.location === "/api/hello" && inPage.go.body === "", JSON.stringify(inPage.go));
     check("ページ: c.redirect() の日本語ドメイン", inPage.idn.location === "https://xn--r8jz45g.jp/%E3%83%91%E3%82%B9", JSON.stringify(inPage.idn));
@@ -141,6 +150,7 @@ try {
         const missing = await fetch("/api/nope");
         const notFound = await fetch("/api/item/nope");
         const wild = await fetch("/api/wild/a/b");
+        const gone = await fetch("/api/problem");
         // redirect: "manual" だと中身の見えない opaqueredirect になるので、たどった結果で確かめる
         const follow = async (path: string) => {
             const r = await fetch(path);
@@ -154,6 +164,7 @@ try {
             missing: { status: missing.status, body: await missing.text() },
             notFound: { status: notFound.status, mark: notFound.headers.get("x-senri"), body: await notFound.text() },
             wild: await wild.text(),
+            problem: { status: gone.status, type: gone.headers.get("content-type"), body: await gone.text() },
             go: await follow("/api/go"),
             japanese: await follow("/api/go/japanese"),
         };
@@ -170,6 +181,13 @@ try {
         check("Service Worker: Senri の 404", viaWorker.missing.status === 404 && viaWorker.missing.body === "404 Not Found", JSON.stringify(viaWorker.missing));
         check("Service Worker: ワイルドカード", viaWorker.wild === "wild: a/b", viaWorker.wild);
         check("Service Worker: c.notFound()", viaWorker.notFound.status === 404 && viaWorker.notFound.body === "404 Not Found" && viaWorker.notFound.mark === "browser", JSON.stringify(viaWorker.notFound));
+        check(
+            "Service Worker: Problem Details(problem())",
+            viaWorker.problem.status === 410 &&
+                viaWorker.problem.type === "application/problem+json" &&
+                viaWorker.problem.body === `{"type":"about:blank","title":"Gone","status":410,"detail":"gone"}`,
+            JSON.stringify(viaWorker.problem),
+        );
         check("Service Worker: c.redirect() の相対パス", viaWorker.go.redirected && viaWorker.go.path === "/api/hello" && viaWorker.go.body === "こんにちは", JSON.stringify(viaWorker.go));
         check("Service Worker: c.redirect() の日本語のパス", viaWorker.japanese.redirected && viaWorker.japanese.body === "日本語のルート", JSON.stringify(viaWorker.japanese));
     }

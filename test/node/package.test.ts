@@ -17,6 +17,13 @@ describe("パッケージ", () => {
         assert.deepEqual([typeof stream, typeof streamText, typeof streamSSE], ["function", "function", "function"]);
     });
 
+    test('"@senrijs/senri/problem" で Problem Details が使える', async () => {
+        assert.match(import.meta.resolve("@senrijs/senri/problem"), /\/dist\/src\/problem\.js$/);
+        const { problem, problemDetails, ProblemError } = await import("@senrijs/senri/problem");
+
+        assert.deepEqual([typeof problem, typeof problemDetails, typeof ProblemError], ["function", "function", "function"]);
+    });
+
     test('"@senrijs/senri/node" で Node アダプターが使える', async () => {
         assert.match(import.meta.resolve("@senrijs/senri/node"), /\/dist\/adapters\/node\/index\.js$/);
         const { serve } = await import("@senrijs/senri/node");
