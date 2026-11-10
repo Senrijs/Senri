@@ -329,6 +329,12 @@ app.post("/search", async (_, c) => {
 - `getIp(c)` はランタイムが渡す接続元を使います。`X-Forwarded-For` などのヘッダーは偽装できるので読みません
 - プロキシの後ろでは `trustProxy()` を使います。`const clientIp = trustProxy({ hops: 1 })` や `trustProxy({ proxies: ["10.0.0.0/8"] })` で作った関数が、クライアントの IP を返します。`X-Forwarded-For` の先頭は信じず、右から数えます。`hops` は、プロキシを通らずにアプリへ届く環境では偽装できるので、その場合は `proxies` を使ってください
 - `setCookie(c, name, value, options)` の既定は `Path=/`・`HttpOnly`・`SameSite=Lax` です
+- 署名付き Cookie は `await setSignedCookie(c, name, value, secret, options)` で付けて、`await getSignedCookie(c, name, secret)` で読みます。署名は HMAC-SHA256(Web Crypto)で、確かめるときは時間が一定の比べ方(`crypto.subtle.verify`)を使います。書き換えられていたら `false`、送られていなければ `undefined` です
+  - 値はクライアントから読めます(暗号化ではなく、書き換えを見つけるだけです)。秘密にしたいものは入れないでください
+  - 秘密鍵は 32 バイト以上のランダムな文字列にして、コードに書かず環境変数や `c.env` から読んでください。`["新しい鍵", "古い鍵"]` のように配列で渡すと、新しい鍵で署名し、どちらの鍵の署名も受け付けます(鍵の入れ替え)
+  - 署名には Cookie の名前も入るので、ある Cookie の値を別の名前の Cookie に写しても通りません
+  - `maxAge` はブラウザに捨ててもらうだけなので、同じ値を後から送り直すことはできます。期限を守らせたいときは、値に期限を入れて確かめてください
+  - Bun・Deno・Node.js・Cloudflare Workers・ブラウザ(Service Worker。`crypto.subtle` は HTTPS か localhost でだけ使えます)で動きます
 
 ## バリデーション
 

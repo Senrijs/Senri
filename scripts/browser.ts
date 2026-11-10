@@ -11,7 +11,7 @@ import { tmpdir } from "node:os";
 import { extname, join } from "node:path";
 import { chromium } from "playwright";
 import { createApp } from "../src/index.ts";
-import { deleteCookie, setCookie } from "../src/cookie.ts";
+import { deleteCookie, getSignedCookie, setCookie, setSignedCookie } from "../src/cookie.ts";
 import { serve as serveNode } from "../adapters/node/index.ts";
 
 const ROOT = join(import.meta.dirname, "..");
@@ -193,6 +193,12 @@ try {
         return c.redirect("/after-login", 303);
     });
     cookieApp.get("/after-login", () => "ログインしました");
+    // 署名付き Cookie: ブラウザが値を変えずに保存して、送り返すか(. や日本語を含む値)
+    cookieApp.get("/signed", async (_, c) => {
+        const value = await getSignedCookie(c, "signed", "browser-secret");
+        await setSignedCookie(c, "signed", "日本語.値", "browser-secret");
+        return String(value);
+    });
     const cookieServer = serveNode(cookieApp, { port: 0 });
     try {
         await new Promise<void>((resolve) => cookieServer.once("listening", resolve));
@@ -208,6 +214,9 @@ try {
         await page.goto(`${cookieBase}/login`);
         const afterLogin = await names();
         check("Cookie: ログイン後のリダイレクトで付く", page.url() === `${cookieBase}/after-login` && JSON.stringify(afterLogin) === `["session"]`, `${page.url()} ${JSON.stringify(afterLogin)}`);
+        const firstSigned = await (await page.goto(`${cookieBase}/signed`))!.text();
+        const secondSigned = await (await page.goto(`${cookieBase}/signed`))!.text();
+        check("Cookie: 署名付き Cookie が往復する", firstSigned === "undefined" && secondSigned === "日本語.値", `${firstSigned} ${secondSigned}`);
     } finally {
         cookieServer.close();
     }
