@@ -23,6 +23,7 @@ import { nodeCoreOf, type AppCore, type Resolved } from "../../src/app.ts";
 import { compose } from "../../src/compose.ts";
 import { lazyContext, plainOf, type Context, type HandlerResult } from "../../src/context.ts";
 import { HttpError } from "../../src/errors.ts";
+import { checkMaxRequestBodySize, countBytes } from "../../src/middleware/body-limit.ts";
 import { isPlainSafe, PlainResponse, type LazyRequest } from "../../src/plain.ts";
 
 type App = {
@@ -84,11 +85,22 @@ function hasBody(req: IncomingMessage): boolean {
     );
 }
 
-function toRequest(req: IncomingMessage, signal: AbortSignal): Request {
+// 本文の上限(maxRequestBodySize)。超えたかどうかを、リクエストごとに持つ
+type BodyCap = { max: number; exceeded: boolean };
+
+// Content-Length があれば、読む前に上限と比べている(Node はそれより長い本文を受け取らない)
+// ないとき(チャンク転送)だけ、読みながら数える
+function bodyOf(req: IncomingMessage, cap: BodyCap | undefined): ReadableStream<Uint8Array> {
+    const body = Readable.toWeb(req) as unknown as ReadableStream<Uint8Array>;
+    if (!cap || req.headers["content-length"] !== undefined) return body;
+    return countBytes(body, cap.max, () => (cap.exceeded = true));
+}
+
+function toRequest(req: IncomingMessage, signal: AbortSignal, cap?: BodyCap): Request {
     return new Request(toUrl(req), {
         method: req.method,
         headers: toHeaders(req),
-        body: hasBody(req) ? (Readable.toWeb(req) as unknown as ReadableStream<Uint8Array>) : undefined,
+        body: hasBody(req) ? bodyOf(req, cap) : undefined,
         // ストリームをボディにするときに必要(読みながら送る「半二重」の指定)
         duplex: "half",
         signal,
@@ -163,6 +175,15 @@ function connectionInfo(req: IncomingMessage) {
     };
 }
 
+// 本文が上限を超えたとき。残りの本文は読まないので、接続は閉じる
+function tooLarge(res: ServerResponse) {
+    // 応答をもう送り始めていたら、413 にはできないので切る
+    if (res.headersSent) return void res.destroy();
+    for (const name of res.getHeaderNames()) res.removeHeader(name);
+    res.writeHead(413, { "content-type": "text/plain; charset=utf-8", connection: "close" });
+    res.end("413 Content Too Large");
+}
+
 function writeFailure(res: ServerResponse, err: unknown) {
     // ここで投げ直すと unhandled rejection でプロセスごと落ちるので、必ず握る
     console.error(err);
@@ -177,7 +198,7 @@ function writeFailure(res: ServerResponse, err: unknown) {
 }
 
 // app.fetch を通す道。開発モードのアプリと、app.fetch を包んだものはこちら
-async function serveWithFetch(app: App, req: IncomingMessage, res: ServerResponse) {
+async function serveWithFetch(app: App, req: IncomingMessage, res: ServerResponse, cap: BodyCap | undefined) {
     // レスポンスを送り終える前に接続が切れたら、アプリに c.req.signal で知らせる
     const controller = new AbortController();
     res.once("close", () => {
@@ -186,7 +207,7 @@ async function serveWithFetch(app: App, req: IncomingMessage, res: ServerRespons
 
     let request: Request;
     try {
-        request = toRequest(req, controller.signal);
+        request = toRequest(req, controller.signal, cap);
     } catch {
         res.statusCode = 400;
         res.end("400 Bad Request");
@@ -194,15 +215,19 @@ async function serveWithFetch(app: App, req: IncomingMessage, res: ServerRespons
     }
 
     try {
-        await writeResponse(res, await app.fetch(request, connectionInfo(req)));
+        const response = await app.fetch(request, connectionInfo(req));
+        // 上限を超えていたら、ハンドラーがエラーを握りつぶしていても 413 にする
+        if (cap?.exceeded) return tooLarge(res);
+        await writeResponse(res, response);
     } catch (err) {
+        if (cap?.exceeded) return tooLarge(res);
         // クライアントが途中で切っただけならエラーではない
         if (!controller.signal.aborted) writeFailure(res, err);
     }
 }
 
 // c.req を最初に読んだときに、本物の Request を作る
-function lazyRequest(req: IncomingMessage, res: ServerResponse, url: string): LazyRequest {
+function lazyRequest(req: IncomingMessage, res: ServerResponse, url: string, cap: BodyCap | undefined): LazyRequest {
     return {
         method: req.method!,
         url,
@@ -219,7 +244,7 @@ function lazyRequest(req: IncomingMessage, res: ServerResponse, url: string): La
                 });
             }
             try {
-                return toRequest(req, controller.signal);
+                return toRequest(req, controller.signal, cap);
             } catch (cause) {
                 // Node が通したのに Request にできないもの。Request を先に作っていたときと同じく 400 にする
                 throw new HttpError(400, "400 Bad Request", { cause });
@@ -289,7 +314,7 @@ async function respondLazily(core: AppCore, c: Context, resolved: Resolved, meth
 }
 
 // Request を作らずに答える道。app.fetch と同じ流れで、c.req を読まれたときだけ Request を作る
-async function serveLazily(core: AppCore, req: IncomingMessage, res: ServerResponse) {
+async function serveLazily(core: AppCore, req: IncomingMessage, res: ServerResponse, cap: BodyCap | undefined) {
     const method = req.method!;
     let url: string;
     try {
@@ -302,7 +327,7 @@ async function serveLazily(core: AppCore, req: IncomingMessage, res: ServerRespo
         return;
     }
 
-    const c = lazyContext(lazyRequest(req, res, url), connectionInfo(req));
+    const c = lazyContext(lazyRequest(req, res, url, cap), connectionInfo(req));
     try {
         const resolved = core.resolve(c, method);
         if (resolved.kind === "route") {
@@ -310,9 +335,12 @@ async function serveLazily(core: AppCore, req: IncomingMessage, res: ServerRespo
             c.params = resolved.params;
         }
         const answer = await respondLazily(core, c, resolved, method);
+        // 上限を超えていたら、ハンドラーがエラーを握りつぶしていても 413 にする
+        if (cap?.exceeded) return tooLarge(res);
         if (answer instanceof PlainResponse) writePlain(res, answer);
         else await writeResponse(res, c.finalize(answer));
     } catch (err) {
+        if (cap?.exceeded) return tooLarge(res);
         // クライアントが途中で切っただけならエラーではない
         if (!res.destroyed || res.writableFinished) writeFailure(res, err);
     }
@@ -330,6 +358,9 @@ async function serveLazily(core: AppCore, req: IncomingMessage, res: ServerRespo
  * - If `app.fetch` throws, or the response body fails before anything is sent, the error is logged and 500 is returned
  * - A body that ends after one chunk (a string or JSON) is sent with `Content-Length`; other bodies are streamed as chunks arrive
  * - `c.req` is a real `Request`, created the first time it is read, so a handler that does not read it costs less
+ * - `options.maxRequestBodySize` (bytes) limits the request body: over it, the request gets 413. With `Content-Length`
+ *   it is refused before reading; without it (chunked) it is counted while read. Without the option, there is no limit
+ *   (the default of `node:http`). A negative or non-numeric value throws a `RangeError`
  *
  * Unlike `serve()` from `@senrijs/senri/serve`, it does not read `PORT`, print routes or handle graceful shutdown.
  *
@@ -344,15 +375,27 @@ async function serveLazily(core: AppCore, req: IncomingMessage, res: ServerRespo
  * server.once("listening", () => console.log("listening"));
  * ```
  */
-export function serve(app: App, options: { port: number; hostname?: string | undefined }): Server {
+export function serve(
+    app: App,
+    options: { port: number; hostname?: string | undefined; maxRequestBodySize?: number | undefined },
+): Server {
     const core = nodeCoreOf(app);
+    const max = checkMaxRequestBodySize(options.maxRequestBodySize);
     const server = createServer((req, res) => {
         if (NOT_IMPLEMENTED.has(req.method ?? "")) {
             res.writeHead(501, { "content-type": "text/plain; charset=utf-8", connection: "close" });
             res.end("501 Not Implemented");
             return;
         }
-        return core ? serveLazily(core, req, res) : serveWithFetch(app, req, res);
+        // 上限があるときだけ、リクエストごとに数える入れ物を作る
+        let cap: BodyCap | undefined;
+        if (max !== Infinity && hasBody(req)) {
+            // Content-Length があれば、読む前に決める(Node が数字かどうかを確かめている)
+            const length = req.headers["content-length"];
+            if (length !== undefined && Number(length) > max) return tooLarge(res);
+            cap = { max, exceeded: false };
+        }
+        return core ? serveLazily(core, req, res, cap) : serveWithFetch(app, req, res, cap);
     });
 
     // CONNECT は request ではなく connect イベントで来る(聞いていないと、何も返さずに切ってしまう)

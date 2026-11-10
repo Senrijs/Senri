@@ -17,6 +17,45 @@ export type BodyLimitOptions = {
     onError?: (c: Context) => HandlerResult | Promise<HandlerResult>;
 };
 
+// serve() の maxRequestBodySize を確かめる。省略すると上限なし(Infinity)。Infinity も渡せる
+// (@senrijs/senri/serve と @senrijs/senri/node で同じ規則にするため、ここに置く)
+export function checkMaxRequestBodySize(max: number | undefined): number {
+    if (max === undefined) return Infinity;
+    if (typeof max !== "number" || Number.isNaN(max) || max < 0) {
+        throw new RangeError(`maxRequestBodySize must be a number of bytes, 0 or more: ${String(max)}`);
+    }
+    return max;
+}
+
+// 読みながら数えて、max を超えたら HttpError 413 でストリームをエラーにし、それ以上は読まない
+// 超えたときに onExceeded を呼ぶ(ハンドラーがエラーを握りつぶしても、呼んだ側が 413 にできるように)
+// serve() の maxRequestBodySize(Node.js と Deno)でも使う
+export function countBytes(
+    body: ReadableStream<Uint8Array>,
+    max: number,
+    onExceeded: () => void,
+): ReadableStream<Uint8Array> {
+    let size = 0;
+    const reader = body.getReader();
+    return new ReadableStream<Uint8Array>({
+        async pull(controller) {
+            const { done, value } = await reader.read();
+            if (done) return controller.close();
+            size += value.byteLength;
+            if (size > max) {
+                onExceeded();
+                controller.error(new HttpError(413, "413 Content Too Large"));
+                await reader.cancel();
+                return;
+            }
+            controller.enqueue(value);
+        },
+        cancel(reason) {
+            return reader.cancel(reason);
+        },
+    });
+}
+
 /**
  * Middleware that limits the request body size. Requests without a body pass through.
  * - With `Content-Length`: decided before reading. Over the limit, `onError` responds; a non-numeric value gets 400.
@@ -60,25 +99,7 @@ export function bodyLimit(options: BodyLimitOptions): Middleware {
 
         // ない(チャンク転送など)ときは、読みながら数える。超えたらストリームをエラーにして、それ以上は読まない
         let exceeded = false;
-        let size = 0;
-        const reader = body.getReader();
-        const limited = new ReadableStream<Uint8Array>({
-            async pull(controller) {
-                const { done, value } = await reader.read();
-                if (done) return controller.close();
-                size += value.byteLength;
-                if (size > max) {
-                    exceeded = true;
-                    controller.error(new HttpError(413, "413 Content Too Large"));
-                    await reader.cancel();
-                    return;
-                }
-                controller.enqueue(value);
-            },
-            cancel(reason) {
-                return reader.cancel(reason);
-            },
-        });
+        const limited = countBytes(body, max, () => (exceeded = true));
         c.req = new Request(c.req, { body: limited, duplex: "half" } as RequestInit);
 
         const res = await next();

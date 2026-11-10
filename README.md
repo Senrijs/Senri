@@ -153,6 +153,21 @@ serve(app, {
 
 ランタイムの既定どおりにしたいときは `gracefulShutdown: false` にします。
 
+### 本文の大きさの上限(maxRequestBodySize)
+
+`serve()` の `maxRequestBodySize`(バイト数)で、サーバー全体の本文の上限を決められます。超えたら 413 です。`Infinity` で上限をなくせます。
+
+- 省略したときは、ランタイムの既定のままです。**Bun では、128 MiB を超える本文が切られます**(`Bun.serve` の既定)。Node.js と Deno には上限がありません
+- Bun で大きいファイルを受けるとき(`multipart()` など)は、`maxRequestBodySize` を上げてください
+
+```ts
+serve(app, { maxRequestBodySize: 1024 * 1024 * 1024 }); // 1 GiB
+```
+
+- Content-Length があれば読む前に断り、ない(チャンク転送)ときは読みながら数えます
+- これはサーバー全体の上限です。ルートごとの上限は `bodyLimit()`、`uploadLimit()`、`multipart()` の上限で付けてください
+- Node.js の `node:http` は、リクエストを受け取り終えるまでの時間を既定で 5 分にしています(`requestTimeout`)。遅い回線で大きいファイルを送ると、途中で 408 になることがあります
+
 ## ルート
 
 ```ts
@@ -246,6 +261,7 @@ app.post("/upload", async (_, c) => {
 - 本文を読んだあと(`c.body()`、`uploadLimit()`、ルートの `body` のスキーマ)や、2回目に呼ぶとエラーです。小さいファイルを `File` で受け取って種類まで確かめるなら `uploadLimit()`、大きいファイルを流すなら `multipart()` と、ルートごとに使い分けてください
 - `part.filename` と `part.contentType` は、送られてきたそのままの値です。保存先のパスには使わず、`crypto.randomUUID()` などで決めるか `safeFileName()` を通してください
 - 本文全体の上限は `maxTotalSize` で付けられます。`bodyLimit()` を一緒に使ってもかまいません
+- Bun では、`serve()` の既定で 128 MiB を超える本文が切られます。`maxFileSize` を上げるときは、`serve()` の [`maxRequestBodySize`](#本文の大きさの上限maxrequestbodysize) も上げてください
 
 ### グループ化
 
