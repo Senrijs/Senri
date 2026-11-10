@@ -387,6 +387,35 @@ expect(res.status).toBe(413);
 - `{ cookies: true }` で、前の応答の `Set-Cookie` を次のリクエストに付けます(名前ごとに 1 つ。domain と path は見ません)
 - `{ headers }` で、毎回付けるヘッダーを決められます
 
+### OpenAPI(@senrijs/senri/openapi)
+
+表から OpenAPI の文書(既定は 3.1)を作れます。
+
+```ts
+import { openAPI } from "@senrijs/senri/openapi";
+
+export const routes = defineRoutes({
+    "GET /users/:id": endpoint(
+        {
+            params: z.object({ id: z.coerce.number() }),
+            response: userSchema,                           // 200 の本文
+            responses: { 404: notFoundSchema },             // ほかの status
+            openapi: { summary: "ユーザーを取る", tags: ["users"] },
+        },
+        ({ id }) => findUser(id),
+    ),
+});
+
+const doc = openAPI(routes, { info: { title: "My API", version: "1.0.0" } });
+app.get("/openapi.json", () => doc);
+```
+
+- パスとメソッドは表のキーから作ります(`:id` → `{id}`)。`params`・`query`・`body` のスキーマが、パラメーターとリクエストの本文になります。フォームで受けるルートは `bodyType: "form"` と書きます
+- レスポンスは、`response`(200)と `responses`(status ごと)に書いたものだけ入ります。ハンドラーの戻り値の型は、動いているときには分からないためです
+- スキーマは [Standard JSON Schema](https://standardschema.dev/json-schema) で JSON Schema にします(Zod 4.2・ArkType 2.1.28 から。Valibot は `@valibot/to-json-schema` で包みます)。対応していないスキーマは `toJSONSchema` で変換を渡せます。どちらもなければ、空のスキーマにして警告します
+- 開発モードでは、ハンドラーの戻り値が `response` のスキーマに合わないと、ターミナルに警告します(応答は変えません。本番では確かめません)
+- 表にない `app.get()` などのルートは入りません
+
 ### パスのルール
 
 - 末尾スラッシュと連続スラッシュは無視します。`/users`、`/users/`、`//users` はどれも同じです

@@ -30,6 +30,7 @@ const en = {
     "schema.key": '{path}: only params, query and body can be given as schemas ("{key}" cannot be used)',
     "schema.type": "{path}: {key} is not a Standard Schema schema (pass a schema from Zod, Valibot, ArkType or similar)",
     "route.reserved": "{method} {path}: paths under /_senri are reserved for the dashboard in development mode",
+    "response.mismatch": "{route}: the handler returned a value that does not match its response schema (the client and OpenAPI expect that shape)",
 };
 
 /** A key of the server's development messages. */
@@ -63,6 +64,7 @@ const ja: Record<ServerMessageKey, string> = {
     "schema.key": '{path}: スキーマに渡せるのは params / query / body だけです("{key}" は使えません)',
     "schema.type": "{path}: {key} が Standard Schema のスキーマではありません(Zod・Valibot・ArkType などのスキーマを渡してください)",
     "route.reserved": "{method} {path}: /_senri 以下は、開発モードではダッシュボード用に予約されています",
+    "response.mismatch": "{route}: ハンドラーの戻り値が、response のスキーマに合いません(クライアントと OpenAPI は、スキーマの形だと思っています)",
 };
 
 export const SERVER_MESSAGES: Record<Lang, Record<ServerMessageKey, string>> = { en, ja };

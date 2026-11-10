@@ -497,3 +497,20 @@ async function testingTypes() {
     same<Awaited<ReturnType<typeof request>>, Response>(true);
 }
 void testingTypes;
+
+// --- OpenAPI 用の項目(endpoint の response / responses / bodyType / openapi) ---
+
+defineRoutes({
+    "GET /doc/:id": endpoint(
+        { response: userSchema, responses: { 404: userSchema }, bodyType: "json", openapi: { summary: "s", tags: ["t"], security: [{ bearer: [] }] } },
+        ({ id }) => ({ name: id }),
+    ),
+});
+defineRoutes({
+    // @ts-expect-error bodyType は "json" か "form"
+    "POST /doc": endpoint({ bodyType: "xml" }, () => "x"),
+});
+defineRoutes({
+    // @ts-expect-error openapi の項目の型が違う
+    "GET /doc2": endpoint({ openapi: { tags: "t" } }, () => "x"),
+});

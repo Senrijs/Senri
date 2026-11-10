@@ -42,7 +42,7 @@ import { finishErrorPage, withErrorPage } from "./pages.ts";
 import { routeWarnings } from "./route-warnings.ts";
 import { serverMessage } from "./server-messages.ts";
 import { serverTimingHeader, withServerTiming } from "./server-timing.ts";
-import { checkSchemas, describeValidation } from "./validation.ts";
+import { checkSchemas, describeValidation, watchResponse } from "./validation.ts";
 import { isLoopback, remoteAddress } from "./dashboard/access.ts";
 
 // 計測で、いちばん内側の層に付ける名前(ダッシュボードの玉ねぎタイムラインに出る)
@@ -352,6 +352,7 @@ function install(core: AppCore, scope: Scope, nodeEnv: string | undefined, fixed
             }
         },
         explain: (err) => explain(err, terminal),
+        watchResponse: (route, schema, handler) => watchResponse(route, schema, handler, terminal),
     };
 }
 

@@ -75,6 +75,10 @@
       "types": "./dist/src/websocket.d.ts",
       "import": "./dist/src/websocket.js"
     },
+    "./openapi": {
+      "types": "./dist/src/openapi.d.ts",
+      "import": "./dist/src/openapi.js"
+    },
     "./node": {
       "types": "./dist/adapters/node/index.d.ts",
       "import": "./dist/adapters/node/index.js"

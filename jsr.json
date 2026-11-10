@@ -14,6 +14,7 @@
     "./client": "./src/client.ts",
     "./testing": "./src/testing.ts",
     "./websocket": "./src/websocket.ts",
+    "./openapi": "./src/openapi.ts",
     "./node": "./adapters/node/index.ts",
     "./serve": "./adapters/serve/index.ts",
     "./static": "./adapters/static/index.ts",

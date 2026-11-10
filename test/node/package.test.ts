@@ -59,6 +59,13 @@ describe("パッケージ", () => {
         assert.deepEqual([typeof upgradeWebSocket, typeof websocket.open], ["function", "function"]);
     });
 
+    test('"@senrijs/senri/openapi" で OpenAPI の文書を作れる', async () => {
+        assert.match(import.meta.resolve("@senrijs/senri/openapi"), /\/dist\/src\/openapi\.js$/);
+        const { openAPI } = await import("@senrijs/senri/openapi");
+
+        assert.equal(typeof openAPI, "function");
+    });
+
     test('"@senrijs/senri/node" で Node アダプターが使える', async () => {
         assert.match(import.meta.resolve("@senrijs/senri/node"), /\/dist\/adapters\/node\/index\.js$/);
         const { serve } = await import("@senrijs/senri/node");
