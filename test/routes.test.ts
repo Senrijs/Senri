@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { z } from "zod";
-import { createApp, defineRoutes, endpoint, mergeRoutes, ValidationError } from "../src/index.ts";
+import { createApp, defineRoutes, endpoint, mergeRoutes, ValidationError, type Middleware } from "../src/index.ts";
+import { devtools } from "../src/dev/index.ts";
 
 const get = (app: { fetch(req: Request): Promise<Response> }, path: string, init?: RequestInit) =>
     app.fetch(new Request(`http://localhost${path}`, init));
@@ -138,5 +139,147 @@ describe("app.routes() の今までの書き方", () => {
     test("ハンドラーでも endpoint でもない値はエラー", () => {
         const app = createApp();
         expect(() => app.routes({ "GET /a": "x" } as never)).toThrow('Invalid route: "GET /a"');
+    });
+});
+
+describe("ルートごとのミドルウェア(use)", () => {
+    // 通った順に名前を記録するミドルウェア
+    const mark = (name: string, log: string[]): Middleware => {
+        const mw: Middleware = async (_c, next) => {
+            log.push(name);
+            await next();
+        };
+        Object.defineProperty(mw, "name", { value: name });
+        return mw;
+    };
+
+    test("順番: アプリの use → 表の use → ルートの use → スキーマの確認 → ハンドラー", async () => {
+        const log: string[] = [];
+        const app = createApp();
+        app.use(mark("app", log));
+        app.routes(
+            defineRoutes("/admin", { use: [mark("table", log)] })({
+                "POST /users": endpoint(
+                    {
+                        use: [mark("route", log)],
+                        body: {
+                            "~standard": {
+                                version: 1,
+                                vendor: "test",
+                                validate: (value: unknown) => (log.push("validate"), { value }),
+                            },
+                        },
+                    },
+                    () => (log.push("handler"), "ok"),
+                ),
+            }),
+        );
+        expect(await (await postJson(app, "/admin/users", {})).text()).toBe("ok");
+        expect(log).toEqual(["app", "table", "route", "validate", "handler"]);
+    });
+
+    test("付けたルートだけで動く(同じ表のほかのルートや、表の外のルートでは動かない)", async () => {
+        const log: string[] = [];
+        const app = createApp();
+        app.routes(
+            defineRoutes({
+                "GET /a": endpoint({ use: [mark("a", log)] }, () => "a"),
+                "GET /b": () => "b",
+            }),
+        );
+        app.get("/c", () => "c");
+        await get(app, "/b");
+        await get(app, "/c");
+        await get(app, "/missing");
+        expect(log).toEqual([]);
+        await get(app, "/a");
+        expect(log).toEqual(["a"]);
+    });
+
+    test("表の use は、その表の全部のルートで動く", async () => {
+        const log: string[] = [];
+        const app = createApp();
+        app.routes(
+            defineRoutes("/admin", { use: [mark("auth", log)] })({
+                "GET /": () => "top",
+                "GET /x": endpoint({ use: [mark("x", log)] }, () => "x"),
+            }),
+        );
+        app.get("/public", () => "p");
+        await get(app, "/admin");
+        await get(app, "/admin/x");
+        await get(app, "/public");
+        expect(log).toEqual(["auth", "auth", "x"]);
+    });
+
+    test("ミドルウェアが値を返したら、スキーマの確認(本文を読む)とハンドラーまで届かない", async () => {
+        let read = false;
+        const app = createApp();
+        const deny: Middleware = (c) => {
+            c.status(401);
+            return "login";
+        };
+        app.routes(
+            defineRoutes({
+                "POST /x": endpoint(
+                    {
+                        use: [deny],
+                        body: { "~standard": { version: 1, vendor: "test", validate: (value: unknown) => ((read = true), { value }) } },
+                    },
+                    () => "handler",
+                ),
+            }),
+        );
+        const res = await postJson(app, "/x", {});
+        expect(res.status).toBe(401);
+        expect(await res.text()).toBe("login");
+        expect(read).toBe(false);
+    });
+
+    test("ミドルウェアの c.set() を、ハンドラーの c.get() で読める", async () => {
+        const auth: Middleware<{ user: string }> = async (c, next) => {
+            c.set("user", "alice");
+            await next();
+        };
+        const app = createApp();
+        app.routes(defineRoutes("", { use: [auth] })({ "GET /me": (_, c) => c.get("user") ?? "none" }));
+        expect(await (await get(app, "/me")).text()).toBe("alice");
+    });
+
+    test("ミドルウェアの例外は onError に届く", async () => {
+        const app = createApp();
+        app.onError((err) => `caught: ${(err as Error).message}`);
+        const boom: Middleware = () => {
+            throw new Error("boom");
+        };
+        app.routes(defineRoutes({ "GET /x": endpoint({ use: [boom] }, () => "x") }));
+        expect(await (await get(app, "/x")).text()).toBe("caught: boom");
+    });
+
+    test("use が配列でない、または関数でないものを含むとエラー", () => {
+        expect(() => endpoint({ use: "x" as never }, () => "x")).toThrow("Invalid middleware");
+        expect(() => endpoint({ use: [1] as never }, () => "x")).toThrow("Invalid middleware");
+        expect(() => defineRoutes("/a", { use: [null] as never })).toThrow("Invalid middleware");
+    });
+
+    test("開発モード: タイムラインとダッシュボードのルートの行に出る", async () => {
+        const app = createApp({ dev: devtools({ lang: "ja" }) });
+        let names: string[] = [];
+        app.use(async function outer(c, next) {
+            await next();
+            names = c.timings.map((t) => t.name);
+        });
+        const requireUser: Middleware = async (_c, next) => {
+            await next();
+        };
+        Object.defineProperty(requireUser, "name", { value: "requireUser" });
+        app.routes(defineRoutes({ "GET /x": endpoint({ use: [requireUser] }, () => "x") }));
+        const local = { requestIP: () => ({ address: "127.0.0.1", family: "IPv4", port: 1 }) };
+        await app.fetch(new Request("http://localhost:3927/x", { headers: { host: "localhost:3927" } }), local);
+        expect(names).toContain("requireUser");
+
+        const rows = await (await app.fetch(new Request("http://localhost:3927/_senri/api/routes", { headers: { host: "localhost:3927" } }), local)).json();
+        const row = rows.find((r: { path: string }) => r.path === "/x");
+        expect(row.middlewares).toContainEqual({ name: "requireUser", applies: "yes" });
     });
 });

@@ -291,7 +291,7 @@ function answerOf(c: Context, value: HandlerResult): Response | PlainResponse {
 
 async function respondLazily(core: AppCore, c: Context, resolved: Resolved, method: string): Promise<Response | PlainResponse> {
     const fail = (err: unknown) => core.fail(err, c);
-    const layers = core.layers(c);
+    const layers = core.layers(c, resolved);
     // ハンドラーを直接呼ぶ。HEAD の本文を捨てる処理と QUERY の確認は core.inner に任せる(c.req を読む)
     const route = resolved.kind === "route" && method !== "HEAD" && resolved.route.method !== "QUERY" ? resolved.route : null;
     // Response を作らずに答えられるもの: ルートのハンドラーと、既定の 404(app.notFound() で差し替えていないとき)
