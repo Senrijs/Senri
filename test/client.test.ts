@@ -92,6 +92,22 @@ describe("client()", () => {
         expect(seen).toEqual(["https://example.com/api/users/1"]);
     });
 
+    test("ベース URL の末尾の \"/\" は、いくつあっても削る", async () => {
+        const seen: string[] = [];
+        const sub = client<Api>("https://example.com/api///", { fetch: (req) => (seen.push(req.url), new Response("")) });
+        await sub("GET /text");
+        expect(seen).toEqual(["https://example.com/api/text"]);
+    });
+
+    test("\"/\" が長く続いて最後が別の文字のベース URL でも、すぐ終わる(時間が長さの 2 乗にならない)", () => {
+        // 以前の /\/+$/ は、始まる位置ごとに読み直すので、10 万文字で数秒かかった
+        for (const base of ["http://x" + "/".repeat(100_000) + "a", "/".repeat(100_000) + "a", "/".repeat(100_000)]) {
+            const started = performance.now();
+            client<Api>(base);
+            expect(performance.now() - started).toBeLessThan(100);
+        }
+    });
+
     test("パラメーターが足りなければ、送る前にエラー", async () => {
         await expect(api("GET /users/:id", { params: {} } as never)).rejects.toThrow("Missing path parameter: id");
     });

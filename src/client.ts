@@ -109,6 +109,14 @@ export type ClientOptions = {
 
 // --- 実行時 ---
 
+// 末尾の "/" を削る。/\/+$/ は、"/" が長く続いて最後が別の文字のとき、始まる位置ごとに読み直すので、
+// 時間が長さの 2 乗になる。後ろから 1 文字ずつ見れば、長さに比例する
+function trimTrailingSlashes(url: string): string {
+    let end = url.length;
+    while (end > 0 && url.charCodeAt(end - 1) === 47) end--; // "/"
+    return url.slice(0, end);
+}
+
 // パスにパラメーターを入れる。値はエンコードする。ワイルドカード(*)は "/" を残して、セグメントごとにエンコードする
 function fillPath(path: string, params: Record<string, unknown> | undefined): string {
     return path
@@ -192,7 +200,7 @@ async function readBody(res: Response, method: string): Promise<unknown> {
  * ```
  */
 export function client<A>(baseUrl: string, options: ClientOptions = {}): Client<A> {
-    const base = baseUrl.replace(/\/+$/, "");
+    const base = trimTrailingSlashes(baseUrl);
     const call = async (route: string, input: (CallOptions & { params?: Record<string, unknown>; query?: Record<string, QueryValue>; body?: unknown }) = {}) => {
         const space = route.indexOf(" ");
         if (space <= 0) throw new TypeError(`Invalid route: "${route}" (e.g. "GET /hello")`);
