@@ -414,7 +414,7 @@ app.use("/photos", uploadLimit({ maxTotalSize: 20 * 1024 * 1024, types: ["image/
 
 - `requestId()`: 受け取った `X-Request-Id` は既定で使いません。信頼できるプロキシの後ろでは `trustIncoming: true` にしてください(128 文字までの `A-Z a-z 0-9 . _ = + / -` だけを受け付け、それ以外は作り直します)
 - `timeout()`: 時間切れでも処理そのものは止まりません。同期のループ中はタイマーも動きません。`c.req.signal` は切断だけを表すので、外部への呼び出しを止めるには `AbortSignal.timeout()` と組み合わせてください
-- `csrf()`: GET・HEAD・OPTIONS 以外で、ブラウザが付ける `Sec-Fetch-Site` を見て、よそのオリジンからなら 403 にします。`Sec-Fetch-Site` のない古いブラウザでは、`Origin` のホストを `Host` と比べます(スキームは比べないので、TLS を終えるプロキシの後ろでも動きます)。どちらのヘッダーもないリクエストは、ブラウザからではない(curl やサーバーどうし)ので通します。ほかの自分のサイトからも受けるときは `origin: ["https://admin.example.com"]` で足してください。GET と HEAD は確かめないので、状態を変える処理を置かないでください。プロキシが `Host` を書き換えるときも、`origin` に正しいオリジンを入れてください
+- `csrf()`: GET・HEAD・OPTIONS 以外で、ブラウザが付ける `Sec-Fetch-Site` を見て、よそのオリジンからなら 403 にします。`Sec-Fetch-Site` のない古いブラウザでは、`Origin` のホストを `Host` と比べます(スキームは比べないので、TLS を終えるプロキシの後ろでも動きます)。どちらのヘッダーもないリクエストは、ブラウザからではない(curl やサーバーどうし)ので通します。ほかの自分のサイトからも受けるときは、`app.use(csrf({ origin: ["https://admin.example.com"] }))` のように、そのパスにかかる 1 つの `csrf()` に渡してください(`app.use(csrf())` のあとに `app.use("/api", csrf({ origin }))` を足しても、先の `csrf()` が 403 で止めるので届きません)。GET と HEAD は確かめないので、状態を変える処理を置かないでください。プロキシが `Host` を書き換えるときも、`origin` に正しいオリジンを入れてください
 - `basicAuth()` / `bearerAuth()`: 失敗すると 401 と `WWW-Authenticate` を返します。固定の値の代わりに `verifyUser` / `verifyToken` で検証することもできます(`true` を返したときだけ通します)。`cors()` と一緒に使うときは `cors()` を先に登録してください
 - `compress()`: `etag()` と一緒に使うときは `compress()` を先に登録してください。少しずつ流すストリームは、途中で止まって見えないように圧縮しません
 - `etag()`: GET の 2xx に弱い ETag を付けます。ハンドラーは毎回動きます。ストリームの本文と HEAD には付けません

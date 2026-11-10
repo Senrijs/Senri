@@ -83,6 +83,34 @@ describe("csrf()", () => {
         expect(await send(app, "POST", { "sec-fetch-site": "cross-site" })).toBe(403);
     });
 
+    test("JSDoc の例: 1 つの csrf() に origin を渡すと、同じオリジンと admin.example.com の両方を通す", async () => {
+        const app = createApp();
+        app.use(csrf({ origin: ["https://admin.example.com"] }));
+        app.post("/api/items", () => "created");
+        app.post("/form", () => "posted");
+        const post = (path: string, headers: Record<string, string>) =>
+            app.fetch(new Request(`http://example.com${path}`, { method: "POST", headers })).then((res) => res.status);
+        for (const path of ["/api/items", "/form"]) {
+            expect(await post(path, { "sec-fetch-site": "same-origin", origin: "http://example.com" })).toBe(200);
+            expect(await post(path, { "sec-fetch-site": "cross-site", origin: "https://admin.example.com" })).toBe(200);
+            expect(await post(path, { "sec-fetch-site": "cross-site", origin: "https://evil.example" })).toBe(403);
+        }
+    });
+
+    test("csrf() を重ねても、後ろの origin は効かない(先の csrf() が止める)", async () => {
+        const app = createApp();
+        app.use(csrf());
+        app.use("/api", csrf({ origin: ["https://admin.example.com"] }));
+        app.post("/api/items", () => "created");
+        const res = await app.fetch(
+            new Request("http://example.com/api/items", {
+                method: "POST",
+                headers: { "sec-fetch-site": "cross-site", origin: "https://admin.example.com" },
+            }),
+        );
+        expect(res.status).toBe(403);
+    });
+
     test("origin は関数でも決められる(true のときだけ通す)", async () => {
         const app = makeApp({ origin: (origin) => origin.endsWith(".trusted.example") });
         expect(await send(app, "POST", { "sec-fetch-site": "cross-site", origin: "https://a.trusted.example" })).toBe(200);
