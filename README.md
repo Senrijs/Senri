@@ -333,6 +333,39 @@ export const adminRoutes = defineRoutes("/admin", { use: [auth] })({
 - ミドルウェアを `Middleware<{ user: User }>` のように書くと、`c.get("user")` に型が付きます
 - そのルートに当たったリクエストでだけ動きます。開発モードのタイムラインと、ダッシュボードの「ルート」の行にも出ます
 
+### 型付きクライアント(@senrijs/senri/client)
+
+表の型(`typeof routes`)をクライアントに渡すと、パス・パラメーター・クエリ・ボディ・レスポンスに型が付きます。サーバーのコードは型だけ読むので、クライアントのバンドルには入りません。
+
+```ts
+// server/routes.ts
+export const routes = mergeRoutes(userRoutes, orgRoutes);
+export type Api = typeof routes;
+
+// client.ts
+import { client } from "@senrijs/senri/client";
+import type { Api } from "./server/routes.ts";
+
+const api = client<Api>("https://example.com", {
+    headers: () => ({ authorization: `Bearer ${getToken()}` }),   // 関数なら、呼ぶたびに読む
+});
+
+const res = await api("GET /users/:id", { params: { id: "1" } });
+if (res.ok) {
+    res.data;          // ハンドラーの戻り値を JSON にしたあとの型({ id: string })
+} else {
+    res.status;        // 404 など
+    res.error;         // 本文(unknown)
+}
+await api("POST /users", { body: { name: "a" } });             // ボディはスキーマの入力の型
+```
+
+- 呼び方は、表のキーと同じ文字列です。パラメーターはエンコードしてパスに入れ、`query` は文字列にして付け(配列は同じキーを繰り返す)、`body` は JSON で送ります(`FormData`・`URLSearchParams`・`Blob`・バイト列・ストリームはそのまま)
+- 戻り値は `{ ok, status, data, error, response }` です。2xx でなくても例外にしません(ネットワークのエラーと、壊れた JSON だけ例外)
+- 本文は Content-Type で読み分けます。JSON は値に、`text/*` は文字列に、それ以外は `Blob` にします
+- `data` の型はハンドラーの戻り値です。`Date` は `string` になるなど、JSON にしたあとの形にします。`onError`・ミドルウェア・`notFound` の応答は型に入らず、`error`(`unknown`)に入ります
+- `fetch` を差し替えられます。`client<Api>("http://localhost", { fetch: (req) => app.fetch(req) })` とすれば、サーバーを立てずに呼べます
+
 ### パスのルール
 
 - 末尾スラッシュと連続スラッシュは無視します。`/users`、`/users/`、`//users` はどれも同じです
