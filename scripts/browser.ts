@@ -105,6 +105,7 @@ try {
             wild: await call("/api/wild/a/%E3%81%82"),
             wildPost: await call("/api/wild/a", { method: "POST" }),
             otel: await call("/api/otel/1").then(() => call("/api/otel-spans")),
+            metrics: await call("/api/m/1").then(() => call("/api/m-metrics")),
             problem: await call("/api/problem"),
             jwt: await call("/api/jwt"),
         };
@@ -130,6 +131,8 @@ try {
     check("ページ: JWT(すべてのアルゴリズム)", inPage.jwt.body === ALL_JWT, inPage.jwt.body);
     const OTEL = JSON.stringify(["handler GET /api/otel/:id < GET /api/otel/:id", "GET /api/otel/:id < root"]);
     check("ページ: OpenTelemetry(span の入れ子)", inPage.otel.body === OTEL, inPage.otel.body);
+    const COUNT_LINE = 'http_server_request_duration_seconds_count{method="GET",route="/api/m/:id",status="200"} 1';
+    check("ページ: Prometheus", inPage.metrics.body.includes(COUNT_LINE), inPage.metrics.body.slice(0, 200));
     check("ページ: c.html()", inPage.page.body === "<h1>こんにちは</h1>" && inPage.page.type === "text/html; charset=utf-8", JSON.stringify(inPage.page));
     check("ページ: c.redirect() の相対パス", inPage.go.status === 302 && inPage.go.location === "/api/hello" && inPage.go.body === "", JSON.stringify(inPage.go));
     check("ページ: c.redirect() の日本語ドメイン", inPage.idn.location === "https://xn--r8jz45g.jp/%E3%83%91%E3%82%B9", JSON.stringify(inPage.idn));
@@ -158,6 +161,8 @@ try {
         const wild = await fetch("/api/wild/a/b");
         await fetch("/api/otel/2");
         const otelSpans = await fetch("/api/otel-spans");
+        await fetch("/api/m/2");
+        const scraped = await fetch("/api/m-metrics");
         const gone = await fetch("/api/problem");
         const jwt = await fetch("/api/jwt");
         // redirect: "manual" だと中身の見えない opaqueredirect になるので、たどった結果で確かめる
@@ -174,6 +179,7 @@ try {
             notFound: { status: notFound.status, mark: notFound.headers.get("x-senri"), body: await notFound.text() },
             wild: await wild.text(),
             otel: await otelSpans.text(),
+            metrics: await scraped.text(),
             problem: { status: gone.status, type: gone.headers.get("content-type"), body: await gone.text() },
             jwt: await jwt.text(),
             go: await follow("/api/go"),
@@ -201,6 +207,7 @@ try {
         );
         check("Service Worker: JWT(すべてのアルゴリズム)", viaWorker.jwt === ALL_JWT, viaWorker.jwt);
         check("Service Worker: OpenTelemetry(span の入れ子)", viaWorker.otel === OTEL, viaWorker.otel);
+        check("Service Worker: Prometheus", viaWorker.metrics.includes(COUNT_LINE), viaWorker.metrics.slice(0, 200));
         check("Service Worker: c.redirect() の相対パス", viaWorker.go.redirected && viaWorker.go.path === "/api/hello" && viaWorker.go.body === "こんにちは", JSON.stringify(viaWorker.go));
         check("Service Worker: c.redirect() の日本語のパス", viaWorker.japanese.redirected && viaWorker.japanese.body === "日本語のルート", JSON.stringify(viaWorker.japanese));
     }

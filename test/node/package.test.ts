@@ -73,6 +73,13 @@ describe("パッケージ", () => {
         assert.equal(typeof otel, "function");
     });
 
+    test('"@senrijs/senri/metrics" で Prometheus のメトリクスが使える', async () => {
+        assert.match(import.meta.resolve("@senrijs/senri/metrics"), /\/dist\/src\/metrics\.js$/);
+        const { metrics, metricsHandler } = await import("@senrijs/senri/metrics");
+
+        assert.deepEqual([typeof metrics, typeof metricsHandler], ["function", "function"]);
+    });
+
     test('"@senrijs/senri/node" で Node アダプターが使える', async () => {
         assert.match(import.meta.resolve("@senrijs/senri/node"), /\/dist\/adapters\/node\/index\.js$/);
         const { serve } = await import("@senrijs/senri/node");

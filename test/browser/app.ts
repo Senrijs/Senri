@@ -3,6 +3,7 @@
 import type { App } from "../../src/index.ts";
 import { otel } from "../../src/otel.ts";
 import { fakeApi, recorded } from "../../examples/shared/otel-check.ts";
+import { metrics, metricsHandler } from "../../src/metrics.ts";
 import { problem } from "../../src/problem.ts";
 import { checkJwtAlgorithms } from "../../examples/shared/jwt-check.ts";
 
@@ -26,6 +27,9 @@ export function setup(app: App) {
     app.use("/api/otel", otel({ api: fakeApi, middlewareSpans: true }));
     app.get("/api/otel/:id", ({ id }) => `otel ${id}`);
     app.get("/api/otel-spans", () => recorded.splice(0).map((s) => `${s.name} < ${s.parent}`));
+    app.use("/api/m", metrics());
+    app.get("/api/m/:id", ({ id }) => `m ${id}`);
+    app.get("/api/m-metrics", metricsHandler());
     app.get("/api/problem", (_, c) => problem(c, { status: 410, detail: "gone" }));
     app.get("/api/jwt", async () => (await checkJwtAlgorithms()).join(","));
     return app;

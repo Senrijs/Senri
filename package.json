@@ -83,6 +83,10 @@
       "types": "./dist/src/otel.d.ts",
       "import": "./dist/src/otel.js"
     },
+    "./metrics": {
+      "types": "./dist/src/metrics.d.ts",
+      "import": "./dist/src/metrics.js"
+    },
     "./node": {
       "types": "./dist/adapters/node/index.d.ts",
       "import": "./dist/adapters/node/index.js"
