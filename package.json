@@ -63,6 +63,10 @@
       "types": "./dist/src/jwt.d.ts",
       "import": "./dist/src/jwt.js"
     },
+    "./metrics": {
+      "types": "./dist/src/metrics.d.ts",
+      "import": "./dist/src/metrics.js"
+    },
     "./node": {
       "types": "./dist/adapters/node/index.d.ts",
       "import": "./dist/adapters/node/index.js"

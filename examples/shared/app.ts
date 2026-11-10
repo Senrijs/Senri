@@ -2,6 +2,7 @@ import { compress, createApp, csrf, health, logger, type StandardSchemaV1 } from
 import { devtools } from "../../src/dev/index.ts";
 import { getSignedCookie, setSignedCookie } from "../../src/cookie.ts";
 import { getIp } from "../../src/ip.ts";
+import { metrics, metricsHandler } from "../../src/metrics.ts";
 import { checkJwtAlgorithms } from "./jwt-check.ts";
 import { contextStorage, getContext } from "../../adapters/context-storage/index.ts";
 import { multipart } from "../../src/multipart.ts";
@@ -97,6 +98,10 @@ app.get("/context/:id", async () => {
     await new Promise((resolve) => setTimeout(resolve, 1));
     return currentPath();
 });
+// Prometheus: /m の下だけ数えて、/m-metrics で見せる(本物のアプリでは /metrics を ipRestriction() などで守る)
+app.use("/m", metrics());
+app.get("/m/items/:id", ({ id }) => `item ${id}`);
+app.get("/m-metrics", metricsHandler());
 app.get("/page", (_, c) => c.html("<h1>こんにちは!</h1>"));
 // ログインしたら Cookie を付けて、別のページへ
 app.get("/login", (_, c) => {

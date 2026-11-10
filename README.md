@@ -658,6 +658,26 @@ Deno では、`NODE_ENV` を読む許可(`--allow-env=NODE_ENV`)がないと本�
 - 接続元は `app.fetch` の2つ目の引数から取ります。`fetch: (req) => app.fetch(req)` のように包むと渡らないので、`(req, info) => app.fetch(req, info)` としてください
 - Docker などのコンテナの中で動かすと、接続元が localhost に見えないので、ダッシュボードは開けません
 
+## Prometheus のメトリクス
+
+```ts
+import { metrics, metricsHandler } from "@senrijs/senri/metrics";
+
+app.use(metrics());                                              // いちばん先に、1 回だけ
+app.use("/metrics", ipRestriction({ allow: ["10.0.0.0/8"] }));  // /metrics は守る(ルートや流量が見えるので)
+app.get("/metrics", metricsHandler());                           // Prometheus のテキスト形式
+```
+
+| メトリクス | 種類 | ラベル |
+| --- | --- | --- |
+| `http_server_request_duration_seconds` | histogram(既定のバケットは 5 ms〜10 s。`metrics({ buckets })` で変えられる) | `method`・`route`・`status` |
+| `http_server_active_requests` | gauge(処理中の数) | `method` |
+
+- ラベルの数が増えすぎないよう、`route` はパスではなくルートのパターンです(`/users/42` ではなく `/users/:id`)。ルートがなかったもの(404 など)は `unmatched`、標準でないメソッドは `_OTHER` にまとめます
+- 時間は、`metrics()` に入ってからレスポンスを返すまでです(ストリームの本文は、まだ送っている途中のことがあります)。例外は `onError` が返した status(500 など)で数えます
+- 記録はプロセスのメモリです。Cloudflare Workers では isolate ごとに別々になるので、全体の数にはなりません
+- 今は HTTP のメトリクスだけです。自分のカウンターなどを足す仕組みはありません
+
 ## 性能
 
 Hono 4.13.13・Elysia 1.4.30 と、同じルート(12 個)・同じリクエストで比べました。どれも本番モード、ミドルウェアなし、ハンドラーはテキストを返すだけです。手順とコードは [bench/](./bench/) にあり、だれでも同じものを動かせます。

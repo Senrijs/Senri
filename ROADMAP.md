@@ -87,7 +87,7 @@ See the [CHANGELOG](./CHANGELOG.md) for details.
 - [ ] OpenAPI generation
 - [ ] Testing helpers
 - [ ] OpenTelemetry: the onion timeline becomes production traces
-- [ ] Prometheus metrics
+- [x] Prometheus metrics
 - [ ] WebSocket
 - [x] JWT
 - [x] CSRF protection

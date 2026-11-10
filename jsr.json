@@ -11,6 +11,7 @@
     "./multipart": "./src/multipart.ts",
     "./problem": "./src/problem.ts",
     "./jwt": "./src/jwt.ts",
+    "./metrics": "./src/metrics.ts",
     "./node": "./adapters/node/index.ts",
     "./serve": "./adapters/serve/index.ts",
     "./static": "./adapters/static/index.ts",
