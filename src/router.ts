@@ -96,17 +96,29 @@ export function splitPath(pathname: string): string[] {
 // URL の区切り文字や空白を含む Host は、ふつうのクライアントは送らない
 const BAD_HOST = /[\s/?#@\\]/;
 
+// Host ヘッダーを確かめなくてよいランタイムか(Bun だけ)。起動したときに1回だけ決める
+// - 確かめるのは、Host をそのままつないで req.url を作るランタイム(Deno)で、パスがすり替わるのを防ぐため
+// - Bun は、Host が不正なとき req.url を "/public" のような相対 URL にする。すると pathnameOf の new URL() が
+//   失敗して 400 になるので、Host を読まなくても、パスはすり替わらない。この Bun の動きに頼っている
+//   (Bun の版が上がって動きが変わったら、test/routing.test.ts の生のソケットで送るテストが CI で落ちる)
+// - Bun では、Host を読むとリクエストごとに Headers を作ることになり、1 リクエストあたり 1〜2 µs かかっていた
+// - Deno と、どのランタイムか分からないとき(Workers など)は、今までどおり確かめる
+// - Node のアダプターは、Request を作る前に自分で Host を確かめる(adapters/node)
+const HOST_CHECK_DEFAULT = typeof (globalThis as { Bun?: unknown }).Bun === "undefined";
+
 // リクエストの pathname を取り出す。おかしなリクエストは HttpError(400) にする
 // - ランタイムが Host ヘッダーをつないで URL を作ることがある(Deno)。
-//   "Host: x/admin#" だと http://x/admin#/public になり、パスが /admin にすり替わるので弾く
+//   "Host: x/admin#" だと http://x/admin#/public になり、パスが /admin にすり替わるので弾く(checkHost)
 // - Bun は Host が不正だと req.url を "/public" のような相対 URL にするので、new URL() が失敗する
 // - 速さのため、ふつうは new URL() を使わず req.url の文字列から切り出す。
 //   ただし Deno は req.url を正規化しない("/a/../b" のまま来る)ので、"." のセグメント・%2e・\ を含むときだけ
 //   new URL() に任せて、URL の仕様どおりに解決させる(どちらで取り出しても、同じ結果になるようにしている)
-export function requestPathname(req: Request): string {
-    const host = req.headers.get("host");
-    if (host !== null && BAD_HOST.test(host)) {
-        throw new HttpError(400, "400 Bad Request");
+export function requestPathname(req: Request, checkHost: boolean = HOST_CHECK_DEFAULT): string {
+    if (checkHost) {
+        const host = req.headers.get("host");
+        if (host !== null && BAD_HOST.test(host)) {
+            throw new HttpError(400, "400 Bad Request");
+        }
     }
     return pathnameOf(req.url);
 }

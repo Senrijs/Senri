@@ -226,6 +226,9 @@ export type AppCore = {
     // 登録されたルート(登録順)
     /** The registered routes, in registration order. */
     routes(): readonly Route[];
+    // app.notFound() で差し替えていない(既定の 404 のまま)か。Node のアダプターが、Response を作らずに 404 を返すのに使う
+    /** Whether the 404 handler is still the default one (not replaced with `app.notFound()`). */
+    defaultNotFound(): boolean;
 };
 
 /** What {@link DevHooks.install} returns. Used by the core; app code does not normally use it. */
@@ -579,6 +582,7 @@ export function createApp<V extends object = Record<string, unknown>>(options: A
         inner: inner as AppCore["inner"],
         fail: (err, c) => handleError(err, c, onError, notFound),
         routes: () => routes,
+        defaultNotFound: () => notFound === defaultNotFound,
     };
 
     // 開発モード: 中身を渡して、開発用の fetch と既定の onError / notFound を受け取る

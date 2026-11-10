@@ -294,17 +294,24 @@ async function respondLazily(core: AppCore, c: Context, resolved: Resolved, meth
     const layers = core.layers(c);
     // ハンドラーを直接呼ぶ。HEAD の本文を捨てる処理と QUERY の確認は core.inner に任せる(c.req を読む)
     const route = resolved.kind === "route" && method !== "HEAD" && resolved.route.method !== "QUERY" ? resolved.route : null;
+    // Response を作らずに答えられるもの: ルートのハンドラーと、既定の 404(app.notFound() で差し替えていないとき)
+    // 既定の 404 は c.text("404 Not Found", 404) と同じ形にする(c.header() で設定したものも付く)
+    const direct = route
+        ? () => route.handler(c.params, c)
+        : resolved.kind === "notFound" && method !== "HEAD" && core.defaultNotFound()
+          ? () => (c.status(404), "404 Not Found")
+          : null;
     if (layers.length > 0) {
         // 純正のミドルウェアだけなら、Response を見る人はいない。利用者のものが1つでもあれば、本物の Response を渡す
-        if (!route || !layers.every((layer) => isPlainSafe(layer.mw))) {
+        if (!direct || !layers.every((layer) => isPlainSafe(layer.mw))) {
             return compose(layers, c, () => core.inner(c, resolved), fail);
         }
-        const inner = async () => answerOf(c, await route.handler(c.params, c));
+        const inner = async () => answerOf(c, await direct());
         return compose(layers, c, inner as unknown as () => Promise<Response>, fail);
     }
     try {
-        if (route) {
-            const handled = route.handler(c.params, c);
+        if (direct) {
+            const handled = direct();
             return answerOf(c, handled instanceof Promise ? await handled : handled);
         }
         return await core.inner(c, resolved);

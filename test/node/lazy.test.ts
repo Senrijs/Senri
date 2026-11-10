@@ -130,7 +130,8 @@ const REQUESTS: [string, string][] = [
         "/ip", "/copy", "/replace", "/fetch", "/fetch-req", "/missing",
     ].map((p): [string, string] => [`GET ${p}`, GET(p)]),
     ["GET /headers(x-a)", GET("/headers", "X-A: 1\r\nX-A: 2\r\n")],
-    ...["/", "/json", "/cookies", "/location", "/type", "/boom", "/text", "/response", "/redirect"].flatMap((p): [string, string][] => [
+    ["HEAD /missing", GET("/missing", "", "HEAD")],
+    ...["/", "/json", "/cookies", "/location", "/type", "/boom", "/text", "/response", "/redirect", "/missing"].flatMap((p): [string, string][] => [
         [`GET ${p}(許可された Origin)`, GET(p, "Origin: https://ok.example\r\n")],
         [`GET ${p}(許可されない Origin)`, GET(p, "Origin: https://ng.example\r\n")],
     ]),
@@ -322,7 +323,7 @@ describe("Request を作らない道と app.fetch の道で、応答が同じ", 
     }
 
     test("比べているリクエストの数(減っていないこと)", () => {
-        assert.equal(REQUESTS.length, 115);
+        assert.equal(REQUESTS.length, 118);
     });
 
     test("読まれない本文のあとも、同じ接続で次のリクエストが通る", async () => {
@@ -418,12 +419,13 @@ describe("c.req は、読んだときに作られる本物の Request", () => {
             });
             const port = await listen(app);
 
-            for (const path of ["/text", "/json", "/array", "/async", "/headers"]) {
+            // 既定の 404 も、Response を作らずに返す(app.notFound() で差し替えたときは、下で確かめる)
+            for (const path of ["/text", "/json", "/array", "/async", "/headers", "/missing"]) {
                 counts.Response = 0;
                 await raw(port, GET(path));
                 assert.equal(counts.Response, 0, path);
             }
-            for (const path of ["/c-text", "/c-json", "/response", "/bytes", "/class", "/missing"]) {
+            for (const path of ["/c-text", "/c-json", "/response", "/bytes", "/class"]) {
                 counts.Response = 0;
                 await raw(port, GET(path));
                 assert.equal(counts.Response, 1, path);
@@ -440,6 +442,14 @@ describe("c.req は、読んだときに作られる本物の Request", () => {
             counts.Response = 0;
             await raw(middlewarePort, GET("/"));
             assert.equal(counts.Response, 1, "ミドルウェア");
+
+            // app.notFound() で差し替えた 404 は、今までどおり本物の Response を通る
+            const custom = createApp();
+            custom.notFound((c) => c.text("nope", 404));
+            const customPort = await listen(custom);
+            counts.Response = 0;
+            assert.match(await raw(customPort, GET("/missing")), /^HTTP\/1\.1 404[\s\S]*nope$/);
+            assert.equal(counts.Response, 1, "app.notFound()");
         }),
     );
 
