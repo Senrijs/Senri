@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { connect } from "node:net";
 import { createApp, HttpError, logger } from "../src/index.ts";
 import { requestPathname, splitPath } from "../src/router.ts";
 import { devtools } from "../src/dev/index.ts";
@@ -216,14 +217,60 @@ describe("不正な Host ヘッダー", () => {
         return { app, adminCalled: () => adminCalled };
     }
 
-    test("Deno のように Host がつながった URL でも、パスがすり替わらない(400)", async () => {
+    test("Deno のように Host がつながった URL でも、パスがすり替わらない(400)", () => {
         // Deno は "GET /public" + "Host: x/admin#" を http://x/admin#/public にする
-        const { app, adminCalled } = appWithAdmin();
+        // Bun では Host を確かめない(下の生のソケットのテスト)ので、確かめる設定で呼ぶ(Deno やほかのランタイムの既定)
+        for (const host of ["x/admin#", "x/admin", "x?admin", "a b", "u@x", "x\\admin"]) {
+            // URL は Request が受け付ける形にしておく(確かめるのは Host ヘッダー)
+            const denoLike = new Request("http://x/admin#/public", { headers: { host } });
+            expect(() => requestPathname(denoLike, true)).toThrow(HttpError);
+        }
+        expect(requestPathname(new Request("http://localhost:3000/public", { headers: { host: "localhost:3000" } }), true)).toBe("/public");
+    });
 
-        const res = await app.fetch(new Request("http://x/admin#/public", { headers: { host: "x/admin#" } }));
+    // Bun では Host を読まずに、Bun が不正な Host のとき req.url を相対 URL にする動きに頼っている(src/router.ts)
+    // Bun の版が上がって動きが変わったら、ここが落ちる
+    describe("Bun.serve に不正な Host を生のソケットで送る", () => {
+        const BAD_HOSTS = ["x/admin#", "x/admin", "x?admin", "x#admin", "a b", "u@x", "x\\admin", "x:1/admin"];
 
-        expect(res.status).toBe(400);
-        expect(adminCalled()).toBe(false);
+        // 1 行目(status の行)を返す
+        const send = (port: number, host: string) =>
+            new Promise<string>((resolve) => {
+                const sock = connect(port, "127.0.0.1", () => sock.write(`GET /public HTTP/1.1\r\nHost: ${host}\r\nConnection: close\r\n\r\n`));
+                let data = "";
+                sock.on("data", (d) => (data += d));
+                sock.on("close", () => resolve(data.split("\r\n")[0] ?? ""));
+                sock.on("error", () => resolve(""));
+            });
+
+        test("前提: Bun は req.url を相対 URL にする(Host をつないだ絶対 URL にはしない)", async () => {
+            const urls: string[] = [];
+            const server = Bun.serve({ port: 0, hostname: "127.0.0.1", fetch: (r) => (urls.push(r.url), new Response("ok")) });
+            try {
+                for (const host of BAD_HOSTS) {
+                    urls.length = 0;
+                    await send(server.port!, host);
+                    // Bun がリクエストごと断ったとき(ハンドラーが呼ばれない)も、すり替わらないので構わない
+                    for (const url of urls) expect(url, `Host: ${host}`).not.toMatch(/^[a-z]+:\/\//i);
+                }
+            } finally {
+                server.stop(true);
+            }
+        });
+
+        test("Senri は 400 を返し、ほかのルートのハンドラーを呼ばない", async () => {
+            const { app, adminCalled } = appWithAdmin();
+            const server = Bun.serve({ port: 0, hostname: "127.0.0.1", fetch: app.fetch });
+            try {
+                for (const host of BAD_HOSTS) {
+                    expect(await send(server.port!, host), `Host: ${host}`).toMatch(/^HTTP\/1\.1 400/);
+                }
+                expect(await send(server.port!, `127.0.0.1:${server.port}`)).toMatch(/^HTTP\/1\.1 200/);
+                expect(adminCalled()).toBe(false);
+            } finally {
+                server.stop(true);
+            }
+        });
     });
 
     test("Bun のように req.url が相対 URL になっても、500 ではなく 400", async () => {
