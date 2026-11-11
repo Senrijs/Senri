@@ -364,7 +364,30 @@ await api("POST /users", { body: { name: "a" } });             // ボディは�
 - 呼び方は、表のキーと同じ文字列です。パラメーターはエンコードしてパスに入れ、`query` は文字列にして付け(配列は同じキーを繰り返す)、`body` は JSON で送ります(`FormData`・`URLSearchParams`・`Blob`・バイト列・ストリームはそのまま)
 - 戻り値は `{ ok, status, data, error, response }` です。2xx でなくても例外にしません(ネットワークのエラーと、壊れた JSON だけ例外)
 - 本文は Content-Type で読み分けます。JSON は値に、`text/*` は文字列に、それ以外は `Blob` にします
-- `data` の型はハンドラーの戻り値です。`Date` は `string` になるなど、JSON にしたあとの形にします。`onError`・ミドルウェア・`notFound` の応答は型に入らず、`error`(`unknown`)に入ります
+- `data` の型はハンドラーの戻り値です。`Date` は `string` になるなど、JSON にしたあとの形にします。`endpoint({ response })` のスキーマがあれば、そちらの出力の型にします
+- `onError`・ミドルウェア・`notFound` の応答は型に入らず、`error`(`unknown`)に入ります
+
+#### status ごとの型
+
+ハンドラーが `c.json(body, status)` / `c.text(body, status)` で status を書いて返すと、クライアントで status ごとに型が分かれます。`endpoint({ responses: { 404: schema } })` に書いたスキーマも同じです。
+
+```ts
+// サーバー
+"GET /users/:id": ({ id }, c) => {
+    const user = findUser(id);
+    if (!user) return c.json({ message: "not found" }, 404);
+    return user;
+},
+
+// クライアント
+const res = await api("GET /users/:id", { params: { id: "1" } });
+if (res.ok) res.data;                       // User(JSON にしたあとの形)
+else if (res.status === 404) res.error;     // { message: string }
+else res.error;                             // unknown(書いていない status)
+```
+
+- 2xx(`c.json(body, 201)` など)は成功の `data` に入ります。status を書かない `c.json(body)` は 200 として扱います(`c.status()` で決めた status は、型には残りません)
+- `c.json()` / `c.text()` の戻り値は `TypedResponse` という `Response` の型です。実行時はふつうの `Response` で、そのまま `Response` として使えます
 - `fetch` を差し替えられます。`client<Api>("http://localhost", { fetch: (req) => app.fetch(req) })` とすれば、サーバーを立てずに呼べます
 
 ### テスト(@senrijs/senri/testing)

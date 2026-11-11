@@ -1,5 +1,6 @@
 import type { Layer } from "./compose.ts";
 import type { Handler } from "./context.ts";
+import type { TableShape } from "./routes.ts";
 import { HttpError, senriError } from "./errors.ts";
 
 /** A registered route. Used by `@senrijs/senri/dev` and the adapters; app code does not normally use it. */
@@ -36,14 +37,13 @@ export type ExtractParams<Path extends string> =
 /** Flattens an intersection into one object type (for readable type hints). */
 export type Simplify<T> = { [K in keyof T]: T[K] } & {};
 
-// app.routes() のキー("GET /users/:id")ごとのハンドラーの型
-// 書き方が違うキーには、説明の文字列型を入れておく(ハンドラーを書くと、その文字列と一緒に型エラーになる)
-/** A table for `app.routes()`: handlers keyed by `"METHOD /path"`, with parameters typed from each key. */
-export type RouteTable<K extends string, V extends object = any> = {
-    [Key in K]: Key extends `${string} ${infer Path}`
-        ? Handler<Simplify<ExtractParams<Path>>, V>
-        : 'The route is not written correctly. Put a space between the method and the path, as in "GET /hello"';
-};
+// app.routes() の表の型。defineRoutes() の表と同じ形(0.3.0 で、キーの型 K から表の型 T に変えた)
+// 値はハンドラーか endpoint()。書き方が違うキーには、説明の文字列型が入る
+/**
+ * What `app.routes()` takes, for the table type `T`: handlers or endpoints keyed by `"METHOD /path"`, with
+ * parameters typed from each key and `V` as the app's type. The same shape as tables from `defineRoutes()`.
+ */
+export type RouteTable<T, V extends object = any> = TableShape<"", T, V>;
 
 // ルートのパターン("/users/:id")を分割する。末尾スラッシュや連続スラッシュは無視
 export function splitPattern(pattern: string): string[] {

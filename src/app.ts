@@ -164,14 +164,14 @@ export type App<V extends object = Record<string, unknown>> = {
      * Names are upper-cased. Throws for `"ALL"` (use {@link App.all}), CONNECT, TRACE, TRACK and invalid names.
      */
     on: OnMethod<V>;
-    /** Adds routes from a table keyed by `"METHOD /path"`: `app.routes({ "GET /hello": () => "hi" })`. */
-    routes<K extends string>(table: RouteTable<K, V>): void;
+    // 0.3.0 で、2 つあった型の書き方を 1 つにした(RouteTable も defineRoutes() の表と同じ形)
+    // キーの書き方は型で確かめる。その場で書いたハンドラーには、このアプリの型(c.get() など)が付く
     /**
-     * Adds routes from a table made with {@link defineRoutes}, including routes with schemas made with {@link endpoint}.
-     * The same checks as {@link App.get} apply to each route.
+     * Adds routes from a table keyed by `"METHOD /path"`: `app.routes({ "GET /hello": () => "hi" })`, or a table
+     * made with {@link defineRoutes} (including routes with schemas or middleware made with {@link endpoint}).
+     * Path parameters are typed from each key. The same checks as {@link App.get} apply to each route.
      */
-    // キーの書き方は、defineRoutes() と同じく型で確かめる(表のハンドラーの c.get() の型は、表を作ったときのもの)
-    routes<const T extends object>(table: T & NoInfer<TableShape<"", T, any>>): void;
+    routes<const T extends object>(table: T & NoInfer<RouteTable<T, V>>): void;
     /**
      * Mounts a router from {@link createRouter}, or another app under a prefix: `app.route("/api", api)`.
      * What is registered at this point is copied into this app.

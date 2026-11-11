@@ -1,7 +1,7 @@
 // 型だけのテスト。bun test では実行せず、bun check(bun run typecheck)で確かめる
 // 「ts-expect-error」のコメントは、次の行が型エラーになることを期待する。エラーにならなければ、そちらがエラーになる
 import { type } from "arktype";
-import { client, type ClientData, type ClientResult } from "../src/client.ts";
+import { client, type ClientData, type ClientResultOf, type SuccessStatus } from "../src/client.ts";
 import { request, testClient } from "../src/testing.ts";
 import * as v from "valibot";
 import { z } from "zod";
@@ -16,6 +16,7 @@ import {
     type Middleware,
     type RedirectStatus,
     type StandardSchemaV1,
+    type RouteTable,
 } from "../src/index.ts";
 
 const app = createApp();
@@ -459,7 +460,7 @@ async function clientTypes() {
     } else {
         same<typeof user.error, unknown>(true);
     }
-    same<Awaited<ReturnType<typeof typedApi<"GET /text">>>, ClientResult<string>>(true);
+    same<Awaited<ReturnType<typeof typedApi<"GET /text">>>, ClientResultOf<typeof clientRoutes, "GET /text">>(true);
     same<ClientData<typeof clientRoutes, "GET /bytes">, Blob>(true);
     same<ClientData<typeof clientRoutes, "GET /raw">, unknown>(true);
     same<ClientData<typeof clientRoutes, "GET /async">, readonly [1, 2]>(true);
@@ -514,3 +515,57 @@ defineRoutes({
     // @ts-expect-error openapi の項目の型が違う
     "GET /doc2": endpoint({ openapi: { tags: "t" } }, () => "x"),
 });
+
+// --- status ごとの型(c.json(body, status) と endpoint({ response, responses })) ---
+
+const notFound = z.object({ message: z.string() });
+const statusRoutes = defineRoutes({
+    // 成功はふつうに返し、見つからなければ c.json(..., 404)
+    "GET /s/users/:id": ({ id }, c) => (id === "0" ? c.json({ message: "not found" }, 404) : { id, at: new Date() }),
+    // c.text(..., 400) はテキストの error。c.json(..., 201) は成功に入る
+    "POST /s/users": (_, c) => (Math.random() > 0.5 ? c.text("bad", 400) : c.json({ created: true }, 201)),
+    // response / responses のスキーマ。data はスキーマの出力の型(ハンドラーの戻り値より優先)
+    "GET /s/items/:id": endpoint({ response: z.object({ name: z.string() }), responses: { 404: notFound } }, () => ({ name: "a" })),
+    // status を書かない c.json() は 200 として成功
+    "GET /s/plain": (_, c) => c.json({ ok: 1 }),
+});
+const statusApi = client<typeof statusRoutes>("https://example.com");
+
+async function statusTypes() {
+    const user = await statusApi("GET /s/users/:id", { params: { id: "1" } });
+    if (user.ok) {
+        same<typeof user.data, { id: string; at: string }>(true);
+    } else if (user.status === 404) {
+        // 書いた status は、error に型が付く
+        same<typeof user.error, { message: string }>(true);
+    } else {
+        // 書いていない status(onError・ミドルウェア・notFound)は unknown
+        same<typeof user.error, unknown>(true);
+    }
+
+    const created = await statusApi("POST /s/users");
+    if (created.ok) same<typeof created.data, { created: boolean }>(true);
+    else if (created.status === 400) same<typeof created.error, string>(true);
+
+    const item = await statusApi("GET /s/items/:id", { params: { id: "1" } });
+    if (item.ok) same<typeof item.data, { name: string }>(true);
+    else if (item.status === 404) same<typeof item.error, { message: string }>(true);
+
+    const plain = await statusApi("GET /s/plain");
+    if (plain.ok) same<typeof plain.data, { ok: number }>(true);
+
+    // ok の status は 2xx の型
+    if (user.ok) same<typeof user.status, SuccessStatus>(true);
+}
+void statusTypes;
+
+// c.json() / c.text() の戻り値は Response としても使える
+app.get("/s/as-response", (_, c) => {
+    const res: Response = c.json({ a: 1 }, 404);
+    return res;
+});
+
+// RouteTable は表の形(0.3.0)。型を書くときは、表の型を渡す
+const inlineTable = { "GET /rt/:id": ({ id }: { id: string }) => id } as const;
+const checked: RouteTable<typeof inlineTable> = inlineTable;
+void checked;
