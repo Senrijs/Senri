@@ -73,9 +73,10 @@ jobs:
       # workers は bun build でまとめてから workerd(devDependencies)で動かすので、Bun と依存も入れる
       # browser も bun build でまとめてから、Playwright(devDependencies)の Chromium で開く
       # create は create-senri の4つのテンプレートを作って起動する(Bun・Deno と、wrangler のための依存が要る)
-      - if: matrix.runtime == 'bun' || matrix.runtime == 'workers' || matrix.runtime == 'browser' || matrix.runtime == 'create'
+      # node は examples/node が WebSocket のために ws(devDependencies)を読むので、依存を入れる(版は bun.lock のとおり)
+      - if: matrix.runtime == 'bun' || matrix.runtime == 'node' || matrix.runtime == 'workers' || matrix.runtime == 'browser' || matrix.runtime == 'create'
         uses: oven-sh/setup-bun@v2
-      - if: matrix.runtime == 'workers' || matrix.runtime == 'browser' || matrix.runtime == 'create'
+      - if: matrix.runtime == 'node' || matrix.runtime == 'workers' || matrix.runtime == 'browser' || matrix.runtime == 'create'
         run: bun install
       - if: matrix.runtime == 'browser'
         run: npx playwright install --with-deps chromium
