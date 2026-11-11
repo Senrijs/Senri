@@ -68,8 +68,84 @@ export type ReturnOf<V> = HandlerOf<V> extends (...args: any) => infer R ? Await
 /** What the client reads for a handler result `R`: text, a `Blob`, or the value after JSON. */
 export type DataOf<R> = [R] extends [never] ? unknown : R extends Response ? unknown : R extends string ? string : R extends BodyValue ? Blob : Jsonify<R>;
 
-/** What a successful call returns as `data`, for the route `K` of the table `A`. */
-export type ClientData<A, K extends keyof A> = DataOf<ReturnOf<A[K]>>;
+// --- status ごとの型 ---
+// - ハンドラーが c.json(body, 404) のように status を書いて返したもの(TypedResponse)
+// - endpoint({ response, responses: { 404: schema } }) に書いたスキーマ
+// 2xx は成功の data に、それ以外は status ごとの error に入る。書いていない status は error: unknown
+
+/** 2xx status codes: a successful call (`ok: true`). */
+export type SuccessStatus = 200 | 201 | 202 | 203 | 204 | 205 | 206 | 207 | 208 | 226;
+/** Status codes other than 2xx: a call that is not successful (`ok: false`). */
+export type ErrorStatus =
+    | 300 | 301 | 302 | 303 | 304 | 305 | 307 | 308
+    | 400 | 401 | 402 | 403 | 404 | 405 | 406 | 407 | 408 | 409 | 410 | 411 | 412 | 413 | 414 | 415 | 416 | 417 | 418
+    | 421 | 422 | 423 | 424 | 425 | 426 | 428 | 429 | 431 | 451
+    | 500 | 501 | 502 | 503 | 504 | 505 | 506 | 507 | 508 | 510 | 511;
+
+// c.json() / c.text() が返した印つきの Response(TypedResponse)の形。本体の実行時のコードは読まない(型だけ)
+/** The shape of a response from `c.json()` / `c.text()` (`TypedResponse`), as the client sees it (types only). */
+export type Typed<T = any, S extends number = any, F = any> = Response & { readonly "~typed": { readonly data: T; readonly status: S; readonly format: F } };
+
+// 本文の型: JSON なら JSON にしたあとの形、テキストなら string
+/** The body of a typed response: the value after JSON, or `string` for text. */
+export type TypedData<T, F> = F extends "text" ? string : Jsonify<T>;
+// スキーマの出力の型を、クライアントが受け取る形に
+/** What the client reads for a schema: its output after JSON (or `string`). */
+export type SchemaData<S> = S extends { readonly "~standard": { readonly types?: { readonly output: infer O } | undefined } }
+    ? O extends string
+        ? string
+        : Jsonify<O>
+    : unknown;
+
+// ハンドラーの戻り値のうち、印つき(status を書いたもの)と、それ以外
+/** The typed responses (`c.json(body, status)`) among a handler result `R`. */
+export type TypedOf<R> = Extract<R, Typed>;
+/** The handler results other than typed responses. */
+export type PlainOf<R> = Exclude<R, Typed>;
+
+// 印つきのうち 2xx のものの本文(status が数の型のまま=決まっていないものは、成功に入れる)
+/** The bodies of typed responses with a 2xx status (or no literal status). */
+export type TypedSuccess<R> = R extends Typed<infer T, infer S, infer F> ? (number extends S ? TypedData<T, F> : S extends SuccessStatus ? TypedData<T, F> : never) : never;
+// responses のスキーマのうち 2xx のもの
+/** The bodies of `responses` schemas with a 2xx status. */
+export type SchemaSuccess<Sch> = Sch extends { responses: infer M } ? { [C in keyof M & SuccessStatus]: SchemaData<M[C]> }[keyof M & SuccessStatus] : never;
+/** `unknown` when `T` is `never`, otherwise `T`. */
+export type OrUnknown<T> = [T] extends [never] ? unknown : T;
+
+/**
+ * What a successful call returns as `data`, for the route `K` of the table `A`: the output of the route's `response`
+ * schema if it has one, otherwise the handler's return value (after JSON), including `c.json(body, 2xx)`.
+ */
+export type ClientData<A, K extends keyof A> =
+    SchemasOf<A[K]> extends { response: infer S }
+        ? SchemaData<S> | SchemaSuccess<SchemasOf<A[K]>>
+        : OrUnknown<([PlainOf<ReturnOf<A[K]>>] extends [never] ? never : DataOf<PlainOf<ReturnOf<A[K]>>>) | TypedSuccess<TypedOf<ReturnOf<A[K]>>> | SchemaSuccess<SchemasOf<A[K]>>>;
+
+/** A result for a status other than 2xx that the route declares, with `error` typed. */
+export type ClientErrorResult<S extends number, E> = { ok: false; status: S; data: undefined; error: E; response: Response };
+
+// 2xx 以外の status ごとの結果(S は分配する)
+/** A result for each non-2xx status in `S`, with `error` of type `E`. */
+export type ErrorBranch<S, E> = S extends ErrorStatus ? ClientErrorResult<S, E> : never;
+/** The results for typed responses with a non-2xx status. */
+export type TypedErrors<R> = R extends Typed<infer T, infer S, infer F> ? (number extends S ? never : ErrorBranch<S, TypedData<T, F>>) : never;
+/** The results for `responses` schemas with a non-2xx status. */
+export type SchemaErrors<Sch> = Sch extends { responses: infer M } ? { [C in keyof M & ErrorStatus]: ClientErrorResult<C, SchemaData<M[C]>> }[keyof M & ErrorStatus] : never;
+/** The `status` of a result type. */
+export type StatusOf<B> = B extends { status: infer S } ? S : never;
+
+/** The results of the route `K` for the statuses it declares (other than 2xx). */
+export type ClientErrors<A, K extends keyof A> = TypedErrors<TypedOf<ReturnOf<A[K]>>> | SchemaErrors<SchemasOf<A[K]>>;
+
+/**
+ * The result of a call to the route `K` of the table `A`. Check `ok` (or `status`): `data` is typed for 2xx;
+ * for statuses the route declares (`c.json(body, 404)`, or `endpoint({ responses })`), `error` is typed by status;
+ * for any other status (`onError`, middleware, `notFound`), `error` is `unknown`.
+ */
+export type ClientResultOf<A, K extends keyof A> =
+    | { ok: true; status: SuccessStatus; data: ClientData<A, K>; error: undefined; response: Response }
+    | ClientErrors<A, K>
+    | ClientErrorResult<Exclude<ErrorStatus, StatusOf<ClientErrors<A, K>>>, unknown>;
 
 /** The path of a route key (`"GET /users/:id"` → `"/users/:id"`). */
 export type PathOf<K> = K extends `${string} ${infer Path}` ? Path : never;
@@ -110,7 +186,7 @@ export type ClientResult<D> =
     | { ok: false; status: number; data: undefined; error: unknown; response: Response };
 
 /** A typed client for the table `A`: call it with a route key such as `"GET /users/:id"`. */
-export type Client<A> = <K extends keyof A & string>(route: K, ...args: InputArgs<A, K>) => Promise<ClientResult<ClientData<A, K>>>;
+export type Client<A> = <K extends keyof A & string>(route: K, ...args: InputArgs<A, K>) => Promise<ClientResultOf<A, K>>;
 
 /** Options for {@link client}. */
 export type ClientOptions = {

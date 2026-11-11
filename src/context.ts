@@ -15,6 +15,18 @@ export type BodyValue = Blob | ArrayBuffer | ArrayBufferView<ArrayBuffer> | Read
 /** Objects sent as JSON. Functions and promises are excluded (returning them is usually a mistake). */
 export type JsonObject = object & { call?: never; then?: never };
 
+// c.json() / c.text() の戻り値の型。Response に、型のためだけの印(~typed)を足す
+// 実行時は本物の Response で、~typed は無い(読むと undefined)
+/**
+ * The return type of {@link Context.json} and {@link Context.text}: a `Response` that also carries, for types only,
+ * the body type `T`, the status `S` and the format `F`. A typed client (`@senrijs/senri/client`) uses it to type
+ * responses by status. At runtime it is a plain `Response`; the `~typed` property does not exist.
+ */
+export interface TypedResponse<T = unknown, S extends number = number, F extends "json" | "text" = "json"> extends Response {
+    /** Type information only; not present at runtime. */
+    readonly "~typed": { readonly data: T; readonly status: S; readonly format: F };
+}
+
 /**
  * What a handler, middleware, `onError` or `notFound` can return:
  * - `Response`: used as is
@@ -397,17 +409,26 @@ export class Context<V extends object = any, I extends object = {}> {
 
     // json() と text() と html() は Content-Type と status だけ決める(ほかのヘッダーは finalize() で足す)
     // 共有の #headers を書き換えないので、json() のあとに text() しても Content-Type が混ざらない
-    /** A JSON response (`application/json`, unless `Content-Type` was set with {@link Context.header}). */
-    json(data: unknown, status?: number): Response {
+    // 戻り値の型に、本文の型と status を残す(型付きクライアントが status ごとに型を分けるため。実行時は Response のまま)
+    // status を省いたときは 200 として型を付ける(c.status() で決めた status は、型には残らない)
+    /**
+     * A JSON response (`application/json`, unless `Content-Type` was set with {@link Context.header}).
+     * The return type keeps the body type and `status` ({@link TypedResponse}), so a typed client can tell
+     * responses apart by status. Without `status`, the type assumes 200 (a status set with `c.status()` is not typed).
+     */
+    json<T, S extends number = 200>(data: T, status?: S): TypedResponse<T, S, "json"> {
         const init = initOf(status ?? this.#status, this.#headers?.get("content-type"), JSON_HEADERS);
-        return new Response(JSON.stringify(data), init);
+        return new Response(JSON.stringify(data), init) as TypedResponse<T, S, "json">;
     }
 
-    /** A text response (`text/plain; charset=utf-8`, unless `Content-Type` was set with {@link Context.header}). */
-    text(body: string, status?: number): Response {
+    /**
+     * A text response (`text/plain; charset=utf-8`, unless `Content-Type` was set with {@link Context.header}).
+     * Like {@link Context.json}, the return type keeps `status` ({@link TypedResponse}).
+     */
+    text<S extends number = 200>(body: string, status?: S): TypedResponse<string, S, "text"> {
         // 明示しないと、Bun は Headers に Content-Type を入れない(Node / Deno は入れる)のでランタイムで差が出る
         const init = initOf(status ?? this.#status, this.#headers?.get("content-type"), TEXT_HEADERS);
-        return new Response(body, init);
+        return new Response(body, init) as TypedResponse<string, S, "text">;
     }
 
     /**

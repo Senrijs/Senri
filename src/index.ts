@@ -39,6 +39,7 @@ export {
     type Handler,
     type HandlerResult,
     type JsonObject,
+    type TypedResponse,
     type Middleware,
     type Next,
     type RedirectStatus,
