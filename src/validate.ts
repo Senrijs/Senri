@@ -28,7 +28,8 @@ export interface StandardSchemaV1<Input = unknown, Output = Input> {
     };
 }
 
-type StandardResult<Output> =
+/** The result of a {@link StandardSchemaV1} validation: the output value, or the issues. */
+export type StandardResult<Output> =
     | { readonly value: Output; readonly issues?: undefined }
     | { readonly issues: readonly StandardIssue[] };
 
@@ -62,11 +63,13 @@ export type RouteSchemas = {
 };
 
 // c.valid() で読めるもの(スキーマを渡したものだけ)
+/** What `c.valid()` can read: the outputs of the route's `query` and `body` schemas. */
 export type Validated<S extends RouteSchemas> = {
     [K in keyof S & ("query" | "body")]: InferOutput<S[K]>;
 };
 
 // params のスキーマがあれば、その変換後の型。なければパスから取り出した型
+/** The handler's first argument: the `params` schema's output, or `Fallback` (the parameters from the path). */
 export type ValidatedParams<S extends RouteSchemas, Fallback> = S extends { params: StandardSchemaV1 }
     ? InferOutput<S["params"]>
     : Fallback;

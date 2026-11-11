@@ -19,21 +19,22 @@ import { showRoutes } from "../../src/index.ts";
 import { setDraining } from "../../src/health.ts";
 import { checkMaxRequestBodySize, countBytes } from "../../src/middleware/body-limit.ts";
 import { isLang, terminalLang, type Lang } from "../../src/lang.ts";
-import * as runtime from "../../src/runtime.ts";
 import { SERVE_MESSAGES } from "./messages.ts";
+import { resolvePort } from "./port.ts";
 import { websocket } from "../../src/websocket.ts";
 import type { WebSocketServerLike } from "../node/index.ts";
 
-type App = {
+/** What `serve()` takes: an app from `createApp()` (it needs `fetch` and `routeList`). */
+export type ServeApp = {
     fetch: (req: Request) => Response | Promise<Response>;
     routeList(): { method: string; path: string }[];
 };
 
 /** Options for {@link serve}. */
 export type ServeOptions = {
-    // 省略すると、環境変数 PORT → DEFAULT_PORT の順に使う。0 なら空いているポートを自動で選ぶ
+    // 省略すると、環境変数 PORT → 3927(port.ts の DEFAULT_PORT)の順に使う。0 なら空いているポートを自動で選ぶ
     /**
-     * The port. Without it, the `PORT` environment variable, then {@link DEFAULT_PORT}. `0` picks a free port.
+     * The port. Without it, the `PORT` environment variable, then 3927. `0` picks a free port.
      * An invalid value (here or in `PORT`) throws a `RangeError`.
      */
     port?: number;
@@ -121,46 +122,6 @@ export type Server = {
     stop(): Promise<void>;
 };
 
-// よく使われる 3000 や 8080 とぶつかりにくい番号にしている
-/** The port used when neither `port` nor the `PORT` environment variable is given. */
-export const DEFAULT_PORT = 3927;
-
-// - option: serve(app, { port }) で明示した
-// - env: 環境変数 PORT(デプロイ先のサービスが決めることが多い)
-// - default: どちらもなかった
-/** Where the port came from: the `port` option, the `PORT` environment variable, or {@link DEFAULT_PORT}. */
-export type PortSource = "option" | "env" | "default";
-
-function isPort(n: number): boolean {
-    return Number.isInteger(n) && n >= 0 && n <= 65535;
-}
-
-// 使うポートを決める: 明示した port → 環境変数 PORT → DEFAULT_PORT
-// 環境変数は runtime.env で読むので、Deno で --allow-env がなければ聞き返さずにデフォルトになる
-/**
- * Decides the port: `explicit`, then the `PORT` environment variable, then {@link DEFAULT_PORT}.
- * Throws a `RangeError` if `explicit` or `PORT` is not a port number (0 to 65535).
- *
- * @param env Reads an environment variable. Defaults to the runtime's; on Deno without permission to read `PORT`, it is treated as unset.
- */
-export function resolvePort(
-    explicit: number | undefined,
-    env: (name: string) => string | undefined = runtime.env,
-): { port: number; source: PortSource } {
-    if (explicit !== undefined) {
-        if (!isPort(explicit)) throw new RangeError(`port must be a port number (0-65535): ${explicit}`);
-        return { port: explicit, source: "option" };
-    }
-    const raw = env("PORT")?.trim();
-    if (raw) {
-        // 黙ってデフォルトで待ち受けると、デプロイ先で「つながらない」原因が分かりにくいので、エラーにする
-        const port = /^\d+$/.test(raw) ? Number(raw) : NaN;
-        if (!isPort(port)) throw new RangeError(`The PORT environment variable must be a port number (0-65535): ${raw}`);
-        return { port, source: "env" };
-    }
-    return { port: DEFAULT_PORT, source: "default" };
-}
-
 // Bun と Deno の、ここで使う部分だけの型
 // (このフォルダは Node の型しか入れてないので、自分で書いておく)
 type BunLike = {
@@ -168,14 +129,14 @@ type BunLike = {
         port: number;
         hostname?: string;
         maxRequestBodySize?: number;
-        fetch: App["fetch"];
+        fetch: ServeApp["fetch"];
         websocket?: typeof websocket;
     }): { port: number; stop(closeActiveConnections?: boolean): Promise<void> | void };
 };
 type DenoLike = {
     serve(
         options: { port: number; hostname?: string; onListen?: () => void },
-        handler: App["fetch"],
+        handler: ServeApp["fetch"],
     ): { addr: { port: number }; shutdown(): Promise<void> };
     addSignalListener(signal: string, handler: () => void): void;
     removeSignalListener(signal: string, handler: () => void): void;
@@ -197,7 +158,7 @@ const tooLarge = () =>
 
 // Deno 用: 本文が max を超えたら 413 にする(Deno.serve には本文の上限がない)
 // Content-Length があれば読む前に決め、ない(チャンク転送)ときは読みながら数える
-function limitBody(fetch: App["fetch"], max: number): App["fetch"] {
+function limitBody(fetch: ServeApp["fetch"], max: number): ServeApp["fetch"] {
     return async (req, ...rest) => {
         if (req.body === null) return fetch(req, ...rest);
         const length = req.headers.get("content-length");
@@ -224,7 +185,7 @@ function within(promise: Promise<unknown>, ms: number): Promise<boolean> {
 
 /**
  * Starts the app on Bun (`Bun.serve`), Deno (`Deno.serve`) or Node.js (`@senrijs/senri/node`), detecting the runtime.
- * The port comes from `options.port`, the `PORT` environment variable, or {@link DEFAULT_PORT}.
+ * The port comes from `options.port`, the `PORT` environment variable, or 3927.
  * Prints the URL and routes, and shuts down gracefully on SIGTERM / SIGINT (see {@link ServeOptions}).
  * The promise rejects if listening fails (the port is in use, for example), or if `lang` is not `"ja"` or `"en"` (a `TypeError`).
  *
@@ -243,7 +204,7 @@ function within(promise: Promise<unknown>, ms: number): Promise<boolean> {
  * console.log(server.url);
  * ```
  */
-export async function serve(app: App, options: ServeOptions = {}): Promise<Server> {
+export async function serve(app: ServeApp, options: ServeOptions = {}): Promise<Server> {
     if (options.lang !== undefined && !isLang(options.lang)) throw new TypeError('serve(): lang must be "ja" or "en"');
     const messages = SERVE_MESSAGES[options.lang ?? terminalLang()];
     const { port, source } = resolvePort(options.port);

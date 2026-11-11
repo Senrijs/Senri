@@ -25,8 +25,10 @@ import type { InferInput } from "./validate.ts";
 
 // --- 型 ---
 
-type BodyValue = Blob | ArrayBuffer | ArrayBufferView | ReadableStream | FormData | URLSearchParams;
-type NotInJson = undefined | symbol | ((...args: any) => any);
+/** Response bodies the client reads as a `Blob`. */
+export type BodyValue = Blob | ArrayBuffer | ArrayBufferView | ReadableStream | FormData | URLSearchParams;
+/** Values that `JSON.stringify` drops (or turns into `null` in arrays). */
+export type NotInJson = undefined | symbol | ((...args: any) => any);
 
 // JSON にしたあとの形(JSON.stringify と同じ規則)
 // - toJSON() があれば、その戻り値(Date → string)
@@ -54,25 +56,35 @@ export type Jsonify<T> = T extends { toJSON(...args: any): infer J }
                 : unknown;
 
 // 表の値から、ハンドラーとスキーマを取り出す(ハンドラーだけの値か、endpoint())
-type HandlerOf<V> = V extends { handler(...args: any): any } ? V["handler"] : V;
-type SchemasOf<V> = V extends { schemas: infer S } ? S : {};
-type ReturnOf<V> = HandlerOf<V> extends (...args: any) => infer R ? Awaited<R> : never;
+/** The handler of a table value: the value itself, or an endpoint's `handler`. */
+export type HandlerOf<V> = V extends { handler(...args: any): any } ? V["handler"] : V;
+/** The schemas of a table value (an endpoint's options), or `{}` for a plain handler. */
+export type SchemasOf<V> = V extends { schemas: infer S } ? S : {};
+/** The awaited return type of a table value's handler. */
+export type ReturnOf<V> = HandlerOf<V> extends (...args: any) => infer R ? Awaited<R> : never;
 
 // クライアントが受け取る本文の型。文字列はテキスト、バイト列やストリームは Blob、ほかは JSON にしたあとの形
 // Response を返したものは中身が分からないので unknown
-type DataOf<R> = [R] extends [never] ? unknown : R extends Response ? unknown : R extends string ? string : R extends BodyValue ? Blob : Jsonify<R>;
+/** What the client reads for a handler result `R`: text, a `Blob`, or the value after JSON. */
+export type DataOf<R> = [R] extends [never] ? unknown : R extends Response ? unknown : R extends string ? string : R extends BodyValue ? Blob : Jsonify<R>;
 
 /** What a successful call returns as `data`, for the route `K` of the table `A`. */
 export type ClientData<A, K extends keyof A> = DataOf<ReturnOf<A[K]>>;
 
-type PathOf<K> = K extends `${string} ${infer Path}` ? Path : never;
-type ParamsOf<K> = { [P in keyof ExtractParams<PathOf<K>>]: string | number };
-type QueryValue = string | number | boolean | null | undefined | readonly (string | number | boolean)[];
+/** The path of a route key (`"GET /users/:id"` → `"/users/:id"`). */
+export type PathOf<K> = K extends `${string} ${infer Path}` ? Path : never;
+/** The path parameters a client sends for a route key (strings or numbers). */
+export type ParamsOf<K> = { [P in keyof ExtractParams<PathOf<K>>]: string | number };
+/** A query value the client sends (arrays repeat the key; `undefined` and `null` are left out). */
+export type QueryValue = string | number | boolean | null | undefined | readonly (string | number | boolean)[];
 
 // 送るものの型。パラメーターはキーから。クエリとボディは、スキーマがあればその入力の型
-type ParamsPart<K> = keyof ParamsOf<K> extends never ? { params?: undefined } : { params: Simplify<ParamsOf<K>> };
-type QueryPart<S> = S extends { query: infer Q } ? { query: InferInput<Q> } : { query?: Record<string, QueryValue> };
-type BodyPart<S> = S extends { body: infer B } ? { body: InferInput<B> } : { body?: unknown };
+/** The `params` part of {@link ClientInput}: required when the route has path parameters. */
+export type ParamsPart<K> = keyof ParamsOf<K> extends never ? { params?: undefined } : { params: Simplify<ParamsOf<K>> };
+/** The `query` part of {@link ClientInput}: the query schema's input type, or optional strings. */
+export type QueryPart<S> = S extends { query: infer Q } ? { query: InferInput<Q> } : { query?: Record<string, QueryValue> };
+/** The `body` part of {@link ClientInput}: the body schema's input type (required), or optional. */
+export type BodyPart<S> = S extends { body: infer B } ? { body: InferInput<B> } : { body?: unknown };
 
 /** Per-call options: what is sent with the request. */
 export type CallOptions = {
@@ -86,7 +98,8 @@ export type CallOptions = {
 export type ClientInput<A, K extends keyof A> = Simplify<ParamsPart<K> & QueryPart<SchemasOf<A[K]>> & BodyPart<SchemasOf<A[K]>> & CallOptions>;
 
 // 何も渡さなくてよいときは、2 つ目の引数を省ける
-type InputArgs<A, K extends keyof A> = {} extends ClientInput<A, K> ? [input?: ClientInput<A, K>] : [input: ClientInput<A, K>];
+/** The arguments after the route key: the input may be left out when nothing is required. */
+export type InputArgs<A, K extends keyof A> = {} extends ClientInput<A, K> ? [input?: ClientInput<A, K>] : [input: ClientInput<A, K>];
 
 /**
  * The result of a call. It does not throw for responses that are not 2xx: check `ok` (or `status`).

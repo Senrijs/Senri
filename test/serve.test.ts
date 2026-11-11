@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, spyOn, test } from "bun:test";
 import { createApp } from "../src/index.ts";
-import { DEFAULT_PORT, resolvePort, serve } from "../adapters/serve/index.ts";
+import { serve } from "../adapters/serve/index.ts";
+import { DEFAULT_PORT, resolvePort } from "../adapters/serve/port.ts";
 
 const envOf = (vars: Record<string, string>) => (name: string) => vars[name];
 

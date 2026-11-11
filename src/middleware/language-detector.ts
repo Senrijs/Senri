@@ -1,6 +1,6 @@
 // リクエストの言語を決める
 import type { Middleware } from "../context.ts";
-import { parseCookies } from "../cookie.ts";
+import { parseCookies } from "../cookie-header.ts";
 import { senriError } from "../errors.ts";
 import { headerOf, markPlainSafe, urlOf } from "../plain.ts";
 import { appendVary, editable } from "./response.ts";

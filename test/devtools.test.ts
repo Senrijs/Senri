@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, spyOn, test } from "bun:test";
 import { createApp } from "../src/index.ts";
-import { devtools, isLocalUrl } from "../src/dev/index.ts";
+import { devtools } from "../src/dev/index.ts";
+import { isLocalUrl } from "../src/dev/local-url.ts";
 
 const req = (path: string, init?: RequestInit) => new Request(`http://localhost${path}`, init);
 const g = globalThis as { Deno?: unknown };

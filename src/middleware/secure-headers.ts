@@ -4,7 +4,8 @@ import { markPlainSafe } from "../plain.ts";
 import { editable } from "./response.ts";
 
 // 文字列: その値にする / true: 既定の値 / false: 付けない
-type HeaderValue = string | boolean;
+/** A value in {@link SecureHeadersOptions}: a string sets that value, `true` uses the default, `false` leaves the header out. */
+export type SecureHeaderValue = string | boolean;
 
 /**
  * Options for {@link secureHeaders}. For each header: a string sets that value, `true` or omitted uses the default,
@@ -13,33 +14,33 @@ type HeaderValue = string | boolean;
 export type SecureHeadersOptions = {
     // 既定では付けない(アプリごとに中身が違い、合わないとページが壊れるため)
     /** `Content-Security-Policy`. No default; added only when given a string. */
-    contentSecurityPolicy?: HeaderValue;
+    contentSecurityPolicy?: SecureHeaderValue;
     // 既定では付けない(よそのオリジンの画像なども読めなくなるため)
     /** `Cross-Origin-Embedder-Policy`. No default; added only when given a string. */
-    crossOriginEmbedderPolicy?: HeaderValue;
+    crossOriginEmbedderPolicy?: SecureHeaderValue;
     /** `Cross-Origin-Opener-Policy`. Default `"same-origin"`. */
-    crossOriginOpenerPolicy?: HeaderValue;
+    crossOriginOpenerPolicy?: SecureHeaderValue;
     /** `Cross-Origin-Resource-Policy`. Default `"same-origin"`. */
-    crossOriginResourcePolicy?: HeaderValue;
+    crossOriginResourcePolicy?: SecureHeaderValue;
     /** `Origin-Agent-Cluster`. Default `"?1"`. */
-    originAgentCluster?: HeaderValue;
+    originAgentCluster?: SecureHeaderValue;
     /** `Referrer-Policy`. Default `"no-referrer"`. */
-    referrerPolicy?: HeaderValue;
+    referrerPolicy?: SecureHeaderValue;
     /** `Strict-Transport-Security`. Default `"max-age=15552000; includeSubDomains"`. */
-    strictTransportSecurity?: HeaderValue;
+    strictTransportSecurity?: SecureHeaderValue;
     /** `X-Content-Type-Options`. Default `"nosniff"`. */
-    xContentTypeOptions?: HeaderValue;
+    xContentTypeOptions?: SecureHeaderValue;
     /** `X-DNS-Prefetch-Control`. Default `"off"`. */
-    xDnsPrefetchControl?: HeaderValue;
+    xDnsPrefetchControl?: SecureHeaderValue;
     /** `X-Download-Options`. Default `"noopen"`. */
-    xDownloadOptions?: HeaderValue;
+    xDownloadOptions?: SecureHeaderValue;
     /** `X-Frame-Options`. Default `"SAMEORIGIN"`. */
-    xFrameOptions?: HeaderValue;
+    xFrameOptions?: SecureHeaderValue;
     /** `X-Permitted-Cross-Domain-Policies`. Default `"none"`. */
-    xPermittedCrossDomainPolicies?: HeaderValue;
+    xPermittedCrossDomainPolicies?: SecureHeaderValue;
     // 古いブラウザの XSS フィルターは、かえって穴になるので "0"(切る)にする
     /** `X-XSS-Protection`. Default `"0"` (turns off the legacy XSS filter). */
-    xXssProtection?: HeaderValue;
+    xXssProtection?: SecureHeaderValue;
 };
 
 // [オプション名, ヘッダー名, 既定の値(null なら既定では付けない)]
