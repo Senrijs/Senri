@@ -67,6 +67,18 @@
       "types": "./dist/src/client.d.ts",
       "import": "./dist/src/client.js"
     },
+    "./testing": {
+      "types": "./dist/src/testing.d.ts",
+      "import": "./dist/src/testing.js"
+    },
+    "./websocket": {
+      "types": "./dist/src/websocket.d.ts",
+      "import": "./dist/src/websocket.js"
+    },
+    "./openapi": {
+      "types": "./dist/src/openapi.d.ts",
+      "import": "./dist/src/openapi.js"
+    },
     "./node": {
       "types": "./dist/adapters/node/index.d.ts",
       "import": "./dist/adapters/node/index.js"
@@ -103,6 +115,7 @@
   "devDependencies": {
     "@types/bun": "latest",
     "@types/node": "^26.6.5",
+    "@types/ws": "8.18.2",
     "@vitejs/plugin-vue": "6.0.10",
     "arktype": "2.2.9",
     "playwright": "1.64.0",
@@ -113,6 +126,7 @@
     "vue": "3.5.45",
     "workerd": "1.20261010.1",
     "wrangler": "4.149.0",
+    "ws": "8.22.0",
     "zod": "4.6.7"
   }
 }

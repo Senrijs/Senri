@@ -14,7 +14,7 @@
 import type { Context, Handler, HandlerResult, Middleware } from "./context.ts";
 import { senriError } from "./errors.ts";
 import type { ExtractParams, Simplify } from "./router.ts";
-import type { RouteSchemas, Validated, ValidatedParams } from "./validate.ts";
+import type { RouteSchemas, StandardSchemaV1, Validated, ValidatedParams } from "./validate.ts";
 
 // 前置きとパスをつなぐ。前置きが "" か "/" ならパスのまま。パスが "/" なら前置きのまま
 type Join<P extends string, Path extends string> = P extends "" | "/" ? Path : Path extends "/" ? P : `${P}${Path}`;
@@ -25,11 +25,40 @@ export type RouteParams<P extends string, K> = K extends `${string} ${infer Path
 /** Middleware that runs only for the routes it is given to: `endpoint({ use })` or `defineRoutes(prefix, { use })`. */
 export type RouteMiddleware = readonly Middleware<any>[];
 
-/** The first argument of {@link endpoint}: Standard Schema validation, and middleware for this route. */
+// OpenAPI の operation に、そのまま入れる項目(@senrijs/senri/openapi が読む)
+/** OpenAPI fields for a route, copied into its operation by `openAPI()` from `@senrijs/senri/openapi`. */
+export type OpenAPIOperationInfo = {
+    /** A short summary. */
+    summary?: string;
+    /** A longer description (CommonMark). */
+    description?: string;
+    /** Tags for grouping. */
+    tags?: string[];
+    /** A unique id for the operation. */
+    operationId?: string;
+    /** Marks the operation as deprecated. */
+    deprecated?: boolean;
+    /** Security requirements, such as `[{ bearerAuth: [] }]` (define the schemes in `openAPI(routes, { components })`). */
+    security?: Record<string, string[]>[];
+};
+
+/** The first argument of {@link endpoint}: Standard Schema validation, middleware, and what OpenAPI needs. */
 export type EndpointOptions = RouteSchemas & {
     /** Middleware for this route only. It runs after the app's and the table's middleware, before validation. */
     use?: RouteMiddleware;
+    /**
+     * The schema of a successful (200) response body. Used by `openAPI()` and, in development mode, to check the
+     * handler's return value (a mismatch is printed as a warning; production does not check it).
+     */
+    response?: StandardSchemaV1;
+    /** Schemas of other responses by status, such as `{ 404: notFoundSchema }`. Used by `openAPI()` only. */
+    responses?: Record<number, StandardSchemaV1>;
+    /** How the body is sent, for `openAPI()`: `"json"` (default) or `"form"` (urlencoded or multipart). */
+    bodyType?: "json" | "form";
+    /** OpenAPI fields for this route (summary, description, tags, operationId, deprecated, security). */
+    openapi?: OpenAPIOperationInfo;
 };
+
 
 /** The options of {@link defineRoutes}. */
 export type TableOptions = {

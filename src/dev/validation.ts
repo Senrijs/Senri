@@ -3,6 +3,7 @@
 // - 通らなかったとき、どこが違うかを一覧にする
 import { senriError } from "../errors.ts";
 import type { Lang } from "../lang.ts";
+import type { Handler } from "../context.ts";
 import type { RouteSchemas, StandardIssue, StandardSchemaV1, ValidationError } from "../validate.ts";
 import { serverMessage } from "./server-messages.ts";
 
@@ -25,6 +26,40 @@ export function describeValidation(err: ValidationError, lang: Lang): string {
     });
     const target = serverMessage(lang, `target.${err.target}`);
     return [serverMessage(lang, "res.validation", { target }), ...lines].join("\n");
+}
+
+// endpoint({ response }) のルートで、ハンドラーの戻り値をスキーマで確かめるハンドラーにする(開発モードだけ)
+// - 確かめるのは、クライアントが受け取る形(JSON にしたあと。Date は文字列)。Response や Blob などの本文は確かめない
+// - ずれていても応答は変えず、ターミナルに警告を出す。同じルートの同じずれは 1 回だけ
+export function watchResponse(route: string, schema: StandardSchemaV1, handler: Handler, lang: Lang): Handler {
+    if (!isSchema(schema)) {
+        throw senriError("schema_type", new TypeError(serverMessage(lang, "schema.type", { path: route, key: "response" })));
+    }
+    const warned = new Set<string>();
+    return async (params, c) => {
+        const value = await handler(params, c);
+        const plain =
+            typeof value === "string" ||
+            Array.isArray(value) ||
+            (typeof value === "object" && value !== null && Object.getPrototypeOf(value) === Object.prototype);
+        if (!plain) return value;
+        let result;
+        try {
+            result = await schema["~standard"].validate(typeof value === "string" ? value : JSON.parse(JSON.stringify(value)));
+        } catch {
+            // JSON にできない値(BigInt など)は、応答を作るときのエラーに任せる
+            return value;
+        }
+        if (result.issues) {
+            const lines = result.issues.map((issue) => `- ${issuePath(issue) ? `${issuePath(issue)}: ` : ""}${issue.message}`);
+            const text = [serverMessage(lang, "response.mismatch", { route }), ...lines].join("\n");
+            if (!warned.has(text)) {
+                warned.add(text);
+                console.warn(`[senri] ${text}`);
+            }
+        }
+        return value;
+    };
 }
 
 // ArkType のスキーマは関数なので、オブジェクトでも関数でもよい

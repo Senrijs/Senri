@@ -88,7 +88,7 @@ See the [CHANGELOG](./CHANGELOG.md) for details.
 - [ ] Testing helpers
 - [ ] OpenTelemetry: the onion timeline becomes production traces
 - [ ] Prometheus metrics
-- [ ] WebSocket
+- [x] WebSocket
 - [x] JWT
 - [x] CSRF protection
 - [x] Signed cookies

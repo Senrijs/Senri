@@ -156,6 +156,7 @@ const CHECKS: Check[] = [
     { name: "csrf()(古いブラウザ・よそ)", path: "/csrf", init: { method: "POST", headers: { origin: "https://evil.example" } }, status: 403 },
     { name: "JWT(すべてのアルゴリズム)", path: "/jwt", status: 200, body: "HS256,HS384,HS512,RS256,RS384,RS512,PS256,PS384,PS512,ES256,ES384,EdDSA,Ed25519" },
     { name: "Context Storage(await のあとの getContext())", path: "/context/42", status: 200, body: "/context/42" },
+    { name: "WebSocket のルートにふつうのリクエスト", path: "/ws", status: 426 },
     { name: "日本語パラメーター", path: "/users/山田", status: 200, body: "user 山田" },
     { name: "c.html()", path: "/page", status: 200, body: "<h1>こんにちは!</h1>", type: "text/html; charset=utf-8" },
     {
@@ -323,6 +324,14 @@ const RAW_CHECKS: RawCheck[] = [
         // workerd は URL を作れず、Worker を呼ぶ前に自分で 500 を返す(アプリには届かないので、すり替えも起きない)
         statusOn: { workers: 500 },
     },
+    // WebSocket: よそのオリジンのページからの接続は、upgrade せずに 403(CSWSH 対策)
+    {
+        name: "WebSocket(よそのオリジン)",
+        request:
+            "GET /ws HTTP/1.1\r\nHost: localhost\r\nConnection: Upgrade\r\nUpgrade: websocket\r\nSec-WebSocket-Version: 13\r\n" +
+            "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\nOrigin: https://evil.example\r\n\r\n",
+        status: 403,
+    },
     // DNS リバインディング: 接続元は localhost でも、Host が外のドメインならダッシュボードは開けない(普通の 404)
     {
         name: "ダッシュボード(Host の偽装)",
@@ -358,6 +367,46 @@ async function checkEvents(base: string): Promise<string | null> {
     } finally {
         clearTimeout(timer);
         ac.abort();
+    }
+}
+
+// WebSocket(/ws): つないだらあいさつが届き、文字はエコー、バイナリはそのまま返るか
+async function checkWebSocket(base: string): Promise<string | null> {
+    const ws = new WebSocket(`${base.replace(/^http/, "ws")}/ws?name=smoke`);
+    ws.binaryType = "arraybuffer";
+    const received: unknown[] = [];
+    let wake = () => {};
+    ws.onmessage = (event) => {
+        received.push(event.data);
+        wake();
+    };
+    const next = (count: number) =>
+        new Promise<void>((resolve, reject) => {
+            const timer = setTimeout(() => reject(new Error(`${count} 件目が届かなかった`)), 5000);
+            wake = () => {
+                if (received.length >= count) {
+                    clearTimeout(timer);
+                    resolve();
+                }
+            };
+            ws.onerror = () => reject(new Error("つながらなかった"));
+            wake();
+        });
+    try {
+        await next(1);
+        if (received[0] !== "hello smoke") return `あいさつが違う: ${JSON.stringify(received[0])}`;
+        ws.send("ping");
+        await next(2);
+        if (received[1] !== "echo: ping") return `エコーが違う: ${JSON.stringify(received[1])}`;
+        ws.send(new Uint8Array([1, 2, 3]));
+        await next(3);
+        const bytes = received[2] instanceof ArrayBuffer ? [...new Uint8Array(received[2])] : received[2];
+        if (JSON.stringify(bytes) !== "[1,2,3]") return `バイナリが違う: ${JSON.stringify(bytes)}`;
+        return null;
+    } catch (err) {
+        return err instanceof Error ? err.message : String(err);
+    } finally {
+        ws.close(1000, "bye");
     }
 }
 
@@ -478,6 +527,9 @@ async function smoke(runtime: string): Promise<boolean> {
             if (sse) ok = false;
             console.log(`  ${sse ? "FAIL" : "ok  "} ダッシュボードの SSE: ${sse ?? "イベントが届いた"}`);
         }
+        const websocket = await checkWebSocket(base);
+        if (websocket) ok = false;
+        console.log(`  ${websocket ? "FAIL" : "ok  "} WebSocket: ${websocket ?? "あいさつ・エコー・バイナリが届いた"}`);
         for (const check of RAW_CHECKS) {
             const status = await sendRaw(port, check.request);
             const pass = status === (check.statusOn?.[runtime] ?? check.status);

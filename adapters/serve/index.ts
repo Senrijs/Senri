@@ -21,6 +21,8 @@ import { checkMaxRequestBodySize, countBytes } from "../../src/middleware/body-l
 import { isLang, terminalLang, type Lang } from "../../src/lang.ts";
 import * as runtime from "../../src/runtime.ts";
 import { SERVE_MESSAGES } from "./messages.ts";
+import { websocket } from "../../src/websocket.ts";
+import type { WebSocketServerLike } from "../node/index.ts";
 
 type App = {
     fetch: (req: Request) => Response | Promise<Response>;
@@ -87,6 +89,21 @@ export type ServeOptions = {
      * This is a server-wide limit; to limit each route, use `bodyLimit()`, `uploadLimit()` or the limits of `multipart()`.
      */
     maxRequestBodySize?: number;
+    // Node.js で WebSocket を使うときの、ws パッケージの WebSocketServer({ noServer: true })
+    /**
+     * For WebSocket routes (`upgradeWebSocket()` from `@senrijs/senri/websocket`) on Node.js: a `WebSocketServer` from
+     * the `ws` package, created with `noServer: true`. Senri does not read WebSocket frames itself. Set its `maxPayload`
+     * (the `ws` default is 100 MiB; development mode warns about it). Ignored on Bun and Deno, which have WebSocket
+     * support built in.
+     *
+     * @example
+     * ```ts
+     * import { WebSocketServer } from "ws";
+     *
+     * serve(app, { webSocketServer: new WebSocketServer({ noServer: true, maxPayload: 1024 * 1024 }) });
+     * ```
+     */
+    webSocketServer?: WebSocketServerLike;
 };
 
 /** A server started by {@link serve}. */
@@ -152,6 +169,7 @@ type BunLike = {
         hostname?: string;
         maxRequestBodySize?: number;
         fetch: App["fetch"];
+        websocket?: typeof websocket;
     }): { port: number; stop(closeActiveConnections?: boolean): Promise<void> | void };
 };
 type DenoLike = {
@@ -253,6 +271,8 @@ export async function serve(app: App, options: ServeOptions = {}): Promise<Serve
             hostname,
             ...(maxBody === undefined ? {} : { maxRequestBodySize: maxBody }),
             fetch: app.fetch,
+            // upgradeWebSocket() のルートのイベントを振り分ける(WebSocket を使わないアプリでも、登録だけしておく)
+            websocket,
         });
         actualPort = s.port;
         drain = async () => s.stop(false);
@@ -269,7 +289,7 @@ export async function serve(app: App, options: ServeOptions = {}): Promise<Serve
     } else {
         // Node のときだけ node:http を読み込む
         const node = await import("../node/index.ts");
-        const s = node.serve(app, { port, hostname, maxRequestBodySize: maxBody });
+        const s = node.serve(app, { port, hostname, maxRequestBodySize: maxBody, webSocketServer: options.webSocketServer });
         // Node は待ち受けが非同期。使用中のポートなどは error イベントで来るので、ここで reject にする
         // (受け取らないとプロセスごと落ちる)
         await new Promise<void>((resolve, reject) => {

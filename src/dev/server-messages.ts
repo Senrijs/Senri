@@ -17,6 +17,8 @@ const en = {
     "res.queryNoBody": "400 Bad Request: this QUERY request has no body\nQUERY is a method that sends the search conditions in the body",
     "res.queryNoType": "415 Unsupported Media Type: this QUERY request has no Content-Type\nSpecify the format of the body (for example, Content-Type: application/json)",
     "res.csrfRejected": "403 Forbidden: csrf() rejected a {method} request from another origin ({origin})\nIf you trust that origin, add it with csrf({ origin: [...] })",
+    "res.websocketOriginRejected": "403 Forbidden: upgradeWebSocket() rejected a connection from a page on another origin ({origin})\nIf you trust that origin, add it with upgradeWebSocket(..., { origin: [...] })",
+    "res.websocketNotUpgrade": "426 Upgrade Required: {path} is a WebSocket route. Connect with a WebSocket client (new WebSocket(\"ws://...\")), not a normal request",
     "res.didYouMean": "Did you mean: {method} {path} ?",
     "res.validation": "400 Bad Request: {target} failed schema validation",
 
@@ -28,6 +30,7 @@ const en = {
     "schema.key": '{path}: only params, query and body can be given as schemas ("{key}" cannot be used)',
     "schema.type": "{path}: {key} is not a Standard Schema schema (pass a schema from Zod, Valibot, ArkType or similar)",
     "route.reserved": "{method} {path}: paths under /_senri are reserved for the dashboard in development mode",
+    "response.mismatch": "{route}: the handler returned a value that does not match its response schema (the client and OpenAPI expect that shape)",
 };
 
 /** A key of the server's development messages. */
@@ -48,6 +51,8 @@ const ja: Record<ServerMessageKey, string> = {
     "res.queryNoBody": "400 Bad Request: QUERY リクエストにボディがありません\nQUERY は、検索の条件をボディに入れて送るメソッドです",
     "res.queryNoType": "415 Unsupported Media Type: QUERY リクエストに Content-Type がありません\nボディの形式を指定してください(例: Content-Type: application/json)",
     "res.csrfRejected": "403 Forbidden: よそのオリジン({origin})からの {method} リクエストを、csrf() が拒否しました\n信頼できるオリジンなら、csrf({ origin: [...] }) に足してください",
+    "res.websocketOriginRejected": "403 Forbidden: よそのオリジン({origin})のページからの接続を、upgradeWebSocket() が拒否しました\n信頼できるオリジンなら、upgradeWebSocket(..., { origin: [...] }) に足してください",
+    "res.websocketNotUpgrade": "426 Upgrade Required: {path} は WebSocket のルートです。ふつうのリクエストではなく、WebSocket のクライアント(new WebSocket(\"ws://...\"))でつないでください",
     "res.didYouMean": "もしかして: {method} {path} ?",
     "res.validation": "400 Bad Request: {target}が、スキーマに合いません",
 
@@ -59,6 +64,7 @@ const ja: Record<ServerMessageKey, string> = {
     "schema.key": '{path}: スキーマに渡せるのは params / query / body だけです("{key}" は使えません)',
     "schema.type": "{path}: {key} が Standard Schema のスキーマではありません(Zod・Valibot・ArkType などのスキーマを渡してください)",
     "route.reserved": "{method} {path}: /_senri 以下は、開発モードではダッシュボード用に予約されています",
+    "response.mismatch": "{route}: ハンドラーの戻り値が、response のスキーマに合いません(クライアントと OpenAPI は、スキーマの形だと思っています)",
 };
 
 export const SERVER_MESSAGES: Record<Lang, Record<ServerMessageKey, string>> = { en, ja };

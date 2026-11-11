@@ -45,6 +45,27 @@ describe("パッケージ", () => {
         assert.equal(typeof client, "function");
     });
 
+    test('"@senrijs/senri/testing" でテスト用ヘルパーが使える', async () => {
+        assert.match(import.meta.resolve("@senrijs/senri/testing"), /\/dist\/src\/testing\.js$/);
+        const { testClient, request } = await import("@senrijs/senri/testing");
+
+        assert.deepEqual([typeof testClient, typeof request], ["function", "function"]);
+    });
+
+    test('"@senrijs/senri/websocket" で WebSocket が使える', async () => {
+        assert.match(import.meta.resolve("@senrijs/senri/websocket"), /\/dist\/src\/websocket\.js$/);
+        const { upgradeWebSocket, websocket } = await import("@senrijs/senri/websocket");
+
+        assert.deepEqual([typeof upgradeWebSocket, typeof websocket.open], ["function", "function"]);
+    });
+
+    test('"@senrijs/senri/openapi" で OpenAPI の文書を作れる', async () => {
+        assert.match(import.meta.resolve("@senrijs/senri/openapi"), /\/dist\/src\/openapi\.js$/);
+        const { openAPI } = await import("@senrijs/senri/openapi");
+
+        assert.equal(typeof openAPI, "function");
+    });
+
     test('"@senrijs/senri/node" で Node アダプターが使える', async () => {
         assert.match(import.meta.resolve("@senrijs/senri/node"), /\/dist\/adapters\/node\/index\.js$/);
         const { serve } = await import("@senrijs/senri/node");

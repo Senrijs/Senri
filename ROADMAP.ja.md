@@ -88,7 +88,7 @@ Senri がこれから向かう先です。バージョンは目標であって�
 - [ ] テスト用ヘルパー
 - [ ] OpenTelemetry: 玉ねぎタイムラインが、そのまま本番のトレースに
 - [ ] Prometheus メトリクス
-- [ ] WebSocket
+- [x] WebSocket
 - [x] JWT
 - [x] CSRF 対策
 - [x] 署名付き Cookie

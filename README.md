@@ -366,6 +366,56 @@ await api("POST /users", { body: { name: "a" } });             // ボディは�
 - `data` の型はハンドラーの戻り値です。`Date` は `string` になるなど、JSON にしたあとの形にします。`onError`・ミドルウェア・`notFound` の応答は型に入らず、`error`(`unknown`)に入ります
 - `fetch` を差し替えられます。`client<Api>("http://localhost", { fetch: (req) => app.fetch(req) })` とすれば、サーバーを立てずに呼べます
 
+### テスト(@senrijs/senri/testing)
+
+```ts
+import { request, testClient } from "@senrijs/senri/testing";
+
+// 型付きクライアントで、サーバーを立てずに app.fetch を呼ぶ
+const api = testClient<Api>(app, { cookies: true });
+await api("POST /login", { body: { user: "a", password: "x" } });
+const me = await api("GET /me");                       // ログインの Cookie が付く
+expect(me.status).toBe(200);
+
+// 表にないルートや、型付きでは送れないリクエストは request() で(Response が返る)
+const res = await request(app, "POST /upload", { body: form });
+expect(res.status).toBe(413);
+```
+
+- 接続元は `127.0.0.1` として渡します(`getIp()`・`ipRestriction()`・開発モードの localhost 判定が、本物のサーバーと同じに動きます)。`{ ip }` で変えられます
+- Cloudflare Workers のアプリは `{ env, ctx }` を渡します(`c.env`・`c.executionCtx`)。このときは、Workers と同じく接続元は渡しません
+- `{ cookies: true }` で、前の応答の `Set-Cookie` を次のリクエストに付けます(名前ごとに 1 つ。domain と path は見ません)
+- `{ headers }` で、毎回付けるヘッダーを決められます
+
+### OpenAPI(@senrijs/senri/openapi)
+
+表から OpenAPI の文書(既定は 3.1)を作れます。
+
+```ts
+import { openAPI } from "@senrijs/senri/openapi";
+
+export const routes = defineRoutes({
+    "GET /users/:id": endpoint(
+        {
+            params: z.object({ id: z.coerce.number() }),
+            response: userSchema,                           // 200 の本文
+            responses: { 404: notFoundSchema },             // ほかの status
+            openapi: { summary: "ユーザーを取る", tags: ["users"] },
+        },
+        ({ id }) => findUser(id),
+    ),
+});
+
+const doc = openAPI(routes, { info: { title: "My API", version: "1.0.0" } });
+app.get("/openapi.json", () => doc);
+```
+
+- パスとメソッドは表のキーから作ります(`:id` → `{id}`)。`params`・`query`・`body` のスキーマが、パラメーターとリクエストの本文になります。フォームで受けるルートは `bodyType: "form"` と書きます
+- レスポンスは、`response`(200)と `responses`(status ごと)に書いたものだけ入ります。ハンドラーの戻り値の型は、動いているときには分からないためです
+- スキーマは [Standard JSON Schema](https://standardschema.dev/json-schema) で JSON Schema にします(Zod 4.2・ArkType 2.1.28 から。Valibot は `@valibot/to-json-schema` で包みます)。対応していないスキーマは `toJSONSchema` で変換を渡せます。どちらもなければ、空のスキーマにして警告します
+- 開発モードでは、ハンドラーの戻り値が `response` のスキーマに合わないと、ターミナルに警告します(応答は変えません。本番では確かめません)
+- 表にない `app.get()` などのルートは入りません
+
 ### パスのルール
 
 - 末尾スラッシュと連続スラッシュは無視します。`/users`、`/users/`、`//users` はどれも同じです
@@ -445,6 +495,46 @@ app.get("/me", () => currentUser());
 - **ブラウザ(Service Worker)では使えません。** ブラウザには `node:async_hooks` がないので、この入口を読み込めません。`c` を引数で渡してください
 - 後ろのミドルウェア、ハンドラー、`contextStorage()` より内側で起きたエラーの `onError`、`app.notFound`、ストリームの中から取れます。`contextStorage()` より前のミドルウェアや、リクエストの外(起動時など)では、`getContext()` は例外(`code: "no_context"`)、`tryGetContext()` は `undefined` です
 - ハンドラーで始めたタイマーは、レスポンスのあとでもそのリクエストの `c` が見えます(`AsyncLocalStorage` の性質)。そこでは使い続けないでください
+
+### WebSocket
+
+```ts
+import { upgradeWebSocket } from "@senrijs/senri/websocket";
+
+app.get(
+    "/chat",
+    upgradeWebSocket((c) => ({
+        onOpen(ws) { ws.send(`hello ${c.query("name")}`); },
+        onMessage(data, ws) { ws.send(data); },          // data: 文字は string、バイナリは Uint8Array
+        onClose(code, reason, ws) {},
+        onError(error, ws) {},                            // ほかのハンドラーが投げたものも、ここに届く
+    })),
+);
+```
+
+ルートの書き方はどのランタイムでも同じです。ランタイムごとに要るものは、次のとおりです。
+
+| ランタイム | 要るもの | 1 つのメッセージの上限 |
+| --- | --- | --- |
+| Bun | `@senrijs/senri/serve` の `serve()` なら何も要りません。`Bun.serve` を自分で呼ぶときは `websocket` を渡します: `Bun.serve({ fetch: app.fetch, websocket })` | 16 MiB(Bun の既定) |
+| Deno | 何も要りません | Deno の既定 |
+| Node.js | `ws` パッケージを入れて、`serve()` に渡します(下の例) | `ws` の `maxPayload`(既定は 100 MiB なので、必ず付けてください) |
+| Cloudflare Workers | 何も要りません | 1 MiB(Workers の上限) |
+| ブラウザ(Service Worker) | 使えません(501) | |
+
+```ts
+// Node.js: Senri は WebSocket のフレームを自分では読まず、実績のある ws に任せます(Senri の依存は増えません)
+import { WebSocketServer } from "ws";
+import { serve } from "@senrijs/senri/serve";       // @senrijs/senri/node の serve() でも同じ
+
+serve(app, { webSocketServer: new WebSocketServer({ noServer: true, maxPayload: 1024 * 1024 }) });
+```
+
+- **よそのサイトのページからの接続は、既定で 403 にします**(CSWSH 対策)。`Origin` のホストが `Host` と同じときだけ通し、ほかは `upgradeWebSocket(create, { origin: ["https://app.example.com"] })` で足します。`Origin` のない接続(ブラウザ以外)は通します。`csrf()` と同じ考え方です
+- ミドルウェアは、ふつうのリクエストと同じに動きます。認証のミドルウェアが 401 を返せば、upgrade しません
+- `Upgrade: websocket` のないリクエストは 426 です
+- Node.js で `webSocketServer` を渡していないと、WebSocket のルートは 500 になります(開発モードでは渡し方を出します)。開発モードで、渡した `WebSocketServer` の `maxPayload` が `ws` の既定(100 MiB)のままなら、起動時に注意を出します
+- サブプロトコル(`Sec-WebSocket-Protocol`)の取り決めと、圧縮(permessage-deflate)の設定は、まだありません。Node.js の圧縮は `ws` の設定どおりです
 
 ## バリデーション
 
