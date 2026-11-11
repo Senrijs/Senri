@@ -15,6 +15,8 @@
     "./testing": "./src/testing.ts",
     "./websocket": "./src/websocket.ts",
     "./openapi": "./src/openapi.ts",
+    "./otel": "./src/otel.ts",
+    "./metrics": "./src/metrics.ts",
     "./node": "./adapters/node/index.ts",
     "./serve": "./adapters/serve/index.ts",
     "./static": "./adapters/static/index.ts",

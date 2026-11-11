@@ -47,6 +47,8 @@ type Check = {
     init?: RequestInit | ((base: string) => RequestInit);
     status: number;
     body?: string;
+    // 本文に、これらがすべて含まれるか(本文が毎回変わるときに使う)
+    includes?: string[];
     cookies?: string[];
     type?: string;
     location?: string;
@@ -157,6 +159,37 @@ const CHECKS: Check[] = [
     { name: "JWT(すべてのアルゴリズム)", path: "/jwt", status: 200, body: "HS256,HS384,HS512,RS256,RS384,RS512,PS256,PS384,PS512,ES256,ES384,EdDSA,Ed25519" },
     { name: "Context Storage(await のあとの getContext())", path: "/context/42", status: 200, body: "/context/42" },
     { name: "WebSocket のルートにふつうのリクエスト", path: "/ws", status: 426 },
+    {
+        name: "OpenTelemetry(リクエスト)",
+        path: "/otel/users/1",
+        init: { headers: { traceparent: "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01" } },
+        status: 200,
+        body: "user 1",
+    },
+    {
+        name: "OpenTelemetry(span の入れ子)",
+        path: "/otel-spans",
+        status: 200,
+        body: JSON.stringify([
+            "handler GET /otel/users/:id < middleware audit",
+            "middleware audit < GET /otel/users/:id",
+            "GET /otel/users/:id < remote 00f067aa0ba902b7 (200)",
+        ]),
+    },
+    { name: "Prometheus(リクエスト)", path: "/m/items/1", status: 200, body: "item 1" },
+    { name: "Prometheus(リクエスト 2)", path: "/m/items/2", status: 200, body: "item 2" },
+    {
+        name: "Prometheus(/m-metrics)",
+        path: "/m-metrics",
+        status: 200,
+        type: "text/plain; version=0.0.4; charset=utf-8",
+        includes: [
+            "# TYPE http_server_request_duration_seconds histogram",
+            'http_server_request_duration_seconds_count{method="GET",route="/m/items/:id",status="200"} 2',
+            'http_server_request_duration_seconds_bucket{method="GET",route="/m/items/:id",status="200",le="+Inf"} 2',
+            'http_server_active_requests{method="GET"} 0',
+        ],
+    },
     { name: "日本語パラメーター", path: "/users/山田", status: 200, body: "user 山田" },
     { name: "c.html()", path: "/page", status: 200, body: "<h1>こんにちは!</h1>", type: "text/html; charset=utf-8" },
     {
@@ -514,6 +547,7 @@ async function smoke(runtime: string): Promise<boolean> {
                 res.status === check.status &&
                 reason === null &&
                 (check.body === undefined || body === check.body) &&
+                (check.includes === undefined || check.includes.every((part) => body.includes(part))) &&
                 (check.type === undefined || res.headers.get("content-type") === check.type) &&
                 (check.location === undefined || res.headers.get("location") === check.location) &&
                 (check.encoding === undefined || res.headers.get("content-encoding") === check.encoding) &&

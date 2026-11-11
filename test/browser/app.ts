@@ -1,6 +1,9 @@
 // ブラウザ(ページと Service Worker)で動かすアプリ。どちらも同じルートを持つ
 // createApp は、ページでも Service Worker でも @senrijs/senri のものを渡す
 import type { App } from "../../src/index.ts";
+import { otel } from "../../src/otel.ts";
+import { fakeApi, recorded } from "../../examples/shared/otel-check.ts";
+import { metrics, metricsHandler } from "../../src/metrics.ts";
 import { problem } from "../../src/problem.ts";
 import { checkJwtAlgorithms } from "../../examples/shared/jwt-check.ts";
 
@@ -21,6 +24,12 @@ export function setup(app: App) {
     app.get("/api/日本語", () => "日本語のルート");
     app.get("/api/item/nope", (_, c) => c.notFound());
     app.get("/api/wild/*", ({ "*": rest }) => `wild: ${rest}`);
+    app.use("/api/otel", otel({ api: fakeApi, middlewareSpans: true }));
+    app.get("/api/otel/:id", ({ id }) => `otel ${id}`);
+    app.get("/api/otel-spans", () => recorded.splice(0).map((s) => `${s.name} < ${s.parent}`));
+    app.use("/api/m", metrics());
+    app.get("/api/m/:id", ({ id }) => `m ${id}`);
+    app.get("/api/m-metrics", metricsHandler());
     app.get("/api/problem", (_, c) => problem(c, { status: 410, detail: "gone" }));
     app.get("/api/jwt", async () => (await checkJwtAlgorithms()).join(","));
     return app;

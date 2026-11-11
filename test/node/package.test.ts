@@ -66,6 +66,20 @@ describe("パッケージ", () => {
         assert.equal(typeof openAPI, "function");
     });
 
+    test('"@senrijs/senri/otel" で OpenTelemetry が使える', async () => {
+        assert.match(import.meta.resolve("@senrijs/senri/otel"), /\/dist\/src\/otel\.js$/);
+        const { otel } = await import("@senrijs/senri/otel");
+
+        assert.equal(typeof otel, "function");
+    });
+
+    test('"@senrijs/senri/metrics" で Prometheus のメトリクスが使える', async () => {
+        assert.match(import.meta.resolve("@senrijs/senri/metrics"), /\/dist\/src\/metrics\.js$/);
+        const { metrics, metricsHandler } = await import("@senrijs/senri/metrics");
+
+        assert.deepEqual([typeof metrics, typeof metricsHandler], ["function", "function"]);
+    });
+
     test('"@senrijs/senri/node" で Node アダプターが使える', async () => {
         assert.match(import.meta.resolve("@senrijs/senri/node"), /\/dist\/adapters\/node\/index\.js$/);
         const { serve } = await import("@senrijs/senri/node");

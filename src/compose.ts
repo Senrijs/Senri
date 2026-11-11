@@ -66,6 +66,17 @@ export type Trace = {
     leave(i: number, failed: boolean, stopped: boolean): void;
 };
 
+// 本番のトレース(@senrijs/senri/otel の middlewareSpans)が、層ごとに始まりと終わりを受け取る
+// name は層の名前(ハンドラーなら undefined)。返した関数は、その層から出たときに呼ぶ(failed: この層で例外が起きた)
+// 使っていないときは observers が undefined のままなので、層ごとのコストは undefined の確かめ 1 回だけ
+export type LayerObserver = (name: string | undefined) => (failed: boolean) => void;
+let observers: WeakMap<Context, LayerObserver> | undefined;
+
+// c のリクエストで、これから入る層(呼んだミドルウェアより内側)を observer に知らせる
+export function observeLayers(c: Context, observer: LayerObserver): void {
+    (observers ??= new WeakMap()).set(c, observer);
+}
+
 // ミドルウェアを順に通して、最後に handle を呼ぶ
 // 例外は(ミドルウェアでもハンドラーでも)onError に渡してレスポンスにしてもらう
 export function compose(
@@ -92,12 +103,14 @@ export function compose(
 
     const dispatch = async (i: number): Promise<Response> => {
         trace?.enter(i);
+        const end = observers?.get(c)?.(layers[i]?.name);
         // next() を呼ばずに値を返して終わったか
         let stopped = false;
         try {
             return await step(i, () => (stopped = true));
         } finally {
             trace?.leave(i, failedAt === i, stopped);
+            end?.(failedAt === i);
         }
     };
 
