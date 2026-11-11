@@ -7,10 +7,12 @@ import { PlainResponse, setLazySourceOf, type LazyRequest } from "./plain.ts";
 
 // そのままレスポンスのボディにできるもの(JSON にはしない)
 // TypedArray は SharedArrayBuffer のもの以外(Response のボディにできないので)
+/** Values sent as the response body as they are (not as JSON). */
 export type BodyValue = Blob | ArrayBuffer | ArrayBufferView<ArrayBuffer> | ReadableStream | FormData | URLSearchParams;
 
 // JSON にするオブジェクト。関数(call を持つ)と Promise(then を持つ)は object でもあるので、ここで外す
 // 関数を返すのはたいてい呼び忘れ、Promise は二重に包んでしまったときに起きる
+/** Objects sent as JSON. Functions and promises are excluded (returning them is usually a mistake). */
 export type JsonObject = object & { call?: never; then?: never };
 
 /**
@@ -93,13 +95,18 @@ export type ExecutionContext = {
 // - createApp<{ user: User }>(): c.set / c.get で使う変数の型だけ(以前からの書き方)
 // - createApp<{ Bindings: Env; Variables: { user: User } }>(): Workers の env(c.env)の型も決める
 // Bindings か Variables を持っていれば後者として読む
-type IsAny<T> = 0 extends 1 & T ? true : false;
-type EnvForm = { Bindings: object } | { Variables: object };
+// (0 extends 1 & E は、E が any かどうか。any なら any のまま返す)
 /** The variables type (`c.set` / `c.get`) of an app type: `E["Variables"]` in the `{ Bindings, Variables }` form, otherwise `E` itself. */
 export type VariablesOf<E> =
-    IsAny<E> extends true ? any : E extends EnvForm ? (E extends { Variables: infer V extends object } ? V : Record<string, unknown>) : E;
+    0 extends 1 & E
+        ? any
+        : E extends { Bindings: object } | { Variables: object }
+          ? E extends { Variables: infer V extends object }
+              ? V
+              : Record<string, unknown>
+          : E;
 /** The bindings type (`c.env`) of an app type: `E["Bindings"]` in the `{ Bindings, Variables }` form, otherwise `unknown`. */
-export type BindingsOf<E> = IsAny<E> extends true ? any : E extends { Bindings: infer B extends object } ? B : unknown;
+export type BindingsOf<E> = 0 extends 1 & E ? any : E extends { Bindings: infer B extends object } ? B : unknown;
 
 // V はアプリの型(上の2通りのどちらか)。createApp<...>() で決める
 // 既定の any は「どのアプリでも使える」という意味。logger() のような汎用ミドルウェアのため

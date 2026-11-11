@@ -10,7 +10,7 @@ import { devtools } from "../../../src/dev/index.ts";
 import { hintFor } from "../../../src/dev/hints.ts";
 import { hintCode, hintText } from "../../../src/dev/messages.ts";
 import { SERVE_MESSAGES } from "../../../adapters/serve/messages.ts";
-import { DEFAULT_PORT } from "../../../adapters/serve/index.ts";
+import { DEFAULT_PORT } from "../../../adapters/serve/port.ts";
 import { BOOM_PATH, PLAYGROUND_CODE, QUICK_PATHS } from "../lib/home/playground-code.ts";
 import type { HomeData, Line, LogEntry, Recording, Segment, Tone } from "../lib/home/types.ts";
 

@@ -32,6 +32,8 @@ import { connectionOf, type Context } from "./context.ts";
 import { HttpError, senriError } from "./errors.ts";
 import { originMatcher, sameHost, type OriginOption } from "./middleware/origin.ts";
 
+export type { OriginOption } from "./middleware/origin.ts";
+
 /** A message received from the client: text as a string, binary as a `Uint8Array`. */
 export type WebSocketData = string | Uint8Array;
 

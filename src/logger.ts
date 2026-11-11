@@ -121,7 +121,8 @@ export function logger(options: LoggerOptions = {}): Middleware {
     });
 }
 
-type RouteInfo = { method: string; path: string };
+/** A route as `showRoutes()` prints it: the method and the path. */
+export type RouteSummary = { method: string; path: string };
 
 const ACCENT = "\x1b[38;2;227;65;43m";
 
@@ -132,7 +133,7 @@ const ACCENT = "\x1b[38;2;227;65;43m";
  * @param options `color`: use ANSI colors (default `true`). `note`: a short note shown next to the URL.
  */
 export function showRoutes(
-    app: { routeList(): RouteInfo[] },
+    app: { routeList(): RouteSummary[] },
     url: string,
     // note: URL の横に薄く出す補足(serve() は、ポートをどこから決めたかを出す)
     options: { color?: boolean; note?: string } = {},

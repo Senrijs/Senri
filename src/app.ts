@@ -49,6 +49,7 @@ export type Resolved =
 const NOT_IMPLEMENTED = new Set(["CONNECT", "TRACE", "TRACK"]);
 
 // app.get(path, handler) と、スキーマを付けた app.get(path, { params, query, body }, handler)
+/** A route method of an app (`app.get`, `app.post`, ...): `(path, handler)` or `(path, schemas, handler)`. */
 export type RouteMethod<V extends object> = {
     <Path extends string>(path: Path, handler: Handler<Simplify<ExtractParams<Path>>, V>): void;
     <Path extends string, S extends RouteSchemas>(
@@ -58,6 +59,7 @@ export type RouteMethod<V extends object> = {
     ): void;
 };
 
+/** `app.on`: a route for any method name, or several at once. */
 export type OnMethod<V extends object> = {
     <Path extends string>(method: string | readonly string[], path: Path, handler: Handler<Simplify<ExtractParams<Path>>, V>): void;
     <Path extends string, S extends RouteSchemas>(

@@ -30,7 +30,8 @@ import { terminalLang } from "../../src/lang.ts";
 import { NODE_MESSAGES } from "./messages.ts";
 import { attachNodeSocket, NODE_UPGRADE, UPGRADE_MARKER, type NodeUpgradeSlot } from "../../src/websocket.ts";
 
-type App = {
+/** What `serve()` takes: an app from `createApp()`, or anything with a compatible `fetch`. */
+export type FetchApp = {
     // 2つ目の引数には、接続元のアドレスを Deno の info と同じ形で渡す(ダッシュボードの localhost 制限で使う)
     fetch: (req: Request, info?: { remoteAddr: { hostname: string; port: number; transport: "tcp" } }) =>
         | Response
@@ -220,7 +221,7 @@ const WS_DEFAULT_MAX_PAYLOAD = 100 * 1024 * 1024;
 
 // Upgrade ヘッダーのあるリクエスト(upgrade イベント)。アプリをふつうに動かし(ミドルウェアや認証も通る)、
 // ルートが upgradeWebSocket() なら ws に渡す。それ以外の応答(401・404 など)は、そのままソケットに書いて閉じる
-async function serveUpgrade(app: App, req: IncomingMessage, socket: Duplex, head: Buffer, wss: WebSocketServerLike | undefined) {
+async function serveUpgrade(app: FetchApp, req: IncomingMessage, socket: Duplex, head: Buffer, wss: WebSocketServerLike | undefined) {
     // クライアントが先に切ったときなど。聞いていないと、プロセスごと落ちる
     socket.on("error", () => {});
     const controller = new AbortController();
@@ -270,7 +271,7 @@ async function serveUpgrade(app: App, req: IncomingMessage, socket: Duplex, head
 }
 
 // app.fetch を通す道。開発モードのアプリと、app.fetch を包んだものはこちら
-async function serveWithFetch(app: App, req: IncomingMessage, res: ServerResponse, cap: BodyCap | undefined) {
+async function serveWithFetch(app: FetchApp, req: IncomingMessage, res: ServerResponse, cap: BodyCap | undefined) {
     // レスポンスを送り終える前に接続が切れたら、アプリに c.req.signal で知らせる
     const controller = new AbortController();
     res.once("close", () => {
@@ -455,7 +456,7 @@ async function serveLazily(core: AppCore, req: IncomingMessage, res: ServerRespo
  * ```
  */
 export function serve(
-    app: App,
+    app: FetchApp,
     options: {
         port: number;
         hostname?: string | undefined;

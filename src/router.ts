@@ -2,6 +2,7 @@ import type { Layer } from "./compose.ts";
 import type { Handler } from "./context.ts";
 import { HttpError, senriError } from "./errors.ts";
 
+/** A registered route. Used by `@senrijs/senri/dev` and the adapters; app code does not normally use it. */
 export type Route = {
     path: string;
     // path を "/" で分割したもの(登録時に1回だけ作る)
@@ -15,24 +16,29 @@ export type Route = {
 };
 
 // "/users/:id/posts" → "" | "users" | ":id" | "posts"
-type Segment<Path extends string> =
+/** The segments of a route path: `"/users/:id"` → `"" | "users" | ":id"`. */
+export type Segment<Path extends string> =
     Path extends `${infer Head}/${infer Rest}` ? Head | Segment<Rest> : Path;
 
 // セグメントが ":" で始まるときだけパラメーター(実行時の matchPath と同じ判定)
 // "12:00" のように途中に ":" があるだけのものはパラメーターではない
 // 末尾の "*" は、残りのパスを "*" という名前で受け取る
-type ParamName<S extends string> = S extends `:${infer Name}` ? Name : S extends "*" ? "*" : never;
+/** The parameter name of a path segment (`":id"` → `"id"`, `"*"` → `"*"`), or `never`. */
+export type ParamName<S extends string> = S extends `:${infer Name}` ? Name : S extends "*" ? "*" : never;
 
+/** The path parameters of a route path: `ExtractParams<"/users/:id">` is `{ id: string }`. */
 export type ExtractParams<Path extends string> =
     // パスが string 型(リテラルでない)だと名前が分からないので、どんな名前でも読めるようにする
     string extends Path
         ? Record<string, string>
         : { [K in ParamName<Segment<Path>>]: string };
 
+/** Flattens an intersection into one object type (for readable type hints). */
 export type Simplify<T> = { [K in keyof T]: T[K] } & {};
 
 // app.routes() のキー("GET /users/:id")ごとのハンドラーの型
 // 書き方が違うキーには、説明の文字列型を入れておく(ハンドラーを書くと、その文字列と一緒に型エラーになる)
+/** A table for `app.routes()`: handlers keyed by `"METHOD /path"`, with parameters typed from each key. */
 export type RouteTable<K extends string, V extends object = any> = {
     [Key in K]: Key extends `${string} ${infer Path}`
         ? Handler<Simplify<ExtractParams<Path>>, V>

@@ -6,15 +6,17 @@ import { routeHandler, type RouteSchemas, type Validated, type ValidatedParams }
 import { senriError } from "./errors.ts";
 
 // プレフィックスとパスをつないだときのパラメーター。"/" を挟むので、"posts" のように "/" なしで書いてもよい
-type GroupParams<Prefix extends string, Path extends string> = Simplify<ExtractParams<`${Prefix}/${Path}`>>;
+/** The path parameters of a route in a router: the prefix's and the path's. */
+export type RouterParams<Prefix extends string, Path extends string> = Simplify<ExtractParams<`${Prefix}/${Path}`>>;
 
 // router.get(path, handler) と、スキーマを付けた router.get(path, { params, query, body }, handler)
-type GroupMethod<Prefix extends string, V extends object> = {
-    <Path extends string>(path: Path, handler: Handler<GroupParams<Prefix, Path>, V>): void;
+/** A route method of a {@link Router} (`router.get`, `router.post`, ...). Paths are relative to the prefix. */
+export type RouterMethod<Prefix extends string, V extends object> = {
+    <Path extends string>(path: Path, handler: Handler<RouterParams<Prefix, Path>, V>): void;
     <Path extends string, S extends RouteSchemas>(
         path: Path,
         schemas: S,
-        handler: Handler<ValidatedParams<S, GroupParams<Prefix, Path>>, V, Validated<S>>,
+        handler: Handler<ValidatedParams<S, RouterParams<Prefix, Path>>, V, Validated<S>>,
     ): void;
 };
 
@@ -32,21 +34,21 @@ export type Router<Prefix extends string = string, V extends object = any> = {
      */
     use(pathOrMw: string | Middleware<V>, mw?: Middleware<V>): void;
     /** Adds a GET route. Same arguments as `app.get`, with the path relative to the prefix. */
-    get: GroupMethod<Prefix, V>;
+    get: RouterMethod<Prefix, V>;
     /** Adds a POST route. */
-    post: GroupMethod<Prefix, V>;
+    post: RouterMethod<Prefix, V>;
     /** Adds a PUT route. */
-    put: GroupMethod<Prefix, V>;
+    put: RouterMethod<Prefix, V>;
     /** Adds a PATCH route. */
-    patch: GroupMethod<Prefix, V>;
+    patch: RouterMethod<Prefix, V>;
     /** Adds a DELETE route. */
-    delete: GroupMethod<Prefix, V>;
+    delete: RouterMethod<Prefix, V>;
     /** Adds a route for every method, like `app.all`. */
-    all: GroupMethod<Prefix, V>;
+    all: RouterMethod<Prefix, V>;
     /** Adds a HEAD route, like `app.head`. */
-    head: GroupMethod<Prefix, V>;
+    head: RouterMethod<Prefix, V>;
     /** Adds an OPTIONS route, like `app.options`. */
-    options: GroupMethod<Prefix, V>;
+    options: RouterMethod<Prefix, V>;
     /**
      * Adds a route for any method name, or several at once, like `app.on`.
      * Throws right away for `"ALL"`, CONNECT, TRACE, TRACK and invalid names.
@@ -54,14 +56,14 @@ export type Router<Prefix extends string = string, V extends object = any> = {
     on<Path extends string>(
         method: string | readonly string[],
         path: Path,
-        handler: Handler<GroupParams<Prefix, Path>, V>,
+        handler: Handler<RouterParams<Prefix, Path>, V>,
     ): void;
     /** Adds a route for any method name, with Standard Schema validation, like `app.on`. */
     on<Path extends string, S extends RouteSchemas>(
         method: string | readonly string[],
         path: Path,
         schemas: S,
-        handler: Handler<ValidatedParams<S, GroupParams<Prefix, Path>>, V, Validated<S>>,
+        handler: Handler<ValidatedParams<S, RouterParams<Prefix, Path>>, V, Validated<S>>,
     ): void;
     // ルーターの中にルーターをつなげる。中のルーターのプレフィックスは、このルーターからの相対パス
     /**
@@ -117,7 +119,7 @@ export function createRouter<Prefix extends string, V extends object = Record<st
         items.push({ kind: "entry", entry: { kind: "route", method: name, path, handler } });
     };
     const method = (name: string) =>
-        ((path: string, a: Handler | RouteSchemas, b?: Handler) => push(name, path, routeHandler(path, a, b))) as GroupMethod<Prefix, V>;
+        ((path: string, a: Handler | RouteSchemas, b?: Handler) => push(name, path, routeHandler(path, a, b))) as RouterMethod<Prefix, V>;
 
     const router: Router<Prefix, V> = {
         prefix,

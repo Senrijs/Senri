@@ -17,10 +17,11 @@ import type { ExtractParams, Simplify } from "./router.ts";
 import type { RouteSchemas, StandardSchemaV1, Validated, ValidatedParams } from "./validate.ts";
 
 // 前置きとパスをつなぐ。前置きが "" か "/" ならパスのまま。パスが "/" なら前置きのまま
-type Join<P extends string, Path extends string> = P extends "" | "/" ? Path : Path extends "/" ? P : `${P}${Path}`;
+/** A route path under a prefix: `JoinPath<"/users", "/:id">` is `"/users/:id"`; `"/"` under a prefix is the prefix itself. */
+export type JoinPath<P extends string, Path extends string> = P extends "" | "/" ? Path : Path extends "/" ? P : `${P}${Path}`;
 
 /** The path parameters of a route key (`"GET /users/:id"`) under a prefix. */
-export type RouteParams<P extends string, K> = K extends `${string} ${infer Path}` ? Simplify<ExtractParams<Join<P, Path>>> : never;
+export type RouteParams<P extends string, K> = K extends `${string} ${infer Path}` ? Simplify<ExtractParams<JoinPath<P, Path>>> : never;
 
 /** Middleware that runs only for the routes it is given to: `endpoint({ use })` or `defineRoutes(prefix, { use })`. */
 export type RouteMiddleware = readonly Middleware<any>[];
@@ -66,8 +67,8 @@ export type TableOptions = {
     use?: RouteMiddleware;
 };
 
-type IsAny<T> = 0 extends 1 & T ? true : false;
-type UnionToIntersection<U> = (U extends unknown ? (x: U) => void : never) extends (x: infer I) => void ? I : never;
+/** Turns a union into an intersection (`A | B` → `A & B`). */
+export type UnionToIntersection<U> = (U extends unknown ? (x: U) => void : never) extends (x: infer I) => void ? I : never;
 
 // use に並べたミドルウェアが c.set() する変数の型を合わせる(Middleware<{ user: User }> なら { user: User })
 // 型を決めていないミドルウェア(Middleware<any>。logger() など)は、何も足さない
@@ -75,7 +76,7 @@ type UnionToIntersection<U> = (U extends unknown ? (x: U) => void : never) exten
 export type MiddlewareVars<U> = U extends readonly (infer M)[]
     ? [M] extends [never]
         ? {}
-        : UnionToIntersection<M extends Middleware<infer X> ? (IsAny<X> extends true ? {} : X) : {}>
+        : UnionToIntersection<M extends Middleware<infer X> ? (0 extends 1 & X ? {} : X) : {}>
     : {};
 
 /**
@@ -157,7 +158,8 @@ export type TableShape<P extends string, T, V extends object> = {
 };
 
 // 表に use を付けたときは、ハンドラーだけの値も endpoint() で包んだものになる(実行時と型を合わせる)
-type WithUse<O, T> = O extends { use: infer U extends RouteMiddleware }
+/** The type of a table made with `defineRoutes(prefix, { use })`: with middleware, handler-only routes become {@link Endpoint}s. */
+export type RoutesWithUse<O, T> = O extends { use: infer U extends RouteMiddleware }
     ? U extends readonly [] ? T : { [K in keyof T]: T[K] extends (...args: any) => infer R ? Endpoint<any, { use: U }, R, any> : T[K] }
     : T;
 
@@ -166,7 +168,7 @@ type WithUse<O, T> = O extends { use: infer U extends RouteMiddleware }
  * or {@link endpoint}s. Register it with `app.routes(table)`; its type can be shared with a typed client.
  */
 export type Routes<P extends string = "", T = Record<string, unknown>> = {
-    readonly [K in keyof T as K extends `${infer M} ${infer Path}` ? `${M} ${Join<P, Path & string>}` : never]: T[K];
+    readonly [K in keyof T as K extends `${infer M} ${infer Path}` ? `${M} ${JoinPath<P, Path & string>}` : never]: T[K];
 };
 
 /** A table of routes as `app.routes()` takes it: handlers or endpoints keyed by `"METHOD /path"`. */
@@ -235,10 +237,14 @@ function buildTable(prefix: string, use: RouteMiddleware, table: object): Routes
  * ```
  */
 export function defineRoutes<const T extends object>(table: T & NoInfer<TableShape<"", T, Record<string, unknown>>>): Routes<"", T>;
+/**
+ * Defines a table of routes under a prefix, in two steps: `defineRoutes("/orgs/:orgId")({ ... })`.
+ * `options.use` adds middleware to every route in the table. See the first form for the details.
+ */
 export function defineRoutes<P extends string, V extends object = Record<string, unknown>, const O extends TableOptions = {}>(
     prefix: P,
     options?: O & TableOptions,
-): <const T extends object>(table: T & NoInfer<TableShape<P, T, V & MiddlewareVars<O["use"]>>>) => Routes<P, WithUse<O, T>>;
+): <const T extends object>(table: T & NoInfer<TableShape<P, T, V & MiddlewareVars<O["use"]>>>) => Routes<P, RoutesWithUse<O, T>>;
 export function defineRoutes(arg: string | object, options?: TableOptions): unknown {
     if (typeof arg !== "string") return buildTable("", [], arg);
     const prefix = checkPrefix(arg);
@@ -248,7 +254,8 @@ export function defineRoutes(arg: string | object, options?: TableOptions): unkn
 }
 
 // 表の型を 1 つに合わせる
-type Merge<T extends readonly unknown[]> = T extends readonly [infer H, ...infer Rest] ? H & Merge<Rest> : {};
+/** The type of tables merged with {@link mergeRoutes}: the intersection of the tables' types. */
+export type MergeRoutes<T extends readonly unknown[]> = T extends readonly [infer H, ...infer Rest] ? H & MergeRoutes<Rest> : {};
 
 /**
  * Merges tables from {@link defineRoutes} into one. Throws if two tables have the same key
@@ -260,7 +267,7 @@ type Merge<T extends readonly unknown[]> = T extends readonly [infer H, ...infer
  * export type Api = typeof routes;
  * ```
  */
-export function mergeRoutes<const T extends readonly RoutesTable[]>(...tables: T): Simplify<Merge<T>> {
+export function mergeRoutes<const T extends readonly RoutesTable[]>(...tables: T): Simplify<MergeRoutes<T>> {
     const out: Record<string, RoutesTable[string]> = {};
     for (const table of tables) {
         for (const [key, value] of Object.entries(table)) {
@@ -268,5 +275,5 @@ export function mergeRoutes<const T extends readonly RoutesTable[]>(...tables: T
             out[key] = value;
         }
     }
-    return out as Simplify<Merge<T>>;
+    return out as Simplify<MergeRoutes<T>>;
 }

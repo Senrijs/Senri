@@ -20,7 +20,7 @@
 // 受け付けるアルゴリズムは必ず指定させる。"none" は決して受け付けない
 // 本体を太らせないよう、別の入口(@senrijs/senri/jwt)にしている
 import type { Context, Middleware } from "./context.ts";
-import { parseCookies } from "./cookie.ts";
+import { parseCookies } from "./cookie-header.ts";
 import { HttpError, senriError } from "./errors.ts";
 import { headerOf, markPlainSafe } from "./plain.ts";
 

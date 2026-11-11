@@ -25,6 +25,7 @@
 // NODE_ENV が development / test のときだけ、全部のリクエストに開発用の出力をする。それ以外(未設定を含む)は、
 // localhost へのリクエストのときだけ開発用の出力をする(それ以外は、そのリクエストだけ本番と同じに振る舞う)
 // Cloudflare Workers とブラウザ(process がない環境)では NODE_ENV が読めないので、いつも localhost のときだけ
+import { isLocalUrl } from "./local-url.ts";
 import type { AppCore, DevHooks, DevInstalled, Resolved } from "../app.ts";
 import { Context, type ExecutionContext } from "../context.ts";
 import { compose, type Layer, type Trace } from "../compose.ts";
@@ -90,7 +91,8 @@ export type { Lang };
  * because it is not to localhost, a one-line warning is printed (once per app).
  * When `NODE_ENV` cannot be read (Deno without `--allow-env=NODE_ENV`), it returns `undefined` and prints a warning.
  * On Cloudflare Workers and in the browser, where `NODE_ENV` is not available, development output is used
- * only for requests to a localhost URL (see {@link isLocalUrl}). The `/_senri` dashboard is not available on Cloudflare Workers.
+ * only for requests to a localhost URL (`localhost`, `*.localhost`, `[::1]` or `127.x.x.x`; headers such as `Host` are not
+ * checked). The `/_senri` dashboard is not available on Cloudflare Workers.
  *
  * Throws a `TypeError` when `lang` is not `"ja"` or `"en"`.
  *
@@ -127,28 +129,6 @@ export function devtools(options: DevtoolsOptions = {}): DevHooks | undefined {
 function isLocalRequest(req: Request, info: unknown, scope: Scope): boolean {
     if (!isLocalUrl(req.url)) return false;
     return scope === "localUrl" || isLoopback(remoteAddress(req, info));
-}
-
-// request.url のホスト名が localhost か(Host や X-Forwarded-Host などのヘッダーは見ない。だれでも付けられるので)
-// - Workers: Cloudflare は登録されたドメインのリクエストしか渡さないので、本番に localhost は来ない。wrangler dev は localhost
-// - ブラウザ: Service Worker が受けるリクエストの URL は、そのサイトのオリジン。開発中だけ localhost になる
-/**
- * Whether the URL's host is `localhost`, `*.localhost`, `[::1]` or `127.x.x.x`.
- * Only the URL is checked, not headers such as `Host`. Returns `false` for an invalid URL.
- */
-export function isLocalUrl(url: string): boolean {
-    let host: string;
-    try {
-        host = new URL(url).hostname.toLowerCase();
-    } catch {
-        return false;
-    }
-    return (
-        host === "localhost" ||
-        host.endsWith(".localhost") ||
-        host === "[::1]" ||
-        /^127\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(host)
-    );
 }
 
 // パスが /_senri か /_senri/... なら、"_senri" より後ろのセグメント。そうでなければ null
