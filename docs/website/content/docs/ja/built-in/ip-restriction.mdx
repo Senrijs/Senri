@@ -1,6 +1,29 @@
 ---
 title: "IP の制限"
-description: "ipRestriction()"
+description: "ipRestriction() で、接続元の IP で許す・断る"
 ---
 
-このページは準備中です。
+```ts twoslash
+import { createApp, ipRestriction } from "@senrijs/senri";
+
+const app = createApp();
+
+app.use("/admin", ipRestriction({ allow: ["192.0.2.0/24"], deny: ["192.0.2.13"] }));
+```
+
+- `deny` を先に見ます。断ったリクエストは 403 です
+- IP が分からないときも 403 にします。テストでは `allowUnknown: true` にします
+- プロキシの後ろでは、`ip: trustProxy({ hops: 1 })` のように、IP の取り方を渡します
+
+```ts twoslash
+import { createApp, ipRestriction } from "@senrijs/senri";
+const app = createApp();
+// ---cut---
+import { trustProxy } from "@senrijs/senri/ip";
+
+app.use("/admin", ipRestriction({ allow: ["10.0.0.0/8"], ip: trustProxy({ hops: 1 }) }));
+```
+
+## オプション
+
+<AutoTypeTable path="../../src/middleware/ip-restriction.ts" name="IpRestrictionOptions" />

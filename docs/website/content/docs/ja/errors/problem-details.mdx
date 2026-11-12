@@ -1,6 +1,47 @@
 ---
 title: "Problem Details"
-description: "@senrijs/senri/problem で RFC 9457 の形にする"
+description: "@senrijs/senri/problem で、エラーを RFC 9457 の application/problem+json で返す"
 ---
 
-このページは準備中です。
+```ts twoslash
+import { createApp } from "@senrijs/senri";
+import { ProblemError, problem, problemDetails } from "@senrijs/senri/problem";
+
+const app = createApp();
+
+const problems = problemDetails();
+app.onError(problems.onError);
+app.notFound(problems.notFound);
+
+app.post("/transfer", () => {
+    throw new ProblemError(403, {
+        type: "https://example.com/probs/out-of-credit",
+        title: "You do not have enough credit.",
+        detail: "Your current balance is 30, but that costs 50.",
+        extensions: { balance: 30 },
+    });
+});
+
+app.get("/legacy", (_, c) => problem(c, { status: 410, detail: "Use /v2 instead." }));   // 投げずに返す
+```
+
+```json
+{
+  "type": "https://example.com/probs/out-of-credit",
+  "title": "You do not have enough credit.",
+  "status": 403,
+  "detail": "Your current balance is 30, but that costs 50.",
+  "balance": 30
+}
+```
+
+選んだときだけ形が変わります。既定のエラーの形(テキスト)はそのままです。
+
+## 決まり
+
+- `type` を省くと `about:blank` になり、`title` は status の名前(`"Not Found"` など)になります
+- `ProblemError` でない `HttpError`(ルーターの 405、`basicAuth()` の 401 など)は、`message` が status だけ(`"405 Method Not Allowed"`)なら `detail` を付けず、それ以外なら `detail` にします。`Allow`・`WWW-Authenticate`・`Retry-After` などのヘッダーは残ります
+- `HttpError` でないエラーは、中身を出さずに `title` だけの 500 にします
+- バリデーションのエラーの中身(`errors`)は、スキーマの作りが外から見えるので、既定では出しません。`problemDetails({ validationErrors: true })` で出します
+- `problemDetails()` を使わないアプリでは、`ProblemError` はふつうの `HttpError` で、`detail`(なければ `title`)をテキストで返します
+- ほかの `app.onError` と同じく、開発モードのエラーページと 404 ページも置き換わります。本番だけで決めることもできます

@@ -1,6 +1,50 @@
 ---
 title: "serve() のオプション"
-description: "ランタイムを自動で判別して起動する"
+description: "ポートの決め方、hostname、本文の上限、起動の表示"
 ---
 
-このページは準備中です。
+```ts twoslash
+import { createApp } from "@senrijs/senri";
+const app = createApp();
+// ---cut---
+import { serve } from "@senrijs/senri/serve";
+
+const server = await serve(app, {
+    port: 8080,
+    hostname: "127.0.0.1",
+    maxRequestBodySize: 1024 * 1024 * 1024,   // 1 GiB
+});
+
+server.url;          // "http://127.0.0.1:8080"
+await server.stop(); // 処理中のリクエストを待ってから止める
+```
+
+`@senrijs/senri/serve` の `serve()` は、ランタイム(Bun・Deno・Node.js)を見分けて起動します。起動すると、URL と登録しているルートの一覧を表示します(`banner: false` で出しません)。
+
+## ポートの決め方
+
+次の順に、最初に見つかったものを使います。
+
+1. `port` オプション(`0` なら、空いているポートを選ぶ)
+2. 環境変数 `PORT`
+3. `3927`
+
+- `PORT` が数字でない、範囲の外などのときは、黙って別のポートで待ち受けずにエラーにします
+- Deno では、環境変数を読む許可(`--allow-env=PORT`)があるときだけ `PORT` を読みます。許可がなければ、聞き返さずに `3927` を使います
+- 決まったポートは、`server.port` で読めます
+
+## 本文の上限(maxRequestBodySize)
+
+サーバー全体で受け取る本文の上限(バイト数)です。超えたら 413 です。
+
+- 省略すると、どのランタイムでも上限なしです(Bun の `Bun.serve` の既定の 128 MiB も使いません)
+- Content-Length があれば読む前に断り、ない(チャンク転送)ときは読みながら数えます
+- 本文を読むときの上限は、アプリの `createApp({ maxBodySize })`(既定 1 MiB)とルートの `bodyLimit()` で決めます([本文の読み方と上限](/docs/request-response/body))
+
+## オプション
+
+<AutoTypeTable path="../../adapters/serve/index.ts" name="ServeOptions" />
+
+## 戻り値
+
+<AutoTypeTable path="../../adapters/serve/index.ts" name="Server" />

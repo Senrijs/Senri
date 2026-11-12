@@ -1,6 +1,69 @@
 ---
 title: "WebSocket"
-description: "@senrijs/senri/websocket の upgradeWebSocket()(Bun・Deno・Node.js・Workers)"
+description: "@senrijs/senri/websocket の upgradeWebSocket() で、WebSocket のルートを書く"
 ---
 
-このページは準備中です。
+```ts twoslash
+import { createApp } from "@senrijs/senri";
+import { upgradeWebSocket } from "@senrijs/senri/websocket";
+
+const app = createApp();
+
+app.get(
+    "/chat",
+    upgradeWebSocket((c) => ({
+        onOpen(ws) {
+            ws.send(`hello ${c.query("name")}`);
+        },
+        onMessage(data, ws) {
+            ws.send(data);       // data: 文字は string、バイナリは Uint8Array
+        },
+        onClose(code, reason, ws) {},
+        onError(error, ws) {},   // ほかのハンドラーが投げたものも、ここに届く
+    })),
+);
+```
+
+ルートの書き方は、どのランタイムでも同じです。
+
+## ランタイムごとに要るもの
+
+| ランタイム | 要るもの | 1 つのメッセージの上限 |
+| --- | --- | --- |
+| Bun | `serve()` なら何も要らない。`Bun.serve` を自分で呼ぶときは `websocket` を渡す([Bun](/docs/runtimes/bun)) | 16 MiB(Bun の既定) |
+| Deno | 何も要らない | Deno の既定 |
+| Node.js | `ws` パッケージを入れて、`serve()` に渡す(下の例) | `ws` の `maxPayload`(既定は 100 MiB なので、必ず付ける) |
+| Cloudflare Workers | 何も要らない | 1 MiB(Workers の上限) |
+| ブラウザ(Service Worker) | 使えない(501) | |
+
+```ts twoslash title="Node.js"
+// @filename: types.d.ts
+declare module "ws" {
+    export const WebSocketServer: any;
+}
+// @filename: index.ts
+import { createApp } from "@senrijs/senri";
+const app = createApp();
+// ---cut---
+import { WebSocketServer } from "ws";
+import { serve } from "@senrijs/senri/serve";   // @senrijs/senri/node の serve() でも同じ
+
+await serve(app, { webSocketServer: new WebSocketServer({ noServer: true, maxPayload: 1024 * 1024 }) });
+```
+
+Node.js では、Senri は WebSocket のフレームを自分では読まず、実績のある `ws` に任せます(Senri の依存は増えません)。
+
+- `webSocketServer` を渡していないと、WebSocket のルートは 500 です(開発モードでは渡し方を出します)
+- 開発モードで、渡した `WebSocketServer` の `maxPayload` が `ws` の既定(100 MiB)のままなら、起動するときに注意を出します
+
+## 守っていること
+
+- **よそのサイトのページからの接続は、既定で 403 にします**(Cross-Site WebSocket Hijacking の対策)。`Origin` のホストが `Host` と同じときだけ通します。ほかのオリジンは `upgradeWebSocket(create, { origin: ["https://app.example.com"] })` で足します。`Origin` のない接続(ブラウザ以外)は通します
+- ミドルウェアは、ふつうのリクエストと同じに動きます。認証のミドルウェアが 401 を返せば、upgrade しません
+- `Upgrade: websocket` のないリクエストは 426 です
+
+サブプロトコル(`Sec-WebSocket-Protocol`)の取り決めと、圧縮(permessage-deflate)の設定は、まだありません。
+
+## オプション
+
+<AutoTypeTable path="../../src/websocket.ts" name="UpgradeWebSocketOptions" />

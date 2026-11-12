@@ -1,6 +1,21 @@
 ---
 title: "圧縮"
-description: "compress()"
+description: "compress() で、レスポンスを gzip・deflate で圧縮する"
 ---
 
-このページは準備中です。
+```ts twoslash
+import { compress, createApp } from "@senrijs/senri";
+
+const app = createApp();
+
+app.use(compress());
+```
+
+- クライアントの `Accept-Encoding` に合わせて、gzip か deflate で圧縮します
+- 1 KB より小さい本文は、そのまま送ります
+- 少しずつ流すストリーム(SSE など)は、途中で止まって見えないように圧縮しません
+- `etag()` と一緒に使うときは、`compress()` を先に登録します
+
+## オプション
+
+<AutoTypeTable path="../../src/middleware/compress.ts" name="CompressOptions" />

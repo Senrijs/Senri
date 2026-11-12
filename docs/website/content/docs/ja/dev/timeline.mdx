@@ -1,6 +1,41 @@
 ---
 title: "玉ねぎのタイムライン"
-description: "ミドルウェアとハンドラーの入れ子と時間を、リクエストごとに見る"
+description: "ミドルウェアとハンドラーを、どの順に通って何ミリ秒かかったかを、リクエストごとに見る"
 ---
 
-このページは準備中です。
+```ts twoslash
+import { createApp, logger } from "@senrijs/senri";
+import { devtools } from "@senrijs/senri/dev";
+
+const app = createApp({ dev: devtools() });
+
+app.use(logger());
+app.use(async function auth(c, next) {
+    await next();
+});
+app.get("/users/:id", ({ id }) => ({ id }));
+```
+
+[ダッシュボード](/docs/dev/dashboard)でリクエストを 1 つ選ぶと、そのリクエストが通った層が、入れ子で並びます。次の図は並び方のイメージです(時間は例です)。
+
+```txt
+logger                  ████████████████████  3.4 ms(自分 0.3 ms)
+└ auth                    ██████████████████  3.1 ms(自分 0.2 ms)
+  └ GET /users/:id          ████████████████  2.9 ms
+```
+
+## 2 つの時間
+
+| 時間 | 中身 |
+| --- | --- |
+| 下流を含む時間 | その層に入ってから出るまで。内側の層の時間も含む |
+| 自分の時間 | 下流を含む時間から、`next()` の中で待っていた時間を引いたもの |
+
+「自分の時間」が長い層が、遅い原因です。
+
+- 層の名前は、ミドルウェアの関数の名前です。`app.use(async function auth(c, next) { ... })` のように名前を付けると、見分けやすくなります
+- 例外が起きた層も分かります。エラーページにも、同じ順番と時間が出ます
+
+## 本番では
+
+同じ玉ねぎを、OpenTelemetry のトレースで見られます(`otel({ api, middlewareSpans: true })`。[OpenTelemetry](/docs/production/otel))。

@@ -1,6 +1,44 @@
 ---
 title: "エラーページと 404 ページ"
-description: "ブラウザで見るエラーの詳しい説明"
+description: "該当するコード・ヒント・エディタで開く。404 の「もしかして」"
 ---
 
-このページは準備中です。
+```ts twoslash
+import { createApp } from "@senrijs/senri";
+import { devtools } from "@senrijs/senri/dev";
+
+const app = createApp({ dev: devtools() });
+
+app.get("/todos", () => []);
+app.get("/boom", () => {
+    throw new Error("しまった");
+});
+```
+
+ブラウザで http://localhost:3927/boom を開くと、エラーページが出ます。
+
+## エラーページ
+
+ブラウザから開いたとき(`Accept` に `text/html` があるとき)だけ出します。curl などには、テキストでエラーの文を返します。
+
+- エラーの文と種類
+- エラーが起きた行の前後のコードと、ヒント
+- スタックトレース
+- ミドルウェアを通った順番と時間
+- **エディタで開く:** エラーの場所を、VS Code・Cursor・WebStorm(試験的)・Zed で開けます。どのエディタで開くかは、ページの中で選びます
+
+## 404 ページ
+
+ないパスを開くと、近いルートを「もしかして」で出します(http://localhost:3927/todo なら `GET /todos` と、`"s" が1文字足りません`)。登録しているルートの一覧も出します。
+
+- 提案するのは、登録しているルートと 3 文字以内しか違わないパスだけです
+- 「もしかして」が出るのは、ルートがなかったときだけです。`c.notFound()` で回した 404 には出ません
+- 405(パスはあるがメソッドが違う)のときは、どのメソッドならあるかを出します
+
+## 置き換わるとき
+
+`app.onError` や `app.notFound` を決めると、エラーページと 404 ページも置き換わります。開発中は見たいなら、本番だけで決めます([onError](/docs/errors/on-error))。
+
+## Workers では
+
+Cloudflare Workers では、エラーページは出ますが、該当するコードは出ません。

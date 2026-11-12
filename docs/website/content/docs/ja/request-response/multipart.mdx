@@ -1,6 +1,51 @@
 ---
 title: "大きいファイルの受け取り"
-description: "multipart() で、本文をためずに少しずつ読む"
+description: "multipart() で、本文をメモリにためずに 1 パーツずつ読む"
 ---
 
-このページは準備中です。
+```ts twoslash
+import { createApp } from "@senrijs/senri";
+declare function save(name: string, body: ReadableStream<Uint8Array>): Promise<void>;
+// ---cut---
+import { multipart } from "@senrijs/senri/multipart";
+
+const app = createApp();
+
+app.post("/upload", async (_, c) => {
+    for await (const part of multipart(c, { maxFileSize: 100 * 1024 * 1024 })) {
+        if (part.filename !== undefined) await save(crypto.randomUUID(), part.stream);
+        else console.log(part.name, await part.text());
+    }
+    return "ok";
+});
+```
+
+`multipart/form-data` を 1 パーツずつ読みます。本文を全部メモリに読まないので、大きいファイルを、届いた分からそのまま保存先(ファイル、オブジェクトストレージなど)へ流せます。
+
+## パーツ
+
+| プロパティ | 中身 |
+| --- | --- |
+| `name` | フォームの欄の名前 |
+| `filename` | ファイル名。ファイルでない欄は `undefined`、ファイルを選ばなかった欄は `""` |
+| `contentType` | なければ `text/plain` |
+| `headers` | パーツのヘッダー |
+| `stream` | 中身のストリーム |
+| `text()`・`bytes()` | 中身を全部読む |
+
+`filename` と `contentType` は、送られてきたそのままの値です。保存先のパスには使わず、`crypto.randomUUID()` などで決めるか、`safeFileName()` を通してください。
+
+## 上限
+
+<AutoTypeTable path="../../src/multipart.ts" name="MultipartLimits" />
+
+- 超えたら 413 です。壊れた本文や `boundary` がないときは 400、multipart でなければ 415 です
+- `multipart()` を使うルートでは、アプリの既定の上限(1 MiB)の代わりに、この上限が効きます
+
+## 読むときの決まり
+
+- ループが次へ進むと、読み残したパーツは読み飛ばします。そのあとで前のパーツの `stream` を読むとエラーなので、保存は `await` してから次へ進みます
+- `break` で抜けると、それ以上は読みません
+- 本文を読んだあと(`c.body()`、`uploadLimit()`、ルートの `body` のスキーマ)や、2 回目に呼ぶとエラーです
+
+小さいファイルを `File` で受け取って種類まで確かめるなら [`uploadLimit()`](/docs/built-in/upload-limit)、大きいファイルを流すなら `multipart()` と、ルートごとに使い分けます。

@@ -1,6 +1,24 @@
 ---
 title: "キャッシュ"
-description: "cache()"
+description: "cache() で Cache-Control と Vary を付ける"
 ---
 
-このページは準備中です。
+```ts twoslash
+import { cache, createApp } from "@senrijs/senri";
+
+const app = createApp();
+
+app.use("/assets", cache({ cacheControl: "public, max-age=3600" }));
+```
+
+- GET・HEAD の 2xx と 304 に、`Cache-Control` と `Vary` を付けます
+- 保存はしません。ブラウザや CDN に任せます
+- `etag()` より先に登録します
+
+<Callout type="warn" title="個人のページに public を付けない">
+  `setCookie()` で付けた Cookie は、ミドルウェアから見えません。ログインした人のページがあるパスに `public` を付けると、CDN が別の人にそのページを返すおそれがあります。
+</Callout>
+
+## オプション
+
+<AutoTypeTable path="../../src/middleware/cache.ts" name="CacheOptions" />

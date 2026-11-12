@@ -1,6 +1,75 @@
 ---
 title: "リクエストを読む"
-description: "クエリ、ヘッダー、ボディを読む"
+description: "クエリ、ヘッダー、Cookie、接続元の IP"
 ---
 
-このページは準備中です。
+```ts twoslash
+import { createApp } from "@senrijs/senri";
+import { getCookie, setCookie } from "@senrijs/senri/cookie";
+import { getIp } from "@senrijs/senri/ip";
+
+const app = createApp();
+
+app.get("/search", (_, c) => {
+    c.query("page");                     // "2"(なければ undefined。c.query() で全部)
+    c.queries("tag");                    // ["a", "b"]
+    c.req.headers.get("user-agent");     // ヘッダーは Request のまま読む
+    getCookie(c, "session");             // Cookie(getCookie(c) で全部)
+    setCookie(c, "seen", "1");
+    getIp(c);                            // 接続元の IP(分からなければ null)
+    return "ok";
+});
+```
+
+本文の読み方は、[本文の読み方と上限](/docs/request-response/body)にあります。
+
+## Cookie
+
+`@senrijs/senri/cookie` にあります。使わないアプリのバンドルに入らないよう、別の入口にしています。
+
+- `getCookie(c, name)` / `getCookie(c)`: 1 つ / 全部を読む
+- `setCookie(c, name, value, options)`: 付ける。既定は `Path=/`・`HttpOnly`・`SameSite=Lax`
+- `deleteCookie(c, name, options)`: 消す
+
+### 署名付き Cookie
+
+```ts twoslash
+import { createApp } from "@senrijs/senri";
+declare const env: { COOKIE_SECRET: string };
+const app = createApp();
+// ---cut---
+import { getSignedCookie, setSignedCookie } from "@senrijs/senri/cookie";
+
+app.post("/login", async (_, c) => {
+    await setSignedCookie(c, "user", "42", env.COOKIE_SECRET);
+    return "ok";
+});
+app.get("/me", async (_, c) => {
+    const user = await getSignedCookie(c, "user", env.COOKIE_SECRET);   // 書き換えられていたら false、なければ undefined
+    return user ? `user ${user}` : "ログインしてね";
+});
+```
+
+- 署名は HMAC-SHA256(Web Crypto)です。値はクライアントから読めます。書き換えを見つけるだけで、暗号化ではありません
+- 秘密鍵は 32 バイト以上のランダムな文字列にして、環境変数や `c.env` から読みます。`["新しい鍵", "古い鍵"]` のように配列で渡すと、新しい鍵で署名し、どちらの署名も受け付けます
+- 署名には Cookie の名前も入るので、値を別の名前の Cookie に写しても通りません
+- `maxAge` は、ブラウザに捨ててもらうだけです。期限を守らせたいときは、値に期限を入れて確かめます
+
+## 接続元の IP
+
+`@senrijs/senri/ip` の `getIp(c)` は、ランタイムが渡す接続元を返します。`X-Forwarded-For` などのヘッダーは偽装できるので読みません。Cloudflare Workers では `CF-Connecting-IP` を読みます。
+
+プロキシの後ろでは、`trustProxy()` で作った関数を使います。
+
+```ts twoslash
+import { createApp } from "@senrijs/senri";
+const app = createApp();
+// ---cut---
+import { trustProxy } from "@senrijs/senri/ip";
+
+const clientIp = trustProxy({ proxies: ["10.0.0.0/8"] });   // または trustProxy({ hops: 1 })
+app.get("/ip", (_, c) => clientIp(c) ?? "unknown");
+```
+
+- `X-Forwarded-For` の先頭は信じず、右から数えます
+- `hops` は、プロキシを通らずにアプリへ届く環境では偽装できます。その場合は `proxies` を使います

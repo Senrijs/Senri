@@ -1,6 +1,38 @@
 ---
 title: "ワイルドカード"
-description: "残りのパスをまとめて受け取る"
+description: "* で、そのパスとその下を全部受ける"
 ---
 
-このページは準備中です。
+最後のセグメントを `*` にすると、そのパスとその下のすべてに当たります。残りのパスは `"*"` で受け取れます。
+
+```ts twoslash
+import { createApp } from "@senrijs/senri";
+const app = createApp();
+declare const indexHtml: string;
+// ---cut---
+app.get("/docs/*", ({ "*": page }) => `page: ${page}`);
+app.get("/users/:id/files/*", ({ id, "*": path }) => `${id}: ${path}`);
+app.get("/*", (_, c) => c.html(indexHtml));   // SPA の fallback(/ にも当たる)
+```
+
+| `/docs/*` へのリクエスト | `"*"` の値 |
+| --- | --- |
+| `/docs`、`/docs/` | `""` |
+| `/docs/a`、`/docs/a/`、`/docs//a` | `"a"` |
+| `/docs/a/b` | `"a/b"` |
+| `/docsx` | 当たらない |
+
+## 書けるところ
+
+`*` を書けるのは、最後のセグメント全体だけです。`/a/*/c`、`/*.js`、`/files*`、`/*name` は、登録のときのエラーになります。
+
+## 405 と OPTIONS には数えない
+
+`GET /docs/*` だけがあるパスに POST や OPTIONS を送ると、404 です。答えたいときは、`app.post`・`app.options`・`app.all` で登録します。
+
+## 値をファイルのパスに使わない
+
+`"*"` の値には、`\`・`:`・NUL が入ります(`/docs/..%5C..%5Csecret` の値は `..\..\secret`)。ファイルを配るなら、これらを確かめている [`serveStatic()`](/docs/request-response/static) を使ってください。
+
+- 値はセグメントごとに 1 回だけデコードしてあります。もう一度デコードしないでください(`%252F` は `%2F` のままです)
+- ミドルウェアの `app.use("/docs/*", mw)` は、`app.use("/docs", mw)` と同じ意味です

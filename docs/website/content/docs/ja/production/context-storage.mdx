@@ -1,6 +1,45 @@
 ---
 title: "どこからでも c を取る"
-description: "@senrijs/senri/context-storage の getContext()"
+description: "@senrijs/senri/context-storage の getContext() で、引数で渡さずに c を取る"
 ---
 
-このページは準備中です。
+```ts twoslash
+import { createApp } from "@senrijs/senri";
+import { contextStorage, getContext } from "@senrijs/senri/context-storage";
+
+const app = createApp();
+
+app.use(contextStorage());   // ほかのミドルウェアより先に
+
+// c を引数で渡さなくても、いま処理しているリクエストの c が取れる(await のあとでも)
+function currentUser() {
+    return getContext().req.headers.get("x-user");
+}
+
+app.get("/me", () => currentUser() ?? "anonymous");
+```
+
+`AsyncLocalStorage`(`node:async_hooks`)を使います。
+
+## 取れるところ
+
+- `contextStorage()` より後ろのミドルウェア、ハンドラー、`onError`、`app.notFound`、ストリームの中
+- `contextStorage()` より前のミドルウェアや、リクエストの外(起動のときなど)では、`getContext()` は例外(`code: "no_context"`)を投げます。`tryGetContext()` は `undefined` を返します
+
+ハンドラーで始めたタイマーは、レスポンスのあとでもそのリクエストの `c` が見えます(`AsyncLocalStorage` の性質です)。そこでは使い続けないでください。
+
+## ランタイム
+
+| ランタイム | 使えるか |
+| --- | --- |
+| Bun・Deno・Node.js | そのまま使える |
+| Cloudflare Workers | wrangler の設定に、`nodejs_als`(または `nodejs_compat`)の互換性フラグを付ける |
+| ブラウザ(Service Worker) | 使えない(`node:async_hooks` がない)。`c` を引数で渡す |
+
+Workers で、古い compatibility date のままフラグを付けないと、`No such module "node:async_hooks"` で起動しません。wrangler を使わずに自分でまとめるときは、`node:*` をまとめずに残してください。
+
+```jsonc title="wrangler.jsonc"
+{
+  "compatibility_flags": ["nodejs_als"]
+}
+```

@@ -1,6 +1,35 @@
 ---
 title: "/jwt"
-description: "@senrijs/senri/jwt"
+description: "@senrijs/senri/jwt。JWT を作って確かめる"
 ---
 
-このページは準備中です。
+JWT を作って確かめる。
+
+```ts
+import { ... } from "@senrijs/senri/jwt";
+```
+
+## 関数とクラス
+
+| 名前 | すること |
+| --- | --- |
+| [`jwt(options)`](/docs/built-in/jwt) | JWT を確かめるミドルウェア |
+| [`signJwt(payload, key, options)`](/docs/built-in/jwt) | JWT を作る |
+| [`verifyJwt(token, keys, options)`](/docs/built-in/jwt) | JWT を確かめる |
+| [`JwtError`](/docs/built-in/jwt) | だめなトークンのエラー(401) |
+
+## 型
+
+### JwtOptions
+
+<AutoTypeTable path="../../src/jwt.ts" name="JwtOptions" />
+
+### SignJwtOptions
+
+<AutoTypeTable path="../../src/jwt.ts" name="SignJwtOptions" />
+
+### VerifyJwtOptions
+
+<AutoTypeTable path="../../src/jwt.ts" name="VerifyJwtOptions" />
+
+ソース: [`src/jwt.ts`](https://github.com/Senrijs/Senri/blob/main/src/jwt.ts)

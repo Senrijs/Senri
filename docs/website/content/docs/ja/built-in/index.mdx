@@ -1,6 +1,72 @@
 ---
 title: "一覧"
-description: "CORS、圧縮、ETag、認証など"
+description: "標準のミドルウェアを、何のためのものか 1 行ずつで並べた表"
 ---
 
-このページは準備中です。
+どれも `@senrijs/senri` から import します(JWT だけは `@senrijs/senri/jwt`)。使わないものは、バンドルに入りません。
+
+```ts twoslash
+import { createApp, cors, logger, secureHeaders } from "@senrijs/senri";
+
+const app = createApp();
+
+app.use(logger());
+app.use(secureHeaders());
+app.use("/api", cors({ origin: ["https://example.com"] }));
+```
+
+## セキュリティ
+
+| ミドルウェア | すること |
+| --- | --- |
+| [`cors()`](/docs/built-in/cors) | よそのオリジンからの `fetch` を許す |
+| [`csrf()`](/docs/built-in/csrf) | よそのサイトからの POST などを 403 にする |
+| [`secureHeaders()`](/docs/built-in/secure-headers) | `X-Content-Type-Options` などの安全のためのヘッダーを付ける |
+| [`basicAuth()` / `bearerAuth()`](/docs/built-in/auth) | Basic 認証・Bearer トークンで守る |
+| [`jwt()`](/docs/built-in/jwt) | JWT を確かめる |
+| [`rateLimit()`](/docs/built-in/rate-limit) | 一定の時間に受けるリクエストの数を制限する |
+| [`ipRestriction()`](/docs/built-in/ip-restriction) | 接続元の IP で許す・断る |
+
+## 本文
+
+| ミドルウェア | すること |
+| --- | --- |
+| [`bodyLimit()`](/docs/built-in/body-limit) | 本文の大きさの上限を決める |
+| [`uploadLimit()`](/docs/built-in/upload-limit) | アップロードするファイルの大きさ・数・種類を確かめる |
+
+## レスポンス
+
+| ミドルウェア | すること |
+| --- | --- |
+| [`timeout()`](/docs/built-in/timeout) | 時間内に終わらなければ 504 を返す |
+| [`compress()`](/docs/built-in/compress) | gzip・deflate で圧縮する |
+| [`etag()`](/docs/built-in/etag) | `ETag` を付けて、変わっていなければ 304 を返す |
+| [`cache()`](/docs/built-in/cache) | `Cache-Control` を付ける |
+| [`prettyJSON()`](/docs/built-in/pretty-json) | `?pretty` で JSON を整形する |
+
+## リクエスト
+
+| ミドルウェア | すること |
+| --- | --- |
+| [`requestId()`](/docs/built-in/request-id) | リクエストに ID を付ける |
+| [`trailingSlash()`](/docs/built-in/trailing-slash) | 末尾のスラッシュをそろえる |
+| [`methodOverride()`](/docs/built-in/method-override) | HTML のフォームから PUT・PATCH・DELETE を送れるようにする |
+| [`languageDetector()`](/docs/built-in/language-detector) | 言語を決める |
+
+## 運用
+
+| ミドルウェア | すること |
+| --- | --- |
+| [`logger()`](/docs/built-in/logger) | リクエストを 1 行ずつログに出す |
+| [`health()`](/docs/built-in/health) | `/healthz` と `/readyz` に答える |
+
+ほかに、[`serveStatic()`](/docs/request-response/static)(静的ファイル)、[`otel()`](/docs/production/otel)(OpenTelemetry)、[`metrics()`](/docs/production/metrics)(Prometheus)、[`contextStorage()`](/docs/production/context-storage) も、ミドルウェアとして付けます。
+
+## 登録する順番
+
+いくつかのミドルウェアは、順番に決まりがあります。
+
+- `cors()` は、`basicAuth()` / `bearerAuth()` より先
+- `compress()` は、`etag()` より先
+- `cache()` は、`etag()` より先
+- `prettyJSON()` は、`compress()` と `etag()` のあと

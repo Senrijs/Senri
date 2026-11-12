@@ -1,6 +1,38 @@
 ---
 title: "見つからないとき"
-description: "c.notFound() と、404 のレスポンス"
+description: "app.notFound で 404 の応答を決める。c.notFound() で 404 に回す"
 ---
 
-このページは準備中です。
+```ts twoslash
+import { createApp } from "@senrijs/senri";
+
+const app = createApp();
+const items = new Map<string, { name: string }>();
+
+app.notFound((c) => `ありません: ${c.path}`);
+
+app.get("/items/:id", ({ id }, c) => {
+    const item = items.get(id);
+    if (!item) return c.notFound();   // app.notFound のハンドラーに回す
+    return item;
+});
+```
+
+- ルートに当たらなかったリクエストは、`app.notFound` のハンドラーに回ります。決めていなければ、既定の 404 です
+- ルートはあるけれど中身がないときは、`c.notFound()` で同じところに回せます。ミドルウェアからも呼べます
+
+## return c.notFound() と書く
+
+`c.notFound()` は例外で止まるので、`c.notFound();` だけでも後ろは動きません。それでも `return` を付けてください。`c` の型を書いていないハンドラーでは、TypeScript が「ここで止まる」と分からず、`item` が `undefined` のままになるためです。
+
+## HttpError(404) との違い
+
+`new HttpError(404)` とほぼ同じですが、行き先が `onError` ではなく `app.notFound` です。
+
+- 外側のミドルウェアの `await next()` は投げずに、404 のレスポンスを返します。`res.status` で見分けます
+- 同じ関数の `try` / `catch` には捕まります。`if (err instanceof HttpError) throw err` で投げ直します
+- `c.header()` で足したヘッダー(`Set-Cookie`・CORS など)は、404 にも付きます
+- `app.route()` でつないだアプリから呼んでも、親のハンドラーが使われます
+- `app.notFound` のハンドラーの中で呼ぶと、既定の 404 になります。`onError` の中で呼ぶと、固定の 500 になります
+
+開発モードの 404 ページに「もしかして」が出るのは、ルートがなかったときだけです。

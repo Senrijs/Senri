@@ -1,6 +1,30 @@
 ---
 title: "Server-Timing"
-description: "層ごとの時間を、ブラウザの開発者ツールで見る"
+description: "層ごとの時間を Server-Timing ヘッダーに出す"
 ---
 
-このページは準備中です。
+開発モードでは、レスポンスに `Server-Timing` ヘッダーを付けます。ブラウザの開発者ツールの「ネットワーク」→「タイミング」に、層ごとの時間が出ます。
+
+```ts twoslash
+import { createApp } from "@senrijs/senri";
+import { devtools } from "@senrijs/senri/dev";
+
+const app = createApp({ dev: devtools() });
+
+app.use(async function auth(c, next) {
+    await next();
+});
+app.get("/users/:id", ({ id }) => ({ id }));
+```
+
+```txt
+server-timing: senri-1;desc="1. auth (self 0.27ms)";dur=1.49, senri-handler;desc="GET /users/:id";dur=1.17, senri-total;desc="total";dur=3.37
+```
+
+- 上から順に、玉ねぎの外側から内側です。外側の層ほど長くなります(内側の時間を含むため)
+- ミドルウェアの `desc` には、自分の時間(`self`)も入ります
+- 名前は `senri-` で始まります。アプリが自分で付けた `Server-Timing` は残して、その後ろにつなぎます
+
+入れ子の形で見たいときは、[玉ねぎのタイムライン](/docs/dev/timeline)を使います。
+
+`Server-Timing` は、開発用の出力をするリクエストにだけ付けます([開発モードを使う](/docs/dev/devtools))。本番では付けません。

@@ -1,6 +1,26 @@
 ---
 title: "/metrics"
-description: "@senrijs/senri/metrics"
+description: "@senrijs/senri/metrics。Prometheus のメトリクス"
 ---
 
-このページは準備中です。
+Prometheus のメトリクス。
+
+```ts
+import { ... } from "@senrijs/senri/metrics";
+```
+
+## 関数とクラス
+
+| 名前 | すること |
+| --- | --- |
+| [`metrics(options?)`](/docs/production/metrics) | 数えるミドルウェア |
+| [`metricsHandler()`](/docs/production/metrics) | Prometheus のテキストの形で返すハンドラー |
+| [`resetMetrics()`](/docs/production/metrics) | 数えたものを消す(テスト用) |
+
+## 型
+
+### MetricsOptions
+
+<AutoTypeTable path="../../src/metrics.ts" name="MetricsOptions" />
+
+ソース: [`src/metrics.ts`](https://github.com/Senrijs/Senri/blob/main/src/metrics.ts)

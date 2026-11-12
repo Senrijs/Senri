@@ -1,6 +1,59 @@
 ---
 title: "OpenTelemetry"
-description: "@senrijs/senri/otel で、ミドルウェアとハンドラーを入れ子の span にする"
+description: "@senrijs/senri/otel で、ミドルウェアとハンドラーを入れ子の span にして、本番のトレースに出す"
 ---
 
-このページは準備中です。
+```ts twoslash
+// @filename: types.d.ts
+declare module "@opentelemetry/api" {
+    export const trace: any;
+    export const context: any;
+    export const propagation: any;
+    export const SpanKind: any;
+    export const SpanStatusCode: any;
+}
+// @filename: index.ts
+import { createApp } from "@senrijs/senri";
+const app = createApp();
+// ---cut---
+import * as api from "@opentelemetry/api";
+import { otel } from "@senrijs/senri/otel";
+
+app.use(otel({ api, middlewareSpans: true }));   // いちばん先に登録する
+```
+
+**`middlewareSpans: true` の 1 つで、開発モードの玉ねぎのタイムラインが、そのまま本番のトレースになります。** ミドルウェアごと(`middleware <名前>`)とハンドラー(`handler GET /users/:id`)の span が、動いた順に入れ子で並びます。
+
+```txt
+GET /users/:id                    ████████████████████  12.3 ms
+└ middleware logger               ███████████████████   12.1 ms
+  └ middleware auth               ██████████████        9.0 ms
+    └ handler GET /users/:id        ███████████         7.2 ms
+```
+
+どの層で時間がかかったか、どの層で例外が起きたか(その span がエラーになります)を、Jaeger や Grafana Tempo などで見られます。
+
+## 依存しない
+
+Senri は OpenTelemetry に依存しません。使っている `@opentelemetry/api` を渡してください。送り先(エクスポーター)や SDK の設定は、いつもどおり OpenTelemetry の側で行います。`tracer` を省くと、`api.trace.getTracer("@senrijs/senri")` を使います。
+
+## server span
+
+リクエストごとに 1 つ作ります。
+
+- **名前:** ルートのパターン(`GET /users/:id`)。ルートがなければ `GET`
+- **属性:** HTTP の semantic conventions(`http.request.method`・`http.route`・`http.response.status_code`・`url.path`・`url.scheme`・`server.address`・`user_agent.original`)
+- **親:** 受け取った `traceparent` のトレースを続けます
+- **エラー:** 5xx と、ミドルウェアやハンドラーの例外で、span をエラーにして例外を記録します。4xx はエラーにしません
+
+context manager(Node.js などの `AsyncLocalStorage`)があれば、ハンドラーの中で作った span は、Senri の server span の子になります。
+
+## middlewareSpans
+
+既定ではオフです(層ごとに span を作るぶん、送るデータが増えるため)。`otel()` より前に登録したミドルウェアは、子の span になりません。
+
+Bun・Deno・Node.js・Cloudflare Workers・ブラウザで動きます。
+
+## オプション
+
+<AutoTypeTable path="../../src/otel.ts" name="OtelOptions" />

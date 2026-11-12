@@ -1,6 +1,31 @@
 ---
 title: "静的ファイル"
-description: "@senrijs/senri/static の serveStatic()"
+description: "@senrijs/senri/static の serveStatic() で、フォルダのファイルを配る"
 ---
 
-このページは準備中です。
+```ts twoslash
+import { createApp } from "@senrijs/senri";
+import { serveStatic } from "@senrijs/senri/static";
+
+const app = createApp();
+
+app.use(serveStatic({ root: "./public", prefix: "/static", cacheControl: "public, max-age=3600" }));
+// GET /static/app.js → ./public/app.js
+```
+
+- GET と HEAD に答えます。当たるファイルがなければ `next()` を呼ぶので、後ろのルートに進みます
+- 弱い `ETag` と `Last-Modified` を付けて、変わっていなければ 304 を返します
+- `Content-Type` は拡張子から決めます(分からなければ `application/octet-stream`)
+- Bun・Deno・Node.js で動きます。Cloudflare Workers ではファイルを読めないので、[Static Assets](https://developers.cloudflare.com/workers/static-assets/) を使ってください
+
+## オプション
+
+<AutoTypeTable path="../../adapters/static/index.ts" name="ServeStaticOptions" />
+
+## 守っていること
+
+- `root` の外のファイルは、シンボリックリンクを通しても配りません。開いたファイルそのもので確かめるので、処理の途中でリンクを差し替えられても外には出ません
+- ドットファイル(`.env`・`.git` など)は、既定で配りません
+- Windows と macOS では、ディスクにある名前と綴りが同じパスだけに答えます(大文字・小文字、8.3 形式の短い名前、末尾の `.` は当たりません)
+
+守りたいファイルは、`app.use(path, ...)` で `root` の一部を守るのではなく、`root` の外に置いてください。

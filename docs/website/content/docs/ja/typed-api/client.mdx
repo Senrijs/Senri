@@ -1,6 +1,83 @@
 ---
 title: "型付きクライアント"
-description: "@senrijs/senri/client で、表の型からクライアントを作る。status ごとの型"
+description: "@senrijs/senri/client で、ルートの表の型からクライアントを作る"
 ---
 
-このページは準備中です。
+ルートの表の型(`typeof routes`)をクライアントに渡すと、パス・パラメーター・クエリ・本文・レスポンスに型が付きます。サーバーのコードは型だけを読むので、クライアントのバンドルには入りません。
+
+```ts twoslash title="client.ts"
+// @filename: routes.ts
+import { defineRoutes, endpoint } from "@senrijs/senri";
+import { z } from "zod";
+export const routes = defineRoutes({
+    "GET /users/:id": ({ id }, c) => {
+        if (id === "0") return c.json({ message: "not found" }, 404);
+        return { id, name: "alice" };
+    },
+    "POST /users": endpoint({ body: z.object({ name: z.string() }) }, (_, c) => ({ created: c.valid("body").name })),
+});
+export type Api = typeof routes;
+declare global { function getToken(): string }
+// @filename: client.ts
+// ---cut---
+import { client } from "@senrijs/senri/client";
+import type { Api } from "./routes.ts";
+
+const api = client<Api>("https://example.com", {
+    headers: () => ({ authorization: `Bearer ${getToken()}` }),   // 関数なら、呼ぶたびに読む
+});
+
+const res = await api("GET /users/:id", { params: { id: "1" } });
+if (res.ok) {
+    res.data;
+    //  ^?
+} else if (res.status === 404) {
+    res.error;
+    //  ^?
+}
+
+await api("POST /users", { body: { name: "a" } });   // 本文はスキーマの入力の型
+```
+
+## 送るもの
+
+- 呼び方は、表のキーと同じ文字列です
+- `params` はエンコードしてパスに入れます
+- `query` は文字列にして付けます(配列は同じキーを繰り返します)
+- `body` は JSON で送ります。`FormData`・`URLSearchParams`・`Blob`・バイト列・ストリームはそのまま送ります
+
+## 戻り値
+
+`{ ok, status, data, error, response }` を返します。2xx でなくても例外にしません(ネットワークのエラーと、壊れた JSON だけ例外です)。
+
+- 本文は Content-Type で読み分けます。JSON は値に、`text/*` は文字列に、それ以外は `Blob` にします
+- `data` の型は、ハンドラーの戻り値を JSON にしたあとの形です(`Date` は `string` になります)。`endpoint({ response })` のスキーマがあれば、そちらの出力の型です
+
+## status ごとの型
+
+ハンドラーが `c.json(body, status)`・`c.text(body, status)` で status を書いて返すと、status ごとに型が分かれます。`endpoint({ responses: { 404: schema } })` に書いたスキーマも同じです。
+
+- 2xx(`c.json(body, 201)` など)は、成功の `data` に入ります
+- status を書かない `c.json(body)` は、200 として扱います。`c.status()` で決めた status は、型には残りません
+- `onError`・ミドルウェア・`notFound` の応答は型に入らず、`error` は `unknown` です
+
+## サーバーを立てずに呼ぶ
+
+`fetch` を差し替えられます。
+
+```ts twoslash
+import { createApp, defineRoutes } from "@senrijs/senri";
+const routes = defineRoutes({ "GET /ping": () => "pong" });
+const app = createApp();
+app.routes(routes);
+// ---cut---
+import { client } from "@senrijs/senri/client";
+
+const api = client<typeof routes>("http://localhost", { fetch: (req) => app.fetch(req) });
+```
+
+テストでは、Cookie なども扱える [`testClient()`](/docs/typed-api/testing) が便利です。
+
+## オプション
+
+<AutoTypeTable path="../../src/client.ts" name="ClientOptions" />

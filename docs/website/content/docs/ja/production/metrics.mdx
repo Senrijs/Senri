@@ -1,6 +1,40 @@
 ---
 title: "Prometheus"
-description: "@senrijs/senri/metrics の metrics()・metricsHandler()"
+description: "@senrijs/senri/metrics で、HTTP のメトリクスを Prometheus の形で出す"
 ---
 
-このページは準備中です。
+```ts twoslash
+import { createApp, ipRestriction } from "@senrijs/senri";
+import { metrics, metricsHandler } from "@senrijs/senri/metrics";
+
+const app = createApp();
+
+app.use(metrics());                                              // いちばん先に、1 回だけ
+app.use("/metrics", ipRestriction({ allow: ["10.0.0.0/8"] }));  // /metrics は守る(ルートや流量が見えるので)
+app.get("/metrics", metricsHandler());                           // Prometheus のテキストの形
+```
+
+## 出すメトリクス
+
+| メトリクス | 種類 | ラベル |
+| --- | --- | --- |
+| `http_server_request_duration_seconds` | histogram(既定のバケットは 5 ms〜10 s。`metrics({ buckets })` で変えられる) | `method`・`route`・`status` |
+| `http_server_active_requests` | gauge(処理中の数) | `method` |
+
+- ラベルの数が増えすぎないよう、`route` はパスではなくルートのパターンです(`/users/42` ではなく `/users/:id`)
+- ルートに当たらなかったもの(404 など)は `unmatched`、標準でないメソッドは `_OTHER` にまとめます
+- 時間は、`metrics()` に入ってからレスポンスを返すまでです(ストリームの本文は、まだ送っている途中のことがあります)
+- 例外は、`onError` が返した status(500 など)で数えます
+
+## 記録する場所
+
+プロセスのメモリです。
+
+- 複数のプロセスで動かすと、それぞれのプロセスの数になります。Prometheus で足し合わせます
+- Cloudflare Workers では isolate ごとに別々になるので、全体の数にはなりません
+
+今は HTTP のメトリクスだけです。自分のカウンターなどを足す仕組みはありません。
+
+## オプション
+
+<AutoTypeTable path="../../src/metrics.ts" name="MetricsOptions" />

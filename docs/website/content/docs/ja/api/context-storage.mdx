@@ -1,6 +1,20 @@
 ---
 title: "/context-storage"
-description: "@senrijs/senri/context-storage"
+description: "@senrijs/senri/context-storage。どこからでも c を取る"
 ---
 
-このページは準備中です。
+どこからでも `c` を取る。
+
+```ts
+import { ... } from "@senrijs/senri/context-storage";
+```
+
+## 関数とクラス
+
+| 名前 | すること |
+| --- | --- |
+| [`contextStorage()`](/docs/production/context-storage) | `c` を覚えるミドルウェア |
+| [`getContext()`](/docs/production/context-storage) | いまの `c` を取る(なければ例外) |
+| [`tryGetContext()`](/docs/production/context-storage) | いまの `c` を取る(なければ `undefined`) |
+
+ソース: [`adapters/context-storage/index.ts`](https://github.com/Senrijs/Senri/blob/main/adapters/context-storage/index.ts)

@@ -1,6 +1,52 @@
 ---
 title: "@senrijs/senri"
-description: "本体の関数と型(AutoTypeTable で型から作る。以下同じ)"
+description: "@senrijs/senri。アプリ、ルート、Context、エラー、バリデーション、標準のミドルウェア"
 ---
 
-このページは準備中です。
+アプリ、ルート、Context、エラー、バリデーション、標準のミドルウェア。
+
+```ts
+import { ... } from "@senrijs/senri";
+```
+
+## 関数とクラス
+
+| 名前 | すること |
+| --- | --- |
+| [`createApp(options?)`](/docs/getting-started/first-app) | アプリを作る |
+| [`createRouter(prefix)`](/docs/routing/groups) | 前置きの付いたルートのまとまりを作る |
+| [`defineRoutes(table)`](/docs/typed-api/define-routes) | 型の付いたルートの表を作る |
+| [`endpoint(options, handler)`](/docs/typed-api/define-routes) | スキーマやミドルウェアの付いたルートを作る |
+| [`mergeRoutes(...tables)`](/docs/typed-api/define-routes) | ルートの表を合わせる |
+| [`Context`](/docs/request-response/context) | ハンドラーとミドルウェアが受け取る `c` |
+| [`HttpError`](/docs/errors/http-error) | status とメッセージを持つエラー |
+| [`ValidationError`](/docs/validation) | スキーマに通らなかったときのエラー |
+| [`logger()・showRoutes()`](/docs/built-in/logger) | ログ、ルートの一覧 |
+| [`health()`](/docs/built-in/health) | `/healthz`・`/readyz` |
+| [`cors()`](/docs/built-in/cors) | CORS |
+| [`csrf()`](/docs/built-in/csrf) | CSRF |
+| [`secureHeaders()`](/docs/built-in/secure-headers) | セキュリティヘッダー |
+| [`basicAuth()・bearerAuth()`](/docs/built-in/auth) | Basic 認証・Bearer 認証 |
+| [`rateLimit()`](/docs/built-in/rate-limit) | レート制限 |
+| [`ipRestriction()`](/docs/built-in/ip-restriction) | IP の制限 |
+| [`bodyLimit()`](/docs/built-in/body-limit) | 本文の大きさの上限 |
+| [`uploadLimit()・safeFileName()`](/docs/built-in/upload-limit) | アップロードの上限、安全なファイル名 |
+| [`timeout()`](/docs/built-in/timeout) | タイムアウト |
+| [`compress()`](/docs/built-in/compress) | 圧縮 |
+| [`etag()`](/docs/built-in/etag) | ETag |
+| [`cache()`](/docs/built-in/cache) | Cache-Control |
+| [`prettyJSON()`](/docs/built-in/pretty-json) | JSON の整形 |
+| [`requestId()`](/docs/built-in/request-id) | リクエスト ID |
+| [`trailingSlash()`](/docs/built-in/trailing-slash) | 末尾のスラッシュ |
+| [`methodOverride(app)`](/docs/built-in/method-override) | メソッドの上書き |
+| [`languageDetector()`](/docs/built-in/language-detector) | 言語の判定 |
+
+## 型
+
+### AppOptions
+
+<AutoTypeTable path="../../src/app.ts" name="AppOptions" />
+
+主な型: `App`・`Handler`・`Middleware`・`HandlerResult`・`RouteTable`・`TypedResponse`・`StandardSchemaV1`・`InferInput`・`InferOutput`。ミドルウェアのオプションの型は、それぞれのページにあります。
+
+ソース: [`src/index.ts`](https://github.com/Senrijs/Senri/blob/main/src/index.ts)

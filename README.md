@@ -23,7 +23,7 @@ app.get("/users/:id", ({ id }) => ({ id }));    // オブジェクト → JSON(i
 serve(app);   // Bun でも Deno でも Node.js でも
 ```
 
-本番のビルドでは `dev: devtools()` を外すと、開発用のコードがバンドルに入らず、本体だけ(minify して約 16KB)になります([開発モード](#開発モード))。
+本番のビルドでは `dev: devtools()` を外すと、開発用のコードがバンドルに入らず、本体だけ(bun build で minify して約 17.7 KB、gzip 後 6.9 KB)になります([開発モード](#開発モード))。
 
 - **返した値がレスポンスになる。** 文字列はテキスト、オブジェクトは JSON。`Response` もそのまま返せます
 - **型はパスから。** `/users/:id` と書けば、ハンドラーの `id` に型が付きます。[Standard Schema](https://standardschema.dev)(Zod・Valibot・ArkType など)で、パラメーター・クエリ・ボディも確かめられます
@@ -114,7 +114,7 @@ export default app;
 - 変数の型も決めるときは `createApp<{ Bindings: Env; Variables: { user: User } }>()` と書きます。変数だけなら、今までどおり `createApp<{ user: User }>()` です
 - `getIp(c)`(`@senrijs/senri/ip`)は、Cloudflare が付ける `CF-Connecting-IP` を読みます(Workers で動いているときだけ)
 - 開発モードのダッシュボードは作りません(`/_senri` はふつうの 404)。エラーページは出ますが、該当コードは出ません
-- wrangler は1つのファイルにまとめるので、`dev: devtools()` を残すと、開発用のコード(約 190KB)もバンドルに入ります。本番のビルドでは外してください
+- wrangler は1つのファイルにまとめるので、`dev: devtools()` を残すと、開発用のコード(約 200KB)もバンドルに入ります。本番のビルドでは外してください
 - Workers では `NODE_ENV` が読めないので、`devtools()` は `localhost` へのリクエスト(`wrangler dev`)のときだけ開発用の出力をします([開発モード](#開発モード))
 - 静的ファイルは `@senrijs/senri/static` ではなく、Workers の [Static Assets](https://developers.cloudflare.com/workers/static-assets/) で配ってください
 
@@ -324,7 +324,7 @@ const auth: Middleware<{ user: User }> = async (c, next) => {
 
 // 表の全部のルートに付ける(前置きがなければ "")
 export const adminRoutes = defineRoutes("/admin", { use: [auth] })({
-    "GET /me": (_, c) => c.get("user"),                                         // User | undefined
+    "GET /me": (_, c) => ({ user: c.get("user") }),                             // c.get("user") は User | undefined
     // このルートだけに付ける
     "DELETE /users/:id": endpoint({ use: [requireOwner], params: idSchema }, ({ id }) => deleteUser(id)),
 });
@@ -682,7 +682,7 @@ import { jwt, signJwt, verifyJwt, type JwtVariables } from "@senrijs/senri/jwt";
 const app = createApp<JwtVariables>();
 app.post("/login", async () => ({ token: await signJwt({ sub: "42" }, env.JWT_SECRET, { alg: "HS256", expiresIn: 3600 }) }));
 app.use("/api", jwt({ keys: env.JWT_SECRET, algorithms: ["HS256"] }));   // Authorization: Bearer <token>(cookie: "名前" で Cookie から)
-app.get("/api/me", (_, c) => c.get("jwtPayload"));
+app.get("/api/me", (_, c) => ({ payload: c.get("jwtPayload") }));      // c.get() は JwtPayload | undefined なので、そのままは返せない
 ```
 
 - **`algorithms` は必須です。** トークンの `alg` が、この中にあるときだけ確かめます。`none` は受け付けません

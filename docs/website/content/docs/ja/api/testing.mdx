@@ -1,6 +1,25 @@
 ---
 title: "/testing"
-description: "@senrijs/senri/testing"
+description: "@senrijs/senri/testing。サーバーを立てずにアプリを呼ぶ"
 ---
 
-このページは準備中です。
+サーバーを立てずにアプリを呼ぶ。
+
+```ts
+import { ... } from "@senrijs/senri/testing";
+```
+
+## 関数とクラス
+
+| 名前 | すること |
+| --- | --- |
+| [`testClient<Api>(app, options?)`](/docs/typed-api/testing) | 型付きクライアントで、`app.fetch` を呼ぶ |
+| [`request(app, "METHOD /path", init?)`](/docs/typed-api/testing) | `Response` を返す |
+
+## 型
+
+### TestOptions
+
+<AutoTypeTable path="../../src/testing.ts" name="TestOptions" />
+
+ソース: [`src/testing.ts`](https://github.com/Senrijs/Senri/blob/main/src/testing.ts)

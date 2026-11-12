@@ -1,6 +1,35 @@
 ---
 title: "タイムアウト"
-description: "timeout()"
+description: "timeout() で、時間内に終わらなければ 504 を返す"
 ---
 
-このページは準備中です。
+```ts twoslash
+import { createApp, timeout } from "@senrijs/senri";
+
+const app = createApp();
+
+app.use("/api", timeout(5000));   // 5 秒で終わらなければ 504
+```
+
+## 止まらないもの
+
+時間切れで 504 を返しても、ハンドラーの処理そのものは止まりません。
+
+- 同期のループの間は、タイマーも動きません
+- `c.req.signal` は、クライアントの切断だけを表します
+- 外部への呼び出しを止めるには、`AbortSignal.timeout()` と組み合わせます
+
+```ts twoslash
+import { createApp, timeout } from "@senrijs/senri";
+const app = createApp();
+// ---cut---
+app.use("/api", timeout(5000));
+app.get("/api/slow", async () => {
+    const res = await fetch("https://example.com/slow", { signal: AbortSignal.timeout(5000) });
+    return res.text();
+});
+```
+
+## オプション
+
+<AutoTypeTable path="../../src/middleware/timeout.ts" name="TimeoutOptions" />

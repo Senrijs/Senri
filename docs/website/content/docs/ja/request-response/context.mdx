@@ -1,6 +1,56 @@
 ---
 title: "Context"
-description: "ハンドラーの c でできること(c.req・c.set() / c.get()・c.header()・c.status()・c.env)"
+description: "ハンドラーとミドルウェアが受け取る c でできること"
 ---
 
-このページは準備中です。
+ハンドラーの 2 つ目の引数と、ミドルウェアの 1 つ目の引数は、そのリクエストの Context(`c`)です。
+
+```ts twoslash
+import { createApp } from "@senrijs/senri";
+
+const app = createApp<{ user: string }>();
+
+app.use(async (c, next) => {
+    c.set("user", "alice");          // ハンドラーへ値を渡す
+    await next();
+});
+
+app.get("/users/:id", ({ id }, c) => {
+    c.header("cache-control", "no-store");
+    return { id, user: c.get("user"), page: c.query("page") };
+});
+```
+
+## リクエストを読む
+
+| 書き方 | 中身 |
+| --- | --- |
+| `c.req` | 本物の `Request` |
+| `c.path` | 正規化してデコードしたパス |
+| `c.route` | 当たったルートのパターン(`"/users/:id"`)。なければ `undefined` |
+| `c.params` | パスのパラメーター(ハンドラーの 1 つ目の引数と同じ) |
+| `c.query(name)` / `c.query()` | クエリの値 1 つ / 全部 |
+| `c.queries(name)` | 同じ名前のクエリを全部(配列) |
+| `c.body()` | 本文を Content-Type に合わせて読む([本文の読み方と上限](/docs/request-response/body)) |
+| `c.valid(target)` | スキーマで確かめた値([バリデーション](/docs/validation)) |
+
+`c.route` と `c.params` は、ミドルウェアの `next()` の前から読めます。ルートは、ミドルウェアより先に決まるためです。
+
+## レスポンスを決める
+
+| 書き方 | すること |
+| --- | --- |
+| `c.status(code)` | 返す値の status を決める |
+| `c.header(name, value)` | レスポンスにヘッダーを足す |
+| `c.json()`・`c.text()`・`c.html()`・`c.redirect()` | `Response` を作る([レスポンスのヘルパー](/docs/request-response/response-helpers)) |
+| `c.notFound()` | 404 のハンドラーに回す([見つからないとき](/docs/errors/not-found)) |
+
+`c.header()` で足したヘッダーは、最後に 1 回だけレスポンスに付きます。`Response` を直接返したときも、エラーのときも付きます。ただし `Content-Type` と `Location` は、レスポンスにあればそちらが優先です。
+
+## 値を渡す(c.set / c.get)
+
+ミドルウェアからハンドラーへ値を渡すには、`c.set()` と `c.get()` を使います。型は `createApp<{ user: string }>()` のように決めます。ミドルウェアの型から決めることもできます([ミドルウェアを書く](/docs/middleware/writing))。
+
+## Cloudflare Workers の env と ctx
+
+`c.env` と `c.executionCtx` で、Workers のバインディングと `waitUntil()` を使えます([Cloudflare Workers](/docs/runtimes/cloudflare-workers))。

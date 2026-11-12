@@ -1,6 +1,60 @@
 ---
 title: "ルートの表"
-description: "defineRoutes()・endpoint()・mergeRoutes() で、型の付いたルートの表を作る"
+description: "defineRoutes()・endpoint()・mergeRoutes() で、型を持ったルートの表を作る"
 ---
 
-このページは準備中です。
+ルートを表にまとめると、ルートの型(パス・パラメーター・スキーマ・ハンドラーの戻り値)を持ったまま、ファイルの外に出せます。その型から、[クライアント](/docs/typed-api/client)・[テスト](/docs/typed-api/testing)・[OpenAPI](/docs/typed-api/openapi) を作れます。
+
+```ts twoslash title="routes.ts"
+import { defineRoutes, endpoint, mergeRoutes } from "@senrijs/senri";
+import { z } from "zod";
+
+// キーは "メソッド /パス"。パラメーターは、キーから型が付く
+export const userRoutes = defineRoutes({
+    "GET /users/:id": ({ id }) => ({ id }),
+    // スキーマを付けるルートは、endpoint(schemas, handler) で包む
+    "POST /users": endpoint({ body: z.object({ name: z.string() }) }, (_, c) => ({ created: c.valid("body").name })),
+});
+
+// 前置きは 2 段で書く。前置きのパラメーターにも型が付く
+export const orgRoutes = defineRoutes("/orgs/:orgId")({
+    "GET /": ({ orgId }) => `org ${orgId}`,                   // GET /orgs/:orgId
+    "GET /members/:memberId": ({ orgId, memberId }) => ({ orgId, memberId }),
+});
+
+// 表を合わせる(同じキーが 2 つあればエラー)
+export const routes = mergeRoutes(userRoutes, orgRoutes);
+export type Api = typeof routes;
+```
+
+```ts twoslash title="index.ts"
+// @filename: routes.ts
+import { defineRoutes } from "@senrijs/senri";
+export const routes = defineRoutes({ "GET /users/:id": ({ id }) => ({ id }) });
+// @filename: index.ts
+// ---cut---
+import { createApp } from "@senrijs/senri";
+import { routes } from "./routes.ts";
+
+const app = createApp();
+app.routes(routes);
+```
+
+## endpoint()
+
+`endpoint(options, handler)` の `options` には、次のものを書けます。
+
+| キー | 中身 |
+| --- | --- |
+| `params`・`query`・`body` | 確かめるスキーマ([バリデーション](/docs/validation)) |
+| `use` | このルートだけのミドルウェア([ルートごとに付ける](/docs/middleware/route-middleware)) |
+| `response`・`responses` | 返す本文のスキーマ(200 と、status ごと)。クライアントの型と OpenAPI に使う |
+| `bodyType` | フォームで受けるルートは `"form"`(OpenAPI に使う) |
+| `openapi` | OpenAPI に入れる `summary`・`tags` など |
+
+## 決まり
+
+- 前置きは `/` で始め、`/` で終わらないように書きます(`"/users"`)
+- 表の全部のルートにミドルウェアを付けるときは、`defineRoutes("/admin", { use: [auth] })({ ... })` と書きます
+- `c.get()` に型を付けるときは、前置きと一緒にアプリの型を渡します: `defineRoutes<"/admin", Vars>("/admin")({ ... })`
+- パスの書き方の確認と、同じルートを 2 回登録していないかの確認は、`app.routes()` に渡したときに、`app.get()` と同じく行います

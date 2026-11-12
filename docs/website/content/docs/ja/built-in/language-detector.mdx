@@ -1,6 +1,21 @@
 ---
 title: "言語の判定"
-description: "languageDetector()"
+description: "languageDetector() で、リクエストの言語を決める"
 ---
 
-このページは準備中です。
+```ts twoslash
+import { createApp, languageDetector, type LanguageVariables } from "@senrijs/senri";
+
+const app = createApp<LanguageVariables>();
+
+app.use(languageDetector({ supportedLanguages: ["ja", "en"], fallbackLanguage: "en" }));
+app.get("/", (_, c) => (c.get("language") === "ja" ? "こんにちは" : "Hello"));
+```
+
+- クエリ(`lang`)、Cookie(`language`)、`Accept-Language` の順に見ます
+- `c.get("language")` は、必ず `supportedLanguages` のどれかです。どれにも合わなければ `fallbackLanguage` です
+- Cookie には書き込みません。覚えさせたいときは、自分で `setCookie()` します
+
+## オプション
+
+<AutoTypeTable path="../../src/middleware/language-detector.ts" name="LanguageDetectorOptions" />

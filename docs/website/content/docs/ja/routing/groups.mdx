@@ -1,6 +1,51 @@
 ---
 title: "グループ化"
-description: "前に付くパスとミドルウェアをまとめる"
+description: "前置きでルートをまとめる。別のアプリをつなぐ"
 ---
 
-このページは準備中です。
+```ts twoslash
+import { createApp, createRouter } from "@senrijs/senri";
+
+const app = createApp();
+
+const posts = createRouter("/users/:id/posts");
+posts.get("/", ({ id }) => `user ${id} の投稿`);
+posts.get("/:postId", ({ id, postId }) => `${id} / ${postId}`);
+//                           ^?
+
+app.route(posts);
+```
+
+- `createRouter(prefix)` で作ったものに、`app` と同じようにルートを足します
+- 前置きのパラメーター(`:id`)にも、中のハンドラーで型が付きます
+- `app.route(router)` で、アプリにつなぎます
+
+## 別のアプリをつなぐ
+
+`createApp()` で作った別のアプリを、前置きの下につなげます。
+
+```ts twoslash
+import { createApp } from "@senrijs/senri";
+const app = createApp();
+// ---cut---
+const admin = createApp();
+admin.get("/stats", () => ({ users: 42 }));
+
+app.route("/admin", admin);   // GET /admin/stats
+```
+
+## ルートの表で前置きを付ける
+
+型の付いたルートの表(`defineRoutes()`)でも、前置きを付けられます([ルートの表](/docs/typed-api/define-routes))。
+
+```ts twoslash
+import { createApp, defineRoutes } from "@senrijs/senri";
+const app = createApp();
+// ---cut---
+const orgRoutes = defineRoutes("/orgs/:orgId")({
+    "GET /": ({ orgId }) => `org ${orgId}`,
+    "GET /members/:memberId": ({ orgId, memberId }) => ({ orgId, memberId }),
+});
+
+app.routes(orgRoutes);
+```

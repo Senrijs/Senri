@@ -1,6 +1,54 @@
 ---
 title: "レスポンスのヘルパー"
-description: "c.html()、c.redirect()、Cookie など"
+description: "c.json()・c.text()・c.html()・c.redirect()"
 ---
 
-このページは準備中です。
+```ts twoslash
+import { createApp } from "@senrijs/senri";
+
+const app = createApp();
+
+app.post("/users", (_, c) => c.json({ id: 1 }, 201));
+app.get("/plain", (_, c) => c.text("not ready", 503));
+app.get("/", (_, c) => c.html("<h1>こんにちは</h1>"));     // text/html; charset=utf-8
+app.get("/old", (_, c) => c.redirect("/new", 301));       // 既定は 302
+```
+
+| 書き方 | レスポンス |
+| --- | --- |
+| `c.json(data, status?)` | JSON |
+| `c.text(body, status?)` | `text/plain; charset=utf-8` |
+| `c.html(body, status?)` | `text/html; charset=utf-8` |
+| `c.redirect(location, status?)` | 301・302・303・307・308 のリダイレクト |
+
+`c.json()` と `c.text()` に書いた status は、型にも残ります。型付きクライアントで、status ごとに型が分かれます([型付きクライアント](/docs/typed-api/client))。
+
+## c.html()
+
+本文をそのまま返します。利用者の入力を入れるときは、自分でエスケープしてください。
+
+## c.redirect()
+
+- status は 301・302・303・307・308 だけです。`c.status()` は見ません
+- `/login` のような相対パスも渡せます
+- `c.header("location", ...)` より、`c.redirect()` の値が優先です
+- ASCII 以外は、どのランタイムでも同じ形にエンコードします
+- CR・LF を含む値はエラーです。ほかのサイトへの URL は通すので、`c.query("next")` のような外からの値は、行き先を確かめてから渡してください(オープンリダイレクトの対策)
+
+## Cookie を付けてリダイレクトする
+
+`setCookie()` や `c.header()` で足したヘッダーは、ヘルパーで作ったレスポンスにも付きます。
+
+```ts twoslash
+import { createApp } from "@senrijs/senri";
+const app = createApp();
+// ---cut---
+import { setCookie } from "@senrijs/senri/cookie";
+
+app.post("/login", (_, c) => {
+    setCookie(c, "session", "abc");
+    return c.redirect("/dashboard", 303);
+});
+```
+
+ブラウザの Service Worker と、ページの中の `app.fetch()` では、ブラウザの制限で `Set-Cookie` が消えるので、Cookie は付きません。

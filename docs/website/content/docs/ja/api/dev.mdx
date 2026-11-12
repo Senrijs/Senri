@@ -1,6 +1,24 @@
 ---
 title: "/dev"
-description: "@senrijs/senri/dev"
+description: "@senrijs/senri/dev。開発モード"
 ---
 
-このページは準備中です。
+開発モード。
+
+```ts
+import { ... } from "@senrijs/senri/dev";
+```
+
+## 関数とクラス
+
+| 名前 | すること |
+| --- | --- |
+| [`devtools(options?)`](/docs/dev/devtools) | 開発モードを作る。`createApp({ dev: devtools() })` に渡す |
+
+## 型
+
+### DevtoolsOptions
+
+<AutoTypeTable path="../../src/dev/index.ts" name="DevtoolsOptions" />
+
+ソース: [`src/dev/index.ts`](https://github.com/Senrijs/Senri/blob/main/src/dev/index.ts)

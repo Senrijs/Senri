@@ -1,6 +1,24 @@
 ---
 title: "/otel"
-description: "@senrijs/senri/otel"
+description: "@senrijs/senri/otel。OpenTelemetry のトレース"
 ---
 
-このページは準備中です。
+OpenTelemetry のトレース。
+
+```ts
+import { ... } from "@senrijs/senri/otel";
+```
+
+## 関数とクラス
+
+| 名前 | すること |
+| --- | --- |
+| [`otel(options)`](/docs/production/otel) | リクエストごとに span を作るミドルウェア |
+
+## 型
+
+### OtelOptions
+
+<AutoTypeTable path="../../src/otel.ts" name="OtelOptions" />
+
+ソース: [`src/otel.ts`](https://github.com/Senrijs/Senri/blob/main/src/otel.ts)

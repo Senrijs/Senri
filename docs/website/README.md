@@ -56,9 +56,15 @@ bun run preview   # out/ を配信して確かめる
 
 ## 書くときに使えるもの
 
-`content/docs/ja/samples.mdx` に、全部の見本があります。
+使い方は、書いたページが見本です(たとえば `content/docs/ja/request-response/multipart.mdx`、`getting-started/first-app.mdx`)。
 
 - ` ```ts twoslash `: 型のヒント。`@senrijs/senri` の型は、リポジトリの `src` / `adapters` から読みます(`lib/senri-types.ts`)。型エラーがあるとビルドが失敗します
+  - 例に要る準備(`const app = createApp()` など)は、`// ---cut---` より上に書くと、表示されずに型チェックだけに使われます
+  - 複数のファイルは `// @filename: routes.ts` で分けます
+  - わざと型エラーを見せるときは `// @errors: 2345` のように番号を書きます
+  - `//     ^?` で、真上の行のその位置の型を表示したままにします。位置がずれるとビルドが失敗します
+  - サイトの依存にないパッケージ(`@opentelemetry/api`・`ws` など)は、CI では見えません(CI はルートの `bun install` をしない)。`// @filename: types.d.ts` に `declare module` で最小の型を書いて、`// ---cut---` で隠します
+  - `Bun`・`Deno` のグローバルの型もないので、同じように `declare const Bun: ...` を隠して書きます
 - `<AutoTypeTable path="../../src/multipart.ts" name="MultipartLimits" />`: TypeScript の型から表を作ります。説明は JSDoc から取ります
 - ` ```npm `: npm / pnpm / yarn / bun / deno のタブ。Deno では `@senrijs/senri` を JSR から入れます(`lib/deno.ts`)
 - ` ```mermaid `: 図
