@@ -19,12 +19,14 @@ function currentUser() {
 app.get("/me", () => currentUser() ?? "anonymous");
 ```
 
+{/* verify: after-await */}
+
 `AsyncLocalStorage`(`node:async_hooks`)を使います。
 
 ## 取れるところ
 
 - `contextStorage()` より後ろのミドルウェア、ハンドラー、`onError`、`app.notFound`、ストリームの中
-- `contextStorage()` より前のミドルウェアや、リクエストの外(起動のときなど)では、`getContext()` は例外(`code: "no_context"`)を投げます。`tryGetContext()` は `undefined` を返します
+- `contextStorage()` より前のミドルウェアや、リクエストの外(起動のときなど)では、`getContext()` は例外(`code: "no_context"`)を投げます。`tryGetContext()` は `undefined` を返します {/* verify: outside */}
 
 ハンドラーで始めたタイマーは、レスポンスのあとでもそのリクエストの `c` が見えます(`AsyncLocalStorage` の性質です)。そこでは使い続けないでください。
 

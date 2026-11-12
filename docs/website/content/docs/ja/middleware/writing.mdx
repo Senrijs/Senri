@@ -25,9 +25,11 @@ app.use("/admin", (c, next) => {
 });
 ```
 
+{/* verify: after-next */}
+
 ## 玉ねぎの形
 
-ミドルウェアは、登録した順に外から内へ入り、ハンドラーのあと、逆の順に外へ出ます。`await next()` の前が「入るとき」、後が「出るとき」です。
+ミドルウェアは、登録した順に外から内へ入り、ハンドラーのあと、逆の順に外へ出ます。`await next()` の前が「入るとき」、後が「出るとき」です。 {/* verify: onion */}
 
 ```mermaid
 sequenceDiagram
@@ -43,15 +45,15 @@ sequenceDiagram
     A-->>C: レスポンス
 ```
 
-- **値を返すと止まる:** `next()` を呼ばずに値を返すと、後ろは動きません。返した値が、ハンドラーと同じ決まりでレスポンスになります
+- **値を返すと止まる:** `next()` を呼ばずに値を返すと、後ろは動きません。返した値が、ハンドラーと同じ決まりでレスポンスになります {/* verify: return-stops */}
 - **ルートは先に決まる:** ミドルウェアより先にルートに当たるので、`next()` の前から `c.route`(`"/users/:id"`)と `c.params` が読めます
-- **パスを付ける:** `app.use("/admin", mw)` は、`/admin` とその下で動きます。`app.use("/admin/*", mw)` も同じ意味です
+- **パスを付ける:** `app.use("/admin", mw)` は、`/admin` とその下で動きます。`app.use("/admin/*", mw)` も同じ意味です {/* verify: path */}
 
 開発モードでは、どのミドルウェアを、どの順に、何ミリ秒で通ったかを見られます([玉ねぎのタイムライン](/docs/dev/timeline))。
 
 ## 値を渡す
 
-ミドルウェアからハンドラーへ値を渡すには、`c.set()` と `c.get()` を使います。ミドルウェアを `Middleware<{ user: User }>` と書くと、その型が付きます。
+ミドルウェアからハンドラーへ値を渡すには、`c.set()` と `c.get()` を使います。ミドルウェアを `Middleware<{ user: User }>` と書くと、その型が付きます。 {/* verify: set-get */}
 
 ```ts twoslash
 import { createApp, type Middleware } from "@senrijs/senri";

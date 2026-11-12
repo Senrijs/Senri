@@ -25,7 +25,11 @@ jobs:
           bun run build:pages
           git diff --exit-code src/dev/page.generated.ts
       - run: bun run typecheck
+      # test/docs は、ドキュメントに書いた「こうすると、こうなる」を確かめる(Deno も子プロセスで動かすので、setup-deno が要る)
       - run: bun test
+      # ドキュメントのしるし({/* verify: ... */})と test/docs のテストが、1 対 1 で対応しているか
+      - name: Check doc claims have tests
+        run: node scripts/check-doc-claims.ts
       - run: bun run test:node
 
   # JSR に公開できるか(slow types のチェックなど)。公開のとき(publish.yml の npx jsr publish)と同じ確かめを、PR のうちに行う

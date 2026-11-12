@@ -21,6 +21,8 @@ app.get("/search", (_, c) => {
 });
 ```
 
+{/* verify: query */} {/* verify: ip-null */}
+
 本文の読み方は、[本文の読み方と上限](/docs/request-response/body)にあります。
 
 ## Cookie
@@ -28,7 +30,7 @@ app.get("/search", (_, c) => {
 `@senrijs/senri/cookie` にあります。使わないアプリのバンドルに入らないよう、別の入口にしています。
 
 - `getCookie(c, name)` / `getCookie(c)`: 1 つ / 全部を読む
-- `setCookie(c, name, value, options)`: 付ける。既定は `Path=/`・`HttpOnly`・`SameSite=Lax`
+- `setCookie(c, name, value, options)`: 付ける。既定は `Path=/`・`HttpOnly`・`SameSite=Lax` {/* verify: cookie-defaults */}
 - `deleteCookie(c, name, options)`: 消す
 
 ### 署名付き Cookie
@@ -50,9 +52,11 @@ app.get("/me", async (_, c) => {
 });
 ```
 
+{/* verify: signed-cookie */}
+
 - 署名は HMAC-SHA256(Web Crypto)です。値はクライアントから読めます。書き換えを見つけるだけで、暗号化ではありません
 - 秘密鍵は 32 バイト以上のランダムな文字列にして、環境変数や `c.env` から読みます。`["新しい鍵", "古い鍵"]` のように配列で渡すと、新しい鍵で署名し、どちらの署名も受け付けます
-- 署名には Cookie の名前も入るので、値を別の名前の Cookie に写しても通りません
+- 署名には Cookie の名前も入るので、値を別の名前の Cookie に写しても通りません {/* verify: signed-cookie-name */}
 - `maxAge` は、ブラウザに捨ててもらうだけです。期限を守らせたいときは、値に期限を入れて確かめます
 
 ## 接続元の IP
@@ -71,5 +75,5 @@ const clientIp = trustProxy({ proxies: ["10.0.0.0/8"] });   // または trustPr
 app.get("/ip", (_, c) => clientIp(c) ?? "unknown");
 ```
 
-- `X-Forwarded-For` の先頭は信じず、右から数えます
+- `X-Forwarded-For` の先頭は信じず、右から数えます {/* verify: trust-proxy */}
 - `hops` は、プロキシを通らずにアプリへ届く環境では偽装できます。その場合は `proxies` を使います

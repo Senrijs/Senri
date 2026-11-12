@@ -44,4 +44,6 @@ const res = await app.fetch(new Request("http://localhost/api/todos/1"));
 await res.json();   // { id: "1", done: false }
 ```
 
+{/* verify: app-fetch */}
+
 Chromium のページと Service Worker の両方で動くことを、CI で確かめています。

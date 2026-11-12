@@ -29,7 +29,7 @@ const doc = openAPI(routes, { info: { title: "My API", version: "1.0.0" } });
 app.get("/openapi.json", () => doc);
 ```
 
-既定では OpenAPI 3.1 の文書を作ります。
+既定では OpenAPI 3.1 の文書を作ります。 {/* verify: document */}
 
 ## 何から作るか
 
@@ -40,7 +40,7 @@ app.get("/openapi.json", () => doc);
 | レスポンス | `response`(200)と `responses`(status ごと)に書いたものだけ |
 | `summary`・`tags` など | `openapi` |
 
-ハンドラーの戻り値の型は、動いているときには分からないので、レスポンスには入りません。表にない `app.get()` などのルートも入りません。
+ハンドラーの戻り値の型は、動いているときには分からないので、レスポンスには入りません。表にない `app.get()` などのルートも入りません。 {/* verify: only-table */}
 
 ## スキーマを JSON Schema にする
 

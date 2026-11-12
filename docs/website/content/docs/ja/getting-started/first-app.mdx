@@ -17,7 +17,7 @@ bun install
 bun run dev
 ```
 
-起動すると、URL と登録されているルートが表示されます。
+起動すると、URL と登録されているルートが表示されます。 {/* verify: banner */}
 
 ```txt
   senr/  ready  http://localhost:3927  (デフォルト。環境変数 PORT で変えられます)
@@ -46,6 +46,8 @@ curl http://localhost:3927/hello/senri
 # こんにちは、senri さん(Content-Type: text/plain)
 ```
 
+{/* verify: hello */}
+
 </Step>
 <Step>
 
@@ -65,6 +67,8 @@ curl http://localhost:3927/todos
 # [{"id":1,"title":"牛乳を買う","done":false}](Content-Type: application/json)
 ```
 
+{/* verify: todos */}
+
 </Step>
 <Step>
 
@@ -81,25 +85,25 @@ app.get("/boom", () => {
 });
 ```
 
-開発モードでは、エラーの文と、投げた場所のコードが出ます。本番(`NODE_ENV=production`)では、`500 Internal Server Error` とだけ返します。
+開発モードでは、エラーの文と、投げた場所のコードが出ます。本番(`NODE_ENV=production`)では、`500 Internal Server Error` とだけ返します。 {/* verify: error-page */} {/* verify: production-500 */}
 
-次に、手順 3 で足した `/todos` から 1 文字欠けた http://localhost:3927/todo を開きます。404 のページに「もしかして: GET /todos」と、`"s" が1文字足りません` が出ます。
+次に、手順 3 で足した `/todos` から 1 文字欠けた http://localhost:3927/todo を開きます。404 のページに「もしかして: GET /todos」と、`"s" が1文字足りません` が出ます。 {/* verify: did-you-mean */}
 
-- 提案するのは、登録しているルートと 3 文字以内しか違わないパスだけです。雛形のルート(`/` と `/users/:id`)だけのときに `/todo` を開いても、提案は出ません
-- ブラウザの言語が英語なら、`did you mean:` と英語で出ます
+- 提案するのは、登録しているルートと 3 文字以内しか違わないパスだけです。雛形のルート(`/` と `/users/:id`)だけのときに `/todo` を開いても、提案は出ません {/* verify: no-suggestion-without-todos */}
+- ブラウザの言語が英語なら、`did you mean:` と英語で出ます {/* verify: did-you-mean-en */}
 
 </Step>
 <Step>
 
 ### ダッシュボードを見る
 
-http://localhost:3927/_senri を開くと、届いたリクエストが一覧になります。1 つ選ぶと、ミドルウェアとハンドラーをどの順に通って、それぞれ何ミリ秒かかったかが分かります。
+http://localhost:3927/_senri を開くと、届いたリクエストが一覧になります。1 つ選ぶと、ミドルウェアとハンドラーをどの順に通って、それぞれ何ミリ秒かかったかが分かります。 {/* verify: dashboard */}
 
 </Step>
 </Steps>
 
 <Callout title="開発モードが動くのは">
-  `createApp({ dev: devtools() })` と書いたときだけです。`NODE_ENV=production` では何もしないので、消し忘れても本番にエラーページやダッシュボードは出ません。
+  `createApp({ dev: devtools() })` と書いたときだけです。`NODE_ENV=production` では何もしないので、消し忘れても本番にエラーページやダッシュボードは出ません。 {/* verify: production-off */}
 </Callout>
 
 ## 次に読む

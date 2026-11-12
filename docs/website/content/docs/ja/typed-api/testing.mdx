@@ -36,13 +36,13 @@ expect(res.status).toBe(404);
 | 関数 | 使うとき | 返すもの |
 | --- | --- | --- |
 | `testClient<Api>(app, options)` | 表のルートを、型付きで呼ぶ | [型付きクライアント](/docs/typed-api/client)と同じ結果 |
-| `request(app, "METHOD /path", init)` | 表にないルート、型付きでは送れないリクエスト | `Response` |
+| `request(app, "METHOD /path", init)` | 表にないルート、型付きでは送れないリクエスト | `Response` {/* verify: request */} |
 
 ## オプション
 
-- **接続元:** `127.0.0.1` として渡します。`getIp()`・`ipRestriction()`・開発モードの localhost の判定が、本物のサーバーと同じに動きます。`{ ip }` で変えられます
-- **Cloudflare Workers のアプリ:** `{ env, ctx }` を渡します(`c.env`・`c.executionCtx`)。このときは Workers と同じく、接続元は渡しません
-- **Cookie:** `{ cookies: true }` で、前の応答の `Set-Cookie` を、次のリクエストに付けます(名前ごとに 1 つ。domain と path は見ません)
-- **ヘッダー:** `{ headers }` で、毎回付けるヘッダーを決められます
+- **接続元:** `127.0.0.1` として渡します。`getIp()`・`ipRestriction()`・開発モードの localhost の判定が、本物のサーバーと同じに動きます。`{ ip }` で変えられます {/* verify: ip */}
+- **Cloudflare Workers のアプリ:** `{ env, ctx }` を渡します(`c.env`・`c.executionCtx`)。このときは Workers と同じく、接続元は渡しません {/* verify: workers */}
+- **Cookie:** `{ cookies: true }` で、前の応答の `Set-Cookie` を、次のリクエストに付けます(名前ごとに 1 つ。domain と path は見ません) {/* verify: cookies */}
+- **ヘッダー:** `{ headers }` で、毎回付けるヘッダーを決められます {/* verify: headers */}
 
 <AutoTypeTable path="../../src/testing.ts" name="TestOptions" />

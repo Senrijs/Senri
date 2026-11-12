@@ -17,7 +17,7 @@ app.get("/", (_, c) => `id: ${c.get("requestId")}`);
 
 ## 受け取った ID を使う
 
-受け取った `X-Request-Id` は、既定では使いません(だれでも付けられるため)。信頼できるプロキシの後ろでは、`trustIncoming: true` にします。
+受け取った `X-Request-Id` は、既定では使いません(だれでも付けられるため)。信頼できるプロキシの後ろでは、`trustIncoming: true` にします。 {/* verify: id */}
 
 ```ts twoslash
 import { createApp, requestId } from "@senrijs/senri";
@@ -26,7 +26,7 @@ const app = createApp();
 app.use(requestId({ trustIncoming: true }));
 ```
 
-128 文字までの `A-Z a-z 0-9 . _ = + / -` だけを受け付けます。それ以外は作り直します。
+128 文字までの `A-Z a-z 0-9 . _ = + / -` だけを受け付けます。それ以外は作り直します。 {/* verify: trust */}
 
 ## オプション
 

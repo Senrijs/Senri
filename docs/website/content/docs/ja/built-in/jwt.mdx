@@ -18,15 +18,17 @@ app.use("/api", jwt({ keys: env.JWT_SECRET, algorithms: ["HS256"] }));   // Auth
 app.get("/api/me", (_, c) => ({ payload: c.get("jwtPayload") }));
 ```
 
+{/* verify: verify */}
+
 暗号は Web Crypto だけで、Bun・Deno・Node.js・Cloudflare Workers・ブラウザで動きます。
 
 ## 決まり
 
-- **`algorithms` は必須です。** トークンの `alg` が、この中にあるときだけ確かめます。`none` は受け付けません
-- `exp`・`nbf` があれば確かめます(`clockTolerance` で時計のずれを許します)。`issuer`・`audience`・`subject`・`maxAge` も指定できます
+- **`algorithms` は必須です。** トークンの `alg` が、この中にあるときだけ確かめます。`none` は受け付けません {/* verify: required */}
+- `exp`・`nbf` があれば確かめます(`clockTolerance` で時計のずれを許します)。`issuer`・`audience`・`subject`・`maxAge` も指定できます {/* verify: expired */}
 - 期限を必ず付けたいときは、`signJwt()` の `expiresIn` を使います
-- Cookie から読むときは、`jwt({ cookie: "名前", ... })` と書きます
-- だめなトークンは `JwtError`(401 の `HttpError`)で、`WWW-Authenticate: Bearer error="invalid_token"` が付きます。`err.reason` で理由(`expired`・`signature` など)が分かります
+- Cookie から読むときは、`jwt({ cookie: "名前", ... })` と書きます {/* verify: cookie */}
+- だめなトークンは `JwtError`(401 の `HttpError`)で、`WWW-Authenticate: Bearer error="invalid_token"` が付きます。`err.reason` で理由(`expired`・`signature` など)が分かります {/* verify: invalid */}
 
 ## アルゴリズムと鍵
 
@@ -53,7 +55,7 @@ app.use("/api", jwt({
 }));
 ```
 
-`signJwt()` は `kid` をヘッダーに入れ、`verifyJwt()` はトークンの `kid` と同じ鍵(と、`kid` のない鍵)だけを試します。JWKS の `keys` は、そのまま渡せます。
+`signJwt()` は `kid` をヘッダーに入れ、`verifyJwt()` はトークンの `kid` と同じ鍵(と、`kid` のない鍵)だけを試します。JWKS の `keys` は、そのまま渡せます。 {/* verify: kid */}
 
 外の JWKS の URL から鍵を取ってくる機能と、暗号化(JWE)はありません。
 

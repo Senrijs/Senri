@@ -27,7 +27,7 @@ app.post("/upload", async (_, c) => {
 | プロパティ | 中身 |
 | --- | --- |
 | `name` | フォームの欄の名前 |
-| `filename` | ファイル名。ファイルでない欄は `undefined`、ファイルを選ばなかった欄は `""` |
+| `filename` | ファイル名。ファイルでない欄は `undefined`、ファイルを選ばなかった欄は `""` {/* verify: parts */} |
 | `contentType` | なければ `text/plain` |
 | `headers` | パーツのヘッダー |
 | `stream` | 中身のストリーム |
@@ -39,7 +39,7 @@ app.post("/upload", async (_, c) => {
 
 <AutoTypeTable path="../../src/multipart.ts" name="MultipartLimits" />
 
-- 超えたら 413 です。壊れた本文や `boundary` がないときは 400、multipart でなければ 415 です
+- 超えたら 413 です。壊れた本文や `boundary` がないときは 400、multipart でなければ 415 です {/* verify: errors */}
 - `multipart()` を使うルートでは、アプリの既定の上限(1 MiB)の代わりに、この上限が効きます
 
 ## 読むときの決まり

@@ -11,9 +11,9 @@ const app = createApp();
 app.use("/admin", ipRestriction({ allow: ["192.0.2.0/24"], deny: ["192.0.2.13"] }));
 ```
 
-- `deny` を先に見ます。断ったリクエストは 403 です
-- IP が分からないときも 403 にします。テストでは `allowUnknown: true` にします
-- プロキシの後ろでは、`ip: trustProxy({ hops: 1 })` のように、IP の取り方を渡します
+- `deny` を先に見ます。断ったリクエストは 403 です {/* verify: deny-first */}
+- IP が分からないときも 403 にします。テストでは `allowUnknown: true` にします {/* verify: unknown */}
+- プロキシの後ろでは、`ip: trustProxy({ hops: 1 })` のように、IP の取り方を渡します {/* verify: trust-proxy */}
 
 ```ts twoslash
 import { createApp, ipRestriction } from "@senrijs/senri";

@@ -19,6 +19,8 @@ app.get("/users/:id", ({ id }) => ({ id }));    // オブジェクト → JSON
 await serve(app);   // Bun でも Node.js でも Deno でも
 ```
 
+{/* verify: string-text */} {/* verify: object-json */}
+
 ## 特徴
 
 - **返した値がレスポンスになる。** 文字列はテキスト、オブジェクトは JSON になります。`Response` もそのまま返せます

@@ -18,8 +18,8 @@ app.get("/items/:id", ({ id }, c) => {
 });
 ```
 
-- ルートに当たらなかったリクエストは、`app.notFound` のハンドラーに回ります。決めていなければ、既定の 404 です
-- ルートはあるけれど中身がないときは、`c.notFound()` で同じところに回せます。ミドルウェアからも呼べます
+- ルートに当たらなかったリクエストは、`app.notFound` のハンドラーに回ります。決めていなければ、既定の 404 です {/* verify: handler */}
+- ルートはあるけれど中身がないときは、`c.notFound()` で同じところに回せます。ミドルウェアからも呼べます {/* verify: c-not-found */}
 
 ## return c.notFound() と書く
 
@@ -29,10 +29,10 @@ app.get("/items/:id", ({ id }, c) => {
 
 `new HttpError(404)` とほぼ同じですが、行き先が `onError` ではなく `app.notFound` です。
 
-- 外側のミドルウェアの `await next()` は投げずに、404 のレスポンスを返します。`res.status` で見分けます
+- 外側のミドルウェアの `await next()` は投げずに、404 のレスポンスを返します。`res.status` で見分けます {/* verify: next-returns */}
 - 同じ関数の `try` / `catch` には捕まります。`if (err instanceof HttpError) throw err` で投げ直します
-- `c.header()` で足したヘッダー(`Set-Cookie`・CORS など)は、404 にも付きます
-- `app.route()` でつないだアプリから呼んでも、親のハンドラーが使われます
-- `app.notFound` のハンドラーの中で呼ぶと、既定の 404 になります。`onError` の中で呼ぶと、固定の 500 になります
+- `c.header()` で足したヘッダー(`Set-Cookie`・CORS など)は、404 にも付きます {/* verify: headers-kept */}
+- `app.route()` でつないだアプリから呼んでも、親のハンドラーが使われます {/* verify: mounted */}
+- `app.notFound` のハンドラーの中で呼ぶと、既定の 404 になります。`onError` の中で呼ぶと、固定の 500 になります {/* verify: inside-handlers */}
 
 開発モードの 404 ページに「もしかして」が出るのは、ルートがなかったときだけです。

@@ -14,9 +14,11 @@ app.get("/", (_, c) => c.html("<h1>こんにちは</h1>"));     // text/html; ch
 app.get("/old", (_, c) => c.redirect("/new", 301));       // 既定は 302
 ```
 
+{/* verify: redirect */}
+
 | 書き方 | レスポンス |
 | --- | --- |
-| `c.json(data, status?)` | JSON |
+| `c.json(data, status?)` | JSON {/* verify: helpers */} |
 | `c.text(body, status?)` | `text/plain; charset=utf-8` |
 | `c.html(body, status?)` | `text/html; charset=utf-8` |
 | `c.redirect(location, status?)` | 301・302・303・307・308 のリダイレクト |
@@ -31,13 +33,13 @@ app.get("/old", (_, c) => c.redirect("/new", 301));       // 既定は 302
 
 - status は 301・302・303・307・308 だけです。`c.status()` は見ません
 - `/login` のような相対パスも渡せます
-- `c.header("location", ...)` より、`c.redirect()` の値が優先です
+- `c.header("location", ...)` より、`c.redirect()` の値が優先です {/* verify: redirect-wins */}
 - ASCII 以外は、どのランタイムでも同じ形にエンコードします
-- CR・LF を含む値はエラーです。ほかのサイトへの URL は通すので、`c.query("next")` のような外からの値は、行き先を確かめてから渡してください(オープンリダイレクトの対策)
+- CR・LF を含む値はエラーです。ほかのサイトへの URL は通すので、`c.query("next")` のような外からの値は、行き先を確かめてから渡してください(オープンリダイレクトの対策) {/* verify: crlf */}
 
 ## Cookie を付けてリダイレクトする
 
-`setCookie()` や `c.header()` で足したヘッダーは、ヘルパーで作ったレスポンスにも付きます。
+`setCookie()` や `c.header()` で足したヘッダーは、ヘルパーで作ったレスポンスにも付きます。 {/* verify: cookie-redirect */}
 
 ```ts twoslash
 import { createApp } from "@senrijs/senri";

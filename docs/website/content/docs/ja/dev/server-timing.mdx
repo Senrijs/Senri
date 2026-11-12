@@ -23,7 +23,7 @@ server-timing: senri-1;desc="1. auth (self 0.27ms)";dur=1.49, senri-handler;desc
 
 - 上から順に、玉ねぎの外側から内側です。外側の層ほど長くなります(内側の時間を含むため)
 - ミドルウェアの `desc` には、自分の時間(`self`)も入ります
-- 名前は `senri-` で始まります。アプリが自分で付けた `Server-Timing` は残して、その後ろにつなぎます
+- 名前は `senri-` で始まります。アプリが自分で付けた `Server-Timing` は残して、その後ろにつなぎます {/* verify: header */} {/* verify: keep-app-header */}
 
 入れ子の形で見たいときは、[玉ねぎのタイムライン](/docs/dev/timeline)を使います。
 

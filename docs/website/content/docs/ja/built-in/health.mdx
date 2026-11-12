@@ -15,7 +15,7 @@ app.use(health({ ready: () => db.isConnected() }));
 | パス | 答え |
 | --- | --- |
 | `/healthz` | 応答できれば 200(生きているか) |
-| `/readyz` | `ready()` が `true` なら 200。`false`・例外・止まり始めたあとは 503(リクエストを受けられるか) |
+| `/readyz` | `ready()` が `true` なら 200。`false`・例外・止まり始めたあとは 503(リクエストを受けられるか) {/* verify: paths */} |
 
 - `serve()` は、SIGTERM を受けると、まず `/readyz` を 503 にします。ロードバランサーが新しいリクエストを送ってこないようにするためです([止め方](/docs/production/graceful-shutdown))
 - パスは変えられます。`false` にすると、そのパスを出しません

@@ -34,7 +34,7 @@ app.routes(adminRoutes);
 | `defineRoutes(prefix, { use: [mw] })` | その表のルート |
 | `endpoint({ use: [mw] }, handler)` | そのルートだけ |
 
-表とルートの `use` は、そのルートに当たったリクエストでだけ動きます。前置きのない表に付けるときは、`defineRoutes("", { use })` と書きます。
+表とルートの `use` は、そのルートに当たったリクエストでだけ動きます。前置きのない表に付けるときは、`defineRoutes("", { use })` と書きます。 {/* verify: only-matched */}
 
 ## 動く順番
 
@@ -42,9 +42,9 @@ app.routes(adminRoutes);
 2. 表の `use`
 3. ルートの `use`
 4. スキーマの確認(本文を読む)
-5. ハンドラー
+5. ハンドラー {/* verify: order */}
 
-ミドルウェアが値を返したら、スキーマの確認の前に止まります。認証に通らないリクエストの本文は読みません。
+ミドルウェアが値を返したら、スキーマの確認の前に止まります。認証に通らないリクエストの本文は読みません。 {/* verify: stop-before-body */}
 
 ## 型
 

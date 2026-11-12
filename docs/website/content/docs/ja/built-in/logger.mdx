@@ -14,7 +14,7 @@ app.use(logger());                      // 色付きで 1 行ずつ
 
 - メソッド・パス・status・かかった時間を、1 行ずつ出します
 - 色は既定でオンです。ファイルや CI に流すときは `color: false` にします
-- `{ format: "json" }` で、pino と同じ形の JSON にします
+- `{ format: "json" }` で、pino と同じ形の JSON にします {/* verify: json */}
 - ハンドラーが投げたエラー(`c.error`)も出します
 - いちばん先に登録すると、ほかのミドルウェアの時間も含めて測れます
 

@@ -23,7 +23,7 @@ await serve(methodOverride(app));
 - ミドルウェアではなく、アプリ(`app.fetch`)を包みます。ルートはミドルウェアより先に決まるためです
 - Cloudflare Workers では、`export default methodOverride(app)` と書きます
 - 上書きできるのは POST だけです
-- `multipart/form-data` のフォームは読みません。その場合は `X-HTTP-Method-Override` ヘッダーを使います
+- `multipart/form-data` のフォームは読みません。その場合は `X-HTTP-Method-Override` ヘッダーを使います {/* verify: form */}
 - 使うと、Node.js では全部のリクエストが、`Request` と `Response` を作らない速い道を通らなくなります
 
 ## オプション

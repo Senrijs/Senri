@@ -27,14 +27,14 @@ app.get("/users/:id", ({ id }, c) => {
 | --- | --- |
 | `c.req` | 本物の `Request` |
 | `c.path` | 正規化してデコードしたパス |
-| `c.route` | 当たったルートのパターン(`"/users/:id"`)。なければ `undefined` |
+| `c.route` | 当たったルートのパターン(`"/users/:id"`)。なければ `undefined` {/* verify: read */} |
 | `c.params` | パスのパラメーター(ハンドラーの 1 つ目の引数と同じ) |
 | `c.query(name)` / `c.query()` | クエリの値 1 つ / 全部 |
 | `c.queries(name)` | 同じ名前のクエリを全部(配列) |
 | `c.body()` | 本文を Content-Type に合わせて読む([本文の読み方と上限](/docs/request-response/body)) |
 | `c.valid(target)` | スキーマで確かめた値([バリデーション](/docs/validation)) |
 
-`c.route` と `c.params` は、ミドルウェアの `next()` の前から読めます。ルートは、ミドルウェアより先に決まるためです。
+`c.route` と `c.params` は、ミドルウェアの `next()` の前から読めます。ルートは、ミドルウェアより先に決まるためです。 {/* verify: route-before-next */}
 
 ## レスポンスを決める
 
@@ -45,7 +45,7 @@ app.get("/users/:id", ({ id }, c) => {
 | `c.json()`・`c.text()`・`c.html()`・`c.redirect()` | `Response` を作る([レスポンスのヘルパー](/docs/request-response/response-helpers)) |
 | `c.notFound()` | 404 のハンドラーに回す([見つからないとき](/docs/errors/not-found)) |
 
-`c.header()` で足したヘッダーは、最後に 1 回だけレスポンスに付きます。`Response` を直接返したときも、エラーのときも付きます。ただし `Content-Type` と `Location` は、レスポンスにあればそちらが優先です。
+`c.header()` で足したヘッダーは、最後に 1 回だけレスポンスに付きます。`Response` を直接返したときも、エラーのときも付きます。ただし `Content-Type` と `Location` は、レスポンスにあればそちらが優先です。 {/* verify: header-always */} {/* verify: content-type-wins */}
 
 ## 値を渡す(c.set / c.get)
 

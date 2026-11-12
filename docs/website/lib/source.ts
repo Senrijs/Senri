@@ -16,8 +16,12 @@ export const blogSource = loader({
     source: toFumadocsSource(blog, []),
 });
 
+// テストと結ぶしるし({/* verify: ... */}。README の「書いた動きをテストで確かめる」)は、Markdown には出さない
+// (処理したあとの Markdown には、MDX のコメントが文字のまま残るため)。行の終わりの空白と、しるしだけの行も消す
+const stripClaimMarkers = (text: string) => text.replace(/ ?\{\/\*\s*verify:[^*]*\*\/\}/g, "").replace(/\n\n(?=\n)/g, "\n");
+
 export const docsLlms = llms(source, {
     renderPage: async (page) => `# ${page.data.title} (${page.url})
 
-${await page.data.getText("processed")}`,
+${stripClaimMarkers(await page.data.getText("processed"))}`,
 });

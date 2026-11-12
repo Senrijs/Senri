@@ -58,9 +58,9 @@ Node.js では、Senri は WebSocket のフレームを自分では読まず、�
 
 ## 守っていること
 
-- **よそのサイトのページからの接続は、既定で 403 にします**(Cross-Site WebSocket Hijacking の対策)。`Origin` のホストが `Host` と同じときだけ通します。ほかのオリジンは `upgradeWebSocket(create, { origin: ["https://app.example.com"] })` で足します。`Origin` のない接続(ブラウザ以外)は通します
+- **よそのサイトのページからの接続は、既定で 403 にします**(Cross-Site WebSocket Hijacking の対策)。`Origin` のホストが `Host` と同じときだけ通します。ほかのオリジンは `upgradeWebSocket(create, { origin: ["https://app.example.com"] })` で足します。`Origin` のない接続(ブラウザ以外)は通します {/* verify: cross-origin */}
 - ミドルウェアは、ふつうのリクエストと同じに動きます。認証のミドルウェアが 401 を返せば、upgrade しません
-- `Upgrade: websocket` のないリクエストは 426 です
+- `Upgrade: websocket` のないリクエストは 426 です {/* verify: 426 */}
 
 サブプロトコル(`Sec-WebSocket-Protocol`)の取り決めと、圧縮(permessage-deflate)の設定は、まだありません。
 
