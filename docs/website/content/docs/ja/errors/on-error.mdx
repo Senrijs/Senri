@@ -1,6 +1,40 @@
 ---
 title: "onError"
-description: "エラーのレスポンスを変える"
+description: "app.onError で、エラーのときの応答を決める"
 ---
 
-このページは準備中です。
+```ts twoslash
+import { createApp, HttpError } from "@senrijs/senri";
+
+const app = createApp();
+
+app.onError((err, c) => {
+    if (err instanceof HttpError) return { error: err.message };   // status は HttpError のもの
+    console.error(err);
+    return { error: "something went wrong" };                       // status は 500
+});
+```
+
+- ハンドラーやミドルウェアが投げたものは、全部 `app.onError` に届きます
+- `HttpError` のときは、その status とヘッダーが先に入っているので、値を返すだけで正しい status になります。それ以外は 500 です
+- `c.status()` で変えることもできます
+- `onError` の中で投げると、固定の 500 になります
+
+## 開発モードとの関係
+
+`app.onError` を決めると、開発モードのエラーページも置き換わります。開発中はエラーページを見たいなら、本番だけで決めます。
+
+```ts twoslash
+import { createApp } from "@senrijs/senri";
+const app = createApp();
+declare const process: { env: Record<string, string | undefined> };
+// ---cut---
+if (process.env.NODE_ENV === "production") {
+    app.onError(() => ({ error: "something went wrong" }));
+}
+```
+
+## そのほかのエラーの形
+
+- 見つからないときは、`app.onError` ではなく `app.notFound` に回ります([見つからないとき](/docs/errors/not-found))
+- RFC 9457 の `application/problem+json` で返すなら、[Problem Details](/docs/errors/problem-details) を使います

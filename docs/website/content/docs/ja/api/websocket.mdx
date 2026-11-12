@@ -1,6 +1,35 @@
 ---
 title: "/websocket"
-description: "@senrijs/senri/websocket"
+description: "@senrijs/senri/websocket。WebSocket のルート"
 ---
 
-このページは準備中です。
+WebSocket のルート。
+
+```ts
+import { ... } from "@senrijs/senri/websocket";
+```
+
+## 関数とクラス
+
+| 名前 | すること |
+| --- | --- |
+| [`upgradeWebSocket(create, options?)`](/docs/production/websocket) | WebSocket のルートのハンドラーを作る |
+| [`websocket`](/docs/runtimes/bun) | `Bun.serve` に渡すハンドラー |
+
+## 型
+
+### WebSocketEvents
+
+<AutoTypeTable path="../../src/websocket.ts" name="WebSocketEvents" />
+
+### WSConnection
+
+<AutoTypeTable path="../../src/websocket.ts" name="WSConnection" />
+
+### UpgradeWebSocketOptions
+
+<AutoTypeTable path="../../src/websocket.ts" name="UpgradeWebSocketOptions" />
+
+`attachNodeSocket`・`NODE_UPGRADE`・`UPGRADE_MARKER` は、Node.js のアダプターが使う部品です。アプリからは使いません。
+
+ソース: [`src/websocket.ts`](https://github.com/Senrijs/Senri/blob/main/src/websocket.ts)

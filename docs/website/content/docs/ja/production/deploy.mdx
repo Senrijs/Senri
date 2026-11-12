@@ -1,6 +1,56 @@
 ---
 title: "デプロイ"
-description: "本番のビルドで devtools() を外す、NODE_ENV、ランタイムごとの注意"
+description: "本番のビルドで devtools() を外す。NODE_ENV。ランタイムごとの注意"
 ---
 
-このページは準備中です。
+```ts twoslash title="src/index.ts"
+import { createApp } from "@senrijs/senri";
+import { serve } from "@senrijs/senri/serve";
+
+const app = createApp();   // 本番のビルドでは dev: devtools() を渡さない
+app.get("/", () => "Hello!");
+
+await serve(app);
+```
+
+```bash
+NODE_ENV=production PORT=8080 node src/index.ts
+```
+
+## devtools() を外す
+
+本番での開発モードの扱いは、2 通りあります。**本番のビルドから外すのが確実です。**
+
+| やり方 | 結果 |
+| --- | --- |
+| `dev: devtools()` を渡さない | 開発用のコードがバンドルに入らない。本体だけ(gzip 後で約 7 KB)になる |
+| `dev: devtools()` を残して `NODE_ENV=production` にする | `devtools()` が何もしないので、開発用のページは出ない。ただし、1 つのファイルにまとめるバンドラー(Workers の wrangler など)では、コードが入ったままになる |
+
+`NODE_ENV` を付け忘れても、開発用の出力は localhost へのリクエストにだけ出します([開発モードを使う](/docs/dev/devtools))。それでも、外すか `NODE_ENV=production` を付けてください。
+
+<Callout type="warn" title="同じマシンのリバースプロキシの後ろでは">
+  プロキシが `Host: localhost` のまま転送すると、localhost へのリクエストに見えます。本番では `NODE_ENV=production` にするか、`devtools()` を外してください。
+</Callout>
+
+## 環境変数
+
+| 変数 | 使うもの |
+| --- | --- |
+| `NODE_ENV` | `production` で、`devtools()` が何もしない |
+| `PORT` | `serve()` のポート(`port` オプションがなければ) |
+
+デプロイ先のサービスの多くは、`PORT` を決めて渡します。`serve()` はそれを読みます。
+
+## ランタイムごとの注意
+
+- **Node.js:** `node:http` は、リクエストを受け取り終えるまでの時間を、既定で 5 分にしています(`requestTimeout`)。遅い回線で大きいファイルを送ると、途中で 408 になることがあります
+- **Bun・Deno・Node.js:** SIGTERM を受けると、処理中のリクエストを待ってから止まります([止め方](/docs/production/graceful-shutdown))
+- **Cloudflare Workers:** `wrangler deploy` で出します。`devtools()` は `wrangler dev` のときだけ動きますが、バンドルには入るので外します([Cloudflare Workers](/docs/runtimes/cloudflare-workers))
+- **Docker などのコンテナ:** 接続元が localhost に見えないので、開発モードのダッシュボードは開けません。コンテナで開発するときは、`NODE_ENV=development` を付けます
+
+## 見張る
+
+- ログ: [`logger()`](/docs/built-in/logger)(`{ format: "json" }` で、集めやすい形にする)
+- ヘルスチェック: [`health()`](/docs/built-in/health)
+- トレース: [OpenTelemetry](/docs/production/otel)
+- メトリクス: [Prometheus](/docs/production/metrics)

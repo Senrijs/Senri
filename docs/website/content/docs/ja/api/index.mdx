@@ -1,6 +1,29 @@
 ---
 title: "入口の一覧"
-description: "関数と型の一覧"
+description: "@senrijs/senri の入口と、それぞれに何があるか"
 ---
 
-このページは準備中です。
+Senri は、機能ごとに入口を分けています。使わない入口のコードは、バンドルに入りません。npm でも JSR でも、同じ入口です。
+
+| 入口 | 中身 |
+| --- | --- |
+| [`@senrijs/senri`](/docs/api/core) | アプリ、ルート、Context、エラー、バリデーション、標準のミドルウェア |
+| [`@senrijs/senri/dev`](/docs/api/dev) | 開発モード |
+| [`@senrijs/senri/cookie`](/docs/api/cookie) | Cookie を読む・付ける・消す。署名付き Cookie |
+| [`@senrijs/senri/ip`](/docs/api/ip) | 接続元の IP |
+| [`@senrijs/senri/streaming`](/docs/api/streaming) | 少しずつ返す。Server-Sent Events |
+| [`@senrijs/senri/multipart`](/docs/api/multipart) | 大きいファイルを、メモリにためずに読む |
+| [`@senrijs/senri/problem`](/docs/api/problem) | RFC 9457 の Problem Details |
+| [`@senrijs/senri/jwt`](/docs/api/jwt) | JWT を作って確かめる |
+| [`@senrijs/senri/client`](/docs/api/client) | ルートの表の型から作る、型付きクライアント |
+| [`@senrijs/senri/testing`](/docs/api/testing) | サーバーを立てずにアプリを呼ぶ |
+| [`@senrijs/senri/websocket`](/docs/api/websocket) | WebSocket のルート |
+| [`@senrijs/senri/openapi`](/docs/api/openapi) | ルートの表から OpenAPI の文書を作る |
+| [`@senrijs/senri/otel`](/docs/api/otel) | OpenTelemetry のトレース |
+| [`@senrijs/senri/metrics`](/docs/api/metrics) | Prometheus のメトリクス |
+| [`@senrijs/senri/node`](/docs/api/node) | Node.js の `node:http` で動かす |
+| [`@senrijs/senri/serve`](/docs/api/serve) | ランタイムを見分けて起動する |
+| [`@senrijs/senri/static`](/docs/api/static) | 静的ファイル |
+| [`@senrijs/senri/context-storage`](/docs/api/context-storage) | どこからでも `c` を取る |
+
+型の表は、ソースの型と JSDoc(英語)から作っています。

@@ -1,6 +1,66 @@
 ---
 title: "ルートごとに付ける"
-description: "app.use(path, ...)、endpoint({ use })、defineRoutes(prefix, { use })"
+description: "パスで付ける、表の全部に付ける、1 つのルートだけに付ける"
 ---
 
-このページは準備中です。
+```ts twoslash
+import { createApp, defineRoutes, endpoint, type Middleware } from "@senrijs/senri";
+type User = { id: string; admin: boolean };
+declare const auth: Middleware<{ user: User }>;
+declare const requireAdmin: Middleware;
+declare function deleteUser(id: string): Promise<void>;
+// ---cut---
+// 表の全部のルートに付ける
+export const adminRoutes = defineRoutes("/admin", { use: [auth] })({
+    "GET /me": (_, c) => ({ user: c.get("user") }),
+    //                              ^?
+    // このルートだけに付ける
+    "DELETE /users/:id": endpoint({ use: [requireAdmin] }, async ({ id }) => {
+        await deleteUser(id);
+        return { deleted: id };
+    }),
+});
+
+const app = createApp();
+app.routes(adminRoutes);
+```
+
+## 付け方
+
+| 書き方 | 動くところ |
+| --- | --- |
+| `app.use(mw)` | 全部のリクエスト |
+| `app.use("/admin", mw)` | `/admin` とその下 |
+| `defineRoutes(prefix, { use: [mw] })` | その表のルート |
+| `endpoint({ use: [mw] }, handler)` | そのルートだけ |
+
+表とルートの `use` は、そのルートに当たったリクエストでだけ動きます。前置きのない表に付けるときは、`defineRoutes("", { use })` と書きます。
+
+## 動く順番
+
+1. アプリの `app.use()`
+2. 表の `use`
+3. ルートの `use`
+4. スキーマの確認(本文を読む)
+5. ハンドラー
+
+ミドルウェアが値を返したら、スキーマの確認の前に止まります。認証に通らないリクエストの本文は読みません。
+
+## 型
+
+`Middleware<{ user: User }>` と書いたミドルウェアを `use` に入れると、そのルートの `c.get("user")` に型が付きます。
+
+## 上限を上げる
+
+既定の本文の上限(1 MiB)を、1 つのルートだけで上げるのにも使えます。
+
+```ts twoslash
+import { bodyLimit, defineRoutes, endpoint } from "@senrijs/senri";
+// ---cut---
+const routes = defineRoutes({
+    "POST /import": endpoint({ use: [bodyLimit({ maxSize: 20 * 1024 * 1024 })] }, async (_, c) => {
+        const rows = await c.req.json();
+        return { count: rows.length };
+    }),
+});
+```

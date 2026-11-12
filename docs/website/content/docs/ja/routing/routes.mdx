@@ -1,6 +1,65 @@
 ---
 title: "ルートを書く"
-description: "メソッドとパスでハンドラーを登録する"
+description: "app.get() などでルートを足す。メソッド、ハンドラーの引数"
 ---
 
-このページは準備中です。
+```ts twoslash
+import { createApp } from "@senrijs/senri";
+
+const app = createApp();
+
+app.get("/users/:id", ({ id }) => `user ${id}`);
+app.post("/users", async (_, c) => c.json(await c.body(), 201));
+app.on(["PUT", "PATCH"], "/users/:id", () => "updated");
+app.all("/any", () => "どのメソッドでも");
+```
+
+## メソッド
+
+| 書き方 | 当たるメソッド |
+| --- | --- |
+| `app.get` / `post` / `put` / `patch` / `delete` / `head` / `options` | その名前のメソッド |
+| `app.all(path, handler)` | どのメソッドでも |
+| `app.on(method, path, handler)` | 1 つ、または配列で渡したメソッド |
+
+- **HEAD:** 登録していなければ、GET のルートで処理して本文を捨てます
+- **OPTIONS:** 登録していなければ、204 と `Allow` を返します
+- **QUERY**([RFC 10008](https://www.rfc-editor.org/rfc/rfc10008.html)): `app.on("QUERY", path, handler)` で登録します。本文がなければ 400、Content-Type がなければ 415 です
+- **CONNECT・TRACE・TRACK:** 扱いません(501)
+
+## ハンドラーの引数
+
+ハンドラーは、パスのパラメーターと Context(`c`)を受け取ります。
+
+```ts twoslash
+import { createApp } from "@senrijs/senri";
+const app = createApp();
+// ---cut---
+app.get("/orgs/:org/members/:member", ({ org, member }, c) => {
+    return { org, member, page: c.query("page") };
+    //       ^?
+});
+```
+
+- パラメーターの型は、パスから付きます
+- `c` で、リクエストを読んだり、ヘッダーや status を決めたりします([Context](/docs/request-response/context))
+- 戻り値がレスポンスになります([戻り値がレスポンスになる](/docs/routing/return-values))
+
+## 表の形でまとめて書く
+
+```ts twoslash
+import { createApp } from "@senrijs/senri";
+const app = createApp();
+// ---cut---
+app.routes({
+    "GET /ping": () => "pong",
+    "GET /users/:id": ({ id }) => ({ id }),
+});
+```
+
+表を別のファイルに出したり、クライアントで型を使ったりするときは、[`defineRoutes()`](/docs/typed-api/define-routes) を使います。
+
+## 登録のときのエラー
+
+- 同じメソッドと同じパスを 2 回登録すると、エラーになります。パラメーターの名前だけが違うもの(`/users/:id` と `/users/:userId`)も同じです
+- 省略できるパラメーター(`:id?`)や正規表現(`:id{[0-9]+}`)は書けません。登録のときのエラーになります。値は、ハンドラーか[スキーマ](/docs/validation)で確かめます

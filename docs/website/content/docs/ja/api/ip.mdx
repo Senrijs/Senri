@@ -1,6 +1,25 @@
 ---
 title: "/ip"
-description: "@senrijs/senri/ip"
+description: "@senrijs/senri/ip。接続元の IP"
 ---
 
-このページは準備中です。
+接続元の IP。
+
+```ts
+import { ... } from "@senrijs/senri/ip";
+```
+
+## 関数とクラス
+
+| 名前 | すること |
+| --- | --- |
+| [`getIp(c)`](/docs/request-response/request) | ランタイムが渡す接続元の IP |
+| [`trustProxy(options)`](/docs/request-response/request) | プロキシの後ろで、クライアントの IP を返す関数を作る |
+
+## 型
+
+### TrustProxyOptions
+
+<AutoTypeTable path="../../src/ip.ts" name="TrustProxyOptions" />
+
+ソース: [`src/ip.ts`](https://github.com/Senrijs/Senri/blob/main/src/ip.ts)

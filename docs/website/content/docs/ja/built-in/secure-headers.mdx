@@ -1,6 +1,45 @@
 ---
 title: "セキュリティヘッダー"
-description: "secureHeaders()"
+description: "secureHeaders() で、安全のためのヘッダーをまとめて付ける"
 ---
 
-このページは準備中です。
+```ts twoslash
+import { createApp, secureHeaders } from "@senrijs/senri";
+
+const app = createApp();
+
+app.use(secureHeaders());
+
+// 値を変える・外す・足す
+app.use(
+    secureHeaders({
+        xFrameOptions: "DENY",
+        strictTransportSecurity: false,
+        contentSecurityPolicy: "default-src 'self'",
+    }),
+);
+```
+
+ヘッダーごとに、文字列ならその値、`true` か省略なら既定の値、`false` なら付けません。
+
+## 既定で付くもの
+
+| ヘッダー | 既定の値 |
+| --- | --- |
+| `Cross-Origin-Opener-Policy` | `same-origin` |
+| `Cross-Origin-Resource-Policy` | `same-origin` |
+| `Origin-Agent-Cluster` | `?1` |
+| `Referrer-Policy` | `no-referrer` |
+| `Strict-Transport-Security` | `max-age=15552000; includeSubDomains` |
+| `X-Content-Type-Options` | `nosniff` |
+| `X-DNS-Prefetch-Control` | `off` |
+| `X-Download-Options` | `noopen` |
+| `X-Frame-Options` | `SAMEORIGIN` |
+| `X-Permitted-Cross-Domain-Policies` | `none` |
+| `X-XSS-Protection` | `0`(古い XSS フィルターを切る) |
+
+`Content-Security-Policy` と `Cross-Origin-Embedder-Policy` は、アプリによって壊れやすいので、既定では付けません。文字列を渡したときだけ付けます(`true` はエラーです)。
+
+## オプション
+
+<AutoTypeTable path="../../src/middleware/secure-headers.ts" name="SecureHeadersOptions" />

@@ -1,6 +1,64 @@
 ---
 title: "ストリーミングと SSE"
-description: "stream()、streamText()、streamSSE()"
+description: "@senrijs/senri/streaming で、少しずつ返す。Server-Sent Events"
 ---
 
-このページは準備中です。
+```ts twoslash
+import { createApp } from "@senrijs/senri";
+import { streamSSE } from "@senrijs/senri/streaming";
+
+const app = createApp();
+
+app.get("/events", (_, c) =>
+    streamSSE(c, async (s) => {
+        s.onAbort(() => console.log("切断されました"));
+        for (let i = 0; !s.aborted; i++) {
+            await s.writeSSE({ event: "tick", id: String(i), data: String(i) });
+            await s.sleep(1000);
+        }
+    }),
+);
+```
+
+| 関数 | 送るもの |
+| --- | --- |
+| `stream(c, run)` | バイト列 |
+| `streamText(c, run)` | テキスト |
+| `streamSSE(c, run)` | Server-Sent Events |
+
+- クライアントが切断すると `s.aborted` が `true` になり、`s.onAbort()` で登録した関数が動きます
+- `s.write()` は、読み手が追いつくまで待ちます
+
+## 途中でエラーが起きたとき
+
+送り始めたあとは、500 を返せません。`onError` を渡すと、最後に何かを書き込んでから正常に閉じます。渡さなければ、ログに出して接続を切ります(途中までのダウンロードが、完了に見えないように)。
+
+```ts twoslash
+import { createApp } from "@senrijs/senri";
+const app = createApp();
+declare function nextLine(): Promise<string | null>;
+// ---cut---
+import { streamText } from "@senrijs/senri/streaming";
+
+app.get("/log", (_, c) =>
+    streamText(
+        c,
+        async (s) => {
+            for (let line; (line = await nextLine()) !== null; ) await s.write(`${line}\n`);
+        },
+        { onError: async (_err, s) => s.write("\n(途中で失敗しました)\n") },
+    ),
+);
+```
+
+## SSE の heartbeat
+
+`streamSSE()` は、最初に `: connected` のコメントを送るので、ヘッダーはすぐ届きます。そのあとは 5 秒ごとに `: ping` のコメントを送ります。黙っている接続は、Bun(約 10 秒)やプロキシ(よく 1 分ほど)に切られるためです。
+
+- 間隔は `{ heartbeat: 15_000 }` で変えられます。`{ heartbeat: false }` で止められます
+- クライアントは、コメントを無視します
+- `compress()` は SSE を圧縮しません
+
+## Cloudflare Workers では
+
+切断に気づくのは、次に書き込んだときです。静かなストリームでは `onAbort` は呼ばれません(heartbeat があれば、15 秒以内に呼ばれました)。急ぐ後片付けを `onAbort` に任せないでください。

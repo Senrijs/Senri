@@ -1,6 +1,46 @@
 ---
 title: "止め方(graceful shutdown)"
-description: "処理中のリクエストを待ってから止める"
+description: "SIGTERM を受けたら、処理中のリクエストを待ってから止まる"
 ---
 
-このページは準備中です。
+```ts twoslash
+import { createApp } from "@senrijs/senri";
+const app = createApp();
+declare const db: { close(): Promise<void> };
+// ---cut---
+import { serve } from "@senrijs/senri/serve";
+
+await serve(app, {
+    shutdownTimeout: 30_000,     // 処理中のリクエストを、30 秒まで待つ
+    onShutdown: () => db.close(),
+});
+```
+
+`serve()` は SIGTERM・SIGINT を受けると、次の順に止まります。
+
+1. [`health()`](/docs/built-in/health) の `/readyz` を 503 にする(ロードバランサーが、新しいリクエストを送ってこないように)
+2. 新しい接続を受けるのをやめ、処理中のリクエストが終わるのを待つ(`shutdownTimeout`、既定 10 秒。過ぎたら残りの接続を切る)
+3. `onShutdown` を呼んでから、プロセスを終える
+
+待っている間にもう一度シグナルを受けたら、すぐに終わります(Ctrl+C を 2 回押したときなど)。
+
+## 自分で止める
+
+`server.stop()` は、同じ手順(1 と 2)で止めます。テストの後片付けなどに使います。
+
+```ts twoslash
+import { createApp } from "@senrijs/senri";
+const app = createApp();
+// ---cut---
+import { serve } from "@senrijs/senri/serve";
+
+const server = await serve(app, { port: 0 });
+// ...
+await server.stop();
+```
+
+## 止め方を任せない
+
+ランタイムの既定どおりにしたいときは、`gracefulShutdown: false` にします。シグナルを受けても、`serve()` は何もしません。
+
+- Deno には、待つのをやめたあとに残りの接続を切る方法がありません。`shutdownTimeout` を過ぎると待つのをやめ、プロセスが終わるときに接続も切れます

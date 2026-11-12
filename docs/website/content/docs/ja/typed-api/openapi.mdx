@@ -1,6 +1,57 @@
 ---
 title: "OpenAPI"
-description: "@senrijs/senri/openapi で、表から OpenAPI の文書を作る"
+description: "@senrijs/senri/openapi で、ルートの表から OpenAPI の文書を作る"
 ---
 
-このページは準備中です。
+```ts twoslash
+import { createApp, defineRoutes, endpoint } from "@senrijs/senri";
+import { z } from "zod";
+const userSchema = z.object({ id: z.number(), name: z.string() });
+const notFoundSchema = z.object({ message: z.string() });
+declare function findUser(id: number): z.infer<typeof userSchema>;
+const app = createApp();
+// ---cut---
+import { openAPI } from "@senrijs/senri/openapi";
+
+export const routes = defineRoutes({
+    "GET /users/:id": endpoint(
+        {
+            params: z.object({ id: z.coerce.number() }),
+            response: userSchema,                           // 200 の本文
+            responses: { 404: notFoundSchema },             // ほかの status
+            openapi: { summary: "ユーザーを取る", tags: ["users"] },
+        },
+        ({ id }) => findUser(id),
+    ),
+});
+
+const doc = openAPI(routes, { info: { title: "My API", version: "1.0.0" } });
+app.get("/openapi.json", () => doc);
+```
+
+既定では OpenAPI 3.1 の文書を作ります。
+
+## 何から作るか
+
+| 文書の中 | 元にするもの |
+| --- | --- |
+| パスとメソッド | 表のキー(`:id` → `{id}`) |
+| パラメーターとリクエストの本文 | `params`・`query`・`body` のスキーマ。フォームで受けるルートは `bodyType: "form"` |
+| レスポンス | `response`(200)と `responses`(status ごと)に書いたものだけ |
+| `summary`・`tags` など | `openapi` |
+
+ハンドラーの戻り値の型は、動いているときには分からないので、レスポンスには入りません。表にない `app.get()` などのルートも入りません。
+
+## スキーマを JSON Schema にする
+
+[Standard JSON Schema](https://standardschema.dev/json-schema) で変換します(Zod 4.2・ArkType 2.1.28 から)。
+
+- Valibot は `@valibot/to-json-schema` で包みます
+- 対応していないスキーマは、`toJSONSchema` で変換を渡せます
+- どちらもなければ、空のスキーマにして警告します
+
+開発モードでは、ハンドラーの戻り値が `response` のスキーマに合わないと、ターミナルに警告を出します。応答は変えません。本番では確かめません。
+
+## オプション
+
+<AutoTypeTable path="../../src/openapi.ts" name="OpenAPIOptions" />

@@ -1,6 +1,33 @@
 ---
 title: "CORS"
-description: "cors()"
+description: "cors() で、よそのオリジンからの fetch を許す"
 ---
 
-このページは準備中です。
+```ts twoslash
+import { createApp, cors } from "@senrijs/senri";
+
+const app = createApp();
+
+app.use("/api", cors({ origin: ["https://example.com"], credentials: true }));
+```
+
+- プリフライト(`Access-Control-Request-Method` の付いた OPTIONS)には、自分で 204 を返します
+- ほかのレスポンスには、CORS のヘッダーを足します。許していないオリジンには、何も足しません
+- `origin` が `"*"` でなければ、`Vary: Origin` を足します
+- `origin` の既定は `"*"`(どのオリジンでも)です。`credentials: true` と `origin: "*"` は一緒に使えません(エラーになります)
+- `basicAuth()` などの認証と一緒に使うときは、`cors()` を先に登録します。プリフライトには認証の情報が付かないためです
+
+## オリジンを関数で決める
+
+```ts twoslash
+import { createApp, cors } from "@senrijs/senri";
+const app = createApp();
+// ---cut---
+app.use(cors({ origin: (origin) => origin.endsWith(".example.com") }));
+```
+
+`true` を返すとそのオリジンを許し、文字列を返すとその値を送ります。`false`・`null`・`undefined` なら許しません。
+
+## オプション
+
+<AutoTypeTable path="../../src/middleware/cors.ts" name="CorsOptions" />

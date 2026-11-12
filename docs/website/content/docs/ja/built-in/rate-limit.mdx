@@ -1,6 +1,32 @@
 ---
 title: "レート制限"
-description: "rateLimit() と、保存先(store)の差し替え"
+description: "rateLimit() で、一定の時間に受けるリクエストの数を制限する"
 ---
 
-このページは準備中です。
+```ts twoslash
+import { createApp, rateLimit } from "@senrijs/senri";
+
+const app = createApp();
+
+app.use("/api", rateLimit({ windowMs: 60_000, limit: 100 }));   // 1 分に 100 回まで
+```
+
+- 超えたら 429 と `Retry-After` を返します
+- 固定ウィンドウで数えます
+- 既定のキーは接続元の IP です(IPv6 は /64 ごと)。IP が分からないリクエストは制限せず、最初の 1 回だけ警告します
+- プロキシの後ろでは、IP の取り方を [`trustProxy()`](/docs/request-response/request) で決めます
+
+## 保存先
+
+既定の保存先は、プロセスのメモリです。
+
+- 複数のプロセスやサーバーで動かすと、それぞれで別に数えます
+- Cloudflare Workers では isolate ごとの制限になり、全体の制限にはなりません
+
+全体で数えたいときは、`store` で Redis などに差し替えます。
+
+## オプション
+
+<AutoTypeTable path="../../src/middleware/rate-limit.ts" name="RateLimitOptions" />
+
+<AutoTypeTable path="../../src/middleware/rate-limit.ts" name="RateLimitStore" />

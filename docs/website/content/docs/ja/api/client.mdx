@@ -1,6 +1,30 @@
 ---
 title: "/client"
-description: "@senrijs/senri/client"
+description: "@senrijs/senri/client。ルートの表の型から作る、型付きクライアント"
 ---
 
-このページは準備中です。
+ルートの表の型から作る、型付きクライアント。
+
+```ts
+import { ... } from "@senrijs/senri/client";
+```
+
+## 関数とクラス
+
+| 名前 | すること |
+| --- | --- |
+| [`client<Api>(baseUrl, options?)`](/docs/typed-api/client) | クライアントを作る |
+
+## 型
+
+### ClientOptions
+
+<AutoTypeTable path="../../src/client.ts" name="ClientOptions" />
+
+### CallOptions
+
+<AutoTypeTable path="../../src/client.ts" name="CallOptions" />
+
+結果の型は `ClientResultOf<Api, Key>` です。ほかの型(`ClientData`・`ClientErrors` など)は、結果の型を組み立てる部品です。
+
+ソース: [`src/client.ts`](https://github.com/Senrijs/Senri/blob/main/src/client.ts)

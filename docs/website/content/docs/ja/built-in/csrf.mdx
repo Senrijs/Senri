@@ -1,6 +1,41 @@
 ---
 title: "CSRF"
-description: "csrf()(Sec-Fetch-Site と Origin で、よそからのリクエストを断る)"
+description: "csrf() で、よそのサイトからの POST などを 403 にする"
 ---
 
-このページは準備中です。
+```ts twoslash
+import { createApp, csrf } from "@senrijs/senri";
+
+const app = createApp();
+
+app.use(csrf());
+```
+
+トークンは使いません。ブラウザが付けるヘッダーを見て、よそのオリジンからのリクエストを 403 にします。
+
+## 何を見るか
+
+GET・HEAD・OPTIONS 以外のリクエストで、次の順に見ます。
+
+1. **`Sec-Fetch-Site`:** ブラウザが付けます。よそのオリジンからなら 403
+2. **`Origin`:** `Sec-Fetch-Site` のない古いブラウザでは、`Origin` のホストを `Host` と比べます。スキームは比べないので、TLS を終えるプロキシの後ろでも動きます
+3. どちらのヘッダーもないリクエストは、ブラウザからではない(curl やサーバーどうし)ので通します
+
+GET と HEAD は確かめないので、状態を変える処理を置かないでください。
+
+## ほかの自分のサイトからも受ける
+
+```ts twoslash
+import { createApp, csrf } from "@senrijs/senri";
+const app = createApp();
+// ---cut---
+app.use(csrf({ origin: ["https://admin.example.com"] }));
+```
+
+そのパスにかかる 1 つの `csrf()` に渡します。`app.use(csrf())` のあとに `app.use("/api", csrf({ origin }))` を足しても、先の `csrf()` が 403 で止めるので届きません。
+
+プロキシが `Host` を書き換えるときも、`origin` に正しいオリジンを入れてください。
+
+## オプション
+
+<AutoTypeTable path="../../src/middleware/csrf.ts" name="CsrfOptions" />

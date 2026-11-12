@@ -1,6 +1,36 @@
 ---
 title: "ダッシュボード"
-description: "/_senri でリクエストを見る"
+description: "/_senri で、届いたリクエストとルートの一覧を見る"
 ---
 
-このページは準備中です。
+開発モードで起動して、ブラウザで http://localhost:3927/_senri を開きます。
+
+```ts twoslash
+import { createApp } from "@senrijs/senri";
+import { devtools } from "@senrijs/senri/dev";
+import { serve } from "@senrijs/senri/serve";
+
+const app = createApp({ dev: devtools() });
+app.get("/", () => "hi");
+
+await serve(app);   // → http://localhost:3927/_senri
+```
+
+## 見られるもの
+
+- **リクエスト:** 直近 200 件を、届いたときに表示します。1 つ選ぶと、ヘッダー・クエリ・status と、[玉ねぎのタイムライン](/docs/dev/timeline)が出ます
+- **ルートとミドルウェア:** 登録しているルートと、それぞれに付いているミドルウェアの一覧
+- **警告:** 書き間違いに見えるミドルウェアのパスなど
+
+## 記録とセキュリティ
+
+- 記録はメモリの中だけで、再起動すると消えます
+- `/_senri` そのものへのリクエストと、リクエスト・レスポンスの本文は記録しません
+- `authorization`・`cookie`・`set-cookie` や、名前に `token`・`secret`・`session`・`api-key` などを含むヘッダーとクエリは、`***` に伏せます
+- **同じ PC(localhost)からしか開けません。** 接続元が同じ PC で、かつ `Host` も `localhost` などのときだけです。それ以外は、`/_senri` がないものとして扱います(ふつうの 404)
+
+## 開けないとき
+
+- **Docker などのコンテナ:** 接続元が localhost に見えないので開けません
+- **`app.fetch` を包んでいるとき:** 接続元は `app.fetch` の 2 つ目の引数から取ります。`fetch: (req) => app.fetch(req)` のように包むと渡らないので、`(req, info) => app.fetch(req, info)` と書きます
+- **Cloudflare Workers:** ダッシュボードはありません

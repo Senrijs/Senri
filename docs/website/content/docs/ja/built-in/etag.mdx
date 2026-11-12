@@ -1,6 +1,22 @@
 ---
 title: "ETag"
-description: "etag()"
+description: "etag() で ETag を付けて、変わっていなければ 304 を返す"
 ---
 
-このページは準備中です。
+```ts twoslash
+import { createApp, etag } from "@senrijs/senri";
+
+const app = createApp();
+
+app.use(etag());
+```
+
+- GET の 2xx に、弱い `ETag` を付けます
+- `If-None-Match` が同じなら、304 を返します
+- ハンドラーは毎回動きます(本文から `ETag` を作るため)
+- ストリームの本文と HEAD には付けません
+- `compress()` と `cache()` は、`etag()` より先に登録します
+
+## オプション
+
+<AutoTypeTable path="../../src/middleware/etag.ts" name="EtagOptions" />

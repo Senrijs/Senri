@@ -1,6 +1,34 @@
 ---
 title: "/streaming"
-description: "@senrijs/senri/streaming"
+description: "@senrijs/senri/streaming。少しずつ返す。Server-Sent Events"
 ---
 
-このページは準備中です。
+少しずつ返す。Server-Sent Events。
+
+```ts
+import { ... } from "@senrijs/senri/streaming";
+```
+
+## 関数とクラス
+
+| 名前 | すること |
+| --- | --- |
+| [`stream(c, run, options?)`](/docs/request-response/streaming) | バイト列を少しずつ送る |
+| [`streamText(c, run, options?)`](/docs/request-response/streaming) | テキストを少しずつ送る |
+| [`streamSSE(c, run, options?)`](/docs/request-response/streaming) | Server-Sent Events を送る |
+
+## 型
+
+### StreamingApi
+
+<AutoTypeTable path="../../src/streaming.ts" name="StreamingApi" />
+
+### SSEMessage
+
+<AutoTypeTable path="../../src/streaming.ts" name="SSEMessage" />
+
+### SSEOptions
+
+<AutoTypeTable path="../../src/streaming.ts" name="SSEOptions" />
+
+ソース: [`src/streaming.ts`](https://github.com/Senrijs/Senri/blob/main/src/streaming.ts)

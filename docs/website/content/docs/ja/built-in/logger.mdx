@@ -1,6 +1,38 @@
 ---
 title: "ログ"
-description: "logger()・showRoutes()"
+description: "logger() でリクエストを 1 行ずつ出す。showRoutes() でルートの一覧を出す"
 ---
 
-このページは準備中です。
+```ts twoslash
+import { createApp, logger } from "@senrijs/senri";
+
+const app = createApp();
+
+app.use(logger());                      // 色付きで 1 行ずつ
+// app.use(logger({ format: "json" })); // pino と同じ形の JSON
+```
+
+- メソッド・パス・status・かかった時間を、1 行ずつ出します
+- 色は既定でオンです。ファイルや CI に流すときは `color: false` にします
+- `{ format: "json" }` で、pino と同じ形の JSON にします
+- ハンドラーが投げたエラー(`c.error`)も出します
+- いちばん先に登録すると、ほかのミドルウェアの時間も含めて測れます
+
+## ルートの一覧を出す
+
+`showRoutes(app, url)` は、URL と、登録しているルートの一覧を出します。`serve()` は起動するときに同じものを出すので、ランタイムの API で自分で起動するときに使います。
+
+```ts twoslash
+import { createApp, showRoutes } from "@senrijs/senri";
+const app = createApp();
+declare const Deno: { serve(options: { port: number }, handler: (req: Request) => Response | Promise<Response>): unknown };
+// ---cut---
+app.get("/", () => "hi");
+
+Deno.serve({ port: 3927 }, app.fetch);
+showRoutes(app, "http://localhost:3927");   // 色を付けないなら { color: false }
+```
+
+## オプション
+
+<AutoTypeTable path="../../src/logger.ts" name="LoggerOptions" />

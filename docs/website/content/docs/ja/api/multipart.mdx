@@ -1,6 +1,28 @@
 ---
 title: "/multipart"
-description: "@senrijs/senri/multipart"
+description: "@senrijs/senri/multipart。大きいファイルを、メモリにためずに読む"
 ---
 
-このページは準備中です。
+大きいファイルを、メモリにためずに読む。
+
+```ts
+import { ... } from "@senrijs/senri/multipart";
+```
+
+## 関数とクラス
+
+| 名前 | すること |
+| --- | --- |
+| [`multipart(c, limits?)`](/docs/request-response/multipart) | `multipart/form-data` を 1 パーツずつ読む |
+
+## 型
+
+### MultipartLimits
+
+<AutoTypeTable path="../../src/multipart.ts" name="MultipartLimits" />
+
+### MultipartPart
+
+<AutoTypeTable path="../../src/multipart.ts" name="MultipartPart" />
+
+ソース: [`src/multipart.ts`](https://github.com/Senrijs/Senri/blob/main/src/multipart.ts)

@@ -46,17 +46,17 @@ jobs:
       # 静的書き出しで、言語ごとのページ、検索の索引、llms.txt、ページの Markdown、OG 画像、404 ページができたか
       - name: Check exported files
         run: |
-          for f in index.html docs/index.html docs/samples/index.html en/index.html en/docs/index.html \
+          for f in index.html docs/index.html docs/request-response/multipart/index.html en/index.html en/docs/index.html \
                    blog/index.html en/blog/index.html 404.html api/search llms.txt llms-full.txt en/llms.txt \
-                   llms.mdx/ja/docs/samples/content.md og/ja/docs/samples/image.png og/en/docs/samples/image.png og/ja/image.png og/en/image.png \
+                   llms.mdx/ja/docs/request-response/multipart/content.md og/ja/docs/request-response/multipart/image.png og/en/docs/request-response/multipart/image.png og/ja/image.png og/en/image.png \
                    brand/senri-wordmark-light.svg brand/senri-icon-accent.svg _headers; do
             test -s "out/$f" || { echo "out/$f がありません"; exit 1; }
           done
           grep -q 'lang="ja"' out/index.html
           grep -q 'lang="en"' out/en/index.html
           # Twoslash(型のヒント)と AutoTypeTable(MultipartLimits の表)が出ているか
-          grep -q 'twoslash-hover' out/docs/samples/index.html
-          grep -q 'maxFileSize' out/docs/samples/index.html
+          grep -q 'twoslash-hover' out/docs/request-response/multipart/index.html
+          grep -q 'maxFileSize' out/docs/request-response/multipart/index.html
           # トップページ: 本物の logger() の出力(serve() の既定のポート)が入っているか
           grep -q 'localhost:3927' out/index.html
           # リンクの先読みのファイルが、ブラウザが読みに来る名前でも置かれているか(scripts/flatten-segments.ts)

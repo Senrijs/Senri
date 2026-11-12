@@ -1,6 +1,73 @@
 ---
 title: "開発モードを使う"
-description: "開発モードを有効にする"
+description: "devtools() を付ける。どのリクエストに開発用の出力をするか(NODE_ENV)。言語"
 ---
 
-このページは準備中です。
+```ts twoslash
+import { createApp } from "@senrijs/senri";
+import { devtools } from "@senrijs/senri/dev";
+
+const app = createApp({ dev: devtools() });
+```
+
+開発用の機能は、すべて `@senrijs/senri/dev` にあります。`devtools()` を渡したときだけ、次のものが動きます。
+
+- [エラーページと 404 ページ](/docs/dev/error-pages)
+- [ダッシュボード](/docs/dev/dashboard)(`/_senri`)と[玉ねぎのタイムライン](/docs/dev/timeline)
+- [Server-Timing](/docs/dev/server-timing)
+- 詳しいメッセージ: 500 の本文にエラーの文、404 に「もしかして」、405 にどのメソッドならあるか、バリデーションの 400 に違うところの一覧
+- 書き間違いの警告: どのルートにも当たらないパスのミドルウェア(`app.use("/admni", ...)`)や、ほかのフレームワークの書き方に見えるパス(`/a?`・`/[id]`・`/{id}`)を、最初のリクエストのときに 1 回だけ知らせる
+
+渡さなければ、固定の文言(`500 Internal Server Error` など)だけを返し、計測も記録もしません。本体(`@senrijs/senri`)は開発用のコードを import しないので、渡さなければ、どのバンドラーでも開発用のコードは入りません。
+
+## どのリクエストに出すか
+
+`NODE_ENV` で決まります。
+
+| `NODE_ENV` | 開発用の出力 |
+| --- | --- |
+| `production` | しない(`devtools()` は何もしない) |
+| `development`・`test` | 全部のリクエスト |
+| 未設定・それ以外(`staging` など) | **localhost へのリクエストだけ** |
+
+「localhost へのリクエスト」は、URL のホスト名が `localhost`(`127.0.0.1`・`[::1]`・`*.localhost` を含む)で、**かつ**接続元が同じ PC のときです。`Host` ヘッダーはだれでも付けられるので、接続元も見ます。
+
+それ以外のリクエストには、本番と同じ固定の文言だけを返します。そうしたリクエストが初めて来たときに、1 回だけその旨をログに出します。
+
+次のときは、`NODE_ENV=development` を付けてください。
+
+- Docker の中で動かして、ホストのブラウザから開くとき
+- 同じ LAN の別の機器(スマートフォンなど)から開くとき
+- `localhost` 以外のホスト名で開くとき
+
+`bun test` は `NODE_ENV=test` を入れるので、テストでは全部のリクエストに出ます。
+
+### Workers とブラウザでは
+
+Cloudflare Workers とブラウザ(Service Worker)では `NODE_ENV` が読めないので、いつも localhost へのリクエストだけです。ここでは URL をプラットフォームが決めるので、URL のホスト名だけを見ます。Workers では、`wrangler dev`(`localhost:8787`)のときだけ動きます。
+
+### Deno では
+
+`NODE_ENV` を読む許可(`--allow-env=NODE_ENV`)がないと、本番かどうか分からないので、`devtools()` は動かず、その旨を 1 行出します。
+
+## 言語
+
+画面とメッセージは、日本語と英語です。
+
+| 対象 | 言語の決め方 |
+| --- | --- |
+| エラーページ・404 ページ・ダッシュボード・テキストのレスポンス | リクエストの `Accept-Language` |
+| ターミナルの警告と案内、登録のときのエラーの説明 | 環境変数 `LC_ALL` → `LC_MESSAGES` → `LANG` → OS の言語 |
+
+- 決められないとき(`Accept-Language` のない curl、`LANG=C` など)は英語です
+- `devtools({ lang: "ja" })` で、画面もターミナルも固定できます。`serve()` の案内は `serve(app, { lang: "ja" })` で固定できます
+- **Windows の Bun は OS の言語を読めず英語になります。** 日本語にしたいときは、`lang` か `LANG=ja_JP.UTF-8` を指定してください
+- 本番でも出るエラーメッセージは翻訳しません
+
+## 本番では
+
+[デプロイ](/docs/production/deploy)にあるとおり、本番のビルドから外すのが確実です。
+
+## オプション
+
+<AutoTypeTable path="../../src/dev/index.ts" name="DevtoolsOptions" />

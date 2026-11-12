@@ -1,6 +1,20 @@
 ---
 title: "/node"
-description: "@senrijs/senri/node"
+description: "@senrijs/senri/node。Node.js の node:http で動かす"
 ---
 
-このページは準備中です。
+Node.js の `node:http` で動かす。
+
+```ts
+import { ... } from "@senrijs/senri/node";
+```
+
+## 関数とクラス
+
+| 名前 | すること |
+| --- | --- |
+| [`serve(app, options)`](/docs/runtimes/node) | `node:http` で起動して、`http.Server` を返す |
+
+ポートの決め方・起動の表示・止め方は、`@senrijs/senri/serve` の `serve()` と違って行いません。
+
+ソース: [`adapters/node/index.ts`](https://github.com/Senrijs/Senri/blob/main/adapters/node/index.ts)

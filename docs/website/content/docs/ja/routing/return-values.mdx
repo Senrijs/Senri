@@ -1,6 +1,51 @@
 ---
 title: "戻り値がレスポンスになる"
-description: "文字列、オブジェクト、Response などを返す"
+description: "文字列・オブジェクト・Response などを返したときに、何が返るか"
 ---
 
-このページは準備中です。
+```ts twoslash
+import { createApp } from "@senrijs/senri";
+
+const app = createApp();
+
+app.get("/text", () => "こんにちは");                        // text/plain; charset=utf-8
+app.get("/json", () => ({ ok: true }));                      // application/json
+app.get("/raw", () => new Response("そのまま", { status: 202 }));
+```
+
+| 返すもの | レスポンス |
+| --- | --- |
+| 文字列 | `text/plain; charset=utf-8` |
+| オブジェクト・配列 | JSON |
+| `Blob`・`ArrayBuffer`・`Uint8Array` など・`ReadableStream`・`FormData`・`URLSearchParams` | そのまま本文になる |
+| `Response` | そのまま |
+
+## status とヘッダーを決める
+
+`c.status()` と `c.header()` で決めてから、値を返します。
+
+```ts twoslash
+import { createApp } from "@senrijs/senri";
+const app = createApp();
+// ---cut---
+app.post("/items", (_, c) => {
+    c.status(201);
+    c.header("location", "/items/1");
+    return { id: 1 };
+});
+```
+
+`c.json(body, status)` のように、ヘルパーで status まで一度に書くこともできます([レスポンスのヘルパー](/docs/request-response/response-helpers))。
+
+## 関数を返したとき
+
+関数を返す(呼び忘れ)と、型のエラーになります。実行したときも 500 になります。
+
+```ts twoslash
+// @errors: 2345
+import { createApp } from "@senrijs/senri";
+const app = createApp();
+const load = async () => ({ ok: true });
+// ---cut---
+app.get("/oops", () => load);   // load() の呼び忘れ
+```

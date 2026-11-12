@@ -1,6 +1,28 @@
 ---
 title: "/serve"
-description: "@senrijs/senri/serve"
+description: "@senrijs/senri/serve。ランタイムを見分けて起動する"
 ---
 
-このページは準備中です。
+ランタイムを見分けて起動する。
+
+```ts
+import { ... } from "@senrijs/senri/serve";
+```
+
+## 関数とクラス
+
+| 名前 | すること |
+| --- | --- |
+| [`serve(app, options?)`](/docs/production/serve) | Bun・Deno・Node.js で起動する |
+
+## 型
+
+### ServeOptions
+
+<AutoTypeTable path="../../adapters/serve/index.ts" name="ServeOptions" />
+
+### Server
+
+<AutoTypeTable path="../../adapters/serve/index.ts" name="Server" />
+
+ソース: [`adapters/serve/index.ts`](https://github.com/Senrijs/Senri/blob/main/adapters/serve/index.ts)

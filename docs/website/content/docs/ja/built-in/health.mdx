@@ -1,6 +1,25 @@
 ---
 title: "ヘルスチェック"
-description: "health()(/healthz・/readyz)"
+description: "health() で /healthz と /readyz に答える"
 ---
 
-このページは準備中です。
+```ts twoslash
+import { createApp, health } from "@senrijs/senri";
+declare const db: { isConnected(): boolean };
+
+const app = createApp();
+
+app.use(health({ ready: () => db.isConnected() }));
+```
+
+| パス | 答え |
+| --- | --- |
+| `/healthz` | 応答できれば 200(生きているか) |
+| `/readyz` | `ready()` が `true` なら 200。`false`・例外・止まり始めたあとは 503(リクエストを受けられるか) |
+
+- `serve()` は、SIGTERM を受けると、まず `/readyz` を 503 にします。ロードバランサーが新しいリクエストを送ってこないようにするためです([止め方](/docs/production/graceful-shutdown))
+- パスは変えられます。`false` にすると、そのパスを出しません
+
+## オプション
+
+<AutoTypeTable path="../../src/health.ts" name="HealthOptions" />

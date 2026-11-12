@@ -1,6 +1,30 @@
 ---
 title: "/problem"
-description: "@senrijs/senri/problem"
+description: "@senrijs/senri/problem。RFC 9457 の Problem Details"
 ---
 
-このページは準備中です。
+RFC 9457 の Problem Details。
+
+```ts
+import { ... } from "@senrijs/senri/problem";
+```
+
+## 関数とクラス
+
+| 名前 | すること |
+| --- | --- |
+| [`problemDetails(options?)`](/docs/errors/problem-details) | `onError` と `notFound` に渡すハンドラーを作る |
+| [`ProblemError`](/docs/errors/problem-details) | Problem Details を持つ `HttpError` |
+| [`problem(c, details?)`](/docs/errors/problem-details) | 投げずに Problem Details を返す |
+
+## 型
+
+### ProblemDetails
+
+<AutoTypeTable path="../../src/problem.ts" name="ProblemDetails" />
+
+### ProblemDetailsOptions
+
+<AutoTypeTable path="../../src/problem.ts" name="ProblemDetailsOptions" />
+
+ソース: [`src/problem.ts`](https://github.com/Senrijs/Senri/blob/main/src/problem.ts)

@@ -1,6 +1,31 @@
 ---
 title: "メソッドの上書き"
-description: "methodOverride()"
+description: "methodOverride() で、HTML のフォームから PUT・PATCH・DELETE を送れるようにする"
 ---
 
-このページは準備中です。
+```ts twoslash
+import { createApp, methodOverride } from "@senrijs/senri";
+import { serve } from "@senrijs/senri/serve";
+
+const app = createApp();
+app.delete("/posts/:id", ({ id }) => `deleted ${id}`);
+
+await serve(methodOverride(app));
+```
+
+```html
+<form method="post" action="/posts/1">
+  <input type="hidden" name="_method" value="DELETE" />
+  <button>消す</button>
+</form>
+```
+
+- ミドルウェアではなく、アプリ(`app.fetch`)を包みます。ルートはミドルウェアより先に決まるためです
+- Cloudflare Workers では、`export default methodOverride(app)` と書きます
+- 上書きできるのは POST だけです
+- `multipart/form-data` のフォームは読みません。その場合は `X-HTTP-Method-Override` ヘッダーを使います
+- 使うと、Node.js では全部のリクエストが、`Request` と `Response` を作らない速い道を通らなくなります
+
+## オプション
+
+<AutoTypeTable path="../../src/middleware/method-override.ts" name="MethodOverrideOptions" />

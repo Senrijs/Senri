@@ -1,6 +1,39 @@
 ---
 title: "Basic 認証と Bearer 認証"
-description: "basicAuth()・bearerAuth()"
+description: "basicAuth()・bearerAuth() で、ユーザー名とパスワード、トークンで守る"
 ---
 
-このページは準備中です。
+```ts twoslash
+import { basicAuth, bearerAuth, createApp } from "@senrijs/senri";
+declare const env: { ADMIN_PASSWORD: string; API_TOKEN: string };
+
+const app = createApp();
+
+app.use("/admin", basicAuth({ username: "admin", password: env.ADMIN_PASSWORD }));
+app.use("/api", bearerAuth({ token: env.API_TOKEN }));
+```
+
+- 通らなければ、401 と `WWW-Authenticate` を返します
+- 比べるときは、かかる時間が値によって変わらない比べ方を使います
+- パスワードとトークンは、コードに書かず、環境変数や `c.env` から読みます
+- `cors()` と一緒に使うときは、`cors()` を先に登録します
+
+## 自分で確かめる
+
+固定の値の代わりに、関数で確かめられます。`true` を返したときだけ通します。
+
+```ts twoslash
+import { basicAuth, bearerAuth, createApp } from "@senrijs/senri";
+const app = createApp();
+declare function checkPassword(user: string, password: string): Promise<boolean>;
+declare function isValidToken(token: string): Promise<boolean>;
+// ---cut---
+app.use("/admin", basicAuth({ verifyUser: (username, password) => checkPassword(username, password) }));
+app.use("/api", bearerAuth({ verifyToken: (token) => isValidToken(token) }));
+```
+
+## オプション
+
+<AutoTypeTable path="../../src/middleware/auth.ts" name="BasicAuthOptions" />
+
+<AutoTypeTable path="../../src/middleware/auth.ts" name="BearerAuthOptions" />

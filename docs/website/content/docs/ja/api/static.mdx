@@ -1,6 +1,24 @@
 ---
 title: "/static"
-description: "@senrijs/senri/static"
+description: "@senrijs/senri/static。静的ファイル"
 ---
 
-このページは準備中です。
+静的ファイル。
+
+```ts
+import { ... } from "@senrijs/senri/static";
+```
+
+## 関数とクラス
+
+| 名前 | すること |
+| --- | --- |
+| [`serveStatic(options)`](/docs/request-response/static) | フォルダのファイルを配るミドルウェア |
+
+## 型
+
+### ServeStaticOptions
+
+<AutoTypeTable path="../../adapters/static/index.ts" name="ServeStaticOptions" />
+
+ソース: [`adapters/static/index.ts`](https://github.com/Senrijs/Senri/blob/main/adapters/static/index.ts)

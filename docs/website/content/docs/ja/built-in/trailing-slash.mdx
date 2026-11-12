@@ -1,6 +1,19 @@
 ---
 title: "末尾のスラッシュ"
-description: "trailingSlash()"
+description: "trailingSlash() で、末尾のスラッシュの形をそろえる"
 ---
 
-このページは準備中です。
+```ts twoslash
+import { createApp, trailingSlash } from "@senrijs/senri";
+
+const app = createApp();
+
+app.use(trailingSlash());   // /a/ → /a に 301
+```
+
+- `/a` と `/a/` は、もともと同じルートに当たります([パスの決まり](/docs/routing/path-rules))。URL の形を 1 つにそろえたいとき(SEO のため)に使います
+- GET と HEAD で、ルートに当たったパスだけをリダイレクトします
+
+## オプション
+
+<AutoTypeTable path="../../src/middleware/trailing-slash.ts" name="TrailingSlashOptions" />

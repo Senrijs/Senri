@@ -1,6 +1,26 @@
 ---
 title: "HttpError"
-description: "ステータスコードを付けてエラーを投げる"
+description: "HttpError を投げて、status とメッセージを返す"
 ---
 
-このページは準備中です。
+```ts twoslash
+import { createApp, HttpError } from "@senrijs/senri";
+
+const app = createApp();
+
+app.get("/secret", () => {
+    throw new HttpError(403, "見せられません");   // message はそのままクライアントに返る
+});
+```
+
+```bash
+curl -i http://localhost:3927/secret
+# HTTP/1.1 403 Forbidden
+# 見せられません
+```
+
+- `HttpError` の `message` は、本番でもそのまま返します。クライアントに見せてよい文だけを書きます
+- `HttpError` でないエラーは、本番では中身を出さず、`500 Internal Server Error` とだけ返します。開発モードでは、エラーページにエラーの文とコードが出ます
+- 標準のミドルウェアが返すエラー(`basicAuth()` の 401、`rateLimit()` の 429 など)も `HttpError` です。`WWW-Authenticate`・`Retry-After` などのヘッダーが付きます
+
+応答の形を変えたいときは、[onError](/docs/errors/on-error) を使います。

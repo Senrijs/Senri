@@ -1,6 +1,28 @@
 ---
 title: "/cookie"
-description: "@senrijs/senri/cookie"
+description: "@senrijs/senri/cookie。Cookie を読む・付ける・消す。署名付き Cookie"
 ---
 
-このページは準備中です。
+Cookie を読む・付ける・消す。署名付き Cookie。
+
+```ts
+import { ... } from "@senrijs/senri/cookie";
+```
+
+## 関数とクラス
+
+| 名前 | すること |
+| --- | --- |
+| [`getCookie(c, name?)`](/docs/request-response/request) | 1 つ、または全部を読む |
+| [`setCookie(c, name, value, options?)`](/docs/request-response/request) | 付ける |
+| [`deleteCookie(c, name, options?)`](/docs/request-response/request) | 消す |
+| [`setSignedCookie(c, name, value, secret, options?)`](/docs/request-response/request) | 署名して付ける |
+| [`getSignedCookie(c, name, secret)`](/docs/request-response/request) | 署名を確かめて読む |
+
+## 型
+
+### CookieOptions
+
+<AutoTypeTable path="../../src/cookie-header.ts" name="CookieOptions" />
+
+ソース: [`src/cookie.ts`](https://github.com/Senrijs/Senri/blob/main/src/cookie.ts)

@@ -1,6 +1,44 @@
 ---
 title: "アップロードの上限"
-description: "uploadLimit()・safeFileName()"
+description: "uploadLimit() で、ファイルの大きさ・数・種類を確かめる。safeFileName()"
 ---
 
-このページは準備中です。
+```ts twoslash
+import { createApp, safeFileName, uploadLimit } from "@senrijs/senri";
+declare function save(name: string, file: File): Promise<void>;
+
+const app = createApp();
+
+app.use("/photos", uploadLimit({
+    maxTotalSize: 20 * 1024 * 1024,
+    maxFileSize: 5 * 1024 * 1024,
+    maxFiles: 3,
+    types: ["image/png", "image/jpeg"],
+}));
+
+app.post("/photos", async (_, c) => {
+    const { photo } = await c.body<{ photo: File }>();
+    await save(safeFileName(photo.name), photo);
+    return { size: photo.size };
+});
+```
+
+`multipart/form-data` のファイルを確かめてから、ハンドラーに渡します。
+
+- 大きさ(`maxTotalSize` は必須、`maxFileSize`)・数(`maxFiles`)・種類(`types`・`extensions`)を確かめます
+- 大きすぎれば 413、種類が違えば 415 です
+- PNG・JPEG・GIF・WebP・PDF は、中身の先頭のバイトも確かめます
+- 読んだ結果は `c.body()` で受け取れます。ルートのスキーマも、確かめたあとに動きます
+- アプリの既定の上限(1 MiB)の代わりに、`maxTotalSize` が効きます
+
+## メモリ
+
+`c.body()` は全部メモリに読むので、使うメモリは `maxTotalSize` までです。大きいファイルを流したいときは、[`multipart()`](/docs/request-response/multipart) を使います。
+
+## ファイル名
+
+送られたファイル名(`file.name`)は、`../../etc/passwd` のようなものかもしれません。保存先のパスにそのまま使わず、`crypto.randomUUID()` などで自分で決めるか、`safeFileName()` を通してください。
+
+## オプション
+
+<AutoTypeTable path="../../src/middleware/upload-limit.ts" name="UploadLimitOptions" />

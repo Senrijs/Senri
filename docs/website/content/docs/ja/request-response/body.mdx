@@ -1,6 +1,69 @@
 ---
 title: "本文の読み方と上限"
-description: "c.body() と c.req.json() など、既定の 1 MiB の上限、bodyLimit() で上げる"
+description: "c.body() と c.req.json() など。既定の 1 MiB の上限と、bodyLimit() で上げる方法"
 ---
 
-このページは準備中です。
+```ts twoslash
+import { createApp } from "@senrijs/senri";
+
+const app = createApp();
+
+app.post("/notes", async (_, c) => {
+    const note = await c.body<{ title: string }>();   // Content-Type に合わせて読む
+    return { saved: note.title };
+});
+```
+
+## 読み方
+
+| 書き方 | 結果 |
+| --- | --- |
+| `c.body()` | JSON は値、フォームはオブジェクト、テキストは文字列、それ以外は `ArrayBuffer` |
+| `c.req.json()`・`text()`・`formData()`・`arrayBuffer()` | `Request` のメソッドそのまま |
+| `c.req.body` | ストリームのまま読む |
+| ルートの `body` のスキーマ | 確かめた値を `c.valid("body")` で読む([バリデーション](/docs/validation)) |
+
+`c.body()` は何度呼んでも同じ結果です。ミドルウェアとハンドラーの両方から読めます。
+
+## 既定の上限は 1 MiB
+
+本文を読むときは、既定で **1 MiB** までです。超えたら 413 を返します。
+
+- 本文を読んだときだけ効きます。読まないルートは、大きい本文が来ても変わりません
+- Content-Length が上限より大きければ、中身を読まずに 413 にします。Content-Length のない本文(チャンク転送など)は、読みながら数えます
+- `c.req.body` をストリームとして読むときも、1 MiB を超えると 413 です
+- ハンドラーが読み取りのエラーを握りつぶしても、応答は 413 になります
+
+### ルートの上限を上げる
+
+大きい本文を受けるルートにだけ、`bodyLimit({ maxSize })` を付けます。ルートの上限は、既定の 1 MiB を**置き換えます**(重ねません)。
+
+```ts twoslash
+import { createApp } from "@senrijs/senri";
+const app = createApp();
+// ---cut---
+import { bodyLimit } from "@senrijs/senri";
+
+app.use("/import", bodyLimit({ maxSize: 50 * 1024 * 1024 }));   // このルートだけ 50 MiB まで
+app.post("/import", async (_, c) => {
+    const rows = await c.req.json();
+    return { count: rows.length };
+});
+```
+
+- 表のルートなら `endpoint({ use: [bodyLimit({ maxSize })] }, handler)` と書けます([ルートごとに付ける](/docs/middleware/route-middleware))
+- `uploadLimit()` と `multipart()` も、自分の上限で既定を置き換えます
+
+### アプリ全体の上限を変える
+
+```ts twoslash
+import { createApp } from "@senrijs/senri";
+// ---cut---
+const app = createApp({ maxBodySize: 10 * 1024 * 1024 });   // Infinity で上限なし
+```
+
+Content-Length のない本文は、数えるためにストリームで包むので、読むのが少し遅くなります(小さい本文で数十 µs)。Content-Length のある本文は包まないので、速さは変わりません。
+
+## サーバー全体の上限
+
+`serve(app, { maxRequestBodySize })` は、サーバーが受け取る本文の上限です。超えたら 413 です。省略すると、どのランタイムでも上限なしです([serve() のオプション](/docs/production/serve))。
