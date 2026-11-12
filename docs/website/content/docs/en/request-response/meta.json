@@ -1,9 +1,12 @@
 {
-  "title": "Requests and Responses",
+  "title": "Requests and responses",
   "pages": [
+    "context",
     "request",
+    "body",
     "response-helpers",
     "streaming",
-    "multipart"
+    "multipart",
+    "static"
   ]
 }

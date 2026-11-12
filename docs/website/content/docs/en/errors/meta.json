@@ -3,6 +3,7 @@
   "pages": [
     "http-error",
     "on-error",
-    "not-found"
+    "not-found",
+    "problem-details"
   ]
 }

@@ -2,7 +2,6 @@
   "title": "はじめに",
   "pages": [
     "installation",
-    "first-app",
-    "create-senri"
+    "first-app"
   ]
 }

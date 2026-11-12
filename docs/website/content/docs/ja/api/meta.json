@@ -1,6 +1,24 @@
 {
   "title": "API リファレンス",
   "pages": [
-    "index"
+    "index",
+    "core",
+    "dev",
+    "cookie",
+    "ip",
+    "streaming",
+    "multipart",
+    "problem",
+    "jwt",
+    "client",
+    "testing",
+    "websocket",
+    "openapi",
+    "otel",
+    "metrics",
+    "node",
+    "serve",
+    "static",
+    "context-storage"
   ]
 }

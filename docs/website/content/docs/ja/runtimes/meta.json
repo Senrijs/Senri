@@ -1,12 +1,10 @@
 {
-  "title": "ランタイムごとの使い方",
+  "title": "ランタイムごとの動かし方",
   "pages": [
-    "serve",
     "bun",
-    "deno",
     "node",
+    "deno",
     "cloudflare-workers",
-    "browser",
-    "graceful-shutdown"
+    "browser"
   ]
 }

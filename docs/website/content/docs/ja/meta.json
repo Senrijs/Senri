@@ -1,17 +1,26 @@
 {
   "pages": [
+    "---はじめに---",
     "index",
-    "getting-started",
+    "...getting-started",
     "runtimes",
+    "---基本---",
     "routing",
     "request-response",
     "validation",
     "middleware",
     "errors",
-    "dev",
-    "performance",
+    "---型付きの API---",
+    "...typed-api",
+    "---ミドルウェアの一覧---",
+    "...built-in",
+    "---本番---",
+    "...production",
+    "---開発モード---",
+    "...dev",
+    "---リファレンス---",
     "api",
-    "migrate-0-3-0",
-    "samples"
+    "---移行---",
+    "migrate-0-3-0"
   ]
 }

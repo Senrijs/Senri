@@ -2,6 +2,6 @@
   "title": "Middleware",
   "pages": [
     "writing",
-    "built-in"
+    "route-middleware"
   ]
 }

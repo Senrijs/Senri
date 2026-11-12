@@ -1,6 +1,108 @@
 ---
 title: "最初のアプリ"
-description: "ルートを書いて、起動するまで"
+description: "ルートを足して、返した値がレスポンスになるのを見る。開発モードのエラーページとダッシュボードを開く"
 ---
 
-このページは準備中です。
+Bun の雛形で、ルートを 3 つ足します。Node.js と Deno でも、起動のコマンドが違うだけで同じです。
+
+<Steps>
+<Step>
+
+### アプリを作って起動する
+
+```bash
+npm create senri@latest my-app -- --template bun
+cd my-app
+bun install
+bun run dev
+```
+
+起動すると、URL と登録されているルートが表示されます。
+
+```txt
+  senr/  ready  http://localhost:3927  (デフォルト。環境変数 PORT で変えられます)
+
+    GET     /
+    GET     /users/:id
+```
+
+</Step>
+<Step>
+
+### 文字列を返すルートを足す
+
+`src/index.ts` に足します。パスに `:name` と書くと、ハンドラーの 1 つ目の引数で受け取れます。型はパスから付きます。
+
+```ts twoslash title="src/index.ts"
+import { createApp } from "@senrijs/senri";
+const app = createApp();
+// ---cut---
+app.get("/hello/:name", ({ name }) => `こんにちは、${name} さん`);
+//                         ^?
+```
+
+```bash
+curl http://localhost:3927/hello/senri
+# こんにちは、senri さん(Content-Type: text/plain)
+```
+
+</Step>
+<Step>
+
+### JSON を返すルートを足す
+
+オブジェクトや配列を返すと、JSON になります。
+
+```ts twoslash title="src/index.ts"
+import { createApp } from "@senrijs/senri";
+const app = createApp();
+// ---cut---
+app.get("/todos", () => [{ id: 1, title: "牛乳を買う", done: false }]);
+```
+
+```bash
+curl http://localhost:3927/todos
+# [{"id":1,"title":"牛乳を買う","done":false}](Content-Type: application/json)
+```
+
+</Step>
+<Step>
+
+### エラーページを見る
+
+わざと例外を投げるルートを足して、ブラウザで http://localhost:3927/boom を開きます。
+
+```ts twoslash title="src/index.ts"
+import { createApp } from "@senrijs/senri";
+const app = createApp();
+// ---cut---
+app.get("/boom", () => {
+    throw new Error("しまった");
+});
+```
+
+開発モードでは、エラーの文と、投げた場所のコードが出ます。本番(`NODE_ENV=production`)では、`500 Internal Server Error` とだけ返します。
+
+ないパス(たとえば http://localhost:3927/todo)を開くと、404 のページに「もしかして `/todos`」が出ます。
+
+</Step>
+<Step>
+
+### ダッシュボードを見る
+
+http://localhost:3927/_senri を開くと、届いたリクエストが一覧になります。1 つ選ぶと、ミドルウェアとハンドラーをどの順に通って、それぞれ何ミリ秒かかったかが分かります。
+
+</Step>
+</Steps>
+
+<Callout title="開発モードが動くのは">
+  `createApp({ dev: devtools() })` と書いたときだけです。`NODE_ENV=production` では何もしないので、消し忘れても本番にエラーページやダッシュボードは出ません。
+</Callout>
+
+## 次に読む
+
+<Cards>
+  <Card title="ルートを書く" href="/docs/routing/routes" description="メソッド、ハンドラーの引数" />
+  <Card title="戻り値がレスポンスになる" href="/docs/routing/return-values" description="何を返すと、何が返るか" />
+  <Card title="ランタイムごとの動かし方" href="/docs/runtimes/bun" description="Bun・Node.js・Deno・Workers・ブラウザ" />
+</Cards>

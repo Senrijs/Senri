@@ -1,9 +1,10 @@
 {
-  "title": "開発モード(dev ツール)",
+  "title": "開発モード",
   "pages": [
     "devtools",
     "error-pages",
     "dashboard",
+    "timeline",
     "server-timing"
   ]
 }

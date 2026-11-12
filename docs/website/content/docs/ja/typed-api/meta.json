@@ -1,0 +1,9 @@
+{
+  "title": "型付きの API",
+  "pages": [
+    "define-routes",
+    "client",
+    "testing",
+    "openapi"
+  ]
+}

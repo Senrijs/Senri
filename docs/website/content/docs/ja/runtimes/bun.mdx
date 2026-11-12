@@ -1,6 +1,68 @@
 ---
 title: "Bun"
-description: "Bun で動かす"
+description: "Bun で動かす。serve() で起動する、Bun.serve に直接渡す"
 ---
 
-このページは準備中です。
+```ts twoslash title="src/index.ts"
+import { createApp } from "@senrijs/senri";
+import { serve } from "@senrijs/senri/serve";
+
+const app = createApp();
+app.get("/", () => "Hello, Bun!");
+
+await serve(app);   // http://localhost:3927
+```
+
+```bash
+bun --watch src/index.ts   # 書き換えると再起動する(雛形の bun run dev)
+```
+
+新しく作るなら、雛形を使うのが早道です。
+
+```bash
+bun create senri my-app --template bun
+```
+
+## serve() がすること
+
+`@senrijs/senri/serve` の `serve()` は、Bun では `Bun.serve` で起動します。そのとき、次のこともします。
+
+- ポートを決める(`port` オプション → 環境変数 `PORT` → `3927`)
+- 起動したときに、URL とルートの一覧を表示する
+- SIGTERM / SIGINT を受けたら、処理中のリクエストを待ってから止める
+- 本文の大きさの上限を付けない(`Bun.serve` の既定の 128 MiB を使わない。ほかのランタイムとそろえるため)
+- WebSocket のルート(`upgradeWebSocket()`)のイベントをつなぐ
+
+## Bun.serve に直接渡す
+
+`Bun.serve` を自分で呼ぶときは、`app.fetch` を渡します。
+
+```ts twoslash
+declare const Bun: { serve(options: { port?: number; fetch: (req: Request) => Response | Promise<Response> }): unknown };
+import { createApp } from "@senrijs/senri";
+const app = createApp();
+// ---cut---
+Bun.serve({ port: 3927, fetch: app.fetch });
+```
+
+WebSocket のルートがあるときは、`@senrijs/senri/websocket` の `websocket` も渡します。
+
+```ts twoslash
+declare const Bun: { serve(options: { fetch: (req: Request) => Response | Promise<Response>; websocket?: object }): unknown };
+import { createApp } from "@senrijs/senri";
+const app = createApp();
+// ---cut---
+import { websocket } from "@senrijs/senri/websocket";
+
+Bun.serve({ fetch: app.fetch, websocket });
+```
+
+このときは、上の「serve() がすること」は自分で決めます。たとえば本文は、`Bun.serve` の既定の 128 MiB で切られます。
+
+## 本番で動かす
+
+`NODE_ENV=production` を付けて起動します。`devtools()` を残していても、開発用の出力をしなくなります。
+
+```bash
+NODE_ENV=production bun src/index.ts
+```
