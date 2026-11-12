@@ -2,6 +2,7 @@
 import type { Context, HandlerResult, Middleware } from "../context.ts";
 import { HttpError } from "../errors.ts";
 import { hasNoBody, markPlainSafe } from "../plain.ts";
+import { releaseBodyCap } from "../body-cap.ts";
 
 /** Options for {@link bodyLimit}. */
 export type BodyLimitOptions = {
@@ -84,6 +85,8 @@ export function bodyLimit(options: BodyLimitOptions): Middleware {
         options.onError ? options.onError(c.status(413)) : new Response("413 Content Too Large", { status: 413 });
 
     return markPlainSafe<Middleware>(async function bodyLimit(c, next) {
+        // アプリの既定の上限(createApp({ maxBodySize }))を、この上限で置き換える(重ねない)
+        releaseBodyCap(c);
         // 本文がないと分かっていれば、Request を作らずに済ませる
         if (hasNoBody(c)) return next();
         const body = c.req.body;

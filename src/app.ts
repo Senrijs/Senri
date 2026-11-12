@@ -18,6 +18,7 @@ import { createMatcher } from "./matcher.ts";
 import { routeHandler, type RouteSchemas, type StandardSchemaV1, type Validated, type ValidatedParams } from "./validate.ts";
 import { groupEntries, joinPath, type GroupEntry, type Router } from "./group.ts";
 import { isEndpoint, type TableShape } from "./routes.ts";
+import { attachBodyCap, capBody, checkMaxBodySize, declaredLength, tooLargeResponse, type BodyCap } from "./body-cap.ts";
 import {
     defaultNotFound,
     defaultOnError,
@@ -204,6 +205,18 @@ export type AppOptions = {
      * The core imports no development code, so without it none is bundled.
      */
     dev?: DevHooks | undefined;
+    // 本文を全部読む関数(c.body()・ルートの body のスキーマ・c.req.json() / text() / formData() / arrayBuffer())の上限
+    // 読んだときだけ効く。超えたら 413。ルートの bodyLimit() / uploadLimit() / multipart() は、自分の上限で置き換える
+    /**
+     * The default limit on the request body, in bytes, for code that reads the whole body: `c.body()`, a route's `body`
+     * schema, and `c.req.json()` / `text()` / `formData()` / `arrayBuffer()`. Default 1 MiB; `Infinity` removes it.
+     *
+     * It applies only when the body is read: routes that do not read it are not affected. Over the limit, reading fails
+     * and the response is 413 (even if the handler catches the error). A body with a larger `Content-Length` is refused
+     * without reading it. On a route, `bodyLimit()` (and `uploadLimit()`, which uses it) and `multipart()` replace it
+     * with their own limits, so a route can accept more. A negative or non-numeric value throws a `RangeError`.
+     */
+    maxBodySize?: number;
 };
 
 // 開発用のフック。@senrijs/senri/dev の devtools() が作る(本体が知っているのは、この形だけ)
@@ -239,6 +252,16 @@ export type AppCore = {
     // app.notFound() で差し替えていない(既定の 404 のまま)か。Node のアダプターが、Response を作らずに 404 を返すのに使う
     /** Whether the 404 handler is still the default one (not replaced with `app.notFound()`). */
     defaultNotFound(): boolean;
+    // 本文の既定の上限(createApp({ maxBodySize }))。Infinity なら上限なし
+    /** The default body limit in bytes (`createApp({ maxBodySize })`); `Infinity` for none. */
+    maxBodySize: number;
+    // 本文があれば、c.req を上限つきの Request にして、上限の箱を返す(本文がないか、上限がなければ undefined)
+    // 呼んだ側は、応答のあとで exceeded を見て、超えていたら 413 にする
+    /**
+     * If the request has a body and there is a default limit, replaces `c.req` with a Request whose body is counted
+     * against it, and returns the per-request limit. The caller answers 413 if `exceeded` is set after the response.
+     */
+    capBody(c: Context): BodyCap | undefined;
 };
 
 /** What {@link DevHooks.install} returns. Used by the core; app code does not normally use it. */
@@ -295,6 +318,7 @@ const DEV_TRUE = `createApp({ dev: true }) is no longer supported. Use devtools(
  */
 export function createApp<V extends object = Record<string, unknown>>(options: AppOptions = {}): App<V> {
     if ((options.dev as unknown) === true) throw senriError("dev_true", DEV_TRUE);
+    const maxBodySize = checkMaxBodySize(options.maxBodySize);
     const routes: Route[] = [];
     const matcher = createMatcher();
     // prefix が null なら全部のリクエストで動く。["admin"] なら /admin とその下だけ
@@ -389,6 +413,29 @@ export function createApp<V extends object = Record<string, unknown>>(options: A
         if (matched.length === 0) return { kind: "notFound" };
         const allow = allowedMethods(matched.flatMap((x) => x.leaf));
         return method === "OPTIONS" ? { kind: "options", allow } : { kind: "methodNotAllowed", allow };
+    }
+
+    // 本文があれば、c.req を上限つきの Request にする(本文のない GET などでは何もしない。Request も作らない)
+    // Bun の requestIP は元の Request で聞くので、Context には元のものを渡したまま、c.req だけ差し替える
+    function capRequest(c: Context): BodyCap | undefined {
+        if (maxBodySize === Infinity) return undefined;
+        const req = c.req;
+        // GET と HEAD は本文を持てない。何も見ずに終わる
+        const method = req.method;
+        if (method === "GET" || method === "HEAD") return undefined;
+        // Content-Length が上限以下なら、包まない(ランタイムは宣言より長い本文を受け取らないので、数えなくてよい)
+        // - 包むと、ランタイムが本文を速く読む道を使えなくなる(小さい JSON の POST が数倍遅くなった)
+        // - req.body も見ない。見るだけで、あとの req.text() などが遅くなる(Bun で +1.8 µs、Deno で +7.7 µs)
+        // 包むのは、Content-Length のない本文(チャンク転送や HTTP/2)と、上限を超える Content-Length(読んだときに 413)だけ
+        const declared = declaredLength(req.headers.get("content-length"));
+        if (declared !== null && declared <= maxBodySize) return undefined;
+        // body が無いもの(null のほか、本物でない Request で undefined)は、本文なし
+        const source = req.body;
+        if (!source) return undefined;
+        const cap = attachBodyCap(c, { max: maxBodySize, exceeded: false });
+        const body = capBody(source, cap, declared);
+        c.req = new Request(req, { body, duplex: "half" } as RequestInit);
+        return cap;
     }
 
     // ミドルウェアがないときに毎回配列を作らないよう、共有の空配列を返す(中身は変えない)
@@ -525,16 +572,17 @@ export function createApp<V extends object = Record<string, unknown>>(options: A
             if (devHooks) return devHooks.fetch(req, info, ctx);
             try {
                 const c = new Context<V>(req, info, ctx);
+                const cap = capRequest(c);
                 const resolved = resolve(c);
                 if (resolved.kind === "route") {
                     c.route = resolved.route.path;
                     c.params = resolved.params;
                 }
                 const fail = (err: unknown) => handleError(err, c, onError, notFound);
+                // 本文の上限を超えていたら、ハンドラーがエラーを握りつぶしていても 413 にする
+                const end = (res: Response) => (cap?.exceeded ? tooLargeResponse() : c.finalize(res));
                 const layers = applicableMiddlewares(c, resolved);
-                if (layers.length > 0) {
-                    return compose(layers, c, () => inner(c, resolved), fail).then((res) => c.finalize(res));
-                }
+                if (layers.length > 0) return compose(layers, c, () => inner(c, resolved), fail).then(end);
                 // 近道: ミドルウェアがなければ compose を通さない。同期のハンドラーなら、待たずにそのまま返す
                 let res: Response | Promise<Response>;
                 try {
@@ -542,8 +590,8 @@ export function createApp<V extends object = Record<string, unknown>>(options: A
                 } catch (err) {
                     res = fail(err);
                 }
-                if (res instanceof Promise) return res.catch(fail).then((r) => c.finalize(r));
-                return Promise.resolve(c.finalize(res));
+                if (res instanceof Promise) return res.catch(fail).then(end);
+                return Promise.resolve(end(res));
             } catch (err) {
                 return Promise.reject(err);
             }
@@ -614,6 +662,8 @@ export function createApp<V extends object = Record<string, unknown>>(options: A
         fail: (err, c) => handleError(err, c, onError, notFound),
         routes: () => routes,
         defaultNotFound: () => notFound === defaultNotFound,
+        maxBodySize,
+        capBody: capRequest,
     };
 
     // 開発モード: 中身を渡して、開発用の fetch と既定の onError / notFound を受け取る

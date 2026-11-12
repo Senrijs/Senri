@@ -5,8 +5,8 @@
 //   deno run -A --v8-flags=--expose-gc scripts/multipart-memory.ts [MiB]
 // 本物の HTTP でチャンク転送のファイルを送り、受け取りながらメモリの最大を見る
 // 受け取った大きさが合い、メモリの増え方が LIMIT_MIB より小さければ成功
-// serve() の maxRequestBodySize は、送る大きさより少し大きくする(Bun の既定の 128 MiB を超えて受け取るため。
-// Node.js と Deno では、本文を数えながら受け取る道を通る)
+// serve() の maxRequestBodySize は書かない(0.3.0 から、どのランタイムでも上限なし。Bun の既定の 128 MiB も使わない)
+// アプリの既定の上限(createApp({ maxBodySize }) の 1 MiB)は、multipart() が自分の上限で置き換える
 import { request as httpRequest } from "node:http";
 import { createApp } from "../src/index.ts";
 import { multipart } from "../src/multipart.ts";
@@ -46,7 +46,6 @@ const server = await serve(app, {
     hostname: "127.0.0.1",
     banner: false,
     gracefulShutdown: false,
-    maxRequestBodySize: SIZE + MIB,
 });
 
 const used = () => {
