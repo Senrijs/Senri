@@ -25,6 +25,7 @@
 // Web 標準の ReadableStream / TextDecoder / Headers だけを使う(Node / Bun / Deno / Workers で同じに動く)
 import type { Context } from "./context.ts";
 import { errorCode, HttpError, senriError } from "./errors.ts";
+import { releaseBodyCap } from "./body-cap.ts";
 
 /** Limits for {@link multipart}. Over a limit, it fails with an `HttpError` 413. */
 export type MultipartLimits = {
@@ -36,7 +37,10 @@ export type MultipartLimits = {
     maxFieldSize?: number;
     /** The maximum size of the headers of each part, in bytes. Also limits the text before the first part. Default 8 KiB. */
     maxHeaderSize?: number;
-    /** The maximum size of the whole body, in bytes. Not limited by default. */
+    /**
+     * The maximum size of the whole body, in bytes. Default 100 MiB, or `maxFileSize` when that is larger.
+     * It replaces the app's default body limit (`createApp({ maxBodySize })`) for this request.
+     */
     maxTotalSize?: number;
 };
 
@@ -68,7 +72,7 @@ const DEFAULTS: Required<MultipartLimits> = {
     maxFileSize: 10 * KIB * KIB,
     maxFieldSize: 64 * KIB,
     maxHeaderSize: 8 * KIB,
-    maxTotalSize: Infinity,
+    maxTotalSize: 100 * KIB * KIB,
 };
 
 const encoder = new TextEncoder();
@@ -89,6 +93,9 @@ function limitsOf(limits: MultipartLimits): Required<MultipartLimits> {
         if (typeof value !== "number" || !(value >= 0)) throw senriError("multipart_limits", "multipart(): invalid limits");
         out[key] = value;
     }
+    // maxFileSize を既定の合計より大きくして maxTotalSize を書いていなければ、合計も maxFileSize に合わせる
+    // (1 つのファイルの上限を上げたのに、合計の既定で止まらないように)
+    if (limits.maxTotalSize === undefined && out.maxFileSize > out.maxTotalSize) out.maxTotalSize = out.maxFileSize;
     return out;
 }
 
@@ -218,6 +225,8 @@ function extendedValue(value: string | undefined): string | undefined {
  */
 export function multipart(c: Context, limits: MultipartLimits = {}): AsyncIterableIterator<MultipartPart> {
     const max = limitsOf(limits);
+    // アプリの既定の上限(createApp({ maxBodySize }))を、multipart() の上限(maxTotalSize など)で置き換える
+    releaseBodyCap(c);
     const req = c.req;
     if (req.bodyUsed || req.body?.locked) {
         throw senriError("multipart_body_used", "multipart(): the request body has already been read");

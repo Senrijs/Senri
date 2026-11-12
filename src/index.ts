@@ -78,6 +78,7 @@ export {
     type ValidationTarget,
 } from "./validate.ts";
 export type { CookieOptions } from "./cookie-header.ts";
+export type { BodyCap } from "./body-cap.ts";
 export type { FormBody, FormValue } from "./body.ts";
 export type { Layer, Timing, Trace } from "./compose.ts";
 export { logger, showRoutes, type LoggerOptions, type RouteSummary } from "./logger.ts";

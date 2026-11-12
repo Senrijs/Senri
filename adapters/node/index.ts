@@ -25,6 +25,7 @@ import { compose } from "../../src/compose.ts";
 import { lazyContext, plainOf, type Context, type HandlerResult } from "../../src/context.ts";
 import { HttpError } from "../../src/errors.ts";
 import { checkMaxRequestBodySize, countBytes } from "../../src/middleware/body-limit.ts";
+import { attachBodyCap, capBody, declaredLength, type BodyCap } from "../../src/body-cap.ts";
 import { isPlainSafe, PlainResponse, type LazyRequest } from "../../src/plain.ts";
 import { terminalLang } from "../../src/lang.ts";
 import { NODE_MESSAGES } from "./messages.ts";
@@ -90,22 +91,23 @@ function hasBody(req: IncomingMessage): boolean {
     );
 }
 
-// 本文の上限(maxRequestBodySize)。超えたかどうかを、リクエストごとに持つ
-type BodyCap = { max: number; exceeded: boolean };
+// 本文の上限の箱({ max, exceeded })。serve() の maxRequestBodySize(cap)と、アプリの既定の上限(appCap)の 2 つがある
 
-// Content-Length があれば、読む前に上限と比べている(Node はそれより長い本文を受け取らない)
-// ないとき(チャンク転送)だけ、読みながら数える
-function bodyOf(req: IncomingMessage, cap: BodyCap | undefined): ReadableStream<Uint8Array> {
-    const body = Readable.toWeb(req) as unknown as ReadableStream<Uint8Array>;
-    if (!cap || req.headers["content-length"] !== undefined) return body;
-    return countBytes(body, cap.max, () => (cap.exceeded = true));
+// - cap(serve() の maxRequestBodySize): Content-Length があれば、読む前に上限と比べている(Node はそれより長い本文を受け取らない)
+//   ないとき(チャンク転送)だけ、読みながら数える
+// - appCap(createApp({ maxBodySize })): 読むときだけ効く。ルートの bodyLimit() などが外せるよう、上限は読むたびに見る
+function bodyOf(req: IncomingMessage, cap: BodyCap | undefined, appCap: BodyCap | undefined): ReadableStream<Uint8Array> {
+    let body = Readable.toWeb(req) as unknown as ReadableStream<Uint8Array>;
+    if (cap && req.headers["content-length"] === undefined) body = countBytes(body, cap.max, () => (cap.exceeded = true));
+    if (appCap) body = capBody(body, appCap, declaredLength(req.headers["content-length"]));
+    return body;
 }
 
-function toRequest(req: IncomingMessage, signal: AbortSignal, cap?: BodyCap): Request {
+function toRequest(req: IncomingMessage, signal: AbortSignal, cap?: BodyCap, appCap?: BodyCap): Request {
     return new Request(toUrl(req), {
         method: req.method,
         headers: toHeaders(req),
-        body: hasBody(req) ? bodyOf(req, cap) : undefined,
+        body: hasBody(req) ? bodyOf(req, cap, appCap) : undefined,
         // ストリームをボディにするときに必要(読みながら送る「半二重」の指定)
         duplex: "half",
         signal,
@@ -181,11 +183,13 @@ function connectionInfo(req: IncomingMessage) {
 }
 
 // 本文が上限を超えたとき。残りの本文は読まないので、接続は閉じる
-function tooLarge(res: ServerResponse) {
+// close: 接続を閉じるか。serve() の maxRequestBodySize(残りを読まない)は閉じる
+// アプリの既定の上限(createApp({ maxBodySize }))は、残りを読み捨てる(src/body-cap.ts)ので閉じない
+function tooLarge(res: ServerResponse, close = true) {
     // 応答をもう送り始めていたら、413 にはできないので切る
     if (res.headersSent) return void res.destroy();
     for (const name of res.getHeaderNames()) res.removeHeader(name);
-    res.writeHead(413, { "content-type": "text/plain; charset=utf-8", connection: "close" });
+    res.writeHead(413, close ? { "content-type": "text/plain; charset=utf-8", connection: "close" } : { "content-type": "text/plain; charset=utf-8" });
     res.end("413 Content Too Large");
 }
 
@@ -300,7 +304,7 @@ async function serveWithFetch(app: FetchApp, req: IncomingMessage, res: ServerRe
 }
 
 // c.req を最初に読んだときに、本物の Request を作る
-function lazyRequest(req: IncomingMessage, res: ServerResponse, url: string, cap: BodyCap | undefined): LazyRequest {
+function lazyRequest(req: IncomingMessage, res: ServerResponse, url: string, cap: BodyCap | undefined, appCap: BodyCap | undefined): LazyRequest {
     return {
         method: req.method!,
         url,
@@ -317,7 +321,7 @@ function lazyRequest(req: IncomingMessage, res: ServerResponse, url: string, cap
                 });
             }
             try {
-                return toRequest(req, controller.signal, cap);
+                return toRequest(req, controller.signal, cap, appCap);
             } catch (cause) {
                 // Node が通したのに Request にできないもの。Request を先に作っていたときと同じく 400 にする
                 throw new HttpError(400, "400 Bad Request", { cause });
@@ -407,7 +411,16 @@ async function serveLazily(core: AppCore, req: IncomingMessage, res: ServerRespo
         return;
     }
 
-    const c = lazyContext(lazyRequest(req, res, url, cap), connectionInfo(req));
+    // アプリの本文の既定の上限。本文があるときだけ箱を作り、Request を作るとき(c.req を読んだとき)に使う
+    // Content-Length が上限以下なら作らない(Node は宣言より長い本文を受け取らないので、数えなくてよい。src/app.ts と同じ)
+    const declared = declaredLength(req.headers["content-length"]);
+    const appCap =
+        core.maxBodySize !== Infinity && hasBody(req) && (declared === null || declared > core.maxBodySize)
+            ? { max: core.maxBodySize, exceeded: false }
+            : undefined;
+    const c = lazyContext(lazyRequest(req, res, url, cap, appCap), connectionInfo(req));
+    // ルートの bodyLimit() / multipart() が、この箱の上限を外せるように結び付ける
+    if (appCap) attachBodyCap(c, appCap);
     try {
         const resolved = core.resolve(c, method);
         if (resolved.kind === "route") {
@@ -417,10 +430,12 @@ async function serveLazily(core: AppCore, req: IncomingMessage, res: ServerRespo
         const answer = await respondLazily(core, c, resolved, method);
         // 上限を超えていたら、ハンドラーがエラーを握りつぶしていても 413 にする
         if (cap?.exceeded) return tooLarge(res);
+        if (appCap?.exceeded) return tooLarge(res, false);
         if (answer instanceof PlainResponse) writePlain(res, answer);
         else await writeResponse(res, c.finalize(answer));
     } catch (err) {
         if (cap?.exceeded) return tooLarge(res);
+        if (appCap?.exceeded) return tooLarge(res, false);
         // クライアントが途中で切っただけならエラーではない
         if (!res.destroyed || res.writableFinished) writeFailure(res, err);
     }

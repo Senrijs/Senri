@@ -156,17 +156,17 @@ serve(app, {
 
 ### 本文の大きさの上限(maxRequestBodySize)
 
-`serve()` の `maxRequestBodySize`(バイト数)で、サーバー全体の本文の上限を決められます。超えたら 413 です。`Infinity` で上限をなくせます。
+`serve()` の `maxRequestBodySize`(バイト数)で、サーバー全体の本文の上限を決められます。超えたら 413 です。
 
-- 省略したときは、ランタイムの既定のままです。**Bun では、128 MiB を超える本文が切られます**(`Bun.serve` の既定)。Node.js と Deno には上限がありません
-- Bun で大きいファイルを受けるとき(`multipart()` など)は、`maxRequestBodySize` を上げてください
+- 省略したときは、どのランタイムでも上限なしです(0.3.0 から。Bun の `Bun.serve` の既定の 128 MiB も使いません)
+- 本文を全部読むときの上限は、アプリの [`createApp({ maxBodySize })`](#本文の大きさの既定の上限)(既定 1 MiB)で決まります
 
 ```ts
 serve(app, { maxRequestBodySize: 1024 * 1024 * 1024 }); // 1 GiB
 ```
 
 - Content-Length があれば読む前に断り、ない(チャンク転送)ときは読みながら数えます
-- これはサーバー全体の上限です。ルートごとの上限は `bodyLimit()`、`uploadLimit()`、`multipart()` の上限で付けてください
+- これはサーバー全体の上限です。ルートごとの上限は `bodyLimit()`、`uploadLimit()`、`multipart()` の上限で付けてください(アプリの既定の上限を置き換えます)
 - Node.js の `node:http` は、リクエストを受け取り終えるまでの時間を既定で 5 分にしています(`requestTimeout`)。遅い回線で大きいファイルを送ると、途中で 408 になることがあります
 
 ## ルート
@@ -257,12 +257,12 @@ app.post("/upload", async (_, c) => {
 
 - `multipart/form-data` を1パーツずつ読みます。本文を全部メモリに読まないので、大きいファイルを届いた分からそのまま保存先(ファイル、オブジェクトストレージなど)へ流せます。保存先は自由です
 - パーツは `name`、`filename`(フィールドなら `undefined`。ファイルを選ばなかったファイル欄は `""`)、`contentType`(なければ `text/plain`)、`headers`、`stream`、`text()`、`bytes()` を持ちます
-- 上限: `maxParts`(既定 100)、`maxFileSize`(既定 10 MiB)、`maxFieldSize`(既定 64 KiB)、`maxHeaderSize`(パーツのヘッダー、既定 8 KiB)、`maxTotalSize`(本文全体、既定なし)。超えたら 413 です。壊れた本文や `boundary` がないときは 400、multipart でなければ 415 です
+- 上限: `maxParts`(既定 100)、`maxFileSize`(既定 10 MiB)、`maxFieldSize`(既定 64 KiB)、`maxHeaderSize`(パーツのヘッダー、既定 8 KiB)、`maxTotalSize`(本文全体、既定 100 MiB。`maxFileSize` をそれより大きくしたら、それに合わせる)。超えたら 413 です。壊れた本文や `boundary` がないときは 400、multipart でなければ 415 です
 - ループが次へ進むと、読み残したパーツは読み飛ばします。そのあとで前のパーツの `stream` を読むとエラーなので、保存は `await` してから次へ進んでください。`break` で抜けると、それ以上は読みません
 - 本文を読んだあと(`c.body()`、`uploadLimit()`、ルートの `body` のスキーマ)や、2回目に呼ぶとエラーです。小さいファイルを `File` で受け取って種類まで確かめるなら `uploadLimit()`、大きいファイルを流すなら `multipart()` と、ルートごとに使い分けてください
 - `part.filename` と `part.contentType` は、送られてきたそのままの値です。保存先のパスには使わず、`crypto.randomUUID()` などで決めるか `safeFileName()` を通してください
 - 本文全体の上限は `maxTotalSize` で付けられます。`bodyLimit()` を一緒に使ってもかまいません
-- Bun では、`serve()` の既定で 128 MiB を超える本文が切られます。`maxFileSize` を上げるときは、`serve()` の [`maxRequestBodySize`](#本文の大きさの上限maxrequestbodysize) も上げてください
+- `multipart()` を使うルートでは、アプリの本文の既定の上限(`createApp({ maxBodySize })`)の代わりに、`multipart()` の上限が効きます
 
 ### グループ化
 
@@ -489,6 +489,23 @@ app.post("/search", async (_, c) => {
 ```
 
 - `c.body()` は何度呼んでも同じ結果です(ミドルウェアとハンドラーの両方から読めます)
+
+### 本文の大きさの既定の上限
+
+本文を全部読むもの(`c.body()`・ルートの `body` のスキーマ・`c.req.json()` / `text()` / `formData()` / `arrayBuffer()`)は、既定で **1 MiB** までです。超えたら 413 です。
+
+```ts
+const app = createApp({ maxBodySize: 10 * 1024 * 1024 });   // アプリ全体で 10 MiB に(Infinity で上限なし)
+
+app.use("/import", bodyLimit({ maxSize: 50 * 1024 * 1024 }));  // このルートだけ 50 MiB まで
+```
+
+- 本文を読んだときだけ効きます。本文を読まないルートは、大きい本文が来ても変わりません
+- Content-Length が上限より大きければ、中身を読まずに 413 にします(残りの本文は読み捨てます)。Content-Length のない本文(チャンク転送など)は、読みながら数えます
+- ハンドラーが読み取りのエラーを握りつぶしても、413 になります
+- ルートの `bodyLimit()`(と、それを使う `uploadLimit()`)と `multipart()` は、この既定を自分の上限で**置き換えます**(重ねません)。大きい本文を受けるルートだけ上限を上げられます。表のルートなら `endpoint({ use: [bodyLimit({ maxSize })] }, handler)` でも付けられます
+- Content-Length のない本文は、数えるためにストリームで包むので、読むのが遅くなります(小さい本文で数十 µs)。Content-Length のある本文は、包まないので速さは変わりません
+- **`c.req.body` を自分でストリームとして読むときも、1 MiB を超えると 413 です**(Content-Length あり・なしの両方)。大きい本文をそのまま流したいルート(保存先へ流すアップロードなど)には、`bodyLimit({ maxSize })` を付けて上限を上げてください。`multipart()` は自分の上限を使うので、付けなくてかまいません
 - Cookie と IP は、使わないアプリのバンドルに入らないよう、別の入口(`@senrijs/senri/cookie`・`@senrijs/senri/ip`)にしています
 - `getIp(c)` はランタイムが渡す接続元を使います。`X-Forwarded-For` などのヘッダーは偽装できるので読みません
 - プロキシの後ろでは `trustProxy()` を使います。`const clientIp = trustProxy({ hops: 1 })` や `trustProxy({ proxies: ["10.0.0.0/8"] })` で作った関数が、クライアントの IP を返します。`X-Forwarded-For` の先頭は信じず、右から数えます。`hops` は、プロキシを通らずにアプリへ届く環境では偽装できるので、その場合は `proxies` を使ってください

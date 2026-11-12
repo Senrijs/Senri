@@ -25,6 +25,7 @@
 // NODE_ENV が development / test のときだけ、全部のリクエストに開発用の出力をする。それ以外(未設定を含む)は、
 // localhost へのリクエストのときだけ開発用の出力をする(それ以外は、そのリクエストだけ本番と同じに振る舞う)
 // Cloudflare Workers とブラウザ(process がない環境)では NODE_ENV が読めないので、いつも localhost のときだけ
+import { tooLargeResponse } from "../body-cap.ts";
 import { isLocalUrl } from "./local-url.ts";
 import type { AppCore, DevHooks, DevInstalled, Resolved } from "../app.ts";
 import { Context, type ExecutionContext } from "../context.ts";
@@ -271,6 +272,8 @@ function install(core: AppCore, scope: Scope, nodeEnv: string | undefined, fixed
             return dashboard.handle(req, dashboardPath);
         }
         if (!dashboardPath) dashboard?.begin(c, info);
+        // 本文の既定の上限(本番の app.fetch と同じ)
+        const cap = core.capBody(c);
 
         // ミドルウェアより先にマッチして、c.route / c.params を見られるようにしておく
         const resolved = core.resolve(c);
@@ -282,13 +285,15 @@ function install(core: AppCore, scope: Scope, nodeEnv: string | undefined, fixed
         // ハンドラー・notFound・toResponse のどこで投げても、compose が onError に集める
         const layers = core.layers(c, resolved);
         const innerName = INNER_NAME[resolved.kind];
-        const res = await compose(
+        const handled = await compose(
             layers,
             c,
             () => core.inner(c, resolved),
             (err) => core.fail(err, c),
             measure(c, origin, layers, innerName),
         );
+        // 本文の上限を超えていたら、ハンドラーがエラーを握りつぶしていても 413 にする
+        const res = cap?.exceeded ? tooLargeResponse() : handled;
         // ミドルウェアを全部通ったあとなので、ここなら「通った順番」が揃っている
         const page = await finishErrorPage(c, res, () => langOf(c));
         // 層ごとの時間を Server-Timing に載せる(ブラウザの開発者ツールで見られる)
@@ -311,12 +316,15 @@ function install(core: AppCore, scope: Scope, nodeEnv: string | undefined, fixed
     // 本番の fetch と同じ流れ(計測・記録・エラーページ・Server-Timing なし。onError / notFound も本番の既定になる)
     function quietFetch(c: Context): Promise<Response> {
         quiet.add(c);
+        const cap = core.capBody(c);
         const resolved = core.resolve(c);
         if (resolved.kind === "route") {
             c.route = resolved.route.path;
             c.params = resolved.params;
         }
-        return compose(core.layers(c, resolved), c, () => core.inner(c, resolved), (err) => core.fail(err, c)).then((res) => c.finalize(res));
+        return compose(core.layers(c, resolved), c, () => core.inner(c, resolved), (err) => core.fail(err, c)).then((res) =>
+            cap?.exceeded ? tooLargeResponse() : c.finalize(res),
+        );
     }
 
     const pageOnError = withErrorPage(devOnError(langOf), true);

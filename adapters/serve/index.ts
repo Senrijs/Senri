@@ -74,20 +74,17 @@ export type ServeOptions = {
      * Not called by {@link Server.stop}.
      */
     onShutdown?: () => unknown;
-    // リクエストの本文の上限(バイト数)。超えたら 413
-    // 省略したときはランタイムの既定: Bun は 128 MiB(Bun.serve の既定)、Node.js と Deno は上限なし
+    // サーバー全体の本文の上限(バイト数)。超えたら 413。省略すると、どのランタイムでも上限なし
+    // (0.3.0 で、Bun の既定の 128 MiB をやめた。守りは createApp({ maxBodySize }) の既定 1 MiB と、ルートごとの上限)
     /**
-     * The maximum request body size in bytes. Over it, the request gets 413 `413 Content Too Large`.
-     * `Infinity` removes the limit; a negative or non-numeric value throws a `RangeError`.
-     *
-     * Without it, each runtime's default applies:
-     * - **Bun:** 128 MiB (the default of `Bun.serve`). Larger bodies are cut off, so raise this to receive large
-     *   uploads, for example with `multipart()`.
-     * - **Node.js and Deno:** no limit.
+     * A server-wide limit on the request body, in bytes. Over it, the request gets 413 `413 Content Too Large`.
+     * Without it there is no server-wide limit, on every runtime (Bun's own 128 MiB default is not used).
+     * `Infinity` is the same; a negative or non-numeric value throws a `RangeError`.
      *
      * With `Content-Length`, a body over the limit is refused before it is read. Without it (chunked), it is
      * counted while it is read, and the request gets 413 even if the handler caught the error.
-     * This is a server-wide limit; to limit each route, use `bodyLimit()`, `uploadLimit()` or the limits of `multipart()`.
+     * The app's default limit for code that reads the whole body is `createApp({ maxBodySize })` (1 MiB); to limit or
+     * allow more on a route, use `bodyLimit()`, `uploadLimit()` or the limits of `multipart()`.
      */
     maxRequestBodySize?: number;
     // Node.js で WebSocket を使うときの、ws パッケージの WebSocketServer({ noServer: true })
@@ -226,11 +223,11 @@ export async function serve(app: ServeApp, options: ServeOptions = {}): Promise<
     let force: () => void;
 
     if (g.Bun) {
-        // 省略したときは渡さない(Bun の既定の 128 MiB のまま)
+        // 省略したときは上限なし(Bun.serve の既定の 128 MiB にしない。Node.js・Deno とそろえる)
         const s = g.Bun.serve({
             port,
             hostname,
-            ...(maxBody === undefined ? {} : { maxRequestBodySize: maxBody }),
+            maxRequestBodySize: maxBody ?? Infinity,
             fetch: app.fetch,
             // upgradeWebSocket() のルートのイベントを振り分ける(WebSocket を使わないアプリでも、登録だけしておく)
             websocket,
