@@ -1,0 +1,267 @@
+---
+title: "Migrating to 0.3.0"
+description: "What to change when you upgrade from 0.2.x to 0.3.0"
+---
+
+0.3.0 has breaking changes in three groups.
+
+| Group | Runtime behavior | Who is affected |
+|---|---|---|
+| [Default request body limit](#default-request-body-limit) | **Changes** | Apps with routes that take bodies over 1 MiB, apps that take more than 100 MiB in total with `multipart()`, and apps that relied on Bun's 128 MiB limit |
+| [Exports that are no longer public](#exports-that-are-no-longer-public) | No change (the import fails) | Code that imports `parseCookies` and the like directly |
+| [Type changes](#type-changes) | No change (types only) | Code that writes `RouteTable` by hand, or annotates the typed client's results |
+
+<Callout type="warn" title="Check this first">
+  Only the body limit changes how your app behaves at runtime. Find the routes that take bodies over 1 MiB (large JSON, file uploads, routes that pass `c.req.body` on as a stream) and make [the change below](#raise-the-limit-on-routes-that-take-large-bodies). For the other two groups, fix what the type checker (`tsc`) reports.
+</Callout>
+
+## Default request body limit
+
+| What changes | 0.2.x | 0.3.0 |
+|---|---|---|
+| The limit for reading the body (`c.body()`, a route's `body` schema, `c.req.json()` / `text()` / `formData()` / `arrayBuffer()`, and reading `c.req.body` as a stream yourself) | None | **1 MiB**, 413 over it |
+| The default `maxTotalSize` of `multipart()` | None | **100 MiB** |
+| The body limit of `serve()` on Bun | 128 MiB (the `Bun.serve` default) | **None** (the same as Node.js and Deno) |
+
+- The limit applies only when the body is read. Routes that do not read the body behave as before, even with a large body
+- If Content-Length is over the limit, the request gets 413 without the body being read. A body without Content-Length (chunked transfer and so on) is counted as it is read and gets 413 once it goes over
+- If a handler swallows the read error with `try` / `catch`, the response is still 413
+
+### Raise the limit on routes that take large bodies
+
+Add `bodyLimit({ maxSize })` to a route, and that route uses its limit instead of the default 1 MiB (the two limits do not stack: the route's limit **replaces** the default).
+
+```ts title="Before (0.2.x)"
+app.post("/import", async (_, c) => {
+    const rows = await c.req.json();   // read any size
+    return { count: rows.length };
+});
+```
+
+```ts title="After (0.3.0)"
+import { bodyLimit } from "@senrijs/senri";
+
+app.use("/import", bodyLimit({ maxSize: 20 * 1024 * 1024 }));   // up to 20 MiB on this route
+app.post("/import", async (_, c) => {
+    const rows = await c.req.json();
+    return { count: rows.length };
+});
+```
+
+For a route in a `defineRoutes()` table, put it in the `use` of `endpoint()`.
+
+```ts title="After (0.3.0), a table route"
+import { bodyLimit, defineRoutes, endpoint } from "@senrijs/senri";
+
+export const routes = defineRoutes({
+    "POST /import": endpoint({ use: [bodyLimit({ maxSize: 20 * 1024 * 1024 })] }, async (_, c) => {
+        const rows = await c.req.json();
+        return { count: rows.length };
+    }),
+});
+```
+
+`uploadLimit()` uses `bodyLimit()` inside, so a route with `uploadLimit({ maxTotalSize })` takes bodies up to that `maxTotalSize`.
+
+### Routes that pass `c.req.body` on as a stream
+
+Routes that read `c.req.body` themselves and pass it on (to storage, for example) are limited to 1 MiB too, with or without Content-Length. Add `bodyLimit({ maxSize })` to routes that stream large bodies.
+
+```ts title="Before (0.2.x)"
+app.put("/files/:name", async ({ name }, c) => {
+    await saveStream(name, c.req.body!);   // pass the body on to storage (example)
+    return new Response(null, { status: 201 });
+});
+```
+
+```ts title="After (0.3.0)"
+import { bodyLimit } from "@senrijs/senri";
+
+app.use("/files/:name", bodyLimit({ maxSize: 5 * 1024 * 1024 * 1024 }));   // up to 5 GiB
+app.put("/files/:name", async ({ name }, c) => {
+    await saveStream(name, c.req.body!);
+    return new Response(null, { status: 201 });
+});
+```
+
+- `maxSize` of `bodyLimit()` must be a finite number. For no limit at all, use `createApp({ maxBodySize: Infinity })` below
+- `multipart()` uses its own limits, so it does not need `bodyLimit()` ([below](#the-total-limit-of-multipart))
+
+### Change the limit for the whole app
+
+To change the limit for the whole app, use `createApp({ maxBodySize })`. `Infinity` removes it, as in 0.2.x.
+
+```ts
+const app = createApp({ maxBodySize: 10 * 1024 * 1024 });   // up to 10 MiB in the whole app
+// const app = createApp({ maxBodySize: Infinity });        // no limit (as in 0.2.x)
+```
+
+<Callout type="info">
+  A body without Content-Length is wrapped in a stream to be counted, so reading it is slightly slower (tens of µs for a small body). A body with Content-Length is not wrapped, so its speed does not change. `maxBodySize: Infinity` turns this off.
+</Callout>
+
+### The total limit of `multipart()`
+
+The default `maxTotalSize` (the limit for the whole body) of `multipart()` is now 100 MiB instead of none. Set `maxTotalSize` to take more than 100 MiB in total.
+
+```ts title="Before (0.2.x)"
+for await (const part of multipart(c, { maxFileSize: 50 * 1024 * 1024 })) {
+    // any number of 50 MiB files
+}
+```
+
+```ts title="After (0.3.0)"
+for await (const part of multipart(c, { maxFileSize: 50 * 1024 * 1024, maxTotalSize: 500 * 1024 * 1024 })) {
+    // up to 500 MiB in total
+}
+```
+
+- If `maxFileSize` is over 100 MiB and `maxTotalSize` is not set, the total limit follows `maxFileSize` (so a single file that fits `maxFileSize` is never refused)
+- `multipart()` uses its own limits instead of the default 1 MiB. It does not need `bodyLimit()`
+
+### Bun's 128 MiB in `serve()`
+
+`serve()` on Bun used to keep the `Bun.serve` default and cut bodies at 128 MiB. In 0.3.0 it sets no server-wide limit, the same as on Node.js and Deno (the default 1 MiB and per-route limits protect the app).
+
+```ts title="Before (0.2.x), raised for uploads over 128 MiB"
+serve(app, { maxRequestBodySize: 1024 * 1024 * 1024 });
+```
+
+```ts title="After (0.3.0)"
+serve(app);   // Bun no longer cuts bodies at 128 MiB
+```
+
+For a server-wide limit, set `serve(app, { maxRequestBodySize })` as before. It closes the connection when a body goes over.
+
+## Exports that are no longer public
+
+These were exported by mistake and are no longer exported. Importing them fails, so switch to the replacements.
+
+| Removed | Entry point | Use instead |
+|---|---|---|
+| `parseCookies(header)` | `@senrijs/senri/cookie` | `getCookie(c)` (all) or `getCookie(c, name)` (one) |
+| `serializeCookie(name, value, options)` | `@senrijs/senri/cookie` | `setCookie(c, name, value, options)` |
+| `deletionCookie(name, options)` | `@senrijs/senri/cookie` | `deleteCookie(c, name, options)` |
+| `resolvePort()`, `DEFAULT_PORT`, `PortSource` | `@senrijs/senri/serve` | `serve()` decides the port (`port`, then the `PORT` environment variable, then 3927). Read it from `server.port` |
+| `isLocalUrl(url)` | `@senrijs/senri/dev` | None (check `new URL(url).hostname` yourself) |
+
+### Cookies
+
+```ts title="Before (0.2.x)"
+import { deletionCookie, parseCookies, serializeCookie } from "@senrijs/senri/cookie";
+
+app.get("/theme", (_, c) => {
+    const cookies = parseCookies(c.req.headers.get("cookie"));
+    c.header("set-cookie", serializeCookie("theme", "dark", { path: "/" }));
+    c.header("set-cookie", deletionCookie("old", { path: "/" }));
+    return cookies.theme ?? "light";
+});
+```
+
+```ts title="After (0.3.0)"
+import { deleteCookie, getCookie, setCookie } from "@senrijs/senri/cookie";
+
+app.get("/theme", (_, c) => {
+    const theme = getCookie(c, "theme");   // getCookie(c) for all of them
+    setCookie(c, "theme", "dark", { path: "/" });
+    deleteCookie(c, "old", { path: "/" });
+    return theme ?? "light";
+});
+```
+
+`setCookie()` defaults to `Path=/`, `HttpOnly` and `SameSite=Lax`. Check that the attributes match what you set with `serializeCookie()`.
+
+### The port
+
+```ts title="Before (0.2.x)"
+import { resolvePort, serve } from "@senrijs/senri/serve";
+
+const { port } = resolvePort(undefined);
+serve(app, { port });
+console.log(`http://localhost:${port}`);
+```
+
+```ts title="After (0.3.0)"
+import { serve } from "@senrijs/senri/serve";
+
+const server = await serve(app);   // port, then PORT, then 3927
+console.log(server.url);           // or server.port for the number
+```
+
+## Type changes
+
+Runtime behavior does not change. Fix what the type checker reports.
+
+| What changes | Who is affected |
+|---|---|
+| `RouteTable<K, V>` becomes `RouteTable<T, V>` (it takes the table type instead of the key type) | Code that writes `RouteTable<...>` in a type annotation |
+| `app.routes()` has one signature | Code that passes a type argument, as in `app.routes<"GET /x">(...)` |
+| `c.json()` / `c.text()` return `TypedResponse` (which extends `Response`) | Almost nobody: it is still a `Response` |
+| The typed client's result is typed by status (`ClientResultOf`) | Code that annotates results as `ClientResult<D>`, or compares the `status` of an `ok: true` result with a non-2xx status |
+
+### `RouteTable`
+
+```ts title="Before (0.2.x)"
+import type { RouteTable } from "@senrijs/senri";
+
+const table: RouteTable<"GET /users/:id" | "POST /users"> = {
+    "GET /users/:id": ({ id }) => ({ id }),
+    "POST /users": () => "created",
+};
+app.routes(table);
+```
+
+The simplest change is to write the table inline in `app.routes()`, or to use `defineRoutes()`. Both type the parameters from the path.
+
+```ts title="After (0.3.0)"
+import { defineRoutes } from "@senrijs/senri";
+
+const table = defineRoutes({
+    "GET /users/:id": ({ id }) => ({ id }),   // id is typed from the path
+    "POST /users": () => "created",
+});
+app.routes(table);
+```
+
+If you need the annotation, pass the table type: `RouteTable<typeof table>`.
+
+### The type argument of `app.routes()`
+
+```ts title="Before (0.2.x)"
+app.routes<"GET /hello">({ "GET /hello": () => "hi" });
+```
+
+```ts title="After (0.3.0)"
+app.routes({ "GET /hello": () => "hi" });   // no type argument
+```
+
+### Typed client results
+
+`error` is now typed for each status you declare with `c.json(body, status)` or `endpoint({ responses })`. The `status` of an `ok: true` result has a 2xx type (`SuccessStatus`).
+
+```ts title="Before (0.2.x)"
+import type { ClientResult } from "@senrijs/senri/client";
+
+const res: ClientResult<User> = await api("GET /users/:id", { params: { id: "1" } });
+if (res.ok) res.data;
+else res.error;   // unknown
+```
+
+```ts title="After (0.3.0)"
+import type { ClientResultOf } from "@senrijs/senri/client";
+
+const res: ClientResultOf<typeof routes, "GET /users/:id"> = await api("GET /users/:id", { params: { id: "1" } });
+if (res.ok) res.data;                        // User
+else if (res.status === 404) res.error;      // the type returned with c.json({ message }, 404)
+else res.error;                              // unknown (statuses not declared)
+```
+
+The simplest change is to drop the annotation and let the return type of `api()` decide. `ClientResult<D>` is still exported, so your own uses of it keep working.
+
+### The return type of `c.json()` / `c.text()`
+
+`TypedResponse<T, S, F>` extends `Response`, so code that treats it as a `Response` is unchanged. Only type tests that check `ReturnType<typeof c.json>` is exactly `Response` need fixing.
+
+## All changes
+
+See the [CHANGELOG](https://github.com/Senrijs/Senri/blob/main/CHANGELOG.md) for the details.
