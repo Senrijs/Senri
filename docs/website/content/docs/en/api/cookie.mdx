@@ -1,5 +1,28 @@
 ---
 title: "/cookie"
+description: "@senrijs/senri/cookie: Reading, setting and deleting cookies. Signed cookies"
 ---
 
-This page is coming soon.
+Reading, setting and deleting cookies. Signed cookies.
+
+```ts
+import { ... } from "@senrijs/senri/cookie";
+```
+
+## Functions and classes
+
+| Name | What it does |
+| --- | --- |
+| [`getCookie(c, name?)`](/en/docs/request-response/request) | Reads one cookie, or all of them |
+| [`setCookie(c, name, value, options?)`](/en/docs/request-response/request) | Sets a cookie |
+| [`deleteCookie(c, name, options?)`](/en/docs/request-response/request) | Deletes a cookie |
+| [`setSignedCookie(c, name, value, secret, options?)`](/en/docs/request-response/request) | Signs and sets a cookie |
+| [`getSignedCookie(c, name, secret)`](/en/docs/request-response/request) | Verifies and reads a signed cookie |
+
+## Types
+
+### CookieOptions
+
+<AutoTypeTable path="../../src/cookie-header.ts" name="CookieOptions" />
+
+Source: [`src/cookie.ts`](https://github.com/Senrijs/Senri/blob/main/src/cookie.ts)

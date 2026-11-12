@@ -1,5 +1,35 @@
 ---
 title: "Body limit"
+description: "Set a route's body size limit with bodyLimit() (replaces the default 1 MiB)"
 ---
 
-This page is coming soon.
+```ts twoslash
+import { bodyLimit, createApp } from "@senrijs/senri";
+
+const app = createApp();
+
+app.use("/import", bodyLimit({ maxSize: 50 * 1024 * 1024 }));   // up to 50 MiB on this route
+```
+
+- Over the limit, the response is 413
+- It **replaces** the app's default limit (1 MiB). They do not stack, so it can be larger or smaller than the default
+- With Content-Length, the request is refused before reading. Without it (chunked transfer), the body is counted as it is read
+- It also applies to routes that read `c.req.body` as a stream
+- `maxSize` must be a finite number. For no limit at all, use `createApp({ maxBodySize: Infinity })`
+
+The whole story of body limits is in [Request bodies and limits](/en/docs/request-response/body).
+
+## Change the response
+
+```ts twoslash
+import { bodyLimit, createApp } from "@senrijs/senri";
+const app = createApp();
+// ---cut---
+app.use("/import", bodyLimit({ maxSize: 1024 * 1024, onError: () => ({ error: "too large" }) }));
+```
+
+The status is set to 413 before `onError` is called, so a returned string or object is sent with 413. A returned `Response` keeps its own status.
+
+## Options
+
+<AutoTypeTable path="../../src/middleware/body-limit.ts" name="BodyLimitOptions" />

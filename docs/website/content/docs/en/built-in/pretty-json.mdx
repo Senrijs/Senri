@@ -1,5 +1,31 @@
 ---
 title: "Pretty JSON"
+description: "Format JSON with prettyJSON() when ?pretty is given"
 ---
 
-This page is coming soon.
+```ts twoslash
+import { createApp, prettyJSON } from "@senrijs/senri";
+
+const app = createApp();
+
+app.use(prettyJSON());
+app.get("/users", () => [{ id: 1, name: "alice" }]);
+```
+
+```bash
+curl "http://localhost:3927/users?pretty"
+# [
+#   {
+#     "id": 1,
+#     "name": "alice"
+#   }
+# ]
+```
+
+- It formats only when the query has `pretty`
+- Bodies over 1 MiB and streams are not formatted
+- Register it after `compress()` and `etag()`
+
+## Options
+
+<AutoTypeTable path="../../src/middleware/pretty-json.ts" name="PrettyJSONOptions" />

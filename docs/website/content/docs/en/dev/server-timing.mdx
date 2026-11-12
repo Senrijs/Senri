@@ -1,6 +1,30 @@
 ---
 title: "Server-Timing"
-description: "See time per layer in browser devtools"
+description: "Put the time of each layer in the Server-Timing header"
 ---
 
-This page is coming soon.
+In development mode, responses get a `Server-Timing` header. The time of each layer appears in the browser's developer tools under Network → Timing.
+
+```ts twoslash
+import { createApp } from "@senrijs/senri";
+import { devtools } from "@senrijs/senri/dev";
+
+const app = createApp({ dev: devtools() });
+
+app.use(async function auth(c, next) {
+    await next();
+});
+app.get("/users/:id", ({ id }) => ({ id }));
+```
+
+```txt
+server-timing: senri-1;desc="1. auth (self 0.27ms)";dur=1.49, senri-handler;desc="GET /users/:id";dur=1.17, senri-total;desc="total";dur=3.37
+```
+
+- From the top, the entries go from the outside of the onion to the inside. Outer layers are longer (they include the inner ones)
+- The `desc` of middleware includes its own time (`self`)
+- The names start with `senri-`. A `Server-Timing` the app set itself is kept, and these are added after it
+
+To see it nested, use the [onion timeline](/en/docs/dev/timeline).
+
+`Server-Timing` is added only to requests that get development output ([Using devtools()](/en/docs/dev/devtools)). It is never added in production.

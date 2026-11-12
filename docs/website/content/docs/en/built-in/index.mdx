@@ -1,6 +1,72 @@
 ---
 title: "Overview"
-description: "CORS, compression, ETag, auth and more"
+description: "All built-in middleware, one line each"
 ---
 
-This page is coming soon.
+Import them all from `@senrijs/senri` (only JWT is in `@senrijs/senri/jwt`). Middleware you do not use is not bundled.
+
+```ts twoslash
+import { createApp, cors, logger, secureHeaders } from "@senrijs/senri";
+
+const app = createApp();
+
+app.use(logger());
+app.use(secureHeaders());
+app.use("/api", cors({ origin: ["https://example.com"] }));
+```
+
+## Security
+
+| Middleware | What it does |
+| --- | --- |
+| [`cors()`](/en/docs/built-in/cors) | Allows `fetch` from other origins |
+| [`csrf()`](/en/docs/built-in/csrf) | Rejects POST and the like from other sites with 403 |
+| [`secureHeaders()`](/en/docs/built-in/secure-headers) | Adds security headers such as `X-Content-Type-Options` |
+| [`basicAuth()` / `bearerAuth()`](/en/docs/built-in/auth) | Protects routes with Basic auth or a Bearer token |
+| [`jwt()`](/en/docs/built-in/jwt) | Verifies JWTs |
+| [`rateLimit()`](/en/docs/built-in/rate-limit) | Limits the number of requests in a time window |
+| [`ipRestriction()`](/en/docs/built-in/ip-restriction) | Allows or denies by client IP |
+
+## Bodies
+
+| Middleware | What it does |
+| --- | --- |
+| [`bodyLimit()`](/en/docs/built-in/body-limit) | Sets the body size limit |
+| [`uploadLimit()`](/en/docs/built-in/upload-limit) | Checks the size, number and type of uploaded files |
+
+## Responses
+
+| Middleware | What it does |
+| --- | --- |
+| [`timeout()`](/en/docs/built-in/timeout) | Returns 504 if the request does not finish in time |
+| [`compress()`](/en/docs/built-in/compress) | Compresses with gzip or deflate |
+| [`etag()`](/en/docs/built-in/etag) | Adds `ETag` and returns 304 when nothing changed |
+| [`cache()`](/en/docs/built-in/cache) | Adds `Cache-Control` |
+| [`prettyJSON()`](/en/docs/built-in/pretty-json) | Formats JSON with `?pretty` |
+
+## Requests
+
+| Middleware | What it does |
+| --- | --- |
+| [`requestId()`](/en/docs/built-in/request-id) | Gives each request an ID |
+| [`trailingSlash()`](/en/docs/built-in/trailing-slash) | Normalizes trailing slashes |
+| [`methodOverride()`](/en/docs/built-in/method-override) | Lets HTML forms send PUT, PATCH and DELETE |
+| [`languageDetector()`](/en/docs/built-in/language-detector) | Decides the language |
+
+## Operations
+
+| Middleware | What it does |
+| --- | --- |
+| [`logger()`](/en/docs/built-in/logger) | Logs one line per request |
+| [`health()`](/en/docs/built-in/health) | Answers `/healthz` and `/readyz` |
+
+[`serveStatic()`](/en/docs/request-response/static) (static files), [`otel()`](/en/docs/production/otel) (OpenTelemetry), [`metrics()`](/en/docs/production/metrics) (Prometheus) and [`contextStorage()`](/en/docs/production/context-storage) are added as middleware too.
+
+## Registration order
+
+Some middleware must be registered in a certain order.
+
+- `cors()` before `basicAuth()` / `bearerAuth()`
+- `compress()` before `etag()`
+- `cache()` before `etag()`
+- `prettyJSON()` after `compress()` and `etag()`

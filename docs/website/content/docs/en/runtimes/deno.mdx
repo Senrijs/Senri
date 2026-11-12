@@ -1,6 +1,60 @@
 ---
 title: "Deno"
-description: "Run on Deno"
+description: "Run on Deno. Install from JSR, permission flags, and passing the app to Deno.serve"
 ---
 
-This page is coming soon.
+```ts twoslash title="src/main.ts"
+import { createApp } from "@senrijs/senri";
+import { serve } from "@senrijs/senri/serve";
+
+const app = createApp();
+app.get("/", () => "Hello, Deno!");
+
+await serve(app);   // http://localhost:3927
+```
+
+```bash
+deno run --watch --allow-net --allow-env=PORT,NODE_ENV src/main.ts   # the template's deno task dev
+```
+
+For a new app, the template is the quickest way.
+
+```bash
+deno run -A npm:create-senri my-app --template deno
+```
+
+To add it to an existing project, install it from JSR.
+
+```bash
+deno add jsr:@senrijs/senri
+```
+
+## Permission flags
+
+| Flag | When you need it |
+| --- | --- |
+| `--allow-net` | Always (to listen) |
+| `--allow-env=PORT` | To set the port with the `PORT` environment variable. Without it, `3927` is used without a prompt |
+| `--allow-env=NODE_ENV` | To use `devtools()`. Without it, Senri cannot tell whether this is production, so development mode stays off (and a one-line notice is printed) |
+
+## Pass the app to Deno.serve yourself
+
+When you call `Deno.serve` yourself, pass `app.fetch`.
+
+```ts twoslash
+declare const Deno: { serve(options: { port?: number }, handler: (req: Request) => Response | Promise<Response>): unknown };
+import { createApp } from "@senrijs/senri";
+const app = createApp();
+// ---cut---
+Deno.serve({ port: 3927 }, app.fetch);
+```
+
+Then, unlike with `serve()`, deciding the port, printing the routes and waiting for in-flight requests when stopping are up to you.
+
+## Run in production
+
+Start with `NODE_ENV=production`. Even if `devtools()` is still there, it gives no development output.
+
+```bash
+NODE_ENV=production deno run --allow-net --allow-env=PORT,NODE_ENV src/main.ts
+```

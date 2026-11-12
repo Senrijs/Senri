@@ -1,5 +1,59 @@
 ---
 title: "OpenTelemetry"
+description: "Turn middleware and handlers into nested spans in production traces with @senrijs/senri/otel"
 ---
 
-This page is coming soon.
+```ts twoslash
+// @filename: types.d.ts
+declare module "@opentelemetry/api" {
+    export const trace: any;
+    export const context: any;
+    export const propagation: any;
+    export const SpanKind: any;
+    export const SpanStatusCode: any;
+}
+// @filename: index.ts
+import { createApp } from "@senrijs/senri";
+const app = createApp();
+// ---cut---
+import * as api from "@opentelemetry/api";
+import { otel } from "@senrijs/senri/otel";
+
+app.use(otel({ api, middlewareSpans: true }));   // register it first
+```
+
+**With `middlewareSpans: true`, the onion timeline of development mode becomes your production traces.** Spans for each middleware (`middleware <name>`) and the handler (`handler GET /users/:id`) are nested in the order they ran.
+
+```txt
+GET /users/:id                    ████████████████████  12.3 ms
+└ middleware logger               ███████████████████   12.1 ms
+  └ middleware auth               ██████████████        9.0 ms
+    └ handler GET /users/:id        ███████████         7.2 ms
+```
+
+In Jaeger, Grafana Tempo and the like, you can see which layer took time and which layer threw (its span becomes an error).
+
+## No dependency
+
+Senri does not depend on OpenTelemetry. Pass the `@opentelemetry/api` you use. Set up exporters and the SDK on the OpenTelemetry side as usual. Without `tracer`, `api.trace.getTracer("@senrijs/senri")` is used.
+
+## The server span
+
+One per request.
+
+- **Name:** the route pattern (`GET /users/:id`), or `GET` if no route matched
+- **Attributes:** the HTTP semantic conventions (`http.request.method`, `http.route`, `http.response.status_code`, `url.path`, `url.scheme`, `server.address`, `user_agent.original`)
+- **Parent:** it continues the trace of an incoming `traceparent`
+- **Errors:** 5xx and exceptions in middleware or handlers mark the span as an error and record the exception. 4xx is not an error
+
+With a context manager (`AsyncLocalStorage` on Node.js and so on), spans created in a handler become children of Senri's server span.
+
+## middlewareSpans
+
+Off by default (a span per layer means more data to send). Middleware registered before `otel()` does not get child spans.
+
+It runs on Bun, Deno, Node.js, Cloudflare Workers and the browser.
+
+## Options
+
+<AutoTypeTable path="../../src/otel.ts" name="OtelOptions" />

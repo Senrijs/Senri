@@ -1,5 +1,45 @@
 ---
 title: "Context Storage"
+description: "Get c without passing it around, with getContext() from @senrijs/senri/context-storage"
 ---
 
-This page is coming soon.
+```ts twoslash
+import { createApp } from "@senrijs/senri";
+import { contextStorage, getContext } from "@senrijs/senri/context-storage";
+
+const app = createApp();
+
+app.use(contextStorage());   // before other middleware
+
+// get the c of the request being handled without passing it (even after await)
+function currentUser() {
+    return getContext().req.headers.get("x-user");
+}
+
+app.get("/me", () => currentUser() ?? "anonymous");
+```
+
+It uses `AsyncLocalStorage` (`node:async_hooks`).
+
+## Where it works
+
+- In middleware after `contextStorage()`, handlers, `onError`, `app.notFound` and streams
+- In middleware before `contextStorage()` and outside requests (at startup and so on), `getContext()` throws (`code: "no_context"`) and `tryGetContext()` returns `undefined`
+
+Timers started in a handler still see that request's `c` after the response (a property of `AsyncLocalStorage`). Do not keep using it there.
+
+## Runtimes
+
+| Runtime | Works |
+| --- | --- |
+| Bun, Deno, Node.js | As is |
+| Cloudflare Workers | Add the `nodejs_als` (or `nodejs_compat`) compatibility flag to the wrangler config |
+| Browser (Service Worker) | No (there is no `node:async_hooks`). Pass `c` as an argument |
+
+On Workers with an old compatibility date and no flag, the Worker fails to start with `No such module "node:async_hooks"`. If you bundle without wrangler, leave `node:*` imports unbundled.
+
+```jsonc title="wrangler.jsonc"
+{
+  "compatibility_flags": ["nodejs_als"]
+}
+```

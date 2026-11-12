@@ -1,5 +1,22 @@
 ---
 title: "ETag"
+description: "Add an ETag with etag(), and return 304 when nothing changed"
 ---
 
-This page is coming soon.
+```ts twoslash
+import { createApp, etag } from "@senrijs/senri";
+
+const app = createApp();
+
+app.use(etag());
+```
+
+- It adds a weak `ETag` to 2xx responses to GET
+- If `If-None-Match` matches, it returns 304
+- The handler runs every time (the `ETag` is made from the body)
+- Stream bodies and HEAD get no `ETag`
+- Register `compress()` and `cache()` before `etag()`
+
+## Options
+
+<AutoTypeTable path="../../src/middleware/etag.ts" name="EtagOptions" />

@@ -1,6 +1,65 @@
 ---
 title: "Routes"
-description: "Register handlers by method and path"
+description: "Add routes with app.get() and friends. Methods and handler arguments"
 ---
 
-This page is coming soon.
+```ts twoslash
+import { createApp } from "@senrijs/senri";
+
+const app = createApp();
+
+app.get("/users/:id", ({ id }) => `user ${id}`);
+app.post("/users", async (_, c) => c.json(await c.body(), 201));
+app.on(["PUT", "PATCH"], "/users/:id", () => "updated");
+app.all("/any", () => "any method");
+```
+
+## Methods
+
+| Write | Matches |
+| --- | --- |
+| `app.get` / `post` / `put` / `patch` / `delete` / `head` / `options` | That method |
+| `app.all(path, handler)` | Any method |
+| `app.on(method, path, handler)` | One method, or the methods in an array |
+
+- **HEAD:** if not registered, the GET route handles it and the body is dropped
+- **OPTIONS:** if not registered, 204 with `Allow` is returned
+- **QUERY** ([RFC 10008](https://www.rfc-editor.org/rfc/rfc10008.html)): register it with `app.on("QUERY", path, handler)`. Without a body it is 400, and without Content-Type it is 415
+- **CONNECT, TRACE and TRACK:** not handled (501)
+
+## Handler arguments
+
+A handler receives the path parameters and the Context (`c`).
+
+```ts twoslash
+import { createApp } from "@senrijs/senri";
+const app = createApp();
+// ---cut---
+app.get("/orgs/:org/members/:member", ({ org, member }, c) => {
+    return { org, member, page: c.query("page") };
+    //       ^?
+});
+```
+
+- The parameter types come from the path
+- Use `c` to read the request and to set headers and the status ([Context](/en/docs/request-response/context))
+- What you return becomes the response ([Return values](/en/docs/routing/return-values))
+
+## Write routes as a table
+
+```ts twoslash
+import { createApp } from "@senrijs/senri";
+const app = createApp();
+// ---cut---
+app.routes({
+    "GET /ping": () => "pong",
+    "GET /users/:id": ({ id }) => ({ id }),
+});
+```
+
+To move the table to another file or to use its types in a client, use [`defineRoutes()`](/en/docs/typed-api/define-routes).
+
+## Errors when registering
+
+- Registering the same method and path twice is an error. Routes that differ only in the parameter name (`/users/:id` and `/users/:userId`) count as the same
+- Optional parameters (`:id?`) and regular expressions (`:id{[0-9]+}`) are not supported and are an error when registering. Check values in the handler or with a [schema](/en/docs/validation)

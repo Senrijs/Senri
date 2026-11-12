@@ -1,5 +1,41 @@
 ---
 title: "CSRF"
+description: "Reject POST and the like from other sites with csrf()"
 ---
 
-This page is coming soon.
+```ts twoslash
+import { createApp, csrf } from "@senrijs/senri";
+
+const app = createApp();
+
+app.use(csrf());
+```
+
+It uses no tokens. It looks at the headers the browser adds and rejects requests from other origins with 403.
+
+## What it looks at
+
+For requests other than GET, HEAD and OPTIONS, in this order:
+
+1. **`Sec-Fetch-Site`:** added by the browser. 403 if it is from another origin
+2. **`Origin`:** for older browsers without `Sec-Fetch-Site`, the host of `Origin` is compared with `Host`. The scheme is not compared, so it works behind a proxy that terminates TLS
+3. Requests with neither header are not from a browser (curl, server to server), so they pass
+
+GET and HEAD are not checked, so do not put state-changing work there.
+
+## Accept your other sites too
+
+```ts twoslash
+import { createApp, csrf } from "@senrijs/senri";
+const app = createApp();
+// ---cut---
+app.use(csrf({ origin: ["https://admin.example.com"] }));
+```
+
+Pass them to the one `csrf()` that covers the path. Adding `app.use("/api", csrf({ origin }))` after `app.use(csrf())` does not help: the first `csrf()` already rejects the request with 403.
+
+If a proxy rewrites `Host`, also put the right origin in `origin`.
+
+## Options
+
+<AutoTypeTable path="../../src/middleware/csrf.ts" name="CsrfOptions" />

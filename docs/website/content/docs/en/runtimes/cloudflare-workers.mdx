@@ -1,6 +1,56 @@
 ---
 title: "Cloudflare Workers"
-description: "Run on Cloudflare Workers"
+description: "Run on Workers. export default app, c.env and c.executionCtx, and deploying"
 ---
 
-This page is coming soon.
+Export the app as is. Workers calls `app.fetch(request, env, ctx)`.
+
+```ts twoslash title="src/index.ts"
+import { createApp } from "@senrijs/senri";
+
+const app = createApp();
+app.get("/", () => "Hello, Workers!");
+
+export default app;
+```
+
+```bash
+npx wrangler dev      # http://localhost:8787 (the template's npm run dev)
+npx wrangler deploy   # deploy (the template's npm run deploy)
+```
+
+For a new app, the template is the quickest way.
+
+```npm
+npm create senri@latest my-app -- --template workers
+```
+
+## c.env and c.executionCtx
+
+Variables and bindings in `wrangler.jsonc` are available as `c.env`. Type them with `createApp<{ Bindings: Env }>()`.
+
+```ts twoslash title="src/index.ts"
+declare function logSomewhere(): Promise<void>;
+// ---cut---
+import { createApp } from "@senrijs/senri";
+
+type Env = { GREETING: string };
+const app = createApp<{ Bindings: Env }>();
+
+app.get("/", (_, c) => {
+    c.executionCtx.waitUntil(logSomewhere());   // work that continues after the response
+    return c.env.GREETING;
+    //           ^?
+});
+
+export default app;
+```
+
+To also type the variables used with `c.set()` / `c.get()`, write `createApp<{ Bindings: Env; Variables: { user: User } }>()`.
+
+## Differences on Workers
+
+- **Development mode:** Workers cannot read `NODE_ENV`, so `devtools()` gives development output only for requests to `localhost` (`wrangler dev`). Error pages appear, but without the code. There is no `/_senri` dashboard
+- **Bundle size:** wrangler bundles everything into one file, so leaving `dev: devtools()` in also bundles the development code. Remove it from production builds
+- **Static files:** use Workers [Static Assets](https://developers.cloudflare.com/workers/static-assets/) instead of `@senrijs/senri/static`
+- **IP:** `getIp(c)` from `@senrijs/senri/ip` reads `CF-Connecting-IP`, which Cloudflare adds

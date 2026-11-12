@@ -1,6 +1,63 @@
 ---
 title: "Node.js"
-description: "Run on Node.js"
+description: "Run on Node.js. Run TypeScript as is, or use @senrijs/senri/node"
 ---
 
-This page is coming soon.
+```ts twoslash title="src/index.ts"
+import { createApp } from "@senrijs/senri";
+import { serve } from "@senrijs/senri/serve";
+
+const app = createApp();
+app.get("/", () => "Hello, Node.js!");
+
+await serve(app);   // http://localhost:3927
+```
+
+```bash
+node --watch src/index.ts   # restarts when you edit a file (the template's npm run dev)
+```
+
+For a new app, the template is the quickest way.
+
+```npm
+npm create senri@latest my-app -- --template node
+```
+
+## Supported versions
+
+- Senri runs on Node.js 22 or later
+- The template runs TypeScript without a build step, with `node src/index.ts`. This needs Node.js 22.18 or later
+
+<Callout title="Running TypeScript as is">
+  Node.js only strips the types. Syntax that does not exist in JavaScript, such as `enum`, cannot be used. When you import your own files, write the extension, as in `./routes.ts`.
+</Callout>
+
+## What serve() does
+
+`serve()` from `@senrijs/senri/serve` starts the app with `node:http` on Node.js. It also:
+
+- Decides the port (the `port` option → the `PORT` environment variable → `3927`)
+- Prints the URL and the routes when it starts
+- On SIGTERM / SIGINT, waits for in-flight requests before stopping
+
+## Start with @senrijs/senri/node
+
+To handle the `node:http` server yourself, use `serve()` from `@senrijs/senri/node`. It returns an `http.Server` and does none of the things above.
+
+```ts twoslash
+import { createApp } from "@senrijs/senri";
+const app = createApp();
+// ---cut---
+import { serve } from "@senrijs/senri/node";
+
+const server = serve(app, { port: 3927 });
+server.once("listening", () => console.log("listening"));
+```
+
+## Run in production
+
+Start with `NODE_ENV=production`. Even if `devtools()` is still there, it gives no development output.
+
+```bash
+NODE_ENV=production node src/index.ts
+```

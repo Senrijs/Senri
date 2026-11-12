@@ -1,6 +1,59 @@
 ---
 title: "Validation"
-description: "Validate input with Standard Schema"
+description: "Check params, query and body with Standard Schema (Zod, Valibot, ArkType)"
 ---
 
-This page is coming soon.
+Give a route schemas, and they are checked before the handler is called. Schemas from libraries that support [Standard Schema](https://standardschema.dev) (Zod, Valibot, ArkType and others) work as is.
+
+```ts twoslash
+import { createApp } from "@senrijs/senri";
+import { z } from "zod";
+
+const app = createApp();
+
+app.post(
+    "/users/:id",
+    {
+        params: z.object({ id: z.coerce.number() }),
+        body: z.object({ name: z.string().min(1) }),
+    },
+    ({ id }, c) => {
+        const { name } = c.valid("body");
+        //      ^?
+        return { id, name };
+    },
+);
+```
+
+- You can give `params`, `query` and `body`
+- When `params` passes, the handler's first argument is the converted value (`id` above is a `number`)
+- Read the `query` and `body` values with `c.valid("query")` and `c.valid("body")`
+- For table routes, write `endpoint({ body }, handler)` ([Route tables](/en/docs/typed-api/define-routes))
+
+## When a value does not pass
+
+The response is 400.
+
+- **Production:** the body is only `400 Bad Request`
+- **Development mode:** the body lists what is wrong. Mistakes in the schema itself are reported when the route is registered
+
+## Respond in your own format
+
+Catch `ValidationError` in `app.onError`. It has `err.target` (`"params"`, `"query"` or `"body"`) and `err.issues` (the list of problems).
+
+```ts twoslash
+import { createApp } from "@senrijs/senri";
+const app = createApp();
+// ---cut---
+import { ValidationError } from "@senrijs/senri";
+
+app.onError((err, c) => {
+    if (err instanceof ValidationError) {
+        c.status(422);
+        return { target: err.target, issues: err.issues.map((i) => i.message) };
+    }
+    throw err;
+});
+```
+
+For the RFC 9457 format, you can also use `problemDetails({ validationErrors: true })` from [Problem Details](/en/docs/errors/problem-details).

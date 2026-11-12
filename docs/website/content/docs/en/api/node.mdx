@@ -1,5 +1,20 @@
 ---
 title: "/node"
+description: "@senrijs/senri/node: Running on node:http on Node.js"
 ---
 
-This page is coming soon.
+Running on `node:http` on Node.js.
+
+```ts
+import { ... } from "@senrijs/senri/node";
+```
+
+## Functions and classes
+
+| Name | What it does |
+| --- | --- |
+| [`serve(app, options)`](/en/docs/runtimes/node) | Starts on `node:http` and returns the `http.Server` |
+
+Unlike `serve()` from `@senrijs/senri/serve`, it does not choose the port, print the routes or handle shutdown.
+
+Source: [`adapters/node/index.ts`](https://github.com/Senrijs/Senri/blob/main/adapters/node/index.ts)

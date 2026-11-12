@@ -1,6 +1,54 @@
 ---
 title: "Response helpers"
-description: "c.html(), c.redirect(), cookies and more"
+description: "c.json(), c.text(), c.html() and c.redirect()"
 ---
 
-This page is coming soon.
+```ts twoslash
+import { createApp } from "@senrijs/senri";
+
+const app = createApp();
+
+app.post("/users", (_, c) => c.json({ id: 1 }, 201));
+app.get("/plain", (_, c) => c.text("not ready", 503));
+app.get("/", (_, c) => c.html("<h1>Hello</h1>"));         // text/html; charset=utf-8
+app.get("/old", (_, c) => c.redirect("/new", 301));       // 302 by default
+```
+
+| Write | Response |
+| --- | --- |
+| `c.json(data, status?)` | JSON |
+| `c.text(body, status?)` | `text/plain; charset=utf-8` |
+| `c.html(body, status?)` | `text/html; charset=utf-8` |
+| `c.redirect(location, status?)` | A 301, 302, 303, 307 or 308 redirect |
+
+The status given to `c.json()` and `c.text()` is kept in the type too, so a typed client gets a type for each status ([Typed client](/en/docs/typed-api/client)).
+
+## c.html()
+
+Returns the body as is. Escape user input yourself before putting it in.
+
+## c.redirect()
+
+- The status can only be 301, 302, 303, 307 or 308. It does not look at `c.status()`
+- Relative paths such as `/login` are fine
+- Its value wins over `c.header("location", ...)`
+- Non-ASCII characters are encoded the same way on every runtime
+- A value with CR or LF is an error. URLs to other sites pass, so check where a value from outside (such as `c.query("next")`) points before passing it (against open redirects)
+
+## Redirect with a cookie
+
+Headers added with `setCookie()` or `c.header()` are added to responses made by the helpers too.
+
+```ts twoslash
+import { createApp } from "@senrijs/senri";
+const app = createApp();
+// ---cut---
+import { setCookie } from "@senrijs/senri/cookie";
+
+app.post("/login", (_, c) => {
+    setCookie(c, "session", "abc");
+    return c.redirect("/dashboard", 303);
+});
+```
+
+In a browser Service Worker and with `app.fetch()` in a page, the browser removes `Set-Cookie` from a `Response`, so no cookie is set.

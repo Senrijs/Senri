@@ -1,5 +1,41 @@
 ---
 title: "Onion timeline"
+description: "See which middleware and handler each request went through, in which order, and how long each took"
 ---
 
-This page is coming soon.
+```ts twoslash
+import { createApp, logger } from "@senrijs/senri";
+import { devtools } from "@senrijs/senri/dev";
+
+const app = createApp({ dev: devtools() });
+
+app.use(logger());
+app.use(async function auth(c, next) {
+    await next();
+});
+app.get("/users/:id", ({ id }) => ({ id }));
+```
+
+Select a request in the [dashboard](/en/docs/dev/dashboard), and the layers it went through are shown nested. The picture below shows how they line up (the times are examples).
+
+```txt
+logger                  ████████████████████  3.4 ms (self 0.3 ms)
+└ auth                    ██████████████████  3.1 ms (self 0.2 ms)
+  └ GET /users/:id          ████████████████  2.9 ms
+```
+
+## Two times
+
+| Time | What it is |
+| --- | --- |
+| Including downstream | From entering the layer to leaving it, including the inner layers |
+| Self | The time including downstream, minus the time spent waiting in `next()` |
+
+The layer with a long "self" time is the slow one.
+
+- A layer's name is the middleware function's name. Name it, as in `app.use(async function auth(c, next) { ... })`, to tell layers apart
+- The layer that threw is shown too. Error pages show the same order and times
+
+## In production
+
+You can see the same onion in OpenTelemetry traces (`otel({ api, middlewareSpans: true })`; see [OpenTelemetry](/en/docs/production/otel)).

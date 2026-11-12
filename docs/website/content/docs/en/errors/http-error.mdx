@@ -1,6 +1,26 @@
 ---
 title: "HttpError"
-description: "Throw an error with a status code"
+description: "Throw HttpError to return a status and a message"
 ---
 
-This page is coming soon.
+```ts twoslash
+import { createApp, HttpError } from "@senrijs/senri";
+
+const app = createApp();
+
+app.get("/secret", () => {
+    throw new HttpError(403, "You cannot see this");   // the message is sent to the client as is
+});
+```
+
+```bash
+curl -i http://localhost:3927/secret
+# HTTP/1.1 403 Forbidden
+# You cannot see this
+```
+
+- The `message` of an `HttpError` is sent as is, even in production. Write only text the client may see
+- Other errors do not show their content in production: the response is only `500 Internal Server Error`. In development mode, the error page shows the message and the code
+- Errors from built-in middleware (401 from `basicAuth()`, 429 from `rateLimit()` and so on) are `HttpError`s too, with headers such as `WWW-Authenticate` and `Retry-After`
+
+To change the format of the response, use [onError](/en/docs/errors/on-error).

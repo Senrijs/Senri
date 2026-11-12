@@ -1,5 +1,33 @@
 ---
 title: "CORS"
+description: "Allow fetch from other origins with cors()"
 ---
 
-This page is coming soon.
+```ts twoslash
+import { createApp, cors } from "@senrijs/senri";
+
+const app = createApp();
+
+app.use("/api", cors({ origin: ["https://example.com"], credentials: true }));
+```
+
+- It answers preflight requests (OPTIONS with `Access-Control-Request-Method`) with 204 itself
+- It adds CORS headers to other responses. For origins that are not allowed, it adds nothing
+- Unless `origin` is `"*"`, it adds `Vary: Origin`
+- `origin` defaults to `"*"` (any origin). `credentials: true` cannot be used with `origin: "*"` (it throws)
+- With authentication such as `basicAuth()`, register `cors()` first, because preflight requests carry no credentials
+
+## Decide the origin with a function
+
+```ts twoslash
+import { createApp, cors } from "@senrijs/senri";
+const app = createApp();
+// ---cut---
+app.use(cors({ origin: (origin) => origin.endsWith(".example.com") }));
+```
+
+Returning `true` allows that origin, and returning a string sends that value. `false`, `null` or `undefined` denies it.
+
+## Options
+
+<AutoTypeTable path="../../src/middleware/cors.ts" name="CorsOptions" />

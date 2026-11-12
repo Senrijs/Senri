@@ -1,5 +1,83 @@
 ---
 title: "Typed client"
+description: "Make a client from the type of a route table with @senrijs/senri/client"
 ---
 
-This page is coming soon.
+Pass the type of a route table (`typeof routes`) to the client, and paths, parameters, the query, the body and the response are typed. The client only reads the server's types, so the server code does not go into the client bundle.
+
+```ts twoslash title="client.ts"
+// @filename: routes.ts
+import { defineRoutes, endpoint } from "@senrijs/senri";
+import { z } from "zod";
+export const routes = defineRoutes({
+    "GET /users/:id": ({ id }, c) => {
+        if (id === "0") return c.json({ message: "not found" }, 404);
+        return { id, name: "alice" };
+    },
+    "POST /users": endpoint({ body: z.object({ name: z.string() }) }, (_, c) => ({ created: c.valid("body").name })),
+});
+export type Api = typeof routes;
+declare global { function getToken(): string }
+// @filename: client.ts
+// ---cut---
+import { client } from "@senrijs/senri/client";
+import type { Api } from "./routes.ts";
+
+const api = client<Api>("https://example.com", {
+    headers: () => ({ authorization: `Bearer ${getToken()}` }),   // a function is called for each call
+});
+
+const res = await api("GET /users/:id", { params: { id: "1" } });
+if (res.ok) {
+    res.data;
+    //  ^?
+} else if (res.status === 404) {
+    res.error;
+    //  ^?
+}
+
+await api("POST /users", { body: { name: "a" } });   // the body has the schema's input type
+```
+
+## What is sent
+
+- Call it with the same string as the table key
+- `params` are encoded into the path
+- `query` values are turned into strings (arrays repeat the key)
+- `body` is sent as JSON. `FormData`, `URLSearchParams`, `Blob`, bytes and streams are sent as is
+
+## The result
+
+It returns `{ ok, status, data, error, response }`. A status other than 2xx does not throw (only network errors and broken JSON throw).
+
+- The body is read by Content-Type: JSON becomes a value, `text/*` a string, anything else a `Blob`
+- The type of `data` is the handler's return value after JSON (a `Date` becomes a `string`). With an `endpoint({ response })` schema, it is that schema's output type
+
+## Types per status
+
+When a handler returns `c.json(body, status)` or `c.text(body, status)` with a status, the result is typed per status. Schemas in `endpoint({ responses: { 404: schema } })` work the same way.
+
+- 2xx (such as `c.json(body, 201)`) goes into the successful `data`
+- `c.json(body)` without a status counts as 200. A status set with `c.status()` is not kept in the type
+- Responses from `onError`, middleware and `notFound` are not in the type: their `error` is `unknown`
+
+## Call without a server
+
+You can replace `fetch`.
+
+```ts twoslash
+import { createApp, defineRoutes } from "@senrijs/senri";
+const routes = defineRoutes({ "GET /ping": () => "pong" });
+const app = createApp();
+app.routes(routes);
+// ---cut---
+import { client } from "@senrijs/senri/client";
+
+const api = client<typeof routes>("http://localhost", { fetch: (req) => app.fetch(req) });
+```
+
+In tests, [`testClient()`](/en/docs/typed-api/testing), which also handles cookies, is handier.
+
+## Options
+
+<AutoTypeTable path="../../src/client.ts" name="ClientOptions" />

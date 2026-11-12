@@ -1,5 +1,32 @@
 ---
 title: "Static files"
+description: "Serve the files in a folder with serveStatic() from @senrijs/senri/static"
 ---
 
-This page is coming soon.
+```ts twoslash
+import { createApp } from "@senrijs/senri";
+import { serveStatic } from "@senrijs/senri/static";
+
+const app = createApp();
+
+app.use(serveStatic({ root: "./public", prefix: "/static", cacheControl: "public, max-age=3600" }));
+// GET /static/app.js → ./public/app.js
+```
+
+- It answers GET and HEAD. When no file matches, it calls `next()`, so later routes still run
+- It sends a weak `ETag` and `Last-Modified`, and answers 304 when the file has not changed
+- `Content-Type` comes from the extension (`application/octet-stream` if unknown)
+- For a folder, it serves the `index.html` in it (change it with `index`)
+- It works on Bun, Deno and Node.js. Cloudflare Workers cannot read files, so use [Static Assets](https://developers.cloudflare.com/workers/static-assets/) there
+
+## Options
+
+<AutoTypeTable path="../../adapters/static/index.ts" name="ServeStaticOptions" />
+
+## What it protects
+
+- It never serves files outside `root`, even through symbolic links. It checks the opened file itself, so a link swapped in while a request is handled does not lead outside either
+- Dotfiles (`.env`, `.git` and so on) are not served by default
+- On Windows and macOS, a path must spell each name exactly as on disk (case, short 8.3 names and trailing `.` do not match)
+
+Keep files that need protection outside `root`, rather than guarding part of `root` with `app.use(path, ...)`.

@@ -1,5 +1,35 @@
 ---
 title: "/jwt"
+description: "@senrijs/senri/jwt: Signing and verifying JWTs"
 ---
 
-This page is coming soon.
+Signing and verifying JWTs.
+
+```ts
+import { ... } from "@senrijs/senri/jwt";
+```
+
+## Functions and classes
+
+| Name | What it does |
+| --- | --- |
+| [`jwt(options)`](/en/docs/built-in/jwt) | Middleware that verifies JWTs |
+| [`signJwt(payload, key, options)`](/en/docs/built-in/jwt) | Signs a JWT |
+| [`verifyJwt(token, keys, options)`](/en/docs/built-in/jwt) | Verifies a JWT |
+| [`JwtError`](/en/docs/built-in/jwt) | The error for an invalid token (401) |
+
+## Types
+
+### JwtOptions
+
+<AutoTypeTable path="../../src/jwt.ts" name="JwtOptions" />
+
+### SignJwtOptions
+
+<AutoTypeTable path="../../src/jwt.ts" name="SignJwtOptions" />
+
+### VerifyJwtOptions
+
+<AutoTypeTable path="../../src/jwt.ts" name="VerifyJwtOptions" />
+
+Source: [`src/jwt.ts`](https://github.com/Senrijs/Senri/blob/main/src/jwt.ts)

@@ -1,6 +1,50 @@
 ---
 title: "serve() options"
-description: "Start a server on any runtime"
+description: "How the port is chosen, hostname, the body size limit and the startup banner"
 ---
 
-This page is coming soon.
+```ts twoslash
+import { createApp } from "@senrijs/senri";
+const app = createApp();
+// ---cut---
+import { serve } from "@senrijs/senri/serve";
+
+const server = await serve(app, {
+    port: 8080,
+    hostname: "127.0.0.1",
+    maxRequestBodySize: 1024 * 1024 * 1024,   // 1 GiB
+});
+
+server.url;          // "http://127.0.0.1:8080"
+await server.stop(); // stops after waiting for in-flight requests
+```
+
+`serve()` from `@senrijs/senri/serve` detects the runtime (Bun, Deno or Node.js) and starts the app. On start, it prints the URL and the registered routes (`banner: false` turns this off).
+
+## How the port is chosen
+
+The first one found is used:
+
+1. The `port` option (`0` picks a free port)
+2. The `PORT` environment variable
+3. `3927`
+
+- If `PORT` is not a number or out of range, it throws instead of silently listening on another port
+- On Deno, `PORT` is read only with permission to read it (`--allow-env=PORT`). Without it, `3927` is used without a prompt
+- Read the chosen port from `server.port`
+
+## Body size limit (maxRequestBodySize)
+
+The limit (in bytes) of bodies the whole server takes. Over it, the response is 413.
+
+- Without it, there is no limit on any runtime (it does not use the 128 MiB default of `Bun.serve` either)
+- With Content-Length, the request is refused before reading. Without it (chunked transfer), the body is counted as it is read
+- The limit for reading bodies is set by the app's `createApp({ maxBodySize })` (1 MiB by default) and a route's `bodyLimit()` ([Request bodies and limits](/en/docs/request-response/body))
+
+## Options
+
+<AutoTypeTable path="../../adapters/serve/index.ts" name="ServeOptions" />
+
+## Return value
+
+<AutoTypeTable path="../../adapters/serve/index.ts" name="Server" />

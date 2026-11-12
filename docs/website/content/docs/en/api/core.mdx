@@ -1,5 +1,52 @@
 ---
 title: "@senrijs/senri"
+description: "@senrijs/senri: The app, routes, Context, errors, validation and the built-in middleware"
 ---
 
-This page is coming soon.
+The app, routes, Context, errors, validation and the built-in middleware.
+
+```ts
+import { ... } from "@senrijs/senri";
+```
+
+## Functions and classes
+
+| Name | What it does |
+| --- | --- |
+| [`createApp(options?)`](/en/docs/getting-started/first-app) | Creates an app |
+| [`createRouter(prefix)`](/en/docs/routing/groups) | Creates a group of routes under a prefix |
+| [`defineRoutes(table)`](/en/docs/typed-api/define-routes) | Creates a typed route table |
+| [`endpoint(options, handler)`](/en/docs/typed-api/define-routes) | Creates a route with schemas or middleware |
+| [`mergeRoutes(...tables)`](/en/docs/typed-api/define-routes) | Merges route tables |
+| [`Context`](/en/docs/request-response/context) | The `c` that handlers and middleware receive |
+| [`HttpError`](/en/docs/errors/http-error) | An error with a status and a message |
+| [`ValidationError`](/en/docs/validation) | The error when a value does not pass a schema |
+| [`logger(), showRoutes()`](/en/docs/built-in/logger) | Logging and printing the routes |
+| [`health()`](/en/docs/built-in/health) | `/healthz` and `/readyz` |
+| [`cors()`](/en/docs/built-in/cors) | CORS |
+| [`csrf()`](/en/docs/built-in/csrf) | CSRF |
+| [`secureHeaders()`](/en/docs/built-in/secure-headers) | Security headers |
+| [`basicAuth(), bearerAuth()`](/en/docs/built-in/auth) | Basic and Bearer auth |
+| [`rateLimit()`](/en/docs/built-in/rate-limit) | Rate limiting |
+| [`ipRestriction()`](/en/docs/built-in/ip-restriction) | IP restriction |
+| [`bodyLimit()`](/en/docs/built-in/body-limit) | Body size limit |
+| [`uploadLimit(), safeFileName()`](/en/docs/built-in/upload-limit) | Upload limit and safe file names |
+| [`timeout()`](/en/docs/built-in/timeout) | Timeout |
+| [`compress()`](/en/docs/built-in/compress) | Compression |
+| [`etag()`](/en/docs/built-in/etag) | ETag |
+| [`cache()`](/en/docs/built-in/cache) | Cache-Control |
+| [`prettyJSON()`](/en/docs/built-in/pretty-json) | Pretty JSON |
+| [`requestId()`](/en/docs/built-in/request-id) | Request ID |
+| [`trailingSlash()`](/en/docs/built-in/trailing-slash) | Trailing slash |
+| [`methodOverride(app)`](/en/docs/built-in/method-override) | Method override |
+| [`languageDetector()`](/en/docs/built-in/language-detector) | Language detection |
+
+## Types
+
+### AppOptions
+
+<AutoTypeTable path="../../src/app.ts" name="AppOptions" />
+
+Main types: `App`, `Handler`, `Middleware`, `HandlerResult`, `RouteTable`, `TypedResponse`, `StandardSchemaV1`, `InferInput` and `InferOutput`. The option types of each middleware are on its page.
+
+Source: [`src/index.ts`](https://github.com/Senrijs/Senri/blob/main/src/index.ts)

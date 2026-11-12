@@ -1,5 +1,33 @@
 ---
 title: "Request ID"
+description: "Give each request an ID with requestId()"
 ---
 
-This page is coming soon.
+```ts twoslash
+import { createApp, requestId, type RequestIdVariables } from "@senrijs/senri";
+
+const app = createApp<RequestIdVariables>();
+
+app.use(requestId());
+app.get("/", (_, c) => `id: ${c.get("requestId")}`);
+```
+
+- It makes an ID for each request and puts it in `c.get("requestId")` and the response's `X-Request-Id`
+- Use it to find the same request in logs and traces
+
+## Use the incoming ID
+
+An incoming `X-Request-Id` is not used by default (anyone can send one). Behind a trusted proxy, set `trustIncoming: true`.
+
+```ts twoslash
+import { createApp, requestId } from "@senrijs/senri";
+const app = createApp();
+// ---cut---
+app.use(requestId({ trustIncoming: true }));
+```
+
+Only values of up to 128 characters of `A-Z a-z 0-9 . _ = + / -` are accepted. Anything else is replaced with a new ID.
+
+## Options
+
+<AutoTypeTable path="../../src/middleware/request-id.ts" name="RequestIdOptions" />

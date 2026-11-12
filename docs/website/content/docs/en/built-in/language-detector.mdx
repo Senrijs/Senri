@@ -1,5 +1,21 @@
 ---
 title: "Language detection"
+description: "Decide the language of a request with languageDetector()"
 ---
 
-This page is coming soon.
+```ts twoslash
+import { createApp, languageDetector, type LanguageVariables } from "@senrijs/senri";
+
+const app = createApp<LanguageVariables>();
+
+app.use(languageDetector({ supportedLanguages: ["ja", "en"], fallbackLanguage: "en" }));
+app.get("/", (_, c) => (c.get("language") === "ja" ? "こんにちは" : "Hello"));
+```
+
+- It looks at the query (`lang`), the cookie (`language`) and `Accept-Language`, in this order
+- `c.get("language")` is always one of `supportedLanguages`. If none matches, it is `fallbackLanguage`
+- It does not write the cookie. To remember the language, call `setCookie()` yourself
+
+## Options
+
+<AutoTypeTable path="../../src/middleware/language-detector.ts" name="LanguageDetectorOptions" />

@@ -1,5 +1,35 @@
 ---
 title: "/websocket"
+description: "@senrijs/senri/websocket: WebSocket routes"
 ---
 
-This page is coming soon.
+WebSocket routes.
+
+```ts
+import { ... } from "@senrijs/senri/websocket";
+```
+
+## Functions and classes
+
+| Name | What it does |
+| --- | --- |
+| [`upgradeWebSocket(create, options?)`](/en/docs/production/websocket) | Creates the handler of a WebSocket route |
+| [`websocket`](/en/docs/runtimes/bun) | The handlers to pass to `Bun.serve` |
+
+## Types
+
+### WebSocketEvents
+
+<AutoTypeTable path="../../src/websocket.ts" name="WebSocketEvents" />
+
+### WSConnection
+
+<AutoTypeTable path="../../src/websocket.ts" name="WSConnection" />
+
+### UpgradeWebSocketOptions
+
+<AutoTypeTable path="../../src/websocket.ts" name="UpgradeWebSocketOptions" />
+
+`attachNodeSocket`, `NODE_UPGRADE` and `UPGRADE_MARKER` are parts used by the Node.js adapter. Apps do not use them.
+
+Source: [`src/websocket.ts`](https://github.com/Senrijs/Senri/blob/main/src/websocket.ts)

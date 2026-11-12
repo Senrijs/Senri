@@ -1,6 +1,44 @@
 ---
 title: "Error and 404 pages"
-description: "Detailed error pages in the browser"
+description: "The code where the error happened, hints, opening it in your editor. \"Did you mean\" on 404s"
 ---
 
-This page is coming soon.
+```ts twoslash
+import { createApp } from "@senrijs/senri";
+import { devtools } from "@senrijs/senri/dev";
+
+const app = createApp({ dev: devtools() });
+
+app.get("/todos", () => []);
+app.get("/boom", () => {
+    throw new Error("Oops");
+});
+```
+
+Open http://localhost:3927/boom in the browser to see the error page.
+
+## Error page
+
+It is shown only when opened from a browser (when `Accept` has `text/html`). curl and the like get the error message as text.
+
+- The error message and type
+- The code around the line where the error happened, and hints
+- The stack trace
+- The middleware the request went through, in order, with times
+- **Open in editor:** open the error location in VS Code, Cursor, WebStorm (experimental) or Zed. Choose the editor on the page
+
+## 404 page
+
+Open a path that does not exist, and the closest route is shown as "did you mean" (for http://localhost:3927/todo, `GET /todos` and `Missing 1 character(s): "s"`). The registered routes are listed too.
+
+- Only paths that differ from a registered route by 3 characters or fewer get a suggestion
+- "Did you mean" appears only when no route matched. A 404 from `c.notFound()` does not show it
+- For a 405 (the path exists but not with that method), the methods that exist are shown
+
+## When they are replaced
+
+Setting `app.onError` or `app.notFound` also replaces the error and 404 pages. To keep them during development, set those only in production ([onError](/en/docs/errors/on-error)).
+
+## On Workers
+
+On Cloudflare Workers, error pages appear, but without the code.

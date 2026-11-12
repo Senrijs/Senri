@@ -1,5 +1,38 @@
 ---
 title: "Logging"
+description: "Log one line per request with logger(). Print the routes with showRoutes()"
 ---
 
-This page is coming soon.
+```ts twoslash
+import { createApp, logger } from "@senrijs/senri";
+
+const app = createApp();
+
+app.use(logger());                      // one colored line per request
+// app.use(logger({ format: "json" })); // JSON in the same shape as pino
+```
+
+- It prints the method, path, status and time, one line per request
+- Colors are on by default. When writing to a file or CI, set `color: false`
+- `{ format: "json" }` prints JSON in the same shape as pino
+- It also prints errors thrown by handlers (`c.error`)
+- Register it first to include the time of the other middleware
+
+## Print the routes
+
+`showRoutes(app, url)` prints the URL and the registered routes. `serve()` prints the same when it starts, so use this when you start the server with a runtime API yourself.
+
+```ts twoslash
+import { createApp, showRoutes } from "@senrijs/senri";
+const app = createApp();
+declare const Deno: { serve(options: { port: number }, handler: (req: Request) => Response | Promise<Response>): unknown };
+// ---cut---
+app.get("/", () => "hi");
+
+Deno.serve({ port: 3927 }, app.fetch);
+showRoutes(app, "http://localhost:3927");   // { color: false } for no colors
+```
+
+## Options
+
+<AutoTypeTable path="../../src/logger.ts" name="LoggerOptions" />

@@ -1,5 +1,30 @@
 ---
 title: "/client"
+description: "@senrijs/senri/client: A typed client made from the type of a route table"
 ---
 
-This page is coming soon.
+A typed client made from the type of a route table.
+
+```ts
+import { ... } from "@senrijs/senri/client";
+```
+
+## Functions and classes
+
+| Name | What it does |
+| --- | --- |
+| [`client<Api>(baseUrl, options?)`](/en/docs/typed-api/client) | Creates a client |
+
+## Types
+
+### ClientOptions
+
+<AutoTypeTable path="../../src/client.ts" name="ClientOptions" />
+
+### CallOptions
+
+<AutoTypeTable path="../../src/client.ts" name="CallOptions" />
+
+The result type is `ClientResultOf<Api, Key>`. The other types (`ClientData`, `ClientErrors` and so on) are the parts it is built from.
+
+Source: [`src/client.ts`](https://github.com/Senrijs/Senri/blob/main/src/client.ts)

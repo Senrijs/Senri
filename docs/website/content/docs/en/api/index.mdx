@@ -1,6 +1,29 @@
 ---
 title: "Entry points"
-description: "Functions and types"
+description: "The entry points of @senrijs/senri and what each one has"
 ---
 
-This page is coming soon.
+Senri splits its features into entry points. Code from entry points you do not use is not bundled. The entry points are the same on npm and JSR.
+
+| Entry point | Contents |
+| --- | --- |
+| [`@senrijs/senri`](/en/docs/api/core) | The app, routes, Context, errors, validation and the built-in middleware |
+| [`@senrijs/senri/dev`](/en/docs/api/dev) | Development mode |
+| [`@senrijs/senri/cookie`](/en/docs/api/cookie) | Reading, setting and deleting cookies. Signed cookies |
+| [`@senrijs/senri/ip`](/en/docs/api/ip) | The client IP |
+| [`@senrijs/senri/streaming`](/en/docs/api/streaming) | Sending a response bit by bit. Server-Sent Events |
+| [`@senrijs/senri/multipart`](/en/docs/api/multipart) | Reading large uploads without buffering them in memory |
+| [`@senrijs/senri/problem`](/en/docs/api/problem) | RFC 9457 Problem Details |
+| [`@senrijs/senri/jwt`](/en/docs/api/jwt) | Signing and verifying JWTs |
+| [`@senrijs/senri/client`](/en/docs/api/client) | A typed client made from the type of a route table |
+| [`@senrijs/senri/testing`](/en/docs/api/testing) | Calling an app without a server |
+| [`@senrijs/senri/websocket`](/en/docs/api/websocket) | WebSocket routes |
+| [`@senrijs/senri/openapi`](/en/docs/api/openapi) | Making an OpenAPI document from a route table |
+| [`@senrijs/senri/otel`](/en/docs/api/otel) | OpenTelemetry traces |
+| [`@senrijs/senri/metrics`](/en/docs/api/metrics) | Prometheus metrics |
+| [`@senrijs/senri/node`](/en/docs/api/node) | Running on `node:http` on Node.js |
+| [`@senrijs/senri/serve`](/en/docs/api/serve) | Starting the app on the detected runtime |
+| [`@senrijs/senri/static`](/en/docs/api/static) | Static files |
+| [`@senrijs/senri/context-storage`](/en/docs/api/context-storage) | Getting `c` from anywhere |
+
+The type tables are generated from the source types and their JSDoc.

@@ -1,6 +1,38 @@
 ---
 title: "Not found"
-description: "c.notFound() and 404 responses"
+description: "Decide the 404 response with app.notFound, and hand over to it with c.notFound()"
 ---
 
-This page is coming soon.
+```ts twoslash
+import { createApp } from "@senrijs/senri";
+
+const app = createApp();
+const items = new Map<string, { name: string }>();
+
+app.notFound((c) => `Not found: ${c.path}`);
+
+app.get("/items/:id", ({ id }, c) => {
+    const item = items.get(id);
+    if (!item) return c.notFound();   // hand over to the app.notFound handler
+    return item;
+});
+```
+
+- Requests that match no route go to the `app.notFound` handler, or to the default 404 if there is none
+- When the route exists but the item does not, `c.notFound()` hands over to the same place. Middleware can call it too
+
+## Write return c.notFound()
+
+`c.notFound()` stops by throwing, so code after `c.notFound();` does not run either way. Still write `return`: in a handler where `c` is not explicitly typed, TypeScript does not know that it stops here, and `item` stays possibly `undefined`.
+
+## Difference from HttpError(404)
+
+It is almost the same as `new HttpError(404)`, but it goes to `app.notFound` instead of `onError`.
+
+- `await next()` in outer middleware does not throw: it returns the 404 response. Check `res.status`
+- A `try` / `catch` in the same function catches it. Rethrow with `if (err instanceof HttpError) throw err`
+- Headers added with `c.header()` (`Set-Cookie`, CORS and so on) are added to the 404 too
+- Called from an app mounted with `app.route()`, the parent's handler is used
+- Called inside the `app.notFound` handler, it gives the default 404. Called inside `onError`, it gives a fixed 500
+
+The development 404 page shows "did you mean" only when no route matched.

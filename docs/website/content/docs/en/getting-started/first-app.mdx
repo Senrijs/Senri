@@ -1,6 +1,111 @@
 ---
 title: "Your first app"
-description: "Write a route and start the server"
+description: "Add routes and see what you return become the response. Open the development error page and dashboard"
 ---
 
-This page is coming soon.
+Start from the Bun template and add three routes. On Node.js and Deno, only the start command is different.
+
+<Steps>
+<Step>
+
+### Create and start the app
+
+```bash
+npm create senri@latest my-app -- --template bun
+cd my-app
+bun install
+bun run dev
+```
+
+When it starts, it prints the URL and the registered routes.
+
+```txt
+  senr/  ready  http://localhost:3927  (default; change it with the PORT environment variable)
+
+    GET     /
+    GET     /users/:id
+```
+
+</Step>
+<Step>
+
+### Add a route that returns a string
+
+Add it to `src/index.ts`. Write `:name` in the path and the handler receives it in its first argument. Its type comes from the path.
+
+```ts twoslash title="src/index.ts"
+import { createApp } from "@senrijs/senri";
+const app = createApp();
+// ---cut---
+app.get("/hello/:name", ({ name }) => `Hello, ${name}`);
+//                         ^?
+```
+
+```bash
+curl http://localhost:3927/hello/senri
+# Hello, senri (Content-Type: text/plain)
+```
+
+</Step>
+<Step>
+
+### Add a route that returns JSON
+
+Return an object or an array to send JSON.
+
+```ts twoslash title="src/index.ts"
+import { createApp } from "@senrijs/senri";
+const app = createApp();
+// ---cut---
+app.get("/todos", () => [{ id: 1, title: "Buy milk", done: false }]);
+```
+
+```bash
+curl http://localhost:3927/todos
+# [{"id":1,"title":"Buy milk","done":false}] (Content-Type: application/json)
+```
+
+</Step>
+<Step>
+
+### Look at the error page
+
+Add a route that throws on purpose, and open http://localhost:3927/boom in the browser.
+
+```ts twoslash title="src/index.ts"
+import { createApp } from "@senrijs/senri";
+const app = createApp();
+// ---cut---
+app.get("/boom", () => {
+    throw new Error("Oops");
+});
+```
+
+In development mode, the page shows the error message and the code that threw it. In production (`NODE_ENV=production`), the response is only `500 Internal Server Error`.
+
+Next, open http://localhost:3927/todo, which is `/todos` from step 3 with one letter missing. The 404 page shows "did you mean: GET /todos" and `Missing 1 character(s): "s"`.
+
+- Only paths that differ from a registered route by 3 characters or fewer get a suggestion. With only the template's routes (`/` and `/users/:id`), `/todo` gets no suggestion
+- The page follows the browser's language: in Japanese, the suggestion reads `もしかして:`
+
+</Step>
+<Step>
+
+### Look at the dashboard
+
+Open http://localhost:3927/_senri to see the requests that came in. Select one to see which middleware and handler it went through, in which order, and how many milliseconds each took.
+
+</Step>
+</Steps>
+
+<Callout title="When development mode is on">
+  Only when you write `createApp({ dev: devtools() })`. With `NODE_ENV=production` it does nothing, so even if you forget to remove it, error pages and the dashboard do not appear in production.
+</Callout>
+
+## Read next
+
+<Cards>
+  <Card title="Routes" href="/en/docs/routing/routes" description="Methods and handler arguments" />
+  <Card title="Return values" href="/en/docs/routing/return-values" description="What you return and what is sent" />
+  <Card title="Runtimes" href="/en/docs/runtimes/bun" description="Bun, Node.js, Deno, Workers and the browser" />
+</Cards>

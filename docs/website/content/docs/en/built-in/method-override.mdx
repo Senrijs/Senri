@@ -1,5 +1,31 @@
 ---
 title: "Method override"
+description: "Let HTML forms send PUT, PATCH and DELETE with methodOverride()"
 ---
 
-This page is coming soon.
+```ts twoslash
+import { createApp, methodOverride } from "@senrijs/senri";
+import { serve } from "@senrijs/senri/serve";
+
+const app = createApp();
+app.delete("/posts/:id", ({ id }) => `deleted ${id}`);
+
+await serve(methodOverride(app));
+```
+
+```html
+<form method="post" action="/posts/1">
+  <input type="hidden" name="_method" value="DELETE" />
+  <button>Delete</button>
+</form>
+```
+
+- It wraps the app (`app.fetch`), not as middleware, because routes are decided before middleware runs
+- On Cloudflare Workers, write `export default methodOverride(app)`
+- Only POST can be overridden
+- `multipart/form-data` forms are not read. Use the `X-HTTP-Method-Override` header for those
+- With it, on Node.js every request leaves the fast path that skips creating `Request` and `Response`
+
+## Options
+
+<AutoTypeTable path="../../src/middleware/method-override.ts" name="MethodOverrideOptions" />

@@ -1,5 +1,25 @@
 ---
 title: "Health checks"
+description: "Answer /healthz and /readyz with health()"
 ---
 
-This page is coming soon.
+```ts twoslash
+import { createApp, health } from "@senrijs/senri";
+declare const db: { isConnected(): boolean };
+
+const app = createApp();
+
+app.use(health({ ready: () => db.isConnected() }));
+```
+
+| Path | Answer |
+| --- | --- |
+| `/healthz` | 200 if the app can answer (liveness) |
+| `/readyz` | 200 if `ready()` returns `true`. 503 on `false`, on an exception, and after shutdown has started (readiness) |
+
+- On SIGTERM, `serve()` first makes `/readyz` return 503, so that load balancers stop sending new requests ([Graceful shutdown](/en/docs/production/graceful-shutdown))
+- The paths can be changed. Set one to `false` to leave it out
+
+## Options
+
+<AutoTypeTable path="../../src/health.ts" name="HealthOptions" />
