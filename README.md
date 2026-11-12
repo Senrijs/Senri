@@ -114,7 +114,7 @@ export default app;
 - 変数の型も決めるときは `createApp<{ Bindings: Env; Variables: { user: User } }>()` と書きます。変数だけなら、今までどおり `createApp<{ user: User }>()` です
 - `getIp(c)`(`@senrijs/senri/ip`)は、Cloudflare が付ける `CF-Connecting-IP` を読みます(Workers で動いているときだけ)
 - 開発モードのダッシュボードは作りません(`/_senri` はふつうの 404)。エラーページは出ますが、該当コードは出ません
-- wrangler は1つのファイルにまとめるので、`dev: devtools()` を残すと、開発用のコード(約 190KB)もバンドルに入ります。本番のビルドでは外してください
+- wrangler は1つのファイルにまとめるので、`dev: devtools()` を残すと、開発用のコード(約 200KB)もバンドルに入ります。本番のビルドでは外してください
 - Workers では `NODE_ENV` が読めないので、`devtools()` は `localhost` へのリクエスト(`wrangler dev`)のときだけ開発用の出力をします([開発モード](#開発モード))
 - 静的ファイルは `@senrijs/senri/static` ではなく、Workers の [Static Assets](https://developers.cloudflare.com/workers/static-assets/) で配ってください
 
