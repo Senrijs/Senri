@@ -324,7 +324,7 @@ const auth: Middleware<{ user: User }> = async (c, next) => {
 
 // 表の全部のルートに付ける(前置きがなければ "")
 export const adminRoutes = defineRoutes("/admin", { use: [auth] })({
-    "GET /me": (_, c) => c.get("user"),                                         // User | undefined
+    "GET /me": (_, c) => ({ user: c.get("user") }),                             // c.get("user") は User | undefined
     // このルートだけに付ける
     "DELETE /users/:id": endpoint({ use: [requireOwner], params: idSchema }, ({ id }) => deleteUser(id)),
 });
@@ -682,7 +682,7 @@ import { jwt, signJwt, verifyJwt, type JwtVariables } from "@senrijs/senri/jwt";
 const app = createApp<JwtVariables>();
 app.post("/login", async () => ({ token: await signJwt({ sub: "42" }, env.JWT_SECRET, { alg: "HS256", expiresIn: 3600 }) }));
 app.use("/api", jwt({ keys: env.JWT_SECRET, algorithms: ["HS256"] }));   // Authorization: Bearer <token>(cookie: "名前" で Cookie から)
-app.get("/api/me", (_, c) => c.get("jwtPayload"));
+app.get("/api/me", (_, c) => ({ payload: c.get("jwtPayload") }));      // c.get() は JwtPayload | undefined なので、そのままは返せない
 ```
 
 - **`algorithms` は必須です。** トークンの `alg` が、この中にあるときだけ確かめます。`none` は受け付けません
