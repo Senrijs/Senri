@@ -119,14 +119,39 @@ type BunSocket = {
     send(data: any): unknown;
     close(code?: number, reason?: string): void;
 };
-type BunState = { events: WebSocketEvents; emit?: ReturnType<typeof emitter> };
+type BunState = { events: WebSocketEvents; emit?: Emitter };
+
+// JSR の slow types のチェック(公開する値には型を書く)のため、websocket の型を書いて出す
+// 中の印(BUN_EVENTS)を見せないよう、公開の型では data を unknown にして、中で BunSocket として読む(型だけ。実行時は同じ)
+/** The part of Bun's `ServerWebSocket` that {@link websocket} uses. */
+export type BunServerWebSocket = {
+    /** The state of the connection (`WebSocket.OPEN` and so on). */
+    readonly readyState: number;
+    /** The `data` given to `server.upgrade()`. */
+    readonly data: unknown;
+    /** Sends a message. */
+    send(data: any): unknown;
+    /** Closes the connection. */
+    close(code?: number, reason?: string): void;
+};
+
+/** The type of {@link websocket}: the `websocket` handlers for `Bun.serve`. */
+export type BunWebSocketHandlers = {
+    /** Called when a connection opens. */
+    open(socket: BunServerWebSocket): void;
+    /** Called for each message. */
+    message(socket: BunServerWebSocket, message: string | Uint8Array): void;
+    /** Called when a connection closes. */
+    close(socket: BunServerWebSocket, code: number, reason: string): void;
+};
 
 /**
  * The `websocket` handlers to pass to `Bun.serve` when you call it yourself:
  * `Bun.serve({ fetch: app.fetch, websocket })`. `serve()` from `@senrijs/senri/serve` passes it for you.
  */
-export const websocket = {
-    open(socket: BunSocket): void {
+export const websocket: BunWebSocketHandlers = {
+    open(raw) {
+        const socket = raw as BunSocket;
         const state = socket.data?.[BUN_EVENTS];
         if (!state) return;
         state.emit = emitter(
@@ -135,11 +160,11 @@ export const websocket = {
         );
         state.emit.open();
     },
-    message(socket: BunSocket, message: string | Uint8Array): void {
-        socket.data?.[BUN_EVENTS]?.emit?.message(typeof message === "string" ? message : toData(message));
+    message(socket, message) {
+        (socket as BunSocket).data?.[BUN_EVENTS]?.emit?.message(typeof message === "string" ? message : toData(message));
     },
-    close(socket: BunSocket, code: number, reason: string): void {
-        socket.data?.[BUN_EVENTS]?.emit?.close(code, reason ?? "");
+    close(socket, code, reason) {
+        (socket as BunSocket).data?.[BUN_EVENTS]?.emit?.close(code, reason ?? "");
     },
 };
 
@@ -181,7 +206,14 @@ function textOf(data: unknown): string {
 
 // 利用者のハンドラーを呼ぶ。投げたもの(reject したもの)は onError に回し、onError も投げたらログに出す
 // (Node の ws では、イベントの中で投げるとプロセスごと落ちるので、ここで必ず受け止める)
-function emitter(events: WebSocketEvents, ws: WSConnection) {
+type Emitter = {
+    open(): void;
+    message(data: WebSocketData): void;
+    close(code: number, reason: string): void;
+    error(error: unknown): void;
+};
+
+function emitter(events: WebSocketEvents, ws: WSConnection): Emitter {
     const report = (error: unknown, fromOnError = false) => {
         if (!fromOnError && events.onError) return run(() => events.onError!(error, ws), true);
         console.error("[senri] A WebSocket handler threw:", error);
