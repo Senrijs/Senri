@@ -1,6 +1,47 @@
 ---
 title: "ブラウザ(Service Worker)"
-description: "ブラウザの Service Worker の中で動かす"
+description: "Service Worker の fetch に答える。ページの中で app.fetch を呼ぶ"
 ---
 
-このページは準備中です。
+Service Worker の `fetch` イベントに、そのまま答えられます。サーバーなしで、ページからの `fetch` に Senri が返事をします。
+
+```ts twoslash title="sw.ts"
+// @lib: esnext,webworker
+declare const self: ServiceWorkerGlobalScope;
+// ---cut---
+import { createApp } from "@senrijs/senri";
+
+const app = createApp();
+app.get("/api/todos/:id", ({ id }) => ({ id, done: false }));
+
+self.addEventListener("fetch", (event) => {
+    if (new URL(event.request.url).pathname.startsWith("/api/")) {
+        event.respondWith(app.fetch(event.request));
+    }
+});
+```
+
+`sw.ts` は、`bun build` や Vite で 1 つのファイルにまとめてから、ページで登録します。
+
+```ts
+navigator.serviceWorker.register("/sw.js");
+```
+
+- `/api/` 以外のリクエストには答えないので、ふつうどおりネットワークに行きます
+- Service Worker の型を使うには、tsconfig の `lib` に `"webworker"` を入れて、`declare const self: ServiceWorkerGlobalScope;` と書きます
+
+## ページの中で app.fetch を呼ぶ
+
+Service Worker を使わずに、ページの中で `app.fetch` を直接呼ぶこともできます。テストや、サーバーの動きをまねるのに使えます。
+
+```ts twoslash
+import { createApp } from "@senrijs/senri";
+
+const app = createApp();
+app.get("/api/todos/:id", ({ id }) => ({ id, done: false }));
+
+const res = await app.fetch(new Request("http://localhost/api/todos/1"));
+await res.json();   // { id: "1", done: false }
+```
+
+Chromium のページと Service Worker の両方で動くことを、CI で確かめています。

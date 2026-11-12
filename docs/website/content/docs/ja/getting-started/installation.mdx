@@ -1,6 +1,84 @@
 ---
 title: "インストール"
-description: "新しいプロジェクトを作るか、既存のプロジェクトに入れる"
+description: "npm create senri で新しいアプリを作る。既存のプロジェクトに入れる"
 ---
 
-このページは準備中です。
+## 新しいアプリを作る
+
+```npm
+npm create senri@latest my-app
+```
+
+ランタイム(Bun・Node.js・Deno・Cloudflare Workers)を聞かれるので、選びます。作り終わると、動かすコマンドが表示されます。
+
+```bash
+cd my-app
+npm install
+npm run dev   # → http://localhost:3927
+```
+
+フォルダ名と `--template` の両方を渡すと、何も聞かれずに作れます。
+
+```npm
+npm create senri@latest my-app -- --template bun
+```
+
+| `--template` | ランタイム | 起動 | URL |
+| --- | --- | --- | --- |
+| `bun` | Bun | `bun install` → `bun run dev` | http://localhost:3927 |
+| `node` | Node.js | `npm install` → `npm run dev` | http://localhost:3927 |
+| `deno` | Deno | `deno task dev` | http://localhost:3927 |
+| `workers` | Cloudflare Workers | `npm install` → `npm run dev` | http://localhost:8787 |
+
+`dev` で起動すると、ファイルを書き換えたときに再起動します。
+
+## できるもの
+
+Bun の雛形(`--template bun`)では、次のファイルができます。
+
+<Files>
+  <Folder name="my-app" defaultOpen>
+    <Folder name="src" defaultOpen>
+      <File name="index.ts" />
+    </Folder>
+    <File name=".gitignore" />
+    <File name="package.json" />
+    <File name="README.md" />
+    <File name="tsconfig.json" />
+  </Folder>
+</Files>
+
+```ts twoslash title="src/index.ts"
+import { createApp } from "@senrijs/senri";
+import { devtools } from "@senrijs/senri/dev";
+import { serve } from "@senrijs/senri/serve";
+
+const app = createApp({ dev: devtools() });
+
+app.get("/", () => "Hello, Senri!");
+app.get("/users/:id", ({ id }) => ({ id }));
+
+serve(app);
+```
+
+- Node.js の雛形も同じ形です
+- Deno の雛形は、`package.json` の代わりに `deno.json` があり、入口は `src/main.ts` です
+- Cloudflare Workers の雛形は、`serve(app)` の代わりに `export default app` と書き、`wrangler.jsonc` があります
+
+## 既存のプロジェクトに入れる
+
+```npm
+npm i @senrijs/senri
+```
+
+Deno では、JSR から入れます(タブの「deno」の `deno add jsr:@senrijs/senri`)。
+
+## 対応するバージョン
+
+- **Node.js:** 22 以降。Node.js の雛形は、TypeScript をそのまま動かすので 22.18 以降です
+- **Bun・Deno:** CI で、その時点の最新の版で確かめています
+- **Cloudflare Workers:** 雛形の `compatibility_date` は `2026-10-01` です
+
+<Cards>
+  <Card title="最初のアプリ" href="/docs/getting-started/first-app" description="ルートを足して、開発モードを見る" />
+</Cards>

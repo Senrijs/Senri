@@ -1,0 +1,9 @@
+{
+  "title": "Typed APIs",
+  "pages": [
+    "define-routes",
+    "client",
+    "testing",
+    "openapi"
+  ]
+}

@@ -1,6 +1,63 @@
 ---
 title: "Node.js"
-description: "Node.js で動かす"
+description: "Node.js で動かす。TypeScript をそのまま動かす、@senrijs/senri/node"
 ---
 
-このページは準備中です。
+```ts twoslash title="src/index.ts"
+import { createApp } from "@senrijs/senri";
+import { serve } from "@senrijs/senri/serve";
+
+const app = createApp();
+app.get("/", () => "Hello, Node.js!");
+
+await serve(app);   // http://localhost:3927
+```
+
+```bash
+node --watch src/index.ts   # 書き換えると再起動する(雛形の npm run dev)
+```
+
+新しく作るなら、雛形を使うのが早道です。
+
+```npm
+npm create senri@latest my-app -- --template node
+```
+
+## 対応する版
+
+- Senri は Node.js 22 以降で動きます
+- 雛形は、TypeScript をビルドせずに `node src/index.ts` で動かします。これには Node.js 22.18 以降が要ります
+
+<Callout title="TypeScript をそのまま動かすとき">
+  Node.js は型を消して動かすだけです。`enum` のように JavaScript にない書き方は使えません。また、自分のファイルを import するときは `./routes.ts` のように拡張子まで書きます。
+</Callout>
+
+## serve() がすること
+
+`@senrijs/senri/serve` の `serve()` は、Node.js では `node:http` で起動します。そのとき、次のこともします。
+
+- ポートを決める(`port` オプション → 環境変数 `PORT` → `3927`)
+- 起動したときに、URL とルートの一覧を表示する
+- SIGTERM / SIGINT を受けたら、処理中のリクエストを待ってから止める
+
+## @senrijs/senri/node で起動する
+
+`node:http` のサーバーを自分で扱いたいときは、`@senrijs/senri/node` の `serve()` を使います。戻り値は `http.Server` です。上の「serve() がすること」はしません。
+
+```ts twoslash
+import { createApp } from "@senrijs/senri";
+const app = createApp();
+// ---cut---
+import { serve } from "@senrijs/senri/node";
+
+const server = serve(app, { port: 3927 });
+server.once("listening", () => console.log("listening"));
+```
+
+## 本番で動かす
+
+`NODE_ENV=production` を付けて起動します。`devtools()` を残していても、開発用の出力をしなくなります。
+
+```bash
+NODE_ENV=production node src/index.ts
+```

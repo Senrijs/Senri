@@ -1,0 +1,26 @@
+{
+  "title": "Built-in middleware",
+  "pages": [
+    "index",
+    "cors",
+    "csrf",
+    "secure-headers",
+    "auth",
+    "jwt",
+    "rate-limit",
+    "ip-restriction",
+    "body-limit",
+    "upload-limit",
+    "timeout",
+    "compress",
+    "etag",
+    "cache",
+    "pretty-json",
+    "request-id",
+    "trailing-slash",
+    "method-override",
+    "language-detector",
+    "logger",
+    "health"
+  ]
+}

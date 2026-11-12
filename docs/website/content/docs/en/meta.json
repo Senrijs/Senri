@@ -1,17 +1,26 @@
 {
   "pages": [
+    "---Getting started---",
     "index",
-    "getting-started",
+    "...getting-started",
     "runtimes",
+    "---Basics---",
     "routing",
     "request-response",
     "validation",
     "middleware",
     "errors",
-    "dev",
-    "performance",
+    "---Typed APIs---",
+    "...typed-api",
+    "---Built-in middleware---",
+    "...built-in",
+    "---Production---",
+    "...production",
+    "---Development mode---",
+    "...dev",
+    "---Reference---",
     "api",
-    "migrate-0-3-0",
-    "samples"
+    "---Migration---",
+    "migrate-0-3-0"
   ]
 }

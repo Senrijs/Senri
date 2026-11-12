@@ -1,6 +1,60 @@
 ---
 title: "Deno"
-description: "Deno で動かす"
+description: "Deno で動かす。JSR から入れる、許可のフラグ、Deno.serve に直接渡す"
 ---
 
-このページは準備中です。
+```ts twoslash title="src/main.ts"
+import { createApp } from "@senrijs/senri";
+import { serve } from "@senrijs/senri/serve";
+
+const app = createApp();
+app.get("/", () => "Hello, Deno!");
+
+await serve(app);   // http://localhost:3927
+```
+
+```bash
+deno run --watch --allow-net --allow-env=PORT,NODE_ENV src/main.ts   # 雛形の deno task dev
+```
+
+新しく作るなら、雛形を使うのが早道です。
+
+```bash
+deno run -A npm:create-senri my-app --template deno
+```
+
+既存のプロジェクトには、JSR から入れます。
+
+```bash
+deno add jsr:@senrijs/senri
+```
+
+## 許可のフラグ
+
+| フラグ | 要るとき |
+| --- | --- |
+| `--allow-net` | いつも(待ち受けるため) |
+| `--allow-env=PORT` | 環境変数 `PORT` でポートを決めたいとき。許可がなければ、聞き返さずに `3927` を使う |
+| `--allow-env=NODE_ENV` | `devtools()` を使うとき。許可がなければ、本番かどうか分からないので、開発モードにしない(1 行の案内を出す) |
+
+## Deno.serve に直接渡す
+
+`Deno.serve` を自分で呼ぶときは、`app.fetch` を渡します。
+
+```ts twoslash
+declare const Deno: { serve(options: { port?: number }, handler: (req: Request) => Response | Promise<Response>): unknown };
+import { createApp } from "@senrijs/senri";
+const app = createApp();
+// ---cut---
+Deno.serve({ port: 3927 }, app.fetch);
+```
+
+このときは、ポートの決め方、ルートの一覧の表示、止めるときに処理中のリクエストを待つことは、`serve()` と違って自分で決めます。
+
+## 本番で動かす
+
+`NODE_ENV=production` を付けて起動します。`devtools()` を残していても、開発用の出力をしなくなります。
+
+```bash
+NODE_ENV=production deno run --allow-net --allow-env=PORT,NODE_ENV src/main.ts
+```

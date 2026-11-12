@@ -1,9 +1,12 @@
 {
   "title": "リクエストとレスポンス",
   "pages": [
+    "context",
     "request",
+    "body",
     "response-helpers",
     "streaming",
-    "multipart"
+    "multipart",
+    "static"
   ]
 }

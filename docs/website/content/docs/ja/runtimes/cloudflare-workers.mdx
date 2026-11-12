@@ -1,6 +1,56 @@
 ---
 title: "Cloudflare Workers"
-description: "Cloudflare Workers で動かす"
+description: "Workers で動かす。export default app、c.env と c.executionCtx、デプロイ"
 ---
 
-このページは準備中です。
+アプリをそのまま `export default` します。Workers が `app.fetch(request, env, ctx)` を呼びます。
+
+```ts twoslash title="src/index.ts"
+import { createApp } from "@senrijs/senri";
+
+const app = createApp();
+app.get("/", () => "Hello, Workers!");
+
+export default app;
+```
+
+```bash
+npx wrangler dev      # http://localhost:8787(雛形の npm run dev)
+npx wrangler deploy   # デプロイする(雛形の npm run deploy)
+```
+
+新しく作るなら、雛形を使うのが早道です。
+
+```npm
+npm create senri@latest my-app -- --template workers
+```
+
+## c.env と c.executionCtx
+
+`wrangler.jsonc` に書いた変数やバインディングは、`c.env` で読めます。`createApp<{ Bindings: Env }>()` で型を付けます。
+
+```ts twoslash title="src/index.ts"
+declare function logSomewhere(): Promise<void>;
+// ---cut---
+import { createApp } from "@senrijs/senri";
+
+type Env = { GREETING: string };
+const app = createApp<{ Bindings: Env }>();
+
+app.get("/", (_, c) => {
+    c.executionCtx.waitUntil(logSomewhere());   // 応答のあとも続ける処理
+    return c.env.GREETING;
+    //           ^?
+});
+
+export default app;
+```
+
+`c.set()` / `c.get()` で使う変数の型も決めるときは、`createApp<{ Bindings: Env; Variables: { user: User } }>()` と書きます。
+
+## Workers での違い
+
+- **開発モード:** Workers では `NODE_ENV` が読めないので、`devtools()` は `localhost` へのリクエスト(`wrangler dev`)のときだけ開発用の出力をします。エラーページは出ますが、該当するコードは出ません。`/_senri` のダッシュボードはありません
+- **バンドルの大きさ:** wrangler は 1 つのファイルにまとめるので、`dev: devtools()` を残すと、開発用のコードもバンドルに入ります。本番のビルドでは外してください
+- **静的ファイル:** `@senrijs/senri/static` ではなく、Workers の [Static Assets](https://developers.cloudflare.com/workers/static-assets/) で配ります
+- **IP:** `@senrijs/senri/ip` の `getIp(c)` は、Cloudflare が付ける `CF-Connecting-IP` を読みます

@@ -1,9 +1,10 @@
 {
-  "title": "Dev Mode (devtools)",
+  "title": "Development mode",
   "pages": [
     "devtools",
     "error-pages",
     "dashboard",
+    "timeline",
     "server-timing"
   ]
 }

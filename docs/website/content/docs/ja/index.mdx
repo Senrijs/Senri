@@ -1,6 +1,36 @@
 ---
 title: "Senri とは"
-description: "Web 標準で作った小さな Web フレームワーク"
+description: "Web 標準の Request / Response だけで書かれた、小さな Web フレームワーク"
 ---
 
-このページは準備中です。
+Senri は、Web 標準の `Request` と `Response` だけで書かれた、小さな Web フレームワークです。Bun・Node.js・Deno・Cloudflare Workers・ブラウザ(Service Worker)で、同じコードが動きます。
+
+```ts twoslash
+import { createApp } from "@senrijs/senri";
+import { devtools } from "@senrijs/senri/dev";
+import { serve } from "@senrijs/senri/serve";
+
+const app = createApp({ dev: devtools() });
+
+app.get("/hello", () => "こんにちは");          // 文字列 → text/plain
+app.get("/users/:id", ({ id }) => ({ id }));    // オブジェクト → JSON
+//                       ^?
+
+await serve(app);   // Bun でも Node.js でも Deno でも
+```
+
+## 特徴
+
+- **返した値がレスポンスになる。** 文字列はテキスト、オブジェクトは JSON になります。`Response` もそのまま返せます
+- **型はパスから付く。** `/users/:id` と書けば、ハンドラーの `id` に型が付きます。[Standard Schema](https://standardschema.dev)(Zod・Valibot・ArkType など)で、パラメーター・クエリ・本文も確かめられます
+- **開発モードが親切。** エラーページには、該当するコードとヒントが出ます。404 には「もしかして」が出ます。`/_senri` のダッシュボードでは、リクエストがミドルウェアを通った様子を見られます
+- **どこでも動く。** Web 標準の API だけで書いていて、`eval` も `new Function` も使いません
+- **小さい。** 最小のアプリをまとめると、gzip 後で約 7 KB です。開発モードのコードは、本番のビルドに入りません
+
+## 次に読む
+
+<Cards>
+  <Card title="インストール" href="/docs/getting-started/installation" description="npm create senri で、すぐ動くアプリを作る" />
+  <Card title="最初のアプリ" href="/docs/getting-started/first-app" description="ルートを足して、開発モードを見る" />
+  <Card title="ランタイムごとの動かし方" href="/docs/runtimes/bun" description="Bun・Node.js・Deno・Workers・ブラウザ" />
+</Cards>
