@@ -28,6 +28,18 @@ jobs:
       - run: bun test
       - run: bun run test:node
 
+  # JSR に公開できるか(slow types のチェックなど)。公開のとき(publish.yml の npx jsr publish)と同じ確かめを、PR のうちに行う
+  # 0.2.22〜0.3.0 は、公開する値に型の注釈がなく(slow types)、JSR への公開だけが落ちていた
+  jsr-dry-run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: oven-sh/setup-bun@v2
+      - uses: denoland/setup-deno@v2
+      # 型だけの import(@opentelemetry/api・ws)を、公開のときと同じく node_modules から解決する
+      - run: bun install --frozen-lockfile
+      - run: deno publish --dry-run
+
   # create-senri のテンプレートの範囲(SENRI_RANGE)が、本体の version を満たすか。公開前のテストには入れていない
   # 本体のリリースで範囲から外れると、ここだけ赤くなる(テンプレートを直して範囲を上げる合図。CONTRIBUTING.md)
   create-senri-range:
