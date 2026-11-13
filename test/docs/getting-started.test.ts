@@ -139,29 +139,38 @@ claim("runtimes/browser#app-fetch", "ページの中で app.fetch を呼ぶ", as
 });
 
 // ---------- runtimes/deno ----------
-claim("runtimes/deno#permissions", "許可がなければ PORT は 3927、devtools() は 1 行の案内を出して動かない", async () => {
-    const dir = mkdtempSync(join(tmpdir(), "senri-deno-"));
-    const file = join(dir, "main.ts");
-    const src = (p: string) => JSON.stringify(pathToFileURL(join(ROOT, p)).href);
-    await Bun.write(
-        file,
-        `import { createApp } from ${src("src/index.ts")};
+// Deno を子プロセスで動かす。Deno のない環境では飛ばす
+// 待ち受けはしない(既定のポート 3927 をほかのものが使っていると落ちるため)。ポートは、serve() が使う resolvePort() の答えで確かめ、
+// リクエストは app.fetch に直接渡す
+const DENO = Bun.which("deno");
+claim(
+    "runtimes/deno#permissions",
+    "許可がなければ PORT は 3927、devtools() は 1 行の案内を出して動かない",
+    async () => {
+        const dir = mkdtempSync(join(tmpdir(), "senri-deno-"));
+        const file = join(dir, "main.ts");
+        const src = (p: string) => JSON.stringify(pathToFileURL(join(ROOT, p)).href);
+        await Bun.write(
+            file,
+            `import { createApp } from ${src("src/index.ts")};
 import { devtools } from ${src("src/dev/index.ts")};
-import { serve } from ${src("adapters/serve/index.ts")};
+import { resolvePort } from ${src("adapters/serve/port.ts")};
 const app = createApp({ dev: devtools({ lang: "ja" }) });
 app.get("/", () => "x");
-const s = await serve(app, { banner: false, gracefulShutdown: false });
-console.log("PORT=" + s.port);
-const r = await fetch(s.url + "/zz");
+const { port, source } = resolvePort(undefined);
+console.log("PORT=" + port + " " + source);
+const r = await app.fetch(new Request("http://localhost/zz"));
 console.log("BODY=" + (await r.text()));
-await s.stop();
 `,
-    );
-    const proc = Bun.spawn(["deno", "run", "--allow-net", "--allow-read", file], { stdout: "pipe", stderr: "pipe", env: { ...process.env, PORT: "4000" } });
-    const [out, err] = await Promise.all([new Response(proc.stdout).text(), new Response(proc.stderr).text()]);
-    await proc.exited;
-    const all = out + err;
-    expect(all).toContain("PORT=3927");
-    expect(all).toContain("--allow-env=NODE_ENV");
-    expect(all).toContain("BODY=404 Not Found");
-}, 60_000);
+        );
+        // PORT を渡しても、--allow-env がないので読めない。--allow-net も要らない(待ち受けないので)
+        const proc = Bun.spawn([DENO!, "run", "--allow-read", file], { stdout: "pipe", stderr: "pipe", env: { ...process.env, PORT: "4000" } });
+        const [out, err] = await Promise.all([new Response(proc.stdout).text(), new Response(proc.stderr).text()]);
+        await proc.exited;
+        const all = out + err;
+        expect(all).toContain("PORT=3927 default");
+        expect(all).toContain("--allow-env=NODE_ENV");
+        expect(all).toContain("BODY=404 Not Found");
+    },
+    { timeout: 60_000, skip: !DENO },
+);
