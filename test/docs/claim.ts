@@ -8,8 +8,10 @@
 // - id は文字列のまま書く(check-doc-claims.ts が、テストのファイルから claim("...") を読み取るため)
 import { test } from "bun:test";
 
-export function claim(id: string, title: string, fn: () => unknown, timeout?: number): void {
-    test(`${id} ${title}`, fn as () => Promise<void>, timeout);
+// options は、タイムアウト(ミリ秒)か { timeout, skip }。skip が true なら飛ばす(要るランタイムがない環境など)
+export function claim(id: string, title: string, fn: () => unknown, options?: number | { timeout?: number; skip?: boolean }): void {
+    const { timeout, skip = false } = typeof options === "number" ? { timeout: options } : (options ?? {});
+    test.skipIf(skip)(`${id} ${title}`, fn as () => Promise<void>, timeout);
 }
 
 // 接続元(Bun の Server と同じ形)。localhost からのリクエストとして渡す
