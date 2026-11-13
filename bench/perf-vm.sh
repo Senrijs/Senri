@@ -3,12 +3,12 @@
 # Senri と Hono を交互に wrk で測り、「Hono に対して何倍か」を出す(bench/perf-abab.ts)
 #
 # 使い方(bench で。先に bun install --frozen-lockfile):
-#   bash perf-vm.sh main        # Bun / Node.js / Deno × static / param / mw。今の src を Hono と比べる(約 11 分)
-#   bash perf-vm.sh main bun    # 1 つのランタイムだけ(約 4 分)
-#   bash perf-vm.sh versions    # Bun で 0.2.8 / 0.2.9 / 0.2.10 / 0.3.1 / 今の src を Hono と比べる(約 10 分)
+#   bash perf-vm.sh main        # Bun / Node.js / Deno × static / param / mw。今の src と raw を Hono と比べる(約 14 分)
+#   bash perf-vm.sh main bun    # 1 つのランタイムだけ(約 5 分)
+#   bash perf-vm.sh versions    # Bun で 0.2.8 / 0.2.9 / 0.2.10 / 0.3.1 / 今の src を Hono と比べる(約 9 分)
 #
 # - 古い版は、リポジトリの外の一時フォルダーに npm から入れて、終わったら消す(VERSIONS_DIR を渡せばそこを使い、消さない)
-# - 条件は環境変数で変えられる(bench/perf-abab.ts の頭を参照)。既定は 1 回 6 秒、4 ラウンド
+# - 条件は環境変数で変えられる(bench/perf-abab.ts の頭を参照)。既定は 1 回 6 秒、3 ラウンド
 # - ログは perf-<日時>.txt に、生の値は results/perf-*.json に残る
 set -euo pipefail
 cd "$(dirname "$0")"

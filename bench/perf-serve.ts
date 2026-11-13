@@ -6,7 +6,7 @@
 //   senri        … 今の src
 //   senri@0.2.9  … VERSIONS_DIR に npm から別名(senri-0.2.9)で入れた版
 //   hono         … Hono(Node では @hono/node-server)
-//   raw          … フレームワークなし。上限の目安(ここに Hono が近ければ、数字が頭打ちになっている)
+//   raw          … フレームワークなし。同期で "ok" を返すだけの、上限の目安(ここに Hono が近ければ、数字が頭打ちになっている)
 // scenario: static / param / mw(bench/scenarios.ts)
 // 立て方は bench/http.ts と同じ: Bun.serve({ fetch }) / Deno.serve(fetch) / Node は各フレームワークの勧める形
 import { honoScenario, loadSenri, senriScenario, SCENARIOS, type ScenarioName } from "./scenarios.ts";
@@ -23,21 +23,9 @@ const hostname = "127.0.0.1";
 const ready = () => console.log("ready");
 const runtime: "bun" | "deno" | "node" = g.Bun ? "bun" : g.Deno ? "deno" : "node";
 
-// フレームワークなしの答え。static は "hi"、ほかは /users/:id の JSON
-function rawBody(path: string): { body: string; type: string } | null {
-    if (scenario === "static") return path === "/" ? { body: "hi", type: "text/plain; charset=utf-8" } : null;
-    const m = /^\/users\/([^/]+)$/.exec(path);
-    return m ? { body: JSON.stringify({ id: m[1] }), type: "application/json" } : null;
-}
-const pathOf = (url: string) => {
-    const start = url.indexOf("/", url.indexOf("//") + 2);
-    const end = url.indexOf("?", start);
-    return end === -1 ? url.slice(start) : url.slice(start, end);
-};
-const rawFetch = (req: Request) => {
-    const hit = rawBody(pathOf(req.url));
-    return hit ? new Response(hit.body, { headers: { "content-type": hit.type } }) : new Response("Not Found", { status: 404 });
-};
+// フレームワークなしの上限の目安。パスもシナリオも見ず、同期でいちばん小さい答えを返す(async にしない)
+// 本文は "ok" で、シナリオの期待と違うので、perf-abab.ts は raw の本文を確かめない
+const rawFetch = () => new Response("ok");
 
 const version = target.startsWith("senri@") ? target.slice("senri@".length) : target === "senri" ? "src" : null;
 
@@ -56,11 +44,7 @@ if (runtime === "node") {
         serve({ fetch: honoScenario(scenario).fetch, port, hostname }, ready);
     } else if (target === "raw") {
         const { createServer } = await import("node:http");
-        createServer((req, res) => {
-            const hit = rawBody(pathOf(`http://${hostname}${req.url ?? "/"}`));
-            res.writeHead(hit ? 200 : 404, { "content-type": hit?.type ?? "text/plain; charset=utf-8" });
-            res.end(hit?.body ?? "Not Found");
-        }).listen(port, hostname, ready);
+        createServer((_req, res) => res.end("ok")).listen(port, hostname, ready);
     } else {
         throw new Error(`知らない target: ${target}`);
     }

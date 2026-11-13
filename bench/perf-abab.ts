@@ -5,8 +5,9 @@
 //   RUNTIME=bun TARGETS=senri@0.2.8,senri@0.2.9,senri@0.2.10,senri@0.3.1 VERSIONS_DIR=~/senri-versions bun perf-abab.ts
 // 環境変数(bench/http.ts と同じものは同じ意味):
 //   RUNTIME(bun / node / deno)、TARGETS(Hono と比べるもの。既定 senri)、SCENARIOS(既定 static,param,mw)
-//   DURATION(1 回の長さ。既定 6s)、WARMUP(既定 3s)、ROUNDS(既定 4)、CONNECTIONS(64)、WRK_THREADS(4)
-//   PIN / SERVER_CPUS(0-3)/ WRK_CPUS(4-7)、RAW(1 なら raw も 1 回測って、頭打ちかどうかを見る。既定 1)
+//   DURATION(1 回の長さ。既定 6s)、WARMUP(既定 3s)、ROUNDS(既定 3)、CONNECTIONS(64)、WRK_THREADS(4)
+//   PIN / SERVER_CPUS(0-3)/ WRK_CPUS(4-7)
+//   RAW(既定 1。raw も Senri と同じく毎ラウンド Hono と交互に測り、「Hono ÷ raw の中央値」で頭打ちかどうかを見る。0 で測らない)
 // 並びは「Hono, A, Hono, B, Hono, A, …」(ラウンドをまたいで続ける)。A の倍率 = A ÷(すぐ前の Hono とすぐ後の Hono の平均)
 // 結果は Markdown の表(倍率の中央値と最小〜最大、req/s の中央値)と、results/perf-<ランタイム>-<日時>.json
 import { spawn, spawnSync, type ChildProcess } from "node:child_process";
@@ -23,7 +24,7 @@ const SCENARIO_LIST = (process.env.SCENARIOS?.split(",") ?? SCENARIOS) as Scenar
 const WRK = process.env.WRK ?? "wrk";
 const DURATION = process.env.DURATION ?? "6s";
 const WARMUP = process.env.WARMUP ?? "3s";
-const ROUNDS = Number(process.env.ROUNDS ?? "4");
+const ROUNDS = Number(process.env.ROUNDS ?? "3");
 const CONNECTIONS = process.env.CONNECTIONS ?? "64";
 const WRK_THREADS = process.env.WRK_THREADS ?? "4";
 const RAW = process.env.RAW !== "0";
@@ -87,7 +88,7 @@ const header =
 console.log(header);
 const started = Date.now();
 
-type Cell = { ratios: number[]; rps: number[]; hono: number[]; raw?: number };
+type Cell = { ratios: number[]; rps: number[]; hono: number[] };
 const results: Record<string, Record<string, Cell>> = {};
 const children: ChildProcess[] = [];
 let port = 3200;
@@ -109,12 +110,14 @@ try {
         }
         for (const target of servers.keys()) load(url(target), WARMUP);
 
-        const cells = (results[scenario] = Object.fromEntries(TARGETS.map((t) => [t, { ratios: [], rps: [], hono: [] } as Cell])));
+        // raw も Senri と同じく、Hono と交互に毎ラウンド測る(頭打ちかどうかを、同じ条件の数字で見るため)
+        const rotation = [...TARGETS, ...(RAW ? ["raw"] : [])];
+        const cells = (results[scenario] = Object.fromEntries(rotation.map((t) => [t, { ratios: [], rps: [], hono: [] } as Cell])));
         // 直前の Hono は、ラウンドをまたいで使い回す(Hono, A, Hono, B, Hono, A, …)
         let before = load(url("hono"), DURATION);
         for (let round = 0; round < ROUNDS; round++) {
             // 版の順番もラウンドごとにずらす
-            const order = TARGETS.map((_, i) => TARGETS[(i + round) % TARGETS.length]!);
+            const order = rotation.map((_, i) => rotation[(i + round) % rotation.length]!);
             for (const target of order) {
                 const rps = load(url(target), DURATION);
                 const after = load(url("hono"), DURATION);
@@ -126,11 +129,6 @@ try {
                 before = after;
             }
         }
-        if (RAW) {
-            const raw = load(url("raw"), DURATION);
-            for (const cell of Object.values(cells)) cell.raw = raw;
-            console.log(`${scenario.padEnd(7)} raw            ${fmt(raw).padStart(9)} req/s`);
-        }
         for (const child of children.splice(0)) child.kill();
     }
 
@@ -138,9 +136,11 @@ try {
     console.log("| scenario | target | x Hono (median) | min–max | req/s | Hono req/s | Hono ÷ raw |");
     console.log("|---|---|---:|---:|---:|---:|---:|");
     for (const [scenario, cells] of Object.entries(results)) {
+        // raw の中央値で割る
+        const raw = cells.raw ? median(cells.raw.rps) : undefined;
         for (const [target, c] of Object.entries(cells)) {
             const hono = median(c.hono);
-            const ceiling = c.raw ? `${(hono / c.raw).toFixed(2)}${hono / c.raw > 0.9 ? " ⚠" : ""}` : "-";
+            const ceiling = raw ? `${(hono / raw).toFixed(2)}${hono / raw > 0.9 ? " ⚠" : ""}` : "-";
             console.log(
                 `| ${scenario} | ${target} | ${median(c.ratios).toFixed(3)} | ${Math.min(...c.ratios).toFixed(3)}–${Math.max(...c.ratios).toFixed(3)} | ${fmt(median(c.rps))} | ${fmt(hono)} | ${ceiling} |`,
             );
