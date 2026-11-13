@@ -3,8 +3,8 @@
 import { useSearchContext } from "fumadocs-ui/contexts/search";
 import { useTheme } from "next-themes";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { useAltHref } from "@/components/home/controls";
 import { applyStoredMotion, setMotionOff, useMotionOff } from "@/components/home/motion";
 import { homeDict } from "@/lib/home/dict";
 import type { Lang } from "@/lib/i18n";
@@ -29,6 +29,14 @@ const Moon = () => (
         <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" />
     </svg>
 );
+
+// 今のページの、もう一方の言語の URL(日本語は /、英語は /en)
+function useAltHref(lang: Lang): string {
+    const path = usePathname() || "/";
+    if (lang === "ja") return path === "/" ? "/en/" : `/en${path}`;
+    const rest = path.replace(/^\/en(?=\/|$)/, "");
+    return rest === "" ? "/" : rest;
+}
 
 export function SearchButton({ lang }: { lang: Lang }) {
     const t = homeDict[lang];

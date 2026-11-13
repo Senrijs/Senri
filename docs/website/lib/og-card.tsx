@@ -60,7 +60,7 @@ export async function ogImage(card: OgCard): Promise<ImageResponse> {
                     left: 56,
                     bottom: -96,
                     display: "flex",
-                    fontFamily: "Inter",
+                    fontFamily: "Geist Sans",
                     fontWeight: 800,
                     fontSize: 260,
                     lineHeight: 1,

@@ -12,7 +12,8 @@ import { Install } from "./install";
 import { Journey } from "./journey";
 import { Patterns } from "./patterns";
 import { Plus } from "./plus";
-import { Road } from "./road";
+import { Reveal } from "./reveal";
+import { Dots } from "./dots";
 import { Story } from "./story";
 import { TryIt } from "./try-it";
 
@@ -77,14 +78,14 @@ export function TopPage({ lang }: { lang: Lang }) {
                 <div className="box grid two">
                     <Plus />
                     <div className="cell">
-                        <p className="big md" aria-hidden="true">
+                        <Reveal as="p" className="big md" decorative>
                             CLI
-                        </p>
-                        <h2 id="cli-title">
+                        </Reveal>
+                        <Reveal id="cli-title" label={t.cliH.join(lang === "ja" ? "" : " ")}>
                             {t.cliH[0]}
                             <br />
                             {t.cliH[1]}
-                        </h2>
+                        </Reveal>
                         <p>{t.cliP}</p>
                     </div>
                     <div className="cell cliw">
@@ -105,9 +106,9 @@ export function TopPage({ lang }: { lang: Lang }) {
 
             <section className="row" id="start" aria-labelledby="start-title">
                 <div className="box cta">
-                    <Road />
+                    <Dots />
                     <Plus />
-                    <h2 id="start-title">{t.ctaH}</h2>
+                    <Reveal id="start-title">{t.ctaH}</Reveal>
                     <p className="sub">{t.proverb}</p>
                     <Install lang={lang} />
                 </div>
@@ -122,10 +123,9 @@ function Head({ id, big, lead }: { id?: string; big: string; lead: string }) {
             <div className="box">
                 <Plus />
                 <div className="head">
-                    <h2 id={id} className="big">
+                    <Reveal id={id} className="big" label={`${big} — ${lead}`}>
                         {big}
-                        <span className="sr-only"> — {lead}</span>
-                    </h2>
+                    </Reveal>
                     <p aria-hidden="true">{lead}</p>
                 </div>
             </div>
@@ -147,10 +147,10 @@ function Hero({ lang }: { lang: Lang }) {
                         <i aria-hidden="true" />
                         {badge}
                     </a>
-                    <h1>
+                    <Reveal as="h1" label={t.h1.join(lang === "ja" ? "" : " ")}>
                         <span>{t.h1[0]}</span>
                         <span>{t.h1[1]}</span>
-                    </h1>
+                    </Reveal>
                     <p className="lead">{t.lead}</p>
                     <Install lang={lang} />
                     {stats.stars !== null || stats.downloads !== null ? (
@@ -462,14 +462,14 @@ function Layers({ lang }: { lang: Lang }) {
                     <div className="box grid two">
                         <Plus />
                         <div className="cell">
-                            <p className="big md" aria-hidden="true">
+                            <Reveal as="p" className="big md" decorative>
                                 LAYERS
-                            </p>
-                            <h2>
+                            </Reveal>
+                            <Reveal label={t.layH.join(lang === "ja" ? "" : " ")}>
                                 {t.layH[0]}
                                 <br />
                                 {t.layH[1]}
-                            </h2>
+                            </Reveal>
                             <div className="scap">
                                 {t.layScenes.map(([title, body], i) => (
                                     <div key={title} className={`cv v${i}`}>
@@ -534,14 +534,14 @@ function Routing({ lang }: { lang: Lang }) {
                     <div className="box grid two">
                         <Plus />
                         <div className="cell">
-                            <p className="big md" aria-hidden="true">
+                            <Reveal as="p" className="big md" decorative>
                                 ROUTING
-                            </p>
-                            <h2>
+                            </Reveal>
+                            <Reveal label={t.trH.join(lang === "ja" ? "" : " ")}>
                                 {t.trH[0]}
                                 <br />
                                 {t.trH[1]}
-                            </h2>
+                            </Reveal>
                             <div className="scap">
                                 {t.trScenes.map(([title, body], i) => (
                                     <div key={title} className={`cv v${i}`}>
@@ -638,9 +638,9 @@ function Timeline({ lang }: { lang: Lang }) {
                 <div className="box">
                     <Plus />
                     <div className="head">
-                        <h2 className="big">
-                            TIMELINE<span className="sr-only"> — {t.tlLead}</span>
-                        </h2>
+                        <Reveal className="big" label={`TIMELINE — ${t.tlLead}`}>
+                            TIMELINE
+                        </Reveal>
                         <p aria-hidden="true">{t.tlLead}</p>
                     </div>
                 </div>

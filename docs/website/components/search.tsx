@@ -21,7 +21,7 @@ export default function DefaultSearchDialog(props: SharedProps) {
     return (
         <SearchDialog {...search} {...props}>
             <SearchDialogOverlay />
-            {/* s-search-content: トップとブログでは、ガラスの質感にする(components/home/home.css) */}
+            {/* s-search-content: 404 のページでは、ガラスの質感にする(components/home/not-found.css) */}
             <SearchDialogContent className="s-search-content">
                 <SearchDialogHeader>
                     <SearchDialogIcon />

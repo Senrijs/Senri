@@ -1,7 +1,7 @@
 // OG 画像のフォント。フォントのファイルはリポジトリに入れず、@fontsource から読む(Satori は woff2 を読めないので woff)
 // - Noto Sans JP(400・500・900): 文字の範囲ごとに 100 以上のファイルに分かれている。各太さの CSS の unicode-range を見て、
 //   画像に書く文字を含むファイルだけを渡す(全部渡すと 1 枚ごとに 5 MB 以上読むことになる)
-// - Inter(800): 後ろの大きな英単語。JetBrains Mono(600): ページの種類のラベル。どちらもラテン文字のファイルだけ
+// - Geist Sans(800): 後ろの大きな英単語。JetBrains Mono(600): ページの種類のラベル。どちらもラテン文字のファイルだけ
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 
@@ -50,7 +50,7 @@ function load(path: string): Promise<Buffer> {
 export async function ogFonts(text: string) {
     const codes = new Set([...text].map((c) => c.codePointAt(0)!));
     const fonts = [
-        { name: "Inter", data: await load(join(fontsource, "inter", "files", "inter-latin-800-normal.woff")), weight: 800 as const, style: "normal" as const },
+        { name: "Geist Sans", data: await load(join(fontsource, "geist-sans", "files", "geist-sans-latin-800-normal.woff")), weight: 800 as const, style: "normal" as const },
         {
             name: "JetBrains Mono",
             data: await load(join(fontsource, "jetbrains-mono", "files", "jetbrains-mono-latin-600-normal.woff")),

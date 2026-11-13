@@ -17,9 +17,6 @@ const config = {
     experimental: {
         // ルートのレイアウトが言語ごとに2つあるので、404 ページは app/global-not-found.tsx で作る
         globalNotFound: true,
-        // motion/react はまとめて書き出すファイル(barrel)なので、使うものだけを取り込ませる
-        // (取り込みすぎると、あとで読むはずの domAnimation まで最初に読む JavaScript に入る)
-        optimizePackageImports: ["motion"],
     },
 };
 

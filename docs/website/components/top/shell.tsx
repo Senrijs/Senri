@@ -3,7 +3,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { Clock } from "@/components/home/clock";
-import { MotionRoot } from "@/components/home/motion-root";
 import { Wordmark } from "@/components/home/wordmark";
 import { homeDict } from "@/lib/home/dict";
 import data from "@/lib/home/generated.json";
@@ -13,6 +12,8 @@ import { type Lang, localePath } from "@/lib/i18n";
 import { githubUrl } from "@/lib/shared";
 import { LangLink, MotionButton, SearchButton, ThemeButton } from "./controls";
 import { Plus } from "./plus";
+import { REVEAL_SCRIPT } from "./reveal";
+import { RevealWatch } from "./reveal-watch";
 import { SmoothScroll } from "./smooth-scroll";
 import "./top.css";
 
@@ -21,8 +22,9 @@ export function GridShell({ lang, children }: { lang: Lang; children: ReactNode 
     const g = gridDict[lang];
     const home = localePath(lang, "/");
     return (
-        <MotionRoot>
             <div className="g">
+                {/* 見出しの演出(components/top/reveal.tsx)。見出しより先に動かす */}
+                <script dangerouslySetInnerHTML={{ __html: REVEAL_SCRIPT }} />
                 <a className="skip" href="#main">
                     {t.skip}
                 </a>
@@ -56,8 +58,8 @@ export function GridShell({ lang, children }: { lang: Lang; children: ReactNode 
                 </div>
                 <Clock className="hud r" />
                 <SmoothScroll />
+                <RevealWatch />
             </div>
-        </MotionRoot>
     );
 }
 

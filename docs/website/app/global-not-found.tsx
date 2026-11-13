@@ -10,7 +10,7 @@ import type { Candidate } from "@/lib/suggest";
 import { blogSource, source } from "@/lib/source";
 import { i18nUI } from "@/lib/translations";
 import "@/app/global.css";
-import "@/components/home/home.css";
+import "@/components/home/not-found.css";
 
 export const metadata: Metadata = {
     title: "404 Not Found | Senri",

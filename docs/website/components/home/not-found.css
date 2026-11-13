@@ -1,0 +1,296 @@
+/* サイトの 404 ページ(components/home/not-found.tsx、app/global-not-found.tsx)。docs/design/site-not-found.dc.html を元にしたもの
+   前のトップページの home.css から、404 で使うものだけを残した。色は .site の中だけに効かせる。ダークモードは <html> の .dark に乗せる */
+
+.site {
+    --accent: #e3412b;
+    --bg: #ffffff;
+    --fg: #111418;
+    --fg-2: #3a3f46;
+    --muted: #5b616a;
+    --muted-2: #6b7079;
+    --surface: #f5f6f8;
+    --line: #ecedef;
+    --line-2: #dadce0;
+    --line-3: #b8bcc3;
+    --glass: rgba(255, 255, 255, 0.78);
+    --glass-strong: rgba(255, 255, 255, 0.84);
+    --glass-line: rgba(255, 255, 255, 0.85);
+    --glass-hl: rgba(255, 255, 255, 0.9);
+    --nav: rgba(255, 255, 255, 0.8);
+    --hl: rgba(227, 65, 43, 0.08);
+    --hl-strong: #ffe3de;
+    --accent-text: #b5321f;
+    --green: #1f8a4c;
+    --blue: #1c5fb8;
+    --yellow: #9a6a00;
+    --particle: rgba(17, 20, 24, 0.22);
+    --grain-blend: multiply;
+    --grain-op: 0.08;
+    --shadow: rgba(17, 20, 24, 0.08);
+    --glow: rgba(227, 65, 43, 0.18);
+    --bar1: #fbe3df;
+    --bar2: #f8cfc8;
+    --bar3: #f4b3a8;
+    --bar4: #ee8e7f;
+    --code: #0e1013;
+    --code-2: #14171c;
+    --sans: "Geist Sans", var(--font-jp), sans-serif;
+    --display: "Geist Sans", var(--font-jp), sans-serif;
+    --mono: var(--font-mono), ui-monospace, monospace;
+
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 100vh;
+    overflow-x: clip;
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--sans);
+    transition:
+        background-color 0.3s,
+        color 0.3s;
+}
+
+.dark .site {
+    --bg: #0b0c0e;
+    --fg: #f2f3f5;
+    --fg-2: #c9cdd3;
+    --muted: #9aa0a8;
+    --muted-2: #8a9099;
+    --surface: #121418;
+    --line: #23262c;
+    --line-2: #2e3238;
+    --line-3: #4a4f57;
+    --glass: rgba(30, 33, 38, 0.82);
+    --glass-strong: rgba(22, 25, 30, 0.88);
+    --glass-line: rgba(255, 255, 255, 0.09);
+    --glass-hl: rgba(255, 255, 255, 0.06);
+    --nav: rgba(11, 12, 14, 0.75);
+    --hl: rgba(255, 106, 82, 0.12);
+    --hl-strong: rgba(255, 106, 82, 0.24);
+    --accent-text: #ff8a7a;
+    --green: #7fd6a0;
+    --blue: #82aaff;
+    --yellow: #e8c46a;
+    --particle: rgba(242, 243, 245, 0.28);
+    --grain-blend: overlay;
+    --grain-op: 0.14;
+    --shadow: rgba(0, 0, 0, 0.45);
+    --glow: rgba(255, 106, 82, 0.16);
+    --bar1: #3a1e1a;
+    --bar2: #5a2a22;
+    --bar3: #7a342a;
+    --bar4: #a8463a;
+    --code: #07080a;
+    --code-2: #0e1013;
+}
+
+.site a {
+    color: var(--fg);
+    text-decoration: none;
+}
+.site a:hover {
+    color: var(--accent-text);
+}
+.site :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+    border-radius: 6px;
+}
+.site button {
+    font: inherit;
+    cursor: pointer;
+    transition: transform 0.12s ease-out;
+}
+.site button:active {
+    transform: scale(0.97);
+}
+.site code,
+.site kbd,
+.site pre,
+.mono {
+    font-family: var(--mono);
+}
+
+
+/* 動きを減らす設定と、フッターの「動きを止める」(<html data-motion="off">) */
+@media (prefers-reduced-motion: reduce) {
+    .site *,
+    .site *::before,
+    .site *::after {
+        animation: none !important;
+        transition: none !important;
+    }
+}
+html[data-motion="off"] .site *,
+html[data-motion="off"] .site *::before,
+html[data-motion="off"] .site *::after {
+    animation: none !important;
+    transition: none !important;
+}
+
+/* Liquid Glass っぽい質感(404 の「もしかして」の案内) */
+.site .s-lg {
+    position: relative;
+    isolation: isolate;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.66), rgba(255, 255, 255, 0.34));
+    backdrop-filter: blur(16px) saturate(180%);
+    -webkit-backdrop-filter: blur(16px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.7);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.95),
+        inset 0 -1px 1px rgba(255, 255, 255, 0.35),
+        0 10px 30px rgba(17, 20, 24, 0.1),
+        0 1px 2px rgba(17, 20, 24, 0.06);
+}
+.dark .site .s-lg {
+    background: linear-gradient(180deg, rgba(44, 48, 56, 0.62), rgba(20, 22, 26, 0.46));
+    border-color: rgba(255, 255, 255, 0.12);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.16),
+        inset 0 -1px 1px rgba(255, 255, 255, 0.04),
+        0 10px 30px rgba(0, 0, 0, 0.45);
+}
+/* 左上から当たる光 */
+.site .s-lg::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    pointer-events: none;
+    background: radial-gradient(120% 90% at 18% 0%, rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0) 46%);
+}
+.dark .site .s-lg::before {
+    background: radial-gradient(120% 90% at 18% 0%, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0) 46%);
+}
+/* 検索(Fumadocs のダイアログ)。ページの外(body の直下)に出るので、404 のページにいるときだけ当てる */
+body:has(.site) .s-search-content {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.86), rgba(255, 255, 255, 0.7));
+    backdrop-filter: blur(24px) saturate(160%);
+    -webkit-backdrop-filter: blur(24px) saturate(160%);
+    border-color: rgba(255, 255, 255, 0.7);
+    border-radius: 18px;
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.95),
+        0 40px 120px rgba(17, 20, 24, 0.3);
+}
+.dark body:has(.site) .s-search-content {
+    background: linear-gradient(180deg, rgba(36, 40, 47, 0.86), rgba(20, 22, 26, 0.78));
+    border-color: rgba(255, 255, 255, 0.12);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.16),
+        0 40px 120px rgba(0, 0, 0, 0.5);
+}
+.s-glow {
+    position: absolute;
+    z-index: -1;
+    pointer-events: none;
+    background: radial-gradient(closest-side, var(--glow), rgba(227, 65, 43, 0));
+}
+
+
+/* --- サイトの 404 ページ(components/home/not-found.tsx、docs/design/site-not-found.dc.html) --- */
+.s-nf {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    flex: 1 1 auto;
+    min-height: 100vh;
+    box-sizing: border-box;
+    padding: 96px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.s-nf-glow {
+    left: 50%;
+    top: 40%;
+    width: 760px;
+    height: 760px;
+    transform: translate(-50%, -50%);
+    background: radial-gradient(closest-side, rgba(227, 65, 43, 0.14), rgba(227, 65, 43, 0));
+}
+.s-nf-body {
+    position: relative;
+    width: 100%;
+    max-width: 560px;
+    text-align: center;
+}
+.s-nf-req {
+    margin: 0;
+    min-height: 1.5em;
+    font-size: 14px;
+    color: var(--muted);
+    overflow-wrap: anywhere;
+}
+.s-nf-code {
+    margin: 12px 0 0;
+    font-family: "Geist Sans", sans-serif;
+    font-weight: 800;
+    font-size: clamp(88px, 18vw, 160px);
+    line-height: 1;
+    letter-spacing: -0.06em;
+}
+.s-nf-msg {
+    margin: 16px 0 0;
+    font-size: 17px;
+    color: var(--muted);
+}
+.site a.s-nf-hit {
+    margin-top: 40px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 18px 22px;
+    border-radius: 16px;
+    border: 1.5px solid var(--accent);
+    text-align: left;
+    color: var(--fg);
+}
+/* ガラスの質感(.s-lg)のダークの枠の色に負けないように */
+.dark .site a.s-nf-hit {
+    border-color: var(--accent);
+}
+.s-nf-hit .label {
+    flex: none;
+    white-space: nowrap;
+    font-size: 13px;
+    color: var(--muted);
+}
+.s-nf-hit .path {
+    flex: 1 1 auto;
+    min-width: 0;
+    font-size: 15px;
+    font-weight: 700;
+    overflow-wrap: anywhere;
+}
+.s-nf-links {
+    margin-top: 28px;
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    flex-wrap: wrap;
+    font-size: 14px;
+}
+.s-nf-links button {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--fg);
+    font-size: 14px;
+}
+.s-nf-links button:hover {
+    color: var(--accent-text);
+}
+.s-nf-links kbd {
+    padding: 1px 6px;
+    border-radius: 6px;
+    border: 1px solid var(--line);
+    font-size: 11px;
+    color: var(--muted);
+}

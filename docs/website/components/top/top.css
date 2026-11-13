@@ -35,14 +35,16 @@
     --chrome: #f3f4f6;
     --chrome-dot: #d5d7db;
     --dk: #0b0c0e;
-    --sans: var(--font-jp), var(--font-inter), system-ui, sans-serif;
-    --display: var(--font-inter), var(--font-jp), system-ui, sans-serif;
+    /* 英字は Geist Sans、日本語は Noto Sans JP */
+    --sans: "Geist Sans", var(--font-jp), sans-serif;
+    --display: "Geist Sans", var(--font-jp), sans-serif;
     --mono: var(--font-mono), ui-monospace, monospace;
 
     display: flex;
     flex-direction: column;
     flex: 1 1 auto;
     min-height: 100vh;
+    min-height: 100dvh;
     overflow-x: clip;
     background: var(--bg);
     color: var(--fg);
@@ -315,9 +317,50 @@
     word-break: keep-all;
 }
 /* 見出しは行ごとに折り返さない(「Web」だけが 1 行になるのを防ぐ) */
-.g h1 > span {
+.g .hero h1 > span[aria-hidden] > span:not(.rvc) {
     display: block;
     white-space: nowrap;
+}
+
+/* --- 見出しの演出(components/top/reveal.tsx)。1 文字ずつ、下から少し上がりながらぼかしが取れる ---
+   文字の span は inline のまま(改行の位置を変えない)。動きは position: relative の top で付ける
+   文字を隠すのは <html class="rv"> のときだけ(JS が動かない・動きを減らす設定では、最初から見えている) */
+.g .rvc {
+    position: relative;
+}
+html.rv .g [data-rv]:not([data-rv="in"]) .rvc {
+    opacity: 0;
+    top: 0.4em;
+    filter: blur(8px);
+}
+html.rv .g [data-rv="in"] .rvc {
+    animation: g-rv 0.6s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+    animation-delay: var(--d);
+}
+@keyframes g-rv {
+    from {
+        opacity: 0;
+        top: 0.4em;
+        filter: blur(8px);
+    }
+    to {
+        opacity: 1;
+        top: 0;
+        filter: blur(0);
+    }
+}
+/* 読み込んだあとに動きを止めたときも、隠れたままにしない */
+html[data-motion="off"] .g .rvc {
+    opacity: 1 !important;
+    top: 0 !important;
+    filter: none !important;
+}
+@media (prefers-reduced-motion: reduce) {
+    .g .rvc {
+        opacity: 1 !important;
+        top: 0 !important;
+        filter: none !important;
+    }
 }
 .g .lead {
     margin: 22px 0 0;
@@ -1995,7 +2038,7 @@
 .g .cta .cmd {
     margin: 0 auto;
 }
-.g .road {
+.g .dots {
     position: absolute;
     inset: 0;
     width: 100%;
@@ -2003,7 +2046,7 @@
     z-index: 0;
     display: block;
 }
-.g .cta > *:not(.road):not(.p) {
+.g .cta > *:not(.dots):not(.p) {
     position: relative;
     z-index: 1;
 }
@@ -2078,10 +2121,78 @@
     right: 20px;
 }
 
-/* --- ブログ(中身は Tailwind。外側の箱だけ) --- */
+/* --- 中身が短いページ: フッターをいつも画面の下に付け、左右の縦線をフッターまで通す --- */
 
-.g .page {
-    min-height: 60vh;
+.g > main {
+    flex: 1 0 auto;
+    display: flex;
+    flex-direction: column;
+}
+.g .fill {
+    flex: 1 0 auto;
+    display: flex;
+}
+.g .fill > .box {
+    flex: 0 1 1200px;
+    width: 100%;
+    border-bottom: 0;
+}
+
+/* --- ブログ(components/pages/blog.tsx)。左の余白と文字の位置は、トップのセクションの見出し(.head)にそろえる --- */
+
+.g .blog-head {
+    display: block;
+}
+.g .blog-head p {
+    margin-top: 12px;
+}
+.g .page-title {
+    margin: 0;
+    font: 900 56px/1.2 var(--sans);
+    letter-spacing: -0.02em;
+    word-break: keep-all;
+}
+.g .blog-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+.g .blog-post {
+    display: grid;
+    grid-template-columns: 200px minmax(0, 1fr);
+    column-gap: 24px;
+    row-gap: 6px;
+    padding: 28px 40px;
+}
+.g .blog-post time {
+    grid-row: 1 / span 2;
+    font: 400 13px/1.9 var(--mono);
+    color: var(--dim);
+}
+.g .blog-post .t {
+    font: 700 20px/1.5 var(--sans);
+}
+.g .blog-post .d {
+    grid-column: 2;
+    font-size: 14px;
+    line-height: 1.8;
+    color: var(--muted);
+}
+.g .blog-post:hover {
+    background: var(--soft);
+}
+.g .blog-post:hover .t {
+    color: var(--accent-text);
+}
+.g .blog-empty {
+    padding: 28px 40px;
+    color: var(--muted);
+}
+.g .blog-empty p {
+    margin: 0;
+}
+.g .blog-body {
+    padding: 40px;
 }
 
 /* --- 狭い画面: グリッドを 1 列にし、ストーリースクロールは貼り付けをやめて縦に並べる --- */
@@ -2269,6 +2380,23 @@
     }
     .g .fbar {
         padding: 10px 16px;
+    }
+    .g .page-title {
+        font-size: 36px;
+    }
+    .g .blog-post {
+        grid-template-columns: 1fr;
+        padding: 20px 16px;
+    }
+    .g .blog-post time {
+        grid-row: auto;
+    }
+    .g .blog-post .d {
+        grid-column: 1;
+    }
+    .g .blog-empty,
+    .g .blog-body {
+        padding: 20px 16px;
     }
     .g .pv {
         padding: 0 16px 24px;

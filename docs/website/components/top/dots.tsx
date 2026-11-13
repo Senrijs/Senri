@@ -20,7 +20,7 @@ function rgb(color: string): [number, number, number] {
     return [255, 255, 255];
 }
 
-export function Road() {
+export function Dots() {
     const ref = useRef<HTMLCanvasElement>(null);
     const still = useStill();
 
@@ -175,5 +175,5 @@ export function Road() {
         };
     }, [still]);
 
-    return <canvas ref={ref} className="road" aria-hidden="true" />;
+    return <canvas ref={ref} className="dots" aria-hidden="true" />;
 }

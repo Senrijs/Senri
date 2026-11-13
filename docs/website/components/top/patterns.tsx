@@ -4,6 +4,7 @@ import { type ReactNode, useState } from "react";
 import { gridDict } from "@/lib/home/grid-dict";
 import type { Lang } from "@/lib/i18n";
 import { Plus } from "./plus";
+import { Reveal } from "./reveal";
 
 export function Patterns({ lang, codes }: { lang: Lang; codes: ReactNode[] }) {
     const t = gridDict[lang];
@@ -15,7 +16,7 @@ export function Patterns({ lang, codes }: { lang: Lang; codes: ReactNode[] }) {
                 <div className="box">
                     <Plus />
                     <div className="head">
-                        <h2 className="big">PATTERNS</h2>
+                        <Reveal className="big">PATTERNS</Reveal>
                         <div className="carnav">
                             <span className="pos" aria-live="polite">
                                 <span aria-hidden="true">
