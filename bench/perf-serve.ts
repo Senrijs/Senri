@@ -64,3 +64,31 @@ if (runtime === "node") {
         g.Deno.serve({ port, hostname, onListen: ready }, fetch);
     }
 }
+
+// プロファイルを取るとき(perf-profile-http.ts が PROFILE_MS を渡す)。ふつうに測るときは何もしない
+// 立ってから PROFILE_WARMUP_MS(既定 1000)待って取り始め、PROFILE_MS たったら終わる
+// - PROFILE_OUT があれば node:inspector で取って書く(Deno には --cpu-prof がないため。perf-profile-http.ts は Deno だけに渡す)
+// - Node と Bun は --cpu-prof で取る。プロファイルは、ここで process.exit したときに書かれる
+const profileMs = Number(env("PROFILE_MS") ?? "0");
+if (profileMs > 0) {
+    const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+    await sleep(Number(env("PROFILE_WARMUP_MS") ?? "1000"));
+    const out = env("PROFILE_OUT");
+    if (out) {
+        const { Session } = await import("node:inspector/promises");
+        const { writeFileSync } = await import("node:fs");
+        const session = new Session();
+        session.connect();
+        await session.post("Profiler.enable");
+        await session.post("Profiler.setSamplingInterval", { interval: Number(env("PROFILE_INTERVAL_US") ?? "1000") });
+        await session.post("Profiler.start");
+        await sleep(profileMs);
+        const { profile } = (await session.post("Profiler.stop")) as { profile: unknown };
+        writeFileSync(out, JSON.stringify(profile));
+    } else {
+        await sleep(profileMs);
+    }
+    console.log("profiled");
+    if (g.Deno) g.Deno.exit(0);
+    else g.process.exit(0);
+}
