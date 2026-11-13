@@ -2,7 +2,7 @@
 // 配信は Cloudflare の Workers Builds(Git 連携)が行う。ルートのディレクトリ docs/website、
 // ビルドのコマンド bun install --frozen-lockfile && bun run build、配信のコマンド npx wrangler deploy
 {
-  "name": "senri-docs",
+  "name": "senri",
   "compatibility_date": "2026-10-01",
   "assets": {
     "directory": "./out",
