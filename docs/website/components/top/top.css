@@ -1,0 +1,2368 @@
+/* グリッド版のトップページと、サイトのナビ・フッター(ブログでも使う)。docs/design/GridFull.dc.html を元にしたもの
+   - 全部 .g の中だけに効かせる(ドキュメントのページへ移っても残る CSS なので、ほかへ漏らさない)
+   - 色は変数にする。ダークモードは Fumadocs(next-themes)が <html> に付ける .dark で切り替える
+   - エディタとターミナルの窓は、どちらのテーマでも暗い */
+
+.g {
+    --bg: #ffffff;
+    --fg: #111418;
+    --fg-2: #3a3f46;
+    --muted: #5b616a;
+    --dim: #6b7079;
+    --line: #e3e5e8;
+    --line-2: #dadce0;
+    --line-3: #b8bcc3;
+    --plus: #9aa0a8;
+    --accent: #e3412b;
+    --accent-text: #b5321f;
+    --soft: #fafafa;
+    --card: #ffffff;
+    --nav: rgba(255, 255, 255, 0.82);
+    --hl: #fff0ed;
+    --hl-row: #fff5f3;
+    --hl-code: #fde7e3;
+    --ok: #1f8a4c;
+    --err: #c2362b;
+    --warn: #9a6a00;
+    --blue: #1c5fb8;
+    --btn-bg: #111418;
+    --btn-fg: #ffffff;
+    --scrim: rgba(17, 20, 24, 0.38);
+    --bar: #f4f5f7;
+    --bar-1: #fbe3df;
+    --bar-hot: #ee8e7f;
+    --bar-text: #3a3f46;
+    --chrome: #f3f4f6;
+    --chrome-dot: #d5d7db;
+    --dk: #0b0c0e;
+    --sans: var(--font-jp), var(--font-inter), system-ui, sans-serif;
+    --display: var(--font-inter), var(--font-jp), system-ui, sans-serif;
+    --mono: var(--font-mono), ui-monospace, monospace;
+
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 100vh;
+    overflow-x: clip;
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--sans);
+    -webkit-font-smoothing: antialiased;
+}
+
+.dark .g {
+    --bg: #0b0c0e;
+    --fg: #f2f3f5;
+    --fg-2: #c9cdd3;
+    --muted: #9aa0a8;
+    --dim: #8a9099;
+    --line: #23262c;
+    --line-2: #2e3238;
+    --line-3: #4a4f57;
+    --plus: #4a4f57;
+    --accent-text: #ff8a7a;
+    --soft: #101215;
+    --card: #14171b;
+    --nav: rgba(11, 12, 14, 0.78);
+    --hl: rgba(255, 106, 82, 0.14);
+    --hl-row: rgba(255, 106, 82, 0.08);
+    --hl-code: rgba(255, 106, 82, 0.18);
+    --ok: #7fd6a0;
+    --err: #ff6b5e;
+    --warn: #e8c46a;
+    --blue: #82aaff;
+    --btn-bg: #f2f3f5;
+    --btn-fg: #0b0c0e;
+    --scrim: rgba(0, 0, 0, 0.62);
+    --bar: #191c21;
+    --bar-1: #3a1e1a;
+    --bar-hot: #a8463a;
+    --bar-text: #e3e5e8;
+    --chrome: #1a1d22;
+    --chrome-dot: #3a3d44;
+    --dk: #060708;
+}
+
+.g *,
+.g *::before,
+.g *::after {
+    box-sizing: border-box;
+}
+.g a {
+    color: inherit;
+    text-decoration: none;
+}
+.g a:hover {
+    color: var(--accent-text);
+}
+.g button {
+    font: inherit;
+    color: inherit;
+    cursor: pointer;
+}
+.g :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+.g [id] {
+    scroll-margin-top: 64px;
+}
+.g .mono {
+    font-family: var(--mono);
+}
+.g .dm {
+    color: var(--dim);
+}
+.g .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+.g .skip {
+    position: absolute;
+    left: 16px;
+    top: -60px;
+    z-index: 100;
+    padding: 8px 14px;
+    background: var(--btn-bg);
+    color: var(--btn-fg);
+    font-size: 14px;
+}
+.g .skip:focus {
+    top: 12px;
+}
+
+/* --- 骨組み: 横いっぱいの行(下線)の中に、最大 1200px の箱(左右に縦線)。線の交点に「+」 --- */
+
+.g .row {
+    border-bottom: 1px solid var(--line);
+}
+.g .box {
+    position: relative;
+    max-width: 1200px;
+    margin: 0 auto;
+    border-left: 1px solid var(--line);
+    border-right: 1px solid var(--line);
+}
+.g .p {
+    position: absolute;
+    width: 11px;
+    height: 11px;
+    z-index: 3;
+    pointer-events: none;
+}
+.g .p::before,
+.g .p::after {
+    content: "";
+    position: absolute;
+    background: var(--plus);
+}
+.g .p::before {
+    left: 5px;
+    top: 0;
+    width: 1px;
+    height: 11px;
+}
+.g .p::after {
+    top: 5px;
+    left: 0;
+    height: 1px;
+    width: 11px;
+}
+.g .ptl {
+    left: -6px;
+    top: -6px;
+}
+.g .ptr {
+    right: -6px;
+    top: -6px;
+}
+.g .grid {
+    display: grid;
+}
+.g .cell {
+    position: relative;
+    padding: 40px;
+    border-right: 1px solid var(--line);
+    min-width: 0;
+}
+.g .grid > .cell:last-child {
+    border-right: 0;
+}
+
+/* --- ナビ --- */
+
+.g .nav {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background: var(--nav);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+}
+.g .nav .box {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    height: 64px;
+    padding: 0 24px;
+    font-size: 14px;
+}
+.g .nav .wm {
+    display: inline-flex;
+}
+.g .nav .grow {
+    flex: 1;
+}
+.g .btn {
+    display: inline-flex;
+    align-items: center;
+    height: 36px;
+    padding: 0 14px;
+    border: 1px solid var(--fg);
+    font-size: 14px;
+    white-space: nowrap;
+}
+.g .btn.dark {
+    background: var(--btn-bg);
+    border-color: var(--btn-bg);
+    color: var(--btn-fg);
+}
+.g .btn.dark:hover {
+    color: var(--btn-fg);
+    opacity: 0.88;
+}
+.g .kbd {
+    font: 500 11px var(--mono);
+    border: 1px solid var(--line);
+    padding: 2px 6px;
+    color: var(--muted);
+}
+.g .search {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    height: 36px;
+    padding: 0 10px 0 12px;
+    border: 1px solid var(--line);
+    background: transparent;
+    color: var(--muted);
+    font-size: 13px;
+}
+.g .search:hover {
+    border-color: var(--fg);
+    color: var(--fg);
+}
+.g .iconbtn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border: 1px solid var(--line);
+    background: transparent;
+    color: var(--muted);
+}
+.g .iconbtn:hover {
+    border-color: var(--fg);
+    color: var(--fg);
+}
+.g .langl {
+    font: 500 12px var(--mono);
+}
+
+/* --- ヒーロー --- */
+
+.g .hero {
+    grid-template-columns: 5fr 7fr;
+}
+.g .hero > .cell:first-child {
+    padding: 80px 40px 64px;
+}
+.g .hero > .cell:last-child {
+    padding: 40px;
+    background: var(--soft);
+    display: flex;
+    align-items: center;
+}
+.g .tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font: 500 12px var(--mono);
+    letter-spacing: 0.06em;
+    color: var(--muted);
+    border: 1px solid var(--line);
+    padding: 6px 10px;
+    background: var(--card);
+}
+.g .tag i {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+}
+.g h1 {
+    margin: 24px 0 0;
+    font: 900 44px/1.18 var(--sans);
+    letter-spacing: -0.02em;
+    word-break: keep-all;
+}
+/* 見出しは行ごとに折り返さない(「Web」だけが 1 行になるのを防ぐ) */
+.g h1 > span {
+    display: block;
+    white-space: nowrap;
+}
+.g .lead {
+    margin: 22px 0 0;
+    font-size: 16px;
+    line-height: 1.85;
+    color: var(--muted);
+}
+.g .pm {
+    margin-top: 32px;
+}
+.g .pmtabs {
+    display: flex;
+    border: 1px solid var(--line);
+    border-bottom: 0;
+    width: max-content;
+    max-width: 100%;
+}
+.g .pmtabs button {
+    height: 32px;
+    padding: 0 14px;
+    border: 0;
+    border-right: 1px solid var(--line);
+    background: var(--card);
+    color: var(--muted);
+    font: 500 12px var(--mono);
+}
+.g .pmtabs button:last-child {
+    border-right: 0;
+}
+.g .pmtabs button[aria-pressed="true"] {
+    background: var(--btn-bg);
+    color: var(--btn-fg);
+}
+.g .cmd {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    max-width: 440px;
+    height: 48px;
+    padding: 0 16px;
+    border: 1px solid var(--line);
+    background: var(--card);
+    font: 400 14px var(--mono);
+    color: var(--fg);
+    text-align: left;
+}
+.g .cmd:hover {
+    border-color: var(--fg);
+}
+.g .cmd .txt {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.g .cmd .dl {
+    color: var(--plus);
+}
+.g .cmd .ok {
+    color: var(--ok);
+    font-size: 12px;
+}
+.g .cmd svg {
+    color: var(--plus);
+    flex: none;
+}
+.g .stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 28px;
+    margin-top: 28px;
+    font-size: 13px;
+    color: var(--muted);
+}
+.g .stats b {
+    color: var(--fg);
+    font: 700 15px var(--display);
+    margin-right: 6px;
+}
+
+/* --- 窓(エディタ・ターミナル・ブラウザ) --- */
+
+.g .win {
+    width: 100%;
+    border: 1px solid #2a2e35;
+    background: #0e1013;
+    color: #d7dae0;
+    font: 400 13px/1.75 var(--mono);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    text-align: left;
+}
+.g .tbar,
+.g .bbar {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    height: 34px;
+    padding: 0 12px;
+    border-bottom: 1px solid #22262c;
+    background: #16191e;
+    flex: none;
+}
+.g .tbar > i,
+.g .bbar > i {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #3a3d44;
+}
+.g .ttl {
+    margin-left: auto;
+    margin-right: auto;
+    font-size: 11px;
+    color: #6b7079;
+    transform: translateX(-24px);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.g .ebody {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+}
+.g .act {
+    width: 44px;
+    flex: none;
+    border-right: 1px solid #1f2329;
+    background: #121418;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    padding-top: 14px;
+}
+.g .act b {
+    width: 18px;
+    height: 18px;
+    border: 1.5px solid #3a3f47;
+    border-radius: 3px;
+}
+.g .act b:first-child {
+    border-color: #c9cdd3;
+}
+.g .emain {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+}
+.g .tabs {
+    display: flex;
+    height: 32px;
+    flex: none;
+    background: #121418;
+    border-bottom: 1px solid #1f2329;
+    font-size: 12px;
+}
+.g .tabs span {
+    padding: 0 14px;
+    display: flex;
+    align-items: center;
+    color: #6b7079;
+    border-right: 1px solid #1f2329;
+}
+.g .tabs span.on {
+    background: #0e1013;
+    color: #f2f3f5;
+    box-shadow: inset 0 1px 0 #e3412b;
+}
+.g .code {
+    display: flex;
+    padding: 12px 0;
+    flex: 1;
+    min-height: 0;
+    position: relative;
+}
+.g .gut {
+    width: 40px;
+    flex: none;
+    text-align: right;
+    padding-right: 14px;
+    color: #4a4f57;
+    user-select: none;
+}
+.g .src {
+    flex: 1;
+    min-width: 0;
+    white-space: pre;
+    overflow: hidden;
+    position: relative;
+}
+.g .win .k {
+    color: #ff7b72;
+}
+.g .win .s {
+    color: #a5d6ff;
+}
+.g .win .c {
+    color: #8a9099;
+}
+.g .win .fn {
+    color: #d2a8ff;
+}
+.g .win .gr {
+    color: #7fd6a0;
+}
+.g .win .r {
+    color: #ff6b5e;
+}
+.g .win .b {
+    color: #7dd3e8;
+}
+.g .win .y {
+    color: #e8c46a;
+}
+.g .win .wd {
+    color: #8a9099;
+}
+.g .term {
+    border-top: 1px solid #22262c;
+    flex: none;
+}
+.g .ttabs {
+    display: flex;
+    gap: 18px;
+    padding: 6px 14px;
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    color: #6b7079;
+}
+.g .ttabs .on {
+    color: #f2f3f5;
+    border-bottom: 1px solid #f2f3f5;
+}
+.g .tbody {
+    padding: 4px 14px 12px;
+    white-space: pre;
+    font-size: 12.5px;
+    overflow: hidden;
+}
+.g .sn {
+    color: #f2f3f5;
+    font-weight: 700;
+}
+.g .sl {
+    color: #e3412b;
+    font-weight: 700;
+}
+.g .ac {
+    position: absolute;
+    left: 96px;
+    top: 46px;
+    width: 230px;
+    background: #1a1d23;
+    border: 1px solid #2e3238;
+    font-size: 12px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+.g .ac span {
+    display: block;
+    padding: 3px 10px;
+    color: #a5d6ff;
+}
+.g .ac .on {
+    background: #04395e;
+}
+.g .br {
+    background: var(--card);
+    color: var(--fg);
+    border-color: var(--line);
+}
+.g .br .bbar {
+    background: var(--chrome);
+    border-color: var(--line);
+}
+.g .br .bbar > i {
+    background: var(--chrome-dot);
+}
+.g .url {
+    flex: 1;
+    min-width: 0;
+    margin-left: 10px;
+    height: 22px;
+    display: flex;
+    align-items: center;
+    padding: 0 10px;
+    background: var(--card);
+    border: 1px solid var(--line);
+    font-size: 11px;
+    color: var(--muted);
+    white-space: nowrap;
+    overflow: hidden;
+}
+.g .bbody {
+    flex: 1;
+    min-height: 0;
+}
+.g .tm .tmb {
+    padding: 14px 16px;
+    white-space: pre;
+    font-size: 12.5px;
+    flex: 1;
+    overflow: hidden;
+}
+.g .caret {
+    display: inline-block;
+    width: 7px;
+    height: 14px;
+    background: #d7dae0;
+    vertical-align: -2px;
+    margin-left: 2px;
+    animation: g-blink 1s step-end infinite;
+}
+@keyframes g-blink {
+    50% {
+        opacity: 0;
+    }
+}
+@keyframes g-fadein {
+    from {
+        opacity: 0;
+        transform: translateY(4px);
+    }
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+@keyframes g-cvin {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+.g .logl {
+    animation: g-fadein 0.35s ease-out;
+}
+.g .spin {
+    display: inline-block;
+    color: #e3412b;
+    animation: g-blink 0.8s step-end infinite;
+}
+
+/* --- 帯(ランタイムと数字) --- */
+
+.g .rtband {
+    grid-template-columns: repeat(5, 1fr);
+}
+.g .rtband .cell {
+    padding: 22px 24px;
+    display: flex;
+    gap: 12px;
+    align-items: baseline;
+    font: 700 18px var(--display);
+}
+.g .rtband .cell span {
+    font: 500 11px var(--mono);
+    color: var(--dim);
+}
+.g .nums {
+    grid-template-columns: repeat(4, 1fr);
+}
+.g .nums .cell {
+    padding: 36px 32px;
+}
+.g .nums b {
+    display: block;
+    font: 800 44px/1 var(--display);
+    letter-spacing: -0.03em;
+}
+.g .nums span {
+    display: block;
+    margin-top: 10px;
+    font-size: 13px;
+    color: var(--muted);
+}
+
+/* --- 見出しの行 --- */
+
+.g .head {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 24px;
+    padding: 72px 40px 32px;
+}
+.g .big {
+    margin: 0;
+    font: 800 96px/0.9 var(--display);
+    letter-spacing: -0.05em;
+}
+.g .big.md {
+    font-size: 64px;
+}
+.g .head p {
+    margin: 0;
+    font-size: 15px;
+    color: var(--muted);
+}
+
+/* --- JOURNEY(暗い帯) --- */
+
+.g .dk {
+    background: var(--dk);
+    color: #f2f3f5;
+    --line: #23262c;
+    --plus: #4a4f57;
+}
+.g .dk .head p {
+    color: #8a9099;
+}
+.g .jgrid {
+    grid-template-columns: repeat(5, 1fr);
+    position: relative;
+}
+.g .jn {
+    padding: 48px 24px 40px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    text-align: center;
+}
+.g .jnum {
+    font: 500 11px var(--mono);
+    color: #4a4f57;
+    height: 16px;
+    line-height: 16px;
+}
+.g .jn .dot {
+    width: 14px;
+    height: 14px;
+    flex: none;
+    border-radius: 50%;
+    border: 2px solid #3a3f47;
+    background: #0b0c0e;
+    position: relative;
+    z-index: 2;
+    transition: all 0.3s;
+}
+.g .jn b {
+    font: 600 15px var(--mono);
+    color: #6b7079;
+    transition: color 0.3s;
+}
+.g .jd {
+    font-size: 12px;
+    color: #8a9099;
+}
+.g .jn.on .dot {
+    border-color: #e3412b;
+    background: #e3412b;
+}
+.g .jn.on b {
+    color: #f2f3f5;
+}
+.g .jline,
+.g .jfill {
+    position: absolute;
+    left: 10%;
+    top: 80px;
+    height: 2px;
+    z-index: 1;
+}
+.g .jline {
+    right: 10%;
+    background: #23262c;
+}
+.g .jfill {
+    width: 0;
+    background: linear-gradient(90deg, rgba(227, 65, 43, 0), #e3412b);
+}
+.g .packet {
+    position: absolute;
+    top: 74px;
+    left: 10%;
+    width: 14px;
+    height: 14px;
+    margin-left: -7px;
+    border-radius: 50%;
+    background: #ff5a40;
+    box-shadow: 0 0 18px 6px rgba(255, 90, 64, 0.5);
+    z-index: 3;
+    transition:
+        background 0.3s,
+        box-shadow 0.3s;
+}
+.g .packet.back {
+    background: #7fd6a0;
+    box-shadow: 0 0 18px 6px rgba(127, 214, 160, 0.5);
+}
+.g .jscroll {
+    height: 2600px;
+    position: relative;
+}
+.g .jsticky {
+    position: sticky;
+    top: 64px;
+    height: calc(min(100vh, 900px) - 64px);
+    display: flex;
+    flex-direction: column;
+}
+.g .jsticky > .jrest {
+    flex: 1;
+    border-bottom: 0;
+}
+.g .jsticky > .jrest > .box {
+    height: 100%;
+}
+.g .jviz {
+    grid-template-columns: 1fr 1.4fr 1fr;
+}
+.g .jv {
+    padding: 28px 32px;
+}
+.g .jvh {
+    font: 500 11px var(--mono);
+    letter-spacing: 0.1em;
+    color: #8a9099;
+    margin-bottom: 16px;
+}
+.g .jpre {
+    margin: 0;
+    font: 400 13px/1.9 var(--mono);
+    color: #c9cdd3;
+    white-space: pre;
+    overflow: hidden;
+}
+.g .jm {
+    color: #7fd6a0;
+}
+.g .jwait {
+    font: 400 13px var(--mono);
+    color: #8a9099;
+}
+.g .onion {
+    position: relative;
+    height: 150px;
+}
+.g .ol {
+    position: absolute;
+    left: calc(var(--i) * 9%);
+    right: calc(var(--i) * 9%);
+    top: calc(var(--i) * 34px);
+    bottom: 0;
+    border: 1px solid #2e3238;
+    transition:
+        border-color 0.3s,
+        background 0.3s;
+}
+.g .ol span {
+    position: absolute;
+    left: 10px;
+    top: 8px;
+    font: 500 12px var(--mono);
+    color: #8a9099;
+    transition: color 0.3s;
+}
+.g .ol em {
+    position: absolute;
+    right: 10px;
+    top: 8px;
+    font: 400 11px var(--mono);
+    font-style: normal;
+    color: #6b7079;
+}
+.g .ol.on {
+    border-color: #e3412b;
+    background: rgba(227, 65, 43, 0.06);
+}
+.g .ol.on span {
+    color: #f2f3f5;
+}
+.g .ol.on em {
+    color: #ff8a7a;
+}
+.g .ol.hd.on {
+    background: rgba(227, 65, 43, 0.16);
+}
+.g .ol.done {
+    border-color: #2e7d52;
+    background: rgba(127, 214, 160, 0.05);
+}
+.g .ol.done span {
+    color: #7fd6a0;
+}
+.g .jcap {
+    padding: 40px;
+    min-height: 200px;
+}
+.g .jno {
+    font: 500 12px var(--mono);
+    color: #ff6b5e;
+}
+.g .jcap h3 {
+    margin: 12px 0 0;
+    font: 900 40px var(--sans);
+    letter-spacing: -0.01em;
+}
+.g .jcap p {
+    margin: 12px 0 0;
+    max-width: 640px;
+    color: #9aa0a8;
+    line-height: 1.8;
+}
+.g .jcap ol {
+    display: none;
+}
+.g .jfoot {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 20px 40px;
+    font: 500 12px var(--mono);
+    color: #8a9099;
+}
+
+/* --- TRY IT --- */
+
+.g .try {
+    grid-template-columns: 1fr 1fr;
+}
+.g .try .cell {
+    padding: 32px;
+}
+.g .try .ed {
+    height: 330px;
+}
+.g .try .code {
+    padding: 0;
+}
+.g .try .gut {
+    padding-top: 12px;
+}
+.g .try textarea {
+    flex: 1;
+    min-width: 0;
+    margin: 0;
+    padding: 12px 12px 12px 0;
+    border: 0;
+    outline: none;
+    resize: none;
+    background: transparent;
+    color: #d7dae0;
+    font: inherit;
+    font-size: 12.5px;
+    line-height: 1.75;
+    white-space: pre;
+    overflow: auto;
+    tab-size: 2;
+}
+.g .try .gut {
+    font-size: 12.5px;
+    line-height: 1.75;
+    overflow: hidden;
+}
+.g .ctrl {
+    display: flex;
+    margin-top: 14px;
+}
+.g .ctrl select,
+.g .ctrl input {
+    height: 42px;
+    padding: 0 12px;
+    border: 1px solid var(--line);
+    border-right: 0;
+    border-radius: 0;
+    background: var(--card);
+    font: 500 13px var(--mono);
+    color: var(--fg);
+    outline: none;
+}
+.g .ctrl input {
+    flex: 1;
+    min-width: 0;
+}
+.g .ctrl input:focus,
+.g .ctrl select:focus {
+    border-color: var(--fg);
+}
+.g .ctrl button {
+    height: 42px;
+    padding: 0 20px;
+    border: 1px solid var(--btn-bg);
+    background: var(--btn-bg);
+    color: var(--btn-fg);
+    font-size: 13px;
+}
+.g .ctrl button:disabled {
+    opacity: 0.6;
+    cursor: progress;
+}
+.g .hints {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 10px;
+}
+.g .hints button {
+    border: 1px solid var(--line);
+    background: var(--card);
+    padding: 4px 8px;
+    font: 400 11px var(--mono);
+    color: var(--muted);
+}
+.g .hints button:hover {
+    border-color: var(--fg);
+    color: var(--fg);
+}
+.g .hints button.boom {
+    color: var(--accent-text);
+}
+.g .note {
+    margin: 14px 0 0;
+    font-size: 13px;
+    line-height: 1.7;
+    color: var(--muted);
+}
+.g .try .br {
+    min-height: 330px;
+}
+.g .resp {
+    margin: 0;
+    padding: 16px;
+    font: 400 12.5px/1.8 var(--mono);
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    max-height: 360px;
+    overflow: auto;
+}
+.g .resp .st-ok {
+    color: var(--ok);
+}
+.g .resp .st-err {
+    color: var(--err);
+}
+.g .resp .st-warn {
+    color: var(--warn);
+}
+.g .resp .hint {
+    color: var(--accent-text);
+}
+.g .openerr {
+    margin: 0 16px 16px;
+    border: 1px solid var(--accent);
+    background: transparent;
+    color: var(--accent-text);
+    padding: 6px 10px;
+    font: 500 12px var(--mono);
+}
+
+/* --- ストーリースクロール(RUNTIMES・LAYERS・ROUTING)。進み具合を data-step にして、CSS で見せ方を変える --- */
+
+.g .ss {
+    position: relative;
+}
+.g .sst {
+    position: sticky;
+    top: 64px;
+    height: calc(min(100vh, 900px) - 64px);
+    display: flex;
+    flex-direction: column;
+}
+.g .sst > .row {
+    flex: 1;
+}
+.g .sst > .row > .box {
+    height: 100%;
+}
+.g .cv {
+    display: none;
+}
+.g .two {
+    grid-template-columns: 4fr 8fr;
+}
+.g .two > .cell:first-child {
+    padding: 48px 40px;
+}
+.g .two h2 {
+    margin: 20px 0 0;
+    font: 900 36px/1.3 var(--sans);
+}
+.g .two p {
+    margin: 14px 0 0;
+    color: var(--muted);
+    line-height: 1.8;
+    font-size: 15px;
+}
+.g .two p.big {
+    margin: 0;
+    color: var(--fg);
+    line-height: 0.9;
+}
+.g .scap {
+    margin-top: 40px;
+    min-height: 150px;
+}
+.g .scap b {
+    display: block;
+    font: 700 20px var(--sans);
+    margin: 8px 0 6px;
+}
+.g .scap p {
+    margin: 0;
+}
+.g .sno {
+    font: 500 12px var(--mono);
+    color: var(--accent-text);
+}
+
+/* RUNTIMES */
+.g .rsl {
+    padding: 40px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+.g .rsh {
+    font: 400 12px var(--mono);
+    color: var(--muted);
+    margin-bottom: 18px;
+}
+.g .rsi {
+    display: grid;
+    grid-template-columns: 40px 1fr auto;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 16px 14px;
+    border: 0;
+    border-bottom: 1px solid var(--line);
+    background: transparent;
+    color: var(--line-3);
+    text-align: left;
+    transition:
+        background 0.3s,
+        color 0.3s;
+    position: relative;
+}
+.g .rsi:hover {
+    color: var(--muted);
+}
+.g .rsi b {
+    font: 700 20px var(--display);
+}
+.g .rsi .rsn {
+    font: 400 12px var(--mono);
+}
+.g .rsi .rsf {
+    font: 400 11px var(--mono);
+    color: var(--dim);
+}
+.g .rsi::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: var(--accent);
+    transform: scaleY(0);
+    transition: transform 0.3s;
+}
+.g .rcap {
+    margin-top: 28px;
+    min-height: 58px;
+}
+.g .rcap p {
+    margin: 0;
+    font-size: 15px;
+    line-height: 1.8;
+}
+.g .rbar {
+    height: 2px;
+    background: var(--line);
+    margin-top: 16px;
+}
+.g .rbar i {
+    display: block;
+    height: 100%;
+    background: var(--accent);
+    width: 20%;
+    transition: width 0.4s;
+}
+.g .rsr {
+    padding: 32px 40px;
+    background: var(--soft);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 10px;
+    min-width: 0;
+}
+.g .rlab {
+    font: 400 11px var(--mono);
+    letter-spacing: 0.08em;
+    color: var(--dim);
+}
+.g .rsr .ed {
+    height: 232px;
+    flex: none;
+}
+.g .ent {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+    border: 1px solid #2a2e35;
+    background: #0e1013;
+    padding: 14px 16px;
+    font: 400 13px var(--mono);
+    color: #8a9099;
+    overflow: hidden;
+}
+.g .ent pre {
+    margin: 0;
+    color: #d7dae0;
+    font: inherit;
+    white-space: pre;
+}
+.g .rsr .tm .tmb {
+    min-height: 150px;
+}
+.g .rsr .cv.ent {
+    display: none;
+}
+.g .rts[data-step="0"] .k0,
+.g .rts[data-step="1"] .k1,
+.g .rts[data-step="2"] .k2,
+.g .rts[data-step="3"] .k3,
+.g .rts[data-step="4"] .k4 {
+    background: var(--card);
+    color: var(--fg);
+}
+.g .rts[data-step="0"] .k0 .rsn,
+.g .rts[data-step="1"] .k1 .rsn,
+.g .rts[data-step="2"] .k2 .rsn,
+.g .rts[data-step="3"] .k3 .rsn,
+.g .rts[data-step="4"] .k4 .rsn {
+    color: var(--accent-text);
+}
+.g .rts[data-step="0"] .k0::before,
+.g .rts[data-step="1"] .k1::before,
+.g .rts[data-step="2"] .k2::before,
+.g .rts[data-step="3"] .k3::before,
+.g .rts[data-step="4"] .k4::before {
+    transform: none;
+}
+.g .rts[data-step="1"] .rbar i {
+    width: 40%;
+}
+.g .rts[data-step="2"] .rbar i {
+    width: 60%;
+}
+.g .rts[data-step="3"] .rbar i {
+    width: 80%;
+}
+.g .rts[data-step="4"] .rbar i {
+    width: 100%;
+}
+
+/* 段階ごとに見せるもの(3 つのストーリースクロールで共通) */
+.g [data-step="0"] .cv.v0,
+.g [data-step="1"] .cv.v1,
+.g [data-step="2"] .cv.v2,
+.g [data-step="3"] .cv.v3,
+.g [data-step="4"] .cv.v4 {
+    display: block;
+    animation: g-cvin 0.4s both;
+}
+.g [data-step="0"] .cv.ent.v0,
+.g [data-step="1"] .cv.ent.v1,
+.g [data-step="2"] .cv.ent.v2,
+.g [data-step="3"] .cv.ent.v3,
+.g [data-step="4"] .cv.ent.v4 {
+    display: flex;
+}
+
+/* LAYERS */
+.g .layers {
+    padding: 48px 40px;
+    font: 400 12px var(--mono);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+.g .lay {
+    border: 1px solid transparent;
+    padding: 16px;
+    position: relative;
+    transition: border-color 0.5s;
+}
+.g .lay > .lb {
+    position: absolute;
+    top: -9px;
+    left: 12px;
+    background: var(--bg);
+    padding: 0 6px;
+    color: var(--muted);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    opacity: 0;
+    transition: opacity 0.5s;
+}
+.g .ippo {
+    border: 1px dashed var(--line-3);
+    padding: 12px 16px;
+    color: var(--muted);
+    margin-bottom: 18px;
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    opacity: 0;
+    transform: translateY(-12px);
+    transition:
+        opacity 0.5s,
+        transform 0.5s;
+}
+.g .mws {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin-top: 6px;
+}
+.g .mws > span {
+    border: 1px solid var(--line-2);
+    padding: 10px 12px;
+    background: var(--card);
+    opacity: 0;
+    transform: translateX(-8px);
+    transition:
+        opacity 0.35s,
+        transform 0.35s;
+}
+.g .mws > .ar {
+    border: 0;
+    padding: 0;
+    background: none;
+    color: var(--line-3);
+}
+.g .mws > .h {
+    border-color: var(--accent);
+    color: var(--accent-text);
+}
+.g .mws > .m1 {
+    transition-delay: 0.12s;
+}
+.g .mws > .m2 {
+    transition-delay: 0.24s;
+}
+.g .mws > .m3 {
+    transition-delay: 0.36s;
+}
+.g .mws > .m4 {
+    transition-delay: 0.48s;
+}
+.g .mws > .m5 {
+    transition-delay: 0.6s;
+}
+.g .lys[data-step] .l0,
+.g .lys:not([data-step="0"]) .l1 {
+    border-color: var(--line-2);
+}
+.g .lys[data-step] .l0 > .lb,
+.g .lys:not([data-step="0"]) .l1 > .lb {
+    opacity: 1;
+}
+.g .lys[data-step="2"] .mws > span,
+.g .lys[data-step="3"] .mws > span {
+    opacity: 1;
+    transform: none;
+}
+.g .lys[data-step="3"] .ippo {
+    opacity: 1;
+    transform: none;
+}
+
+/* ROUTING */
+.g .tree {
+    padding: 48px 40px;
+    font: 400 14px/2 var(--mono);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    white-space: pre;
+    overflow-x: auto;
+}
+.g .treq {
+    font-size: 14px;
+    margin-bottom: 22px;
+    padding: 10px 14px;
+    border: 1px solid var(--line);
+    align-self: flex-start;
+    background: var(--card);
+}
+.g .treq .m {
+    color: var(--ok);
+    font-weight: 600;
+    margin-right: 6px;
+}
+.g .treq span {
+    transition:
+        color 0.3s,
+        background 0.3s;
+}
+.g .tl2 {
+    transition:
+        color 0.35s,
+        opacity 0.35s;
+}
+.g .tres {
+    margin-top: 22px;
+    padding: 12px 14px;
+    border: 1px solid var(--accent);
+    align-self: flex-start;
+    opacity: 0;
+    transform: translateY(8px);
+    transition:
+        opacity 0.4s,
+        transform 0.4s;
+}
+.g .tres .s2 {
+    color: var(--accent-text);
+}
+.g .trs:not([data-step="0"]) .tx {
+    opacity: 0.3;
+}
+.g .trs:not([data-step="0"]) .t0,
+.g .trs[data-step="2"] .t1,
+.g .trs[data-step="3"] .t1,
+.g .trs[data-step="4"] .t1,
+.g .trs[data-step="3"] .t2,
+.g .trs[data-step="4"] .t2 {
+    color: var(--accent-text);
+    font-weight: 600;
+}
+.g .trs[data-step="2"] .sg1,
+.g .trs[data-step="3"] .sg1,
+.g .trs[data-step="4"] .sg1,
+.g .trs[data-step="3"] .sg2,
+.g .trs[data-step="4"] .sg2 {
+    color: var(--accent-text);
+    background: var(--hl);
+}
+.g .trs[data-step="4"] .tres {
+    opacity: 1;
+    transform: none;
+}
+
+/* --- CLI --- */
+
+.g .cliw {
+    background: var(--soft);
+}
+.g .cliw .tm {
+    height: 470px;
+}
+.g .logl {
+    display: flex;
+}
+.g .logl > span {
+    flex: none;
+}
+.g .logl .note {
+    margin: 0 0 0 1ch;
+    font-size: inherit;
+    line-height: inherit;
+    color: #e8c46a;
+}
+
+/* --- FEATURES --- */
+
+.g .feats {
+    grid-template-columns: repeat(3, 1fr);
+}
+.g .f {
+    padding: 0;
+    border: 0;
+    border-right: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+    background: transparent;
+    display: flex;
+    flex-direction: column;
+    text-align: left;
+    transition: background 0.2s;
+}
+.g .f:hover {
+    background: var(--soft);
+}
+.g .f:focus-visible {
+    outline-offset: -2px;
+}
+.g .feats > .f:nth-child(3n + 2) {
+    border-right: 0;
+}
+.g .feats > .f:nth-last-child(-n + 3) {
+    border-bottom: 0;
+}
+.g .fh {
+    display: block;
+    padding: 32px 32px 24px;
+}
+.g .num {
+    display: block;
+    font: 500 12px var(--mono);
+    color: var(--accent-text);
+}
+.g .f .ft,
+.g .slide h3 {
+    display: block;
+    margin: 12px 0 0;
+    font: 700 20px var(--sans);
+}
+.g .f .fd,
+.g .slide p {
+    display: block;
+    margin: 8px 0 0;
+    font-size: 14px;
+    line-height: 1.8;
+    color: var(--muted);
+}
+.g .pv {
+    display: flex;
+    margin-top: auto;
+    padding: 0 32px 32px;
+    height: 262px;
+    width: 100%;
+}
+.g .pv .win {
+    height: 230px;
+    font-size: 11.5px;
+    line-height: 1.7;
+}
+.g .pv .gut {
+    width: 30px;
+    padding-right: 10px;
+}
+.g .pv .act {
+    width: 34px;
+}
+.g .zoom {
+    position: absolute;
+    right: 20px;
+    top: 20px;
+    font: 500 11px var(--mono);
+    color: var(--muted);
+    border: 1px solid var(--line);
+    padding: 4px 8px;
+    background: var(--card);
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+.g .f:hover .zoom,
+.g .f:focus-visible .zoom {
+    opacity: 1;
+}
+.g .errp {
+    display: block;
+    padding: 14px 16px;
+    font-family: var(--sans);
+    font-size: 12px;
+}
+.g .errp > span {
+    display: block;
+}
+.g .e1 {
+    font: 700 14px var(--mono);
+    overflow-wrap: anywhere;
+}
+.g .e1 .r {
+    color: var(--err);
+}
+.g .ecode {
+    margin-top: 10px;
+    border: 1px solid var(--line);
+    font: 400 11px/1.9 var(--mono);
+    background: var(--soft);
+    overflow: hidden;
+}
+.g .ecode > span {
+    display: block;
+    padding: 0 10px;
+    white-space: pre;
+}
+.g .ecode .hl {
+    background: var(--hl-code);
+}
+.g .ln {
+    color: var(--plus);
+    margin-right: 8px;
+}
+.g .e3 {
+    margin-top: 10px;
+    color: var(--muted);
+    font-size: 11.5px;
+    line-height: 1.7;
+}
+.g .e3 code {
+    font-family: var(--mono);
+    color: var(--fg);
+}
+.g .dash {
+    display: block;
+    padding: 14px 16px;
+    font-size: 11.5px;
+}
+.g .dh {
+    display: block;
+    margin-bottom: 12px;
+    font-weight: 500;
+    font-family: var(--mono);
+}
+.g .dh .dgm {
+    color: var(--ok);
+}
+.g .bar {
+    display: block;
+    position: relative;
+    height: 24px;
+    margin-bottom: 8px;
+    background: var(--bar);
+}
+.g .bar::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: var(--l);
+    width: var(--w);
+    background: var(--bar-1);
+}
+.g .bar.hot::before {
+    background: var(--bar-hot);
+}
+.g .bar span {
+    position: absolute;
+    left: calc(var(--l) + 8px);
+    top: 2px;
+    font: 400 11px var(--mono);
+    color: var(--bar-text);
+}
+.g .oa {
+    display: block;
+    padding: 14px 16px;
+    font-size: 11.5px;
+}
+.g .oah {
+    display: block;
+    font: 700 14px var(--display);
+    margin-bottom: 10px;
+}
+.g .op {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    height: 32px;
+    padding: 0 8px;
+    margin-bottom: 6px;
+    border: 1px solid var(--line);
+    font-family: var(--mono);
+    white-space: nowrap;
+    overflow: hidden;
+}
+.g .op .dm {
+    margin-left: auto;
+    font-family: var(--sans);
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.g .mt {
+    flex: none;
+    width: 52px;
+    text-align: center;
+    color: #fff;
+    font-size: 10px;
+    padding: 2px 0;
+}
+.g .mt.get {
+    background: #1c5fb8;
+}
+.g .mt.post {
+    background: #1f8a4c;
+}
+.g .mt.del {
+    background: #c2362b;
+}
+
+/* ダイアログ。押したマスの位置から広がる(--fx・--fy はマスの真ん中から画面の真ん中までのずれ、--fs は大きさの比) */
+.g-scrim {
+    position: fixed;
+    inset: 0;
+    z-index: 90;
+    background: var(--scrim);
+    animation: g-scrimin 0.3s ease-out both;
+}
+@keyframes g-scrimin {
+    from {
+        opacity: 0;
+    }
+}
+.g-dlg {
+    position: fixed;
+    left: 50%;
+    top: 50%;
+    z-index: 91;
+    width: min(1040px, 92vw);
+    max-height: 88vh;
+    overflow: auto;
+    background: var(--bg);
+    border: 1px solid var(--line);
+    transform: translate(-50%, -50%);
+    animation: g-dlgin 0.46s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+    overscroll-behavior: contain;
+}
+@keyframes g-dlgin {
+    from {
+        transform: translate(calc(-50% + var(--fx)), calc(-50% + var(--fy))) scale(var(--fs));
+        opacity: 0.6;
+    }
+    to {
+        transform: translate(-50%, -50%) scale(1);
+        opacity: 1;
+    }
+}
+.g-dlg .dlgx {
+    position: absolute;
+    right: 0;
+    top: 0;
+    width: 52px;
+    height: 52px;
+    border: 0;
+    border-left: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+    background: var(--bg);
+    font-size: 22px;
+    z-index: 2;
+}
+.g-dlg .dlgh {
+    padding: 36px 72px 28px 40px;
+    border-bottom: 1px solid var(--line);
+}
+.g-dlg .dlgh h2 {
+    margin: 10px 0 0;
+    font: 900 32px var(--sans);
+}
+.g-dlg .dlgh p {
+    margin: 8px 0 0;
+    color: var(--muted);
+}
+.g-dlg .dlgb {
+    display: grid;
+    grid-template-columns: 1.6fr 1fr;
+}
+.g-dlg .dlgpv {
+    padding: 32px;
+    border-right: 1px solid var(--line);
+    background: var(--soft);
+    min-width: 0;
+}
+.g-dlg .dlgpv .win {
+    height: auto !important;
+    min-height: 330px;
+    font-size: 14px;
+}
+.g-dlg ul {
+    margin: 0;
+    padding: 24px 32px;
+    list-style: none;
+}
+.g-dlg li {
+    padding: 14px 0;
+    border-bottom: 1px solid var(--line);
+    font-size: 14px;
+    line-height: 1.8;
+}
+.g-dlg li.lk {
+    border-bottom: 0;
+}
+.g-dlg li.lk a {
+    color: var(--accent-text);
+    font-weight: 500;
+}
+.g-dlg .dlgerr {
+    padding: 24px 32px 32px;
+}
+
+/* --- PATTERNS --- */
+
+.g .slides {
+    overflow: hidden;
+}
+.g .track {
+    display: flex;
+    transition: transform 0.5s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+.g .slide {
+    flex: 0 0 100%;
+    display: grid;
+    grid-template-columns: 5fr 7fr;
+}
+.g .slide > .cell {
+    padding: 48px 40px;
+}
+.g .slide > .cell:last-child {
+    border-right: 0;
+    background: var(--soft);
+    overflow-x: auto;
+}
+.g .pc {
+    margin: 0;
+    font: 400 14px/1.9 var(--mono);
+}
+.g .pc .k {
+    color: var(--accent-text);
+}
+.g .pc .s {
+    color: var(--blue);
+}
+.g .pc .fn {
+    color: #8250df;
+}
+.dark .g .pc .fn {
+    color: #d2a8ff;
+}
+.g .carnav {
+    display: flex;
+    align-items: center;
+}
+.g .carnav button {
+    height: 40px;
+    padding: 0 18px;
+    border: 1px solid var(--line);
+    background: var(--card);
+    font: 500 12px var(--mono);
+    letter-spacing: 0.08em;
+}
+.g .carnav button:hover {
+    border-color: var(--fg);
+}
+.g .carnav button + button {
+    border-left: 0;
+}
+.g .carnav .pos {
+    margin-right: 16px;
+    font: 500 12px var(--mono);
+    color: var(--muted);
+}
+
+/* --- TIMELINE --- */
+
+.g .glwrap {
+    padding: 28px 40px 36px;
+}
+.g .glcmd {
+    font: 400 13px var(--mono);
+    color: var(--muted);
+    margin-bottom: 14px;
+}
+.g .glcmd .dl {
+    color: var(--accent-text);
+}
+.g .gllist {
+    position: relative;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+.g .glsvg {
+    position: absolute;
+    left: 0;
+    top: 0;
+}
+.g .gl {
+    display: grid;
+    grid-template-columns: 88px 92px 1fr 120px;
+    align-items: center;
+    height: 76px;
+    border-bottom: 1px dashed var(--line);
+}
+.g .gl:last-child {
+    border-bottom: 0;
+}
+.g .gh {
+    grid-column: 2;
+    font: 400 13px var(--mono);
+    color: var(--warn);
+}
+.g .gm {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+}
+.g .gm .dm {
+    font-size: 13px;
+}
+.g .gt {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+.g .gt b {
+    font-size: 16px;
+}
+.g .ref {
+    font: 500 11px var(--mono);
+    padding: 2px 7px;
+    border: 1px solid var(--line);
+    color: var(--muted);
+    background: var(--card);
+}
+.g .ref.headref {
+    border-color: var(--accent);
+    color: var(--accent-text);
+}
+.g .ref.plan {
+    border-style: dashed;
+}
+.g .gd {
+    text-align: right;
+    font: 400 12px var(--mono);
+    color: var(--dim);
+}
+.g .gl.now {
+    background: linear-gradient(90deg, transparent 88px, var(--hl-row) 88px);
+}
+.g .gl.now .gh {
+    color: var(--accent-text);
+    font-weight: 600;
+}
+.g .gl.plan .gh,
+.g .gl.plan b {
+    color: var(--dim);
+}
+.g .tlall {
+    display: inline-block;
+    margin-top: 16px;
+    font-size: 13px;
+    color: var(--muted);
+}
+
+/* --- はじめよう --- */
+
+.g .cta {
+    text-align: center;
+    padding: 110px 40px;
+    position: relative;
+    overflow: hidden;
+}
+.g .cta h2 {
+    margin: 0;
+    font: 900 56px var(--sans);
+    letter-spacing: -0.02em;
+}
+.g .cta .sub {
+    margin: 14px 0 28px;
+    color: var(--muted);
+}
+.g .cta .pm {
+    margin-top: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+.g .cta .cmd {
+    margin: 0 auto;
+}
+.g .road {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 0;
+    display: block;
+}
+.g .cta > *:not(.road):not(.p) {
+    position: relative;
+    z-index: 1;
+}
+
+/* --- フッター --- */
+
+.g .foot {
+    grid-template-columns: 2fr 1fr 1fr 1fr;
+}
+.g .foot .cell {
+    padding: 40px;
+    font-size: 13px;
+    line-height: 2.1;
+    color: var(--muted);
+}
+.g .foot h3 {
+    margin: 0 0 6px;
+    color: var(--fg);
+    font-size: 12px;
+    letter-spacing: 0.06em;
+}
+.g .foot ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+.g .foot .brandp {
+    margin: 14px 0 0;
+}
+.g .fbar {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px 20px;
+    min-height: 56px;
+    padding: 10px 24px;
+    font: 400 12px var(--mono);
+    color: var(--muted);
+}
+.g .fbar .grow {
+    flex: 1;
+}
+.g .fbar button,
+.g .fbar a.ctl {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 30px;
+    padding: 0 10px;
+    border: 1px solid var(--line);
+    background: transparent;
+    color: var(--muted);
+    font: 400 12px var(--sans);
+}
+.g .fbar button:hover,
+.g .fbar a.ctl:hover {
+    border-color: var(--fg);
+    color: var(--fg);
+}
+.g .hud {
+    position: fixed;
+    bottom: 16px;
+    font: 500 11px var(--mono);
+    color: var(--plus);
+    z-index: 30;
+    pointer-events: none;
+}
+.g .hud.l {
+    left: 20px;
+}
+.g .hud.r {
+    right: 20px;
+}
+
+/* --- ブログ(中身は Tailwind。外側の箱だけ) --- */
+
+.g .page {
+    min-height: 60vh;
+}
+
+/* --- 狭い画面: グリッドを 1 列にし、ストーリースクロールは貼り付けをやめて縦に並べる --- */
+
+@media (max-width: 1000px) {
+    .g .hero,
+    .g .try,
+    .g .two,
+    .g .jviz,
+    .g .slide,
+    .g .foot,
+    .g .feats {
+        grid-template-columns: 1fr;
+    }
+    .g .hero > .cell,
+    .g .try > .cell,
+    .g .two > .cell,
+    .g .jviz > .cell,
+    .g .slide > .cell,
+    .g .foot > .cell,
+    .g .feats > .f {
+        border-right: 0;
+        border-bottom: 1px solid var(--line);
+    }
+    .g .hero > .cell:last-child,
+    .g .try > .cell:last-child,
+    .g .two > .cell:last-child,
+    .g .jviz > .cell:last-child,
+    .g .slide > .cell:last-child,
+    .g .foot > .cell:last-child,
+    .g .feats > .f:last-child {
+        border-bottom: 0;
+    }
+    .g .feats > .f:nth-last-child(-n + 3):not(:last-child) {
+        border-bottom: 1px solid var(--line);
+    }
+    .g .hud {
+        display: none;
+    }
+}
+
+@media (max-width: 640px) {
+    .g .rtband,
+    .g .nums {
+        grid-template-columns: 1fr 1fr;
+    }
+    .g .rtband .cell,
+    .g .nums .cell {
+        border-bottom: 1px solid var(--line);
+    }
+    .g .rtband .cell:nth-child(2n),
+    .g .nums .cell:nth-child(2n) {
+        border-right: 0;
+    }
+    .g .rtband .cell:last-child {
+        grid-column: 1 / -1;
+        border-bottom: 0;
+    }
+    .g .nums .cell:nth-last-child(-n + 2) {
+        border-bottom: 0;
+    }
+    .g .nav .box {
+        gap: 10px;
+        padding: 0 16px;
+    }
+    .g .nav .wide {
+        display: none;
+    }
+    .g .cell,
+    .g .hero > .cell:first-child,
+    .g .hero > .cell:last-child,
+    .g .two > .cell:first-child,
+    .g .try .cell,
+    .g .rsl,
+    .g .rsr,
+    .g .layers,
+    .g .tree,
+    .g .slide > .cell,
+    .g .foot .cell,
+    .g .jcap,
+    .g .jv {
+        padding: 28px 16px;
+    }
+    .g .hero > .cell:first-child {
+        padding-top: 48px;
+    }
+    .g h1 {
+        font-size: 34px;
+    }
+    .g .head {
+        flex-direction: column;
+        align-items: flex-start;
+        padding: 48px 16px 24px;
+    }
+    .g .big {
+        font-size: 56px;
+    }
+    .g .big.md {
+        font-size: 48px;
+    }
+    .g .two h2,
+    .g .jcap h3 {
+        font-size: 28px;
+    }
+    .g .cta {
+        padding: 72px 16px;
+    }
+    .g .cta h2 {
+        font-size: 40px;
+    }
+    .g .nums b {
+        font-size: 34px;
+    }
+    .g .hero .ed .act,
+    .g .try .act,
+    .g .rsr .act {
+        display: none;
+    }
+    /* TIMELINE: 行の高さが変わるので、SVG の線と丸はやめて、左の線と、行ごとの丸(CSS)にする */
+    .g .glwrap {
+        padding: 20px 16px 28px;
+    }
+    .g .glsvg {
+        display: none;
+    }
+    .g .gllist {
+        margin-left: 6px;
+        border-left: 2px solid var(--line-3);
+    }
+    .g .gl {
+        position: relative;
+        grid-template-columns: 64px minmax(0, 1fr);
+        column-gap: 4px;
+        height: auto;
+        min-height: 76px;
+        padding: 12px 0 12px 16px;
+    }
+    .g .gl::before {
+        content: "";
+        position: absolute;
+        left: -8px;
+        top: 16px;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: var(--bg);
+        border: 2px solid var(--muted);
+    }
+    .g .gl.now::before {
+        background: var(--accent);
+        border-color: var(--accent);
+    }
+    .g .gl.plan::before {
+        border-style: dashed;
+        border-color: var(--plus);
+    }
+    .g .gl.now {
+        background: var(--hl-row);
+    }
+    .g .gh {
+        grid-column: 1;
+        align-self: start;
+        padding-top: 2px;
+    }
+    .g .gm,
+    .g .gd {
+        grid-column: 2;
+    }
+    .g .gd {
+        text-align: left;
+        margin-top: 4px;
+    }
+    .g .jfoot {
+        flex-direction: column;
+        padding: 16px;
+    }
+    .g .jn {
+        padding: 40px 4px 28px;
+    }
+    .g .jn b {
+        font-size: 10px;
+    }
+    .g .jd {
+        display: none;
+    }
+    .g .fbar {
+        padding: 10px 16px;
+    }
+    .g .pv {
+        padding: 0 16px 24px;
+    }
+    .g .fh {
+        padding: 28px 16px 20px;
+    }
+    .g-dlg .dlgb {
+        grid-template-columns: 1fr;
+    }
+    .g-dlg .dlgpv {
+        border-right: 0;
+        border-bottom: 1px solid var(--line);
+        padding: 16px;
+    }
+    .g-dlg .dlgh {
+        padding: 28px 64px 20px 16px;
+    }
+    .g-dlg .dlgh h2 {
+        font-size: 24px;
+    }
+    .g-dlg ul {
+        padding: 12px 16px;
+    }
+}
+
+/* ストーリースクロールを縦に並べる(狭い画面と、動きを減らす設定。JS が data-static を付ける) */
+.g .ss[data-static],
+.g .jscroll[data-static] {
+    height: auto !important;
+}
+.g .ss[data-static] .sst,
+.g .jscroll[data-static] .jsticky {
+    position: static;
+    height: auto;
+}
+.g .ss[data-static] .scap .cv,
+.g .jscroll[data-static] .jcap ol {
+    display: block;
+    animation: none;
+}
+.g .ss[data-static] .scap .cv + .cv {
+    margin-top: 20px;
+}
+.g .jscroll[data-static] .jcap .now {
+    display: none;
+}
+.g .jscroll[data-static] .jcap ol {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+.g .jscroll[data-static] .jcap li + li {
+    margin-top: 20px;
+}
+.g .jscroll[data-static] .jcap li b {
+    display: block;
+    margin-top: 4px;
+    font-size: 20px;
+}
+.g .jscroll[data-static] .jcap li p {
+    margin-top: 4px;
+}
+.g .jscroll[data-static] .packet {
+    display: none;
+}
+@media (max-width: 1000px) {
+    .g .ss,
+    .g .jscroll {
+        height: auto !important;
+    }
+    .g .sst,
+    .g .jsticky {
+        position: static;
+        height: auto;
+    }
+}
+
+/* 動きを減らす設定と、フッターの「動きを止める」(<html data-motion="off">) */
+@media (prefers-reduced-motion: reduce) {
+    .g *,
+    .g *::before,
+    .g *::after,
+    .g-dlg,
+    .g-scrim {
+        animation: none !important;
+        transition: none !important;
+    }
+}
+html[data-motion="off"] .g *,
+html[data-motion="off"] .g *::before,
+html[data-motion="off"] .g *::after,
+html[data-motion="off"] .g-dlg,
+html[data-motion="off"] .g-scrim {
+    animation: none !important;
+    transition: none !important;
+}

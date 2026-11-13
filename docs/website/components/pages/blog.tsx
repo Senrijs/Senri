@@ -20,7 +20,13 @@ const formatDate = (lang: Lang, date: Date) =>
     date.toLocaleDateString(lang === "ja" ? "ja-JP" : "en-US", { year: "numeric", month: "long", day: "numeric", timeZone: "UTC" });
 
 export function blogIndexMetadata(lang: Lang): Metadata {
-    return { title: text[lang].title, description: text[lang].description };
+    const image = `/og/${lang}/blog/image.png`;
+    return {
+        title: text[lang].title,
+        description: text[lang].description,
+        openGraph: { images: image },
+        twitter: { card: "summary_large_image", images: image },
+    };
 }
 
 export function BlogIndex({ lang }: { lang: Lang }) {
