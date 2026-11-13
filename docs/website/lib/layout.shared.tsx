@@ -3,7 +3,7 @@ import { Wordmark } from "@/components/home/wordmark";
 import { type Lang, localePath } from "./i18n";
 import { githubUrl } from "./shared";
 
-// ドキュメントのヘッダーの設定(トップとブログは components/home/site-shell.tsx)
+// ドキュメントのヘッダーの設定(トップとブログは components/top/shell.tsx)
 export function baseOptions(lang: Lang): BaseLayoutProps {
     return {
         nav: {

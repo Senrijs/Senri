@@ -7,7 +7,8 @@ export type Segment = { text: string; tone?: Tone };
 export type Line = Segment[];
 
 // 本物の logger() が出した1件分。error は、そのあとに出た赤い行(先頭の2行だけ)
-export type LogEntry = { line: Line; error: Line[] };
+// note: 404 のとき、開発モードのレスポンスに出る「もしかして」(logger() は出さないので、同じアプリに devtools() を入れて取る)
+export type LogEntry = { line: Line; error: Line[]; note: Record<Lang, string> | null };
 
 // 本物の Senri で、プレイグラウンドの最初のコードを動かした結果
 export type Recording = {

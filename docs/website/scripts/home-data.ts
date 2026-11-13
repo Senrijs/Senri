@@ -113,7 +113,7 @@ const CLI_REQUESTS: [string, string][] = [
     ["POST", "/users"],
     ["DELETE", "/users/42"],
     ["GET", "/never-gonna-give-you-up"],
-    ["GET", "/nope"],
+    ["GET", "/never-gona-give-you-up"],
     ["GET", "/files/report.pdf"],
     ["GET", "/users/7"],
     ["GET", "/files/large.zip"],
@@ -129,15 +129,41 @@ async function cli(): Promise<HomeData["cli"]> {
         banner[lang] = parseAnsi(out.join("\n")).slice(1, -1);
     }
 
+    // 同じコードに devtools() を入れたアプリ。404 の「もしかして」を、開発モードのレスポンスの本文から取る
+    // devtools() は作るときに NODE_ENV を読むので、作る前から development にしておく(ブラウザで localhost を開いたときと同じ)
+    const env = process.env as Record<string, string | undefined>;
+    env.NODE_ENV = "development";
+    const devApp = evaluate(CLI_APP, "src/index.ts", {
+        "@senrijs/senri": { ...senri, createApp: () => senri.createApp({ dev: devtools() }) },
+    }) as senri.App;
+
     const logs: LogEntry[] = [];
     for (const [method, path] of CLI_REQUESTS) {
-        const out = await capture(() => app.fetch(new Request(url + path, { method })));
+        let status = 0;
+        const out = await capture(async () => {
+            status = (await app.fetch(new Request(url + path, { method }))).status;
+        });
         // new Function がずらした行番号を、ファイルの行番号に戻す
         const text = out.join("\n").replace(/src\/index\.ts:(\d+)/g, (_, n: string) => `src/index.ts:${Number(n) - LINE_OFFSET}`);
         const [line, ...rest] = parseAnsi(text);
+        let note: LogEntry["note"] = null;
+        if (status === 404) {
+            const found = {} as Record<(typeof LANGS)[number], string>;
+            for (const lang of LANGS) {
+                let body = "";
+                await capture(async () => {
+                    body = await (await devApp.fetch(new Request(url + path, { method, headers: { "accept-language": lang } }))).text();
+                });
+                // 本文の 2 行目が「もしかして: GET /users/:id ?」
+                const hint = body.split("\n")[1]?.replace(/\s*\?$/, "");
+                if (hint) found[lang] = hint;
+            }
+            if (found.ja && found.en) note = found;
+        }
         // エラーのときは、メッセージとスタックの先頭の行だけ(残りは Senri の中の行)
-        logs.push({ line: line!, error: rest.slice(0, 2) });
+        logs.push({ line: line!, error: rest.slice(0, 2), note });
     }
+    delete env.NODE_ENV;
     return { banner, logs };
 }
 

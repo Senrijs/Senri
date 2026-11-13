@@ -1,0 +1,585 @@
+<!doctype html>
+<html lang="ja">
+<head><meta charset="utf-8"><title>Senri グリッド版(全部)</title><script src="./support.js"></script></head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700;800&amp;family=JetBrains+Mono:wght@400;500;600&amp;family=Noto+Sans+JP:wght@400;500;700;900&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#fff}
+.g{--bg:#fff;--fg:#111418;--muted:#5B616A;--line:#E3E5E8;--plus:#9AA0A8;--accent:#E3412B;--soft:#FAFAFA;background:var(--bg);color:var(--fg);font-family:'Noto Sans JP',sans-serif}
+.g *{box-sizing:border-box}
+.mono{font-family:'JetBrains Mono',monospace}.dm{color:#8A9099}
+.row{border-bottom:1px solid var(--line)}
+.box{position:relative;max-width:1200px;margin:0 auto;border-left:1px solid var(--line);border-right:1px solid var(--line)}
+.p{position:absolute;width:11px;height:11px;z-index:3;pointer-events:none}
+.p::before,.p::after{content:"";position:absolute;background:var(--plus)}
+.p::before{left:5px;top:0;width:1px;height:11px}.p::after{top:5px;left:0;height:1px;width:11px}
+i.ptl{left:-6px;top:-6px}i.ptr{right:-6px;top:-6px}
+.grid{display:grid}
+.cell{position:relative;padding:40px;border-right:1px solid var(--line);min-width:0}
+.grid>.cell:last-child{border-right:0}
+.nav{position:sticky;top:0;z-index:20;background:rgba(255,255,255,.82);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+.nav .box{display:flex;align-items:center;gap:28px;height:64px;padding:0 24px;font-size:14px}
+.nav a{color:var(--fg);text-decoration:none}
+.btn{display:inline-flex;align-items:center;height:36px;padding:0 14px;border:1px solid var(--fg);font-size:14px}
+.btn.dark{background:var(--fg);color:#fff !important}
+.kbd{font:500 11px 'JetBrains Mono';border:1px solid var(--line);padding:2px 6px;color:var(--muted)}
+.search{display:inline-flex;align-items:center;gap:10px;height:36px;padding:0 10px 0 12px;border:1px solid var(--line);color:var(--muted);font-size:13px}
+.hero{grid-template-columns:5fr 7fr}
+.hero>.cell:first-child{padding:80px 40px 64px}
+.hero>.cell:last-child{padding:40px;background:var(--soft);display:flex;align-items:center}
+.tag{display:inline-flex;align-items:center;gap:8px;font:500 12px 'JetBrains Mono';letter-spacing:.06em;color:var(--muted);border:1px solid var(--line);padding:6px 10px;background:#fff}
+.tag i{width:6px;height:6px;border-radius:50%;background:var(--accent)}
+h1{margin:24px 0 0;font:900 50px/1.18 'Noto Sans JP';letter-spacing:-.02em;word-break:keep-all}
+.lead{margin:22px 0 0;font-size:16px;line-height:1.85;color:var(--muted)}
+.pm{margin-top:32px}
+.pmtabs{display:flex;border:1px solid var(--line);border-bottom:0;width:max-content}
+.pmtabs button{height:32px;padding:0 14px;border:0;border-right:1px solid var(--line);background:#fff;color:var(--muted);font:500 12px 'JetBrains Mono';cursor:pointer}
+.pmtabs button:last-child{border-right:0}
+.pmtabs button.on{background:var(--fg);color:#fff}
+.cmd{display:flex;align-items:center;gap:12px;width:100%;max-width:440px;height:48px;padding:0 16px;border:1px solid var(--line);background:#fff;font:400 14px 'JetBrains Mono';color:var(--fg);cursor:pointer;text-align:left}
+.cmd span:nth-child(2){flex:1}.cmd .dl{color:var(--plus)}.cmd .ok{color:#1F8A4C;font-size:12px}
+.stats{display:flex;gap:28px;margin-top:28px;font-size:13px;color:var(--muted)}.stats b{color:var(--fg);font:700 15px Inter;margin-right:6px}
+/* windows */
+.win{width:100%;border:1px solid #2A2E35;background:#0E1013;color:#D7DAE0;font:400 13px/1.75 'JetBrains Mono',monospace;overflow:hidden;display:flex;flex-direction:column}
+.tbar,.bbar{display:flex;align-items:center;gap:7px;height:34px;padding:0 12px;border-bottom:1px solid #22262C;background:#16191E;flex:none}
+.tbar i,.bbar i{width:10px;height:10px;border-radius:50%;background:#3A3D44}
+.ttl{margin-left:auto;margin-right:auto;font-size:11px;color:#6B7079;transform:translateX(-24px)}
+.ebody{display:flex;flex:1;min-height:0}
+.act{width:44px;flex:none;border-right:1px solid #1F2329;background:#121418;display:flex;flex-direction:column;align-items:center;gap:14px;padding-top:14px}
+.act b{width:18px;height:18px;border:1.5px solid #3A3F47;border-radius:3px}.act b:first-child{border-color:#C9CDD3}
+.emain{flex:1;min-width:0;display:flex;flex-direction:column}
+.tabs{display:flex;height:32px;flex:none;background:#121418;border-bottom:1px solid #1F2329;font-size:12px}
+.tabs span{padding:0 14px;display:flex;align-items:center;color:#6B7079;border-right:1px solid #1F2329}
+.tabs span.on{background:#0E1013;color:#F2F3F5;box-shadow:inset 0 1px 0 #E3412B}
+.code{display:flex;padding:12px 0;flex:1;min-height:0;position:relative}
+.gut{width:40px;flex:none;text-align:right;padding-right:14px;color:#3F444C}
+.src{flex:1;min-width:0;white-space:pre;overflow:hidden;position:relative}
+.k{color:#FF7B72}.s{color:#A5D6FF}.c{color:#6B7079}.fn{color:#D2A8FF}.g2{color:#7FD6A0}
+.win .g{color:#7FD6A0;background:none}.r{color:#FF6B5E}.b{color:#7DD3E8}
+.term{border-top:1px solid #22262C;flex:none}
+.ttabs{display:flex;gap:18px;padding:6px 14px;font-size:10px;letter-spacing:.06em;color:#6B7079}.ttabs .on{color:#F2F3F5;border-bottom:1px solid #F2F3F5}
+.tbody{padding:4px 14px 12px;white-space:pre;font-size:12.5px}
+.ac{position:absolute;left:96px;top:46px;width:230px;background:#1A1D23;border:1px solid #2E3238;font-size:12px;box-shadow:0 8px 24px rgba(0,0,0,.4)}
+.ac div{padding:3px 10px;color:#A5D6FF}.ac .on{background:#04395E}
+.br{background:#fff;color:var(--fg);border-color:var(--line)}
+.br .bbar{background:#F3F4F6;border-color:var(--line)}
+.br .bbar i{background:#D5D7DB}
+.url{flex:1;margin-left:10px;height:22px;display:flex;align-items:center;padding:0 10px;background:#fff;border:1px solid var(--line);font-size:11px;color:var(--muted)}
+.bbody{flex:1;min-height:0}
+.tm .tmb{padding:14px 16px;white-space:pre;font-size:12.5px;flex:1;overflow:hidden}
+.caret{display:inline-block;width:7px;height:14px;background:#D7DAE0;vertical-align:-2px;margin-left:2px;animation:blink 1s step-end infinite}@keyframes blink{50%{opacity:0}}
+.logl{display:flex;animation:fadein .35s ease-out}.logl>span{flex:none}.logl>span:nth-child(3){flex:1}@keyframes fadein{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.spin{display:inline-block;color:#E3412B;animation:blink .8s step-end infinite}
+/* feature previews */
+.feats{grid-template-columns:repeat(3,1fr)}
+.f{padding:0;border-bottom:1px solid var(--line);display:flex;flex-direction:column}
+.f:nth-child(3n){border-right:0}.f:nth-last-child(-n+3){border-bottom:0}
+.fh{padding:32px 32px 24px}
+.num{font:500 12px 'JetBrains Mono';color:var(--accent)}
+.f h3,.slide h3{margin:12px 0 0;font:700 20px 'Noto Sans JP'}
+.f p,.slide p{margin:8px 0 0;font-size:14px;line-height:1.8;color:var(--muted)}
+.pv{margin-top:auto;padding:0 32px 32px;height:262px;display:flex}
+.pv .win{height:230px;font-size:11.5px;line-height:1.7}
+.pv .gut{width:30px;padding-right:10px}.pv .act{width:34px}
+.errp{padding:14px 16px;font-family:'Noto Sans JP';font-size:12px}
+.e1{font:700 15px 'JetBrains Mono'}.e2{margin-top:2px;color:var(--fg)}
+.ecode{margin-top:10px;border:1px solid var(--line);font:400 11px/1.9 'JetBrains Mono';background:#FAFAFA}
+.ecode div{padding:0 10px;white-space:pre}.ecode .hl{background:#FDE7E3}.ln{color:#9AA0A8;margin-right:8px}
+.e3{margin-top:10px;color:var(--muted);font-size:11.5px}
+.dash{padding:14px 16px;font-size:11.5px}
+.dh{margin-bottom:12px;font-weight:500}.dash .g{color:#1F8A4C}
+.bar{position:relative;height:24px;margin-bottom:8px;background:#F4F5F7}
+.bar::before{content:"";position:absolute;top:0;bottom:0;left:var(--l);width:var(--w);background:#FBE3DF}
+.bar.hot::before{background:#EE8E7F}
+.bar span{position:absolute;left:calc(var(--l) + 8px);top:2px;font-size:11px;color:#3A3F46}
+.oa{padding:14px 16px;font-size:11.5px}.oah{font:700 14px Inter;margin-bottom:10px}
+.op{display:flex;align-items:center;gap:10px;height:32px;padding:0 8px;margin-bottom:6px;border:1px solid var(--line);font-family:'JetBrains Mono'}
+.op .dm{margin-left:auto;font-family:'Noto Sans JP'}
+.m{width:52px;text-align:center;color:#fff;font-size:10px;padding:2px 0}.get{background:#1C5FB8}.post{background:#1F8A4C}.del{background:#C2362B}
+/* section heads */
+.head{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;padding:72px 40px 32px}
+.big{font:800 96px/.9 Inter;letter-spacing:-.05em}
+.head p{margin:0;font-size:15px;color:var(--muted)}
+.dk{background:#0B0C0E;color:#F2F3F5;--line:#23262C;--plus:#4A4F57}
+.dk .row,.dk.row{border-color:#23262C}
+.jgrid{grid-template-columns:repeat(5,1fr);position:relative}
+.jn{padding:48px 24px 40px;display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center}
+.jnum{font:500 11px 'JetBrains Mono';color:#4A4F57}
+.jn .dot{width:14px;height:14px;flex:none;border-radius:50%;border:2px solid #3A3F47;background:#0B0C0E;position:relative;z-index:2;transition:all .3s}
+.jn b{font:600 15px 'JetBrains Mono'}.jd{font-size:12px;color:#8A9099}
+.jnum{height:16px;line-height:16px}
+.jline{position:absolute;left:10%;right:10%;top:80px;height:2px;background:#23262C;z-index:1}
+.jfill{position:absolute;left:10%;width:0;top:80px;height:2px;background:linear-gradient(90deg,rgba(227,65,43,0),#E3412B);z-index:1}
+.packet{position:absolute;top:74px;left:10%;width:14px;height:14px;margin-left:-7px;border-radius:50%;background:#FF5A40;box-shadow:0 0 18px 6px rgba(255,90,64,.5);z-index:3;transition:background .3s,box-shadow .3s}
+.packet.back{background:#7FD6A0;box-shadow:0 0 18px 6px rgba(127,214,160,.5)}
+.jn.on .dot{border-color:#E3412B;background:#E3412B}.jn.on b{color:#F2F3F5}.jn b{color:#6B7079;transition:color .3s}
+.jscroll{height:2600px;position:relative}
+.jsticky{position:sticky;top:64px;height:calc(min(100vh, 900px) - 64px);display:flex;flex-direction:column}.jsticky>.jrest{flex:1;border-bottom:0}.jsticky>.jrest>.box{height:100%}
+.jviz{grid-template-columns:1fr 1.4fr 1fr}
+.jv{padding:28px 32px}
+.jvh{font:500 11px 'JetBrains Mono';letter-spacing:.1em;color:#6B7079;margin-bottom:16px}
+.jpre{margin:0;font:400 13px/1.9 'JetBrains Mono';color:#C9CDD3;white-space:pre}
+.jm{color:#7FD6A0}
+.jwait{font:400 13px 'JetBrains Mono';color:#6B7079}
+.onion{position:relative;height:150px}
+.ol{position:absolute;left:calc(var(--i) * 9%);right:calc(var(--i) * 9%);top:calc(var(--i) * 34px);bottom:0;border:1px solid #2E3238;transition:border-color .3s,background .3s}
+.ol span{position:absolute;left:10px;top:8px;font:500 12px 'JetBrains Mono';color:#6B7079;transition:color .3s}
+.ol em{position:absolute;right:10px;top:8px;font:400 11px 'JetBrains Mono';font-style:normal;color:#4A4F57}
+.ol.on{border-color:#E3412B;background:rgba(227,65,43,.06)}.ol.on span{color:#F2F3F5}.ol.on em{color:#FF8A7A}
+.ol.hd.on{background:rgba(227,65,43,.16)}
+.ol.done{border-color:#2E7D52;background:rgba(127,214,160,.05)}.ol.done span{color:#7FD6A0}
+.jcap{padding:40px;min-height:200px}.jno{font:500 12px 'JetBrains Mono';color:#E3412B}
+.jcap h3{margin:12px 0 0;font:900 40px 'Noto Sans JP';letter-spacing:-.01em}.jcap p{margin:12px 0 0;max-width:640px;color:#9AA0A8;line-height:1.8}
+.jfoot{display:flex;justify-content:space-between;padding:20px 40px;font:500 12px 'JetBrains Mono';color:#8A9099}
+.try{grid-template-columns:1fr 1fr}
+.try .cell{padding:32px}
+.ctrl{display:flex;gap:0;margin-top:14px}
+.ctrl select,.ctrl input{height:42px;padding:0 12px;border:1px solid var(--line);border-right:0;border-radius:0;background:#fff;font:500 13px 'JetBrains Mono';color:var(--fg);outline:none}
+.ctrl input{flex:1;min-width:0}.ctrl input:focus,.ctrl select:focus{border-color:var(--fg)}
+.ctrl button{height:42px;padding:0 20px;border:1px solid var(--fg);background:var(--fg);color:#fff;font-size:13px;cursor:pointer}.ctrl button:active{transform:translateY(1px)}
+.hints{display:flex;gap:8px;margin-top:10px}.hints button{border:1px solid var(--line);background:#fff;padding:4px 8px;font:400 11px 'JetBrains Mono';color:var(--muted);cursor:pointer}.hints button:hover{border-color:var(--fg);color:var(--fg)}
+.resp{padding:16px;font:400 12.5px/1.8 'JetBrains Mono';white-space:pre}
+.rtr{display:grid;grid-template-columns:88px 260px 1.3fr 1fr;border-bottom:1px solid var(--line)}
+.rtr:last-child{border-bottom:0}
+.rc{display:flex;align-items:center;padding:22px 28px;border-right:1px solid var(--line);min-width:0}
+.rc:last-child{border-right:0}
+.rc.no{justify-content:center;font:500 13px 'JetBrains Mono';color:var(--accent)}
+.rc.nm{font:700 18px Inter}
+.rth .rc{padding:12px 28px;font:500 11px 'JetBrains Mono';letter-spacing:.1em;color:var(--muted);background:var(--soft)}
+.rth .rc.no{color:var(--muted)}
+.rtr:not(.rth):hover{background:var(--soft)}
+.rc code{font:500 14px 'JetBrains Mono';color:var(--fg)}
+.rc code.run{color:var(--fg-2,#3A3F46)}.rc code.run i{font-style:normal;color:var(--plus);margin-right:8px}
+.two{grid-template-columns:4fr 8fr}
+.two>.cell:first-child{padding:48px 40px}
+.two h2{margin:0;font:900 36px/1.3 'Noto Sans JP'}.two p{margin:14px 0 0;color:var(--muted);line-height:1.8;font-size:15px}
+.layers{padding:48px 40px;font-family:'JetBrains Mono';font-size:12px}
+.lay{border:1px solid var(--line-2,#DADCE0);padding:16px;position:relative}
+.lay>.lb{position:absolute;top:-9px;left:12px;background:#fff;padding:0 6px;color:var(--muted);font-size:11px;letter-spacing:.08em}
+.ippo{border:1px dashed #B8BCC3;padding:12px 16px;color:var(--muted);margin-bottom:18px;display:flex;justify-content:space-between}
+.mws{display:flex;align-items:center;gap:8px;margin-top:6px}
+.mws span{border:1px solid #DADCE0;padding:10px 12px;background:#fff}.mws .ar{border:0;padding:0;color:#B8BCC3}
+.mws .h{border-color:var(--accent);color:var(--accent)}
+.tree{padding:48px 40px;font:400 14px/2 'JetBrains Mono';white-space:pre}
+.tree .hit{color:var(--accent);font-weight:600}
+html{scroll-behavior:smooth;scroll-padding-top:64px}@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+.ss{position:relative}
+.sst{position:sticky;top:64px;height:calc(min(100vh, 900px) - 64px);display:flex;flex-direction:column}
+.sst>.row{flex:1}.sst>.row>.box{height:100%}
+.cv{display:none}
+@keyframes cvin{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.rsl{padding:40px;display:flex;flex-direction:column;justify-content:center;position:relative}
+.rsh{font-size:12px;color:var(--muted);margin-bottom:18px}
+.rsi{display:grid;grid-template-columns:40px 1fr auto;align-items:center;gap:12px;padding:16px 14px;border-bottom:1px solid var(--line);color:#A3A8B0;transition:background .3s,color .3s;position:relative}
+.rsi b{font:700 20px Inter}.rsi .rsn{font-size:12px}.rsi .rsf{font-size:11px}
+.rsi::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--accent);transform:scaleY(0);transition:transform .3s}
+.rcap{margin-top:28px;min-height:58px}.rcap p{margin:0;font-size:15px;line-height:1.8}
+.rbar{height:2px;background:var(--line);margin-top:16px}.rbar i{display:block;height:100%;background:var(--accent);width:20%;transition:width .4s}
+.rsr{padding:32px 40px;background:var(--soft);display:flex;flex-direction:column;justify-content:center;gap:10px;min-width:0}
+.rlab{font-size:11px;letter-spacing:.08em}
+.ent{align-items:center;gap:14px;border:1px solid #2A2E35;background:#0E1013;padding:14px 16px;font:400 13px 'JetBrains Mono'}
+.ent code{color:#D7DAE0}.rsr .tm .tmb{min-height:150px}
+.rsr .cv.ent{display:none}
+.scap{margin-top:40px;min-height:150px}.scap b{display:block;font:700 20px 'Noto Sans JP';margin:8px 0 6px}.scap p{margin:0}.sno{font-size:12px;color:var(--accent)}
+.lyb{display:flex;flex-direction:column;justify-content:center}
+.lyb .l0,.lyb .l1{border-color:transparent;transition:border-color .5s}.lyb .l0>.lb,.lyb .l1>.lb{opacity:0;transition:opacity .5s}
+.lyb .l3{opacity:0;transform:translateY(-12px);transition:opacity .5s,transform .5s}
+.lyb .mws>span{opacity:0;transform:translateX(-8px);transition:opacity .35s,transform .35s}
+.trb{display:flex;flex-direction:column;justify-content:center;white-space:pre}
+.treq{font-size:14px;margin-bottom:22px;padding:10px 14px;border:1px solid var(--line);align-self:flex-start;background:#fff}.treq .m{color:#1F8A4C;font-weight:600;margin-right:6px}
+.treq span{transition:color .3s,background .3s}
+.tl2{transition:color .35s,opacity .35s;color:var(--fg)}
+.tres{margin-top:22px;padding:12px 14px;border:1px solid var(--accent);color:var(--fg);opacity:0;transform:translateY(8px);transition:opacity .4s,transform .4s;align-self:flex-start;white-space:pre}.tres .s2{color:var(--accent)}
+.rts.s0 .v0{display:block;animation:cvin .4s both}.rts.s1 .v1{display:block;animation:cvin .4s both}.rts.s2 .v2{display:block;animation:cvin .4s both}.rts.s3 .v3{display:block;animation:cvin .4s both}.rts.s4 .v4{display:block;animation:cvin .4s both}.rts.s0 .ent.v0{display:flex}.rts.s1 .ent.v1{display:flex}.rts.s2 .ent.v2{display:flex}.rts.s3 .ent.v3{display:flex}.rts.s4 .ent.v4{display:flex}.rts.s0 .k0{background:#fff;color:var(--fg)}.rts.s1 .k1{background:#fff;color:var(--fg)}.rts.s2 .k2{background:#fff;color:var(--fg)}.rts.s3 .k3{background:#fff;color:var(--fg)}.rts.s4 .k4{background:#fff;color:var(--fg)}.rts.s0 .k0 .rsn{color:var(--accent)}.rts.s0 .k0::before{transform:none}.rts.s0 .rbar i{width:20%}.rts.s1 .k1 .rsn{color:var(--accent)}.rts.s1 .k1::before{transform:none}.rts.s1 .rbar i{width:40%}.rts.s2 .k2 .rsn{color:var(--accent)}.rts.s2 .k2::before{transform:none}.rts.s2 .rbar i{width:60%}.rts.s3 .k3 .rsn{color:var(--accent)}.rts.s3 .k3::before{transform:none}.rts.s3 .rbar i{width:80%}.rts.s4 .k4 .rsn{color:var(--accent)}.rts.s4 .k4::before{transform:none}.rts.s4 .rbar i{width:100%}.lys.s0 .cv.v0{display:block;animation:cvin .4s both}.lys.s1 .cv.v1{display:block;animation:cvin .4s both}.lys.s2 .cv.v2{display:block;animation:cvin .4s both}.lys.s3 .cv.v3{display:block;animation:cvin .4s both}.lys.s0 .l0,.lys.s1 .l0,.lys.s2 .l0,.lys.s3 .l0{border-color:var(--line-2,#DADCE0)}.lys.s0 .l0>.lb,.lys.s1 .l0>.lb,.lys.s2 .l0>.lb,.lys.s3 .l0>.lb{opacity:1}.lys.s1 .l1,.lys.s2 .l1,.lys.s3 .l1{border-color:var(--line-2,#DADCE0)}.lys.s1 .l1>.lb,.lys.s2 .l1>.lb,.lys.s3 .l1>.lb{opacity:1}.lys.s2 .mws>span,.lys.s3 .mws>span{opacity:1;transform:none}.lyb .mws>.m0,.lyb .mws>.ar.m0{transition-delay:0.00s}.lyb .mws>.m1,.lyb .mws>.ar.m1{transition-delay:0.12s}.lyb .mws>.m2,.lyb .mws>.ar.m2{transition-delay:0.24s}.lyb .mws>.m3,.lyb .mws>.ar.m3{transition-delay:0.36s}.lyb .mws>.m4,.lyb .mws>.ar.m4{transition-delay:0.48s}.lyb .mws>.m5,.lyb .mws>.ar.m5{transition-delay:0.60s}.lys.s3 .l3{opacity:1;transform:none}.trs.s0 .cv.v0{display:block;animation:cvin .4s both}.trs.s1 .cv.v1{display:block;animation:cvin .4s both}.trs.s2 .cv.v2{display:block;animation:cvin .4s both}.trs.s3 .cv.v3{display:block;animation:cvin .4s both}.trs.s4 .cv.v4{display:block;animation:cvin .4s both}.trs.s1 .tx,.trs.s2 .tx,.trs.s3 .tx,.trs.s4 .tx{opacity:.3}.trs.s1 .t0,.trs.s2 .t0,.trs.s3 .t0,.trs.s4 .t0{color:var(--accent);font-weight:600}.trs.s2 .t1,.trs.s3 .t1,.trs.s4 .t1{color:var(--accent);font-weight:600}.trs.s2 .treq .sg1,.trs.s3 .treq .sg1,.trs.s4 .treq .sg1{color:var(--accent);background:#FFF0ED}.trs.s3 .t2,.trs.s4 .t2{color:var(--accent);font-weight:600}.trs.s3 .treq .sg2,.trs.s4 .treq .sg2{color:var(--accent);background:#FFF0ED}.trs.s4 .tres{opacity:1;transform:none}@media (prefers-reduced-motion:reduce){.cv{animation:none !important}.rsi,.lyb *,.tl2,.tres{transition:none !important}}
+.slides{overflow:hidden}
+.track{display:flex;transition:transform .5s cubic-bezier(.2,.7,.2,1)}
+.slide{flex:0 0 100%;display:grid;grid-template-columns:5fr 7fr}
+.slide>.cell{padding:48px 40px}.slide>.cell:last-child{border-right:0;background:var(--soft)}
+.pc{margin:0;font:400 14px/1.9 'JetBrains Mono'}
+.carnav{display:flex;align-items:center;gap:0}
+.carnav button{height:40px;padding:0 18px;border:1px solid var(--line);background:#fff;font:500 12px 'JetBrains Mono';letter-spacing:.08em;cursor:pointer}
+.carnav button+button{border-left:0}
+.carnav .pos{margin-right:16px;font:500 12px 'JetBrains Mono';color:var(--muted)}
+.glwrap{padding:28px 40px 36px}
+.glcmd{font-size:13px;color:var(--muted);margin-bottom:14px}.glcmd .dl{color:var(--accent)}
+.gllist{position:relative}.glsvg{position:absolute;left:0;top:0}
+.gl{display:grid;grid-template-columns:88px 92px 1fr 120px;align-items:center;height:76px;border-bottom:1px dashed var(--line)}
+.gl:last-child{border-bottom:0}
+.gl>.gh{grid-column:2;font-size:13px;color:#B7791F}
+.gm{display:flex;flex-direction:column;gap:4px;min-width:0}.gm .dm{font-size:13px}
+.gt{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.gt b{font-size:16px}
+.ref{font:500 11px 'JetBrains Mono';padding:2px 7px;border:1px solid var(--line);color:var(--muted);background:#fff}
+.ref.head{border-color:var(--accent);color:var(--accent)}
+.ref.plan{border-style:dashed}
+.gd{text-align:right;font-size:12px}
+.gl.now{background:linear-gradient(90deg,transparent 88px,#FFF5F3 88px)}.gl.now .gh{color:var(--accent);font-weight:600}
+.gl.plan .gh,.gl.plan b{color:#8A9099}
+.cta{text-align:center;padding:110px 40px;position:relative;overflow:hidden}
+.cta h2{margin:0;font:900 56px 'Noto Sans JP';letter-spacing:-.02em}
+.cta .pm{display:flex;flex-direction:column;align-items:center}
+.cta .cmd{margin:0 auto}
+.road{position:absolute;inset:0;width:100%;height:100%;z-index:0;display:block}
+.cta>*:not(.road):not(.p){position:relative;z-index:1}
+.foot{grid-template-columns:2fr 1fr 1fr 1fr}
+.foot .cell{padding:40px;font-size:13px;line-height:2.1;color:var(--muted)}
+.foot b{display:block;color:var(--fg);font-size:12px;letter-spacing:.06em;margin-bottom:6px}
+.f{cursor:pointer;transition:background .2s}.f:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.zoom{position:absolute;right:20px;top:20px;font:500 11px 'JetBrains Mono';color:var(--muted);border:1px solid var(--line);padding:4px 8px;background:#fff;opacity:0;transition:opacity .2s}
+.f:hover .zoom,.f:focus-visible .zoom{opacity:1}
+.scrim{position:fixed;inset:0;z-index:90;background:rgba(17,20,24,.38);animation:scrimin .3s ease-out both}
+@keyframes scrimin{from{opacity:0}}
+.dlg{position:fixed;left:50%;top:50%;z-index:91;width:min(1040px,92vw);max-height:88vh;overflow:auto;background:#fff;border:1px solid var(--line);transform:translate(-50%,-50%);animation:dlgin .46s cubic-bezier(.2,.8,.2,1) both}
+@keyframes dlgin{from{transform:translate(calc(-50% + var(--fx)),calc(-50% + var(--fy))) scale(var(--fs));opacity:.6}to{transform:translate(-50%,-50%) scale(1);opacity:1}}
+.dlgx{position:absolute;right:0;top:0;width:52px;height:52px;border:0;border-left:1px solid var(--line);border-bottom:1px solid var(--line);background:#fff;font-size:22px;cursor:pointer;z-index:2}
+.dlgh{padding:36px 40px 28px;border-bottom:1px solid var(--line)}
+.dlgh h2{margin:10px 0 0;font:900 32px 'Noto Sans JP'}.dlgh p{margin:8px 0 0;color:var(--muted)}
+.dlgb{display:grid;grid-template-columns:1.6fr 1fr}
+.dlgpv{padding:32px;border-right:1px solid var(--line);background:var(--soft)}
+.dlgpv .win{height:330px !important;zoom:1.3}
+.dlgb ul{margin:0;padding:24px 32px;list-style:none}
+.dlgb li{padding:14px 0;border-bottom:1px solid var(--line);font-size:14px;line-height:1.8}
+.dlgb li.lk{border-bottom:0}.dlgb li.lk a{color:var(--accent);text-decoration:none;font-weight:500}
+@media (prefers-reduced-motion:reduce){.dlg,.scrim{animation:none}}
+.hud{position:fixed;bottom:16px;font:500 11px 'JetBrains Mono';color:#9AA0A8;z-index:30}
+</style>
+</helmet>
+<div class="g">
+<header class="row nav"><div class="box"><svg width="76" height="24" viewBox="2.8 -48.82 155.42 49.38" aria-hidden="true" style="display:block"><path fill="currentColor" d="M15.51 0.56Q11.7 0.56 8.85 -0.64Q5.99 -1.85 4.4 -3.98Q2.8 -6.1 2.8 -8.96H11.03Q11.03 -7.39 12.21 -6.61Q13.38 -5.82 15.51 -5.82H17.98Q20.27 -5.82 21.53 -6.61Q22.79 -7.39 22.79 -8.85Q22.79 -10.25 21.78 -10.89Q20.78 -11.54 18.7 -11.76L11.65 -12.6Q7.56 -13.1 5.38 -15.65Q3.19 -18.2 3.19 -22.01Q3.19 -31.36 15.18 -31.36H17.81Q23.46 -31.36 26.82 -28.9Q30.18 -26.43 30.18 -22.29H21.95Q21.95 -23.63 20.86 -24.36Q19.77 -25.09 17.81 -25.09H15.18Q13.22 -25.09 12.21 -24.36Q11.2 -23.63 11.2 -22.34Q11.2 -21.06 12.18 -20.61Q13.16 -20.16 14.95 -19.94L21.67 -19.1Q26.21 -18.54 28.5 -15.9Q30.8 -13.27 30.8 -8.96Q30.8 -4.42 27.55 -1.93Q24.3 0.56 17.98 0.56Z M48.78 0.56Q44.69 0.56 41.64 -0.98Q38.58 -2.52 36.93 -5.29Q35.28 -8.06 35.28 -11.76V-19.04Q35.28 -22.74 36.93 -25.51Q38.58 -28.28 41.64 -29.82Q44.69 -31.36 48.78 -31.36Q52.86 -31.36 55.86 -29.82Q58.86 -28.28 60.51 -25.51Q62.16 -22.74 62.16 -19.04V-13.33H43.29V-11.76Q43.29 -8.85 44.66 -7.5Q46.03 -6.16 48.78 -6.16Q50.57 -6.16 51.91 -6.72Q53.26 -7.28 53.48 -8.4H61.71Q60.82 -4.37 57.29 -1.9Q53.76 0.56 48.78 0.56ZM43.29 -19.04V-18.31L54.15 -18.42V-19.15Q54.15 -22.01 52.84 -23.58Q51.52 -25.14 48.78 -25.14Q46.03 -25.14 44.66 -23.52Q43.29 -21.9 43.29 -19.04Z M67.54 0V-30.8H75.66V-25.2Q76.33 -28 78.54 -29.68Q80.75 -31.36 83.94 -31.36Q88.42 -31.36 91.14 -28.22Q93.86 -25.09 93.86 -19.88V0H85.46V-19.04Q85.46 -21.45 84.2 -22.76Q82.94 -24.08 80.7 -24.08Q78.46 -24.08 77.2 -22.76Q75.94 -21.45 75.94 -19.04V0Z M100.58 0V-30.8H108.7V-24.98Q109.37 -27.94 111.64 -29.65Q113.9 -31.36 117.32 -31.36Q121.97 -31.36 124.6 -28.22Q127.23 -25.09 127.23 -19.6V-16.52H118.83V-19.04Q118.83 -21.45 117.54 -22.76Q116.26 -24.08 113.9 -24.08Q111.55 -24.08 110.26 -22.6Q108.98 -21.11 108.98 -18.37V0Z"></path><polygon fill="#E3412B" points="127.65,-0.29 137.36,-0.29 151.92,-34.26 142.21,-34.26"></polygon><polygon fill="#E3412B" points="144.73,-40.09 154.44,-40.09 158.22,-48.82 148.52,-48.82"></polygon></svg><span style="flex:1"></span><a href="#docs">ドキュメント</a><a href="#tl">タイムライン</a><a href="#blog">ブログ</a><span class="search"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-4-4"></path></svg>検索<span class="kbd">⌘K</span></span><a href="#en" class="mono" style="font-size:12px">EN</a><a class="btn dark" href="#start">はじめる</a></div></header>
+
+<section class="row"><div class="box grid hero"><i class="p ptl"></i><i class="p ptr"></i>
+<div class="cell"><span class="tag"><i></i>v0.3.1 — 型付きクライアントと OpenAPI</span>
+<h1>どこでも動く、<br>Web フレームワーク</h1>
+<p class="lead">Request を受けて、Response を返す。それだけで、Bun・Node.js・Deno・Cloudflare Workers・ブラウザで同じコードが動きます。</p>
+<div class="pm"><div class="pmtabs" role="group" aria-label="パッケージマネージャー"><sc-for list="{{pms}}" as="pm" hint-placeholder-count="5"><button type="button" onClick="{{pm.pick}}" aria-pressed="{{pm.pressed}}" class="{{pm.cls}}">{{pm.label}}</button></sc-for></div><button type="button" class="cmd" onClick="{{copy}}" aria-label="コマンドをコピー"><span class="dl">$</span><span>{{cmd}}</span><sc-if value="{{copied}}" hint-placeholder-val="{{ false }}"><span class="ok">Copied!</span></sc-if><sc-if value="{{notCopied}}" hint-placeholder-val="{{ true }}"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" style="color:#9AA0A8"><rect x="9" y="9" width="11" height="11"></rect><path d="M5 15V5h10"></path></svg></sc-if></button></div>
+<div class="stats"><span><b>★ 3</b>GitHub</span><span><b>2,188</b>/ 週 npm</span></div></div>
+<div class="cell"><div class="win ed"><div class="tbar"><i></i><i></i><i></i><span class="ttl">my-app — Visual Studio Code</span></div><div class="ebody"><div class="act"><b></b><b></b><b></b><b></b></div><div class="emain"><div class="tabs"><span class="on">src/index.ts</span><span>package.json</span></div><div class="code"><div class="gut"><div>1</div><div>2</div><div>3</div><div>4</div><div>5</div><div>6</div><div>7</div><div>8</div><div>9</div></div><div class="src"><div><span class="k">import</span> { createApp } <span class="k">from</span> <span class="s">"@senrijs/senri"</span>;</div><div><span class="k">import</span> { serve } <span class="k">from</span> <span class="s">"@senrijs/senri/serve"</span>;</div><div>&nbsp;</div><div><span class="k">const</span> app = <span class="fn">createApp</span>();</div><div>&nbsp;</div><div>app.<span class="fn">get</span>(<span class="s">"/users/:id"</span>, ({ id }) =&gt; ({ id }));</div><div><span class="c">//                           ^? id: string</span></div><div>&nbsp;</div><div><span class="k">await</span> <span class="fn">serve</span>(app);</div></div></div><div class="term"><div class="ttabs"><span class="on">TERMINAL</span><span>PROBLEMS</span><span>OUTPUT</span></div><div class="tbody"><div><span class="dm">$</span> bun run dev</div><div>  <b style="color:#F2F3F5">senr</b><b style="color:#E3412B">/</b>  <span class="g">ready</span>  http://localhost:3927</div><div><span class="dm">$</span> curl localhost:3927/users/42</div><div>{"id":"42"}</div></div></div></div></div></div></div>
+</div></section>
+
+<section class="row"><div class="box grid" style="grid-template-columns:repeat(5,1fr)"><i class="p ptl"></i><i class="p ptr"></i><div class="cell" style="padding:22px 24px;display:flex;gap:12px;align-items:baseline;font:700 18px Inter"><span class="mono dm" style="font-size:11px;font-weight:500">01</span>Bun</div><div class="cell" style="padding:22px 24px;display:flex;gap:12px;align-items:baseline;font:700 18px Inter"><span class="mono dm" style="font-size:11px;font-weight:500">02</span>Node.js</div><div class="cell" style="padding:22px 24px;display:flex;gap:12px;align-items:baseline;font:700 18px Inter"><span class="mono dm" style="font-size:11px;font-weight:500">03</span>Deno</div><div class="cell" style="padding:22px 24px;display:flex;gap:12px;align-items:baseline;font:700 18px Inter"><span class="mono dm" style="font-size:11px;font-weight:500">04</span>Workers</div><div class="cell" style="padding:22px 24px;display:flex;gap:12px;align-items:baseline;font:700 18px Inter"><span class="mono dm" style="font-size:11px;font-weight:500">05</span>Browser</div></div></section>
+<section class="row"><div class="box grid" style="grid-template-columns:repeat(4,1fr)"><i class="p ptl"></i><i class="p ptr"></i><div class="cell" style="padding:36px 32px"><b style="display:block;font:800 44px/1 Inter;letter-spacing:-.03em">5</b><span style="display:block;margin-top:10px;font-size:13px;color:var(--muted)">ランタイム</span></div><div class="cell" style="padding:36px 32px"><b style="display:block;font:800 44px/1 Inter;letter-spacing:-.03em">6.9 KB</b><span style="display:block;margin-top:10px;font-size:13px;color:var(--muted)">gzip 後の大きさ</span></div><div class="cell" style="padding:36px 32px"><b style="display:block;font:800 44px/1 Inter;letter-spacing:-.03em">0</b><span style="display:block;margin-top:10px;font-size:13px;color:var(--muted)">依存</span></div><div class="cell" style="padding:36px 32px"><b style="display:block;font:800 44px/1 Inter;letter-spacing:-.03em">1,881</b><span style="display:block;margin-top:10px;font-size:13px;color:var(--muted)">テスト</span></div></div></section>
+
+<div class="dk">
+<section class="row"><div class="box"><i class="p ptl"></i><i class="p ptr"></i><div class="head"><div class="big">JOURNEY</div><p style="color:#8A9099">GET /users/42 が、来て、戻るまで。</p></div></div></section>
+<section class="jscroll" ref="{{jRef}}" aria-label="リクエストの旅"><div class="jsticky">
+<div class="row"><div class="box grid jgrid"><i class="p ptl"></i><i class="p ptr"></i><div class="jline"></div><div class="jfill" ref="{{fillRef}}"></div><div class="packet {{pkCls}}" ref="{{pkRef}}"></div><div class="cell jn {{jn0}}"><span class="jnum">01</span><span class="dot"></span><b>Router</b><span class="jd">ルートを探す</span></div><div class="cell jn {{jn1}}"><span class="jnum">02</span><span class="dot"></span><b>requestId</b><span class="jd">ID を付ける</span></div><div class="cell jn {{jn2}}"><span class="jnum">03</span><span class="dot"></span><b>cors</b><span class="jd">よそから来たか</span></div><div class="cell jn {{jn3}}"><span class="jnum">04</span><span class="dot"></span><b>auth</b><span class="jd">誰か確かめる</span></div><div class="cell jn {{jn4}}"><span class="jnum">05</span><span class="dot"></span><b>handler</b><span class="jd">答えを返す</span></div></div></div>
+<div class="row"><div class="box jcap"><i class="p ptl"></i><i class="p ptr"></i><span class="jno">{{jno}} — 05</span><h3>{{jt}}</h3><p>{{jd}}</p></div></div>
+<div class="row"><div class="box jfoot"><i class="p ptl"></i><i class="p ptr"></i><span>→ GET /users/42</span><span>/_senri で、いつでも見られます</span><span style="color:#7FD6A0">200 OK · 3.4ms ←</span></div></div>
+<div class="row jrest"><div class="box grid jviz"><i class="p ptl"></i><i class="p ptr"></i><div class="cell jv"><div class="jvh">REQUEST</div><pre class="jpre"><span class="jm">GET</span> /users/42
+host: example.com
+accept: application/json
+authorization: Bearer ••••</pre></div><div class="cell jv"><div class="jvh">ONION — /_senri</div><div class="onion"><div class="ol {{o1}}" style="--i:0"><span>requestId</span><em>0.1ms</em></div><div class="ol {{o2}}" style="--i:1"><span>cors</span><em>0.2ms</em></div><div class="ol {{o3}}" style="--i:2"><span>auth</span><em>1.1ms</em></div><div class="ol hd {{o4}}" style="--i:3"><span>handler</span><em>1.6ms</em></div></div></div><div class="cell jv"><div class="jvh">RESPONSE</div><sc-if value="{{resDone}}" hint-placeholder-val="{{ false }}"><pre class="jpre"><span style="color:#7FD6A0">200 OK</span>  <span style="color:#6B7079">3.4ms</span>
+content-type: application/json
+x-request-id: 7f3a…
+
+{"id": "42"}</pre></sc-if><sc-if value="{{resWait}}" hint-placeholder-val="{{ true }}"><div class="jwait"><span class="spin">●</span> 待っています…</div></sc-if></div></div></div>
+</div></section>
+</div>
+
+<section class="row"><div class="box"><i class="p ptl"></i><i class="p ptr"></i><div class="head"><div class="big">TRY IT</div><p>その場で、試してみる。</p></div></div></section>
+<section class="row"><div class="box grid try"><i class="p ptl"></i><i class="p ptr"></i>
+<div class="cell"><div class="win ed" style="height:230px"><div class="tbar"><i></i><i></i><i></i><span class="ttl">my-app — Visual Studio Code</span></div><div class="ebody"><div class="act"><b></b><b></b><b></b><b></b></div><div class="emain"><div class="tabs"><span class="on">app.ts</span><span>package.json</span></div><div class="code"><div class="gut"><div>1</div><div>2</div><div>3</div><div>4</div></div><div class="src"><div><span class="k">const</span> app = <span class="fn">createApp</span>();</div><div>&nbsp;</div><div>app.<span class="fn">get</span>(<span class="s">"/hello/:name"</span>, ({ name }) =&gt;</div><div>  <span class="s">`こんにちは、${name} さん`</span>);</div></div></div></div></div></div>
+<form class="ctrl" onSubmit="{{send}}"><select aria-label="メソッド" value="{{method}}" onChange="{{onMethod}}"><option>GET</option><option>POST</option><option>DELETE</option></select><input type="text" class="path" aria-label="パス" value="{{path}}" onChange="{{onPath}}"><button type="submit">送信</button></form><div class="hints"><button type="button" onClick="{{try1}}">/hello/senri</button><button type="button" onClick="{{try2}}">/helo/senri</button><button type="button" onClick="{{try3}}">POST /hello/senri</button></div></div>
+<div class="cell"><div class="win br "><div class="bbar"><i></i><i></i><i></i><div class="url">{{{{reqLine}}}}</div></div><div class="bbody"><sc-if value="{{busy}}" hint-placeholder-val="{{ false }}"><div class="resp dm">送っています…</div></sc-if><sc-if value="{{done}}" hint-placeholder-val="{{ true }}"><div class="resp"><span style="color:{{resColor}}">{{resStatus}}</span>  <span class="dm">{{resMeta}}</span>
+
+{{resBody}}<sc-if value="{{resHint}}" hint-placeholder-val="{{ false }}">
+
+<span style="color:#B5321F">もしかして: {{resHint}}</span></sc-if></div></sc-if></div></div><p style="margin:14px 0 0;font-size:13px;color:var(--muted)">ブラウザの中で、本物の Senri が動いています。</p></div>
+</div></section>
+
+<section class="row"><div class="box"><i class="p ptl"></i><i class="p ptr"></i><div class="head"><div class="big">RUNTIMES</div><p>どのランタイムでも、同じコードで。</p></div></div></section>
+<section class="ss" style="height:2200px" ref="{{rtRef}}" aria-label="ランタイムごとの起動"><div class="sst"><div class="row"><div class="box grid two rts {{rtCls}}"><i class="p ptl"></i><i class="p ptr"></i><div class="cell rsl"><div class="rsh mono">app.ts は、このまま。</div><div class="rsi k0"><span class="mono rsn">01</span><b>Bun</b><span class="mono dm rsf">src/index.ts</span></div><div class="rsi k1"><span class="mono rsn">02</span><b>Node.js</b><span class="mono dm rsf">src/index.ts</span></div><div class="rsi k2"><span class="mono rsn">03</span><b>Deno</b><span class="mono dm rsf">src/index.ts</span></div><div class="rsi k3"><span class="mono rsn">04</span><b>Workers</b><span class="mono dm rsf">src/worker.ts</span></div><div class="rsi k4"><span class="mono rsn">05</span><b>Browser</b><span class="mono dm rsf">src/sw.ts</span></div><div class="rcap"><p class="cv v0">serve(app) と書くだけで、Bun で起動します。</p><p class="cv v1">同じ serve(app) で、Node.js でも動きます。</p><p class="cv v2">deno run で、そのまま動きます。</p><p class="cv v3">export default app と書けば、Cloudflare Workers に載ります。</p><p class="cv v4">Service Worker の中でも、同じ app が答えます。</p></div><div class="rbar"><i></i></div></div><div class="cell rsr"><div class="rlab mono dm">変わらない</div><div class="win ed" style="height:232px"><div class="tbar"><i></i><i></i><i></i><span class="ttl">my-app — Visual Studio Code</span></div><div class="ebody"><div class="act"><b></b><b></b><b></b><b></b></div><div class="emain"><div class="tabs"><span class="on">app.ts</span><span>package.json</span></div><div class="code"><div class="gut"><div>1</div><div>2</div><div>3</div><div>4</div><div>5</div></div><div class="src"><div><span class="k">import</span> { <span class="fn">createApp</span> } <span class="k">from</span> <span class="s">"@senrijs/senri"</span>;</div><div>&nbsp;</div><div><span class="k">export const</span> app = <span class="fn">createApp</span>();</div><div>&nbsp;</div><div>app.<span class="fn">get</span>(<span class="s">"/users/:id"</span>, ({ id }) =&gt; ({ id }));</div></div></div></div></div></div><div class="rlab mono dm">ここだけ変わる</div><div class="cv v0 ent"><span class="mono dm">src/index.ts</span><code><span class="fn">serve</span>(app);</code></div><div class="cv v1 ent"><span class="mono dm">src/index.ts</span><code><span class="fn">serve</span>(app);</code></div><div class="cv v2 ent"><span class="mono dm">src/index.ts</span><code><span class="fn">serve</span>(app);</code></div><div class="cv v3 ent"><span class="mono dm">src/worker.ts</span><code><span class="k">export default</span> app;</code></div><div class="cv v4 ent"><span class="mono dm">src/sw.ts</span><code>e.<span class="fn">respondWith</span>(app.<span class="fn">fetch</span>(e.request));</code></div><div class="cv v0"><div class="win tm"><div class="tbar"><i></i><i></i><i></i><span class="ttl">zsh</span></div><div class="tmb"><div><span class="dm">$</span> bun run src/index.ts</div><div>  <b style="color:#F2F3F5">senr</b><b style="color:#E3412B">/</b>  <span class="g">ready</span>  http://localhost:3927</div><div>&nbsp;</div><div><span class="dm">$</span> curl localhost:3927/users/42</div><div>{"id":"42"}</div></div></div></div><div class="cv v1"><div class="win tm"><div class="tbar"><i></i><i></i><i></i><span class="ttl">zsh</span></div><div class="tmb"><div><span class="dm">$</span> node src/index.ts</div><div>  <b style="color:#F2F3F5">senr</b><b style="color:#E3412B">/</b>  <span class="g">ready</span>  http://localhost:3927</div><div>&nbsp;</div><div><span class="dm">$</span> curl localhost:3927/users/42</div><div>{"id":"42"}</div></div></div></div><div class="cv v2"><div class="win tm"><div class="tbar"><i></i><i></i><i></i><span class="ttl">zsh</span></div><div class="tmb"><div><span class="dm">$</span> deno run -A src/index.ts</div><div>  <b style="color:#F2F3F5">senr</b><b style="color:#E3412B">/</b>  <span class="g">ready</span>  http://localhost:3927</div><div>&nbsp;</div><div><span class="dm">$</span> curl localhost:3927/users/42</div><div>{"id":"42"}</div></div></div></div><div class="cv v3"><div class="win tm"><div class="tbar"><i></i><i></i><i></i><span class="ttl">zsh</span></div><div class="tmb"><div><span class="dm">$</span> wrangler dev</div><div>  <span class="g">ready</span>  http://localhost:8787</div><div>&nbsp;</div><div><span class="dm">$</span> curl localhost:8787/users/42</div><div>{"id":"42"}</div></div></div></div><div class="cv v4"><div class="win tm"><div class="tbar"><i></i><i></i><i></i><span class="ttl">Console — localhost</span></div><div class="tmb"><div><span class="dm">&gt;</span> navigator.serviceWorker.register(<span class="s">"/sw.js"</span>)</div><div>&nbsp;</div><div><span class="dm">&gt;</span> <span class="k">await</span> fetch(<span class="s">"/users/42"</span>).then(r =&gt; r.json())</div><div>{id: <span class="s">"42"</span>}</div></div></div></div></div></div></div></div></section>
+
+<section class="row"><div class="box grid two"><i class="p ptl"></i><i class="p ptr"></i><div class="cell"><div class="big" style="font-size:64px">CLI</div><h2 style="margin-top:20px">起動して、<br>すぐ見える。</h2><p>ルートの一覧と、届いたリクエストが流れます。打ち間違いには「もしかして」。</p></div><div class="cell" style="background:var(--soft)"><div class="win tm" style="height:470px" ref="{{cliRef}}"><div class="tbar"><i></i><i></i><i></i><span class="ttl">zsh — my-app</span></div><div class="tmb"><div><span class="dm">$</span> {{l1}}<sc-if value="{{c1}}" hint-placeholder-val="{{ false }}"><span class="caret"></span></sc-if></div><sc-if value="{{show2}}" hint-placeholder-val="{{ true }}"><div><span class="dm">$</span> {{l2}}<sc-if value="{{c2}}" hint-placeholder-val="{{ false }}"><span class="caret"></span></sc-if></div></sc-if><sc-if value="{{booting}}" hint-placeholder-val="{{ false }}"><div class="dm">  <span class="spin">●</span> 起動しています…</div></sc-if><sc-if value="{{ready}}" hint-placeholder-val="{{ true }}"><div>&nbsp;</div><div>  <b style="color:#F2F3F5">senr</b><b style="color:#E3412B">/</b>  <span class="g">ready</span>  http://localhost:3927</div><div>&nbsp;</div><div>    <span style="color:#7FD6A0;display:inline-block;width:7ch">GET</span>/<span class="b"></span></div><div>    <span style="color:#7FD6A0;display:inline-block;width:7ch">GET</span>/files/<span class="b">*</span></div><div>    <span style="color:#7FD6A0;display:inline-block;width:7ch">GET</span>/never-gonna-give-you-up<span class="b"></span></div><div>    <span style="color:#7DD3E8;display:inline-block;width:7ch">POST</span>/users<span class="b"></span></div><div>    <span style="color:#FF6B5E;display:inline-block;width:7ch">DELETE</span>/users/<span class="b">:id</span></div><div>    <span style="color:#7FD6A0;display:inline-block;width:7ch">GET</span>/users/<span class="b">:id</span></div><div>&nbsp;</div></sc-if><sc-for list="{{logs}}" as="log" hint-placeholder-count="0"><div class="logl"><span class="dm" style="width:9ch">{{log.time}}</span><span style="color:{{log.mc}};width:7ch">{{log.m}}</span><span style="flex:1;min-width:0">{{log.path}}</span><span style="color:{{log.sc}};width:4ch">{{log.st}}</span><span class="dm" style="width:7ch">{{log.ms}}</span><span class="dm">{{log.note}}</span></div></sc-for><sc-if value="{{ready}}" hint-placeholder-val="{{ true }}"><span class="caret"></span></sc-if></div></div></div></div></section>
+
+<section class="ss" style="height:1800px" ref="{{layRef}}" aria-label="レイヤーの組み立て"><div class="sst"><div class="row"><div class="box grid two lys {{layCls}}"><i class="p ptl"></i><i class="p ptr"></i><div class="cell"><div class="big" style="font-size:64px">LAYERS</div><h2 style="margin-top:20px">画面から、<br>ランタイムまで。</h2><div class="scap"><div class="cv v0"><span class="mono sno">01 — 04</span><b>土台はランタイム</b><p>Bun、Node.js、Deno、Workers、ブラウザ。どれも Web 標準の Request と Response を話します。</p></div><div class="cv v1"><span class="mono sno">02 — 04</span><b>その上に Senri</b><p>Senri は Request を受け取り、Response を返すだけの層です。ランタイムの違いは、ここで吸収します。</p></div><div class="cv v2"><span class="mono sno">03 — 04</span><b>ミドルウェアをつなぐ</b><p>requestId、cors、auth を順番に通って、最後にハンドラーが答えます。</p></div><div class="cv v3"><span class="mono sno">04 — 04</span><b>いずれ Ippo</b><p>その上に、React や Vue で書けるメタフレームワーク Ippo が載る予定です。</p></div></div></div><div class="cell layers lyb"><div class="ippo l3"><span>Ippo — React・Vue のメタフレームワーク</span><span>開発中</span></div><div class="lay l0"><span class="lb">RUNTIME — Bun · Node.js · Deno · Workers · Browser</span><div class="lay l1" style="margin-top:12px"><span class="lb">SENRI</span><div class="mws l2"><span class="m0">Request</span><span class="ar m1">→</span><span class="m1">requestId</span><span class="ar m2">→</span><span class="m2">cors</span><span class="ar m3">→</span><span class="m3">auth</span><span class="ar m4">→</span><span class="m4 h">handler</span><span class="ar m5">→</span><span class="m5">Response</span></div></div></div></div></div></div></div></section>
+
+<section class="ss" style="height:2000px" ref="{{rtrRef}}" aria-label="ルートを探す"><div class="sst"><div class="row"><div class="box grid two trs {{rtrCls}}"><i class="p ptl"></i><i class="p ptr"></i><div class="cell"><div class="big" style="font-size:64px">ROUTING</div><h2 style="margin-top:20px">枝分かれしても、<br>まっすぐ届く。</h2><div class="scap"><div class="cv v0"><span class="mono sno">01 — 05</span><b>リクエストが来る</b><p>GET /users/42 が届きました。ここから、どのルートかを探します。</p></div><div class="cv v1"><span class="mono sno">02 — 05</span><b>根元から</b><p>ルートは木の形で持っています。端から全部比べることはしません。</p></div><div class="cv v2"><span class="mono sno">03 — 05</span><b>/users へ</b><p>1 つ目の区切り users で、枝を 1 本に絞ります。</p></div><div class="cv v3"><span class="mono sno">04 — 05</span><b>/users/:id に届く</b><p>残りの 42 は :id に当てはまります。GET なので、このルートです。</p></div><div class="cv v4"><span class="mono sno">05 — 05</span><b>id は型付きで</b><p>ハンドラーには { id: "42" } が渡ります。id は TypeScript の型も付いています。</p></div></div></div><div class="cell tree trb"><div class="treq mono"><span class="m">GET</span> /<span class="sg1">users</span>/<span class="sg2">42</span></div><div class="tl2 t0">app</div><div class="tl2 t1">├── /users</div><div class="tl2 t2">│   ├── GET    /users/:id</div><div class="tl2 tx">│   ├── POST   /users</div><div class="tl2 tx">│   └── DELETE /users/:id</div><div class="tl2 tx">├── /posts</div><div class="tl2 tx">│   └── GET    /posts</div><div class="tl2 tx">└── /api/*</div><div class="tres mono"><span class="dm">params</span> { id: <span class="s2">"42"</span> }  <span class="dm">→ handler</span></div></div></div></div></div></section>
+
+<section class="row"><div class="box"><i class="p ptl"></i><i class="p ptr"></i><div class="head"><div class="big">FEATURES</div><p>必要なものだけ。</p></div></div></section>
+<section class="row"><div class="box grid feats"><i class="p ptl"></i><i class="p ptr"></i><div class="cell f" role="button" tabindex="0" aria-haspopup="dialog" onClick="{{fo0}}"><div class="fh"><span class="num">01</span><h3>どこでも同じコード</h3><p>書き換えるのは、起動するところだけです。</p></div><div class="pv"><div class="win ed" style="height:210px"><div class="tbar"><i></i><i></i><i></i><span class="ttl">my-app — Visual Studio Code</span></div><div class="ebody"><div class="act"><b></b><b></b><b></b><b></b></div><div class="emain"><div class="tabs"><span class="on">src/index.ts</span><span>package.json</span></div><div class="code"><div class="gut"><div>1</div><div>2</div><div>3</div><div>4</div><div>5</div></div><div class="src"><div><span class="c">// Bun・Node.js・Deno</span></div><div><span class="k">await</span> <span class="fn">serve</span>(app);</div><div>&nbsp;</div><div><span class="c">// Cloudflare Workers</span></div><div><span class="k">export default</span> app;</div></div></div></div></div></div></div><span class="zoom" aria-hidden="true">＋ 大きく見る</span></div><div class="cell f" role="button" tabindex="0" aria-haspopup="dialog" onClick="{{fo1}}"><div class="fh"><span class="num">02</span><h3>教えてくれるエラー</h3><p>原因の行と直し方を、日本語と英語で表示します。</p></div><div class="pv"><div class="win br "><div class="bbar"><i></i><i></i><i></i><div class="url">localhost:3927/users/42</div></div><div class="bbody"><div class="errp"><div class="e1"><span class="r">TypeError</span></div>
+<div class="e2">undefined か null から name を読もうとしました。</div>
+<div class="ecode"><div><span class="ln">15</span>  <span class="k">const</span> user = c.get("user");</div><div class="hl"><span class="ln">16</span>  <span class="k">return</span> { name: user.name };</div><div><span class="ln">17</span>});</div></div>
+<div class="e3">ヒント: c.get() に値をセットしていないか、await が抜けていないか確かめてください。</div></div></div></div></div><span class="zoom" aria-hidden="true">＋ 大きく見る</span></div><div class="cell f" role="button" tabindex="0" aria-haspopup="dialog" onClick="{{fo2}}"><div class="fh"><span class="num">03</span><h3>玉ねぎタイムライン</h3><p>どのミドルウェアで時間がかかったかが、/_senri で分かります。</p></div><div class="pv"><div class="win br "><div class="bbar"><i></i><i></i><i></i><div class="url">localhost:3927/_senri</div></div><div class="bbody"><div class="dash"><div class="dh"><span class="g">GET</span> /users/42 <span class="dm">200 · 3.4ms</span></div>
+<div class="bar" style="--l:0%;--w:100%"><span>requestId</span></div>
+<div class="bar" style="--l:4%;--w:92%"><span>cors</span></div>
+<div class="bar" style="--l:10%;--w:80%"><span>auth</span></div>
+<div class="bar hot" style="--l:30%;--w:52%"><span>handler</span></div></div></div></div></div><span class="zoom" aria-hidden="true">＋ 大きく見る</span></div><div class="cell f" role="button" tabindex="0" aria-haspopup="dialog" onClick="{{fo3}}"><div class="fh"><span class="num">04</span><h3>型付きのクライアント</h3><p>ルートの表から、呼び出し側に型と補完が付きます。</p></div><div class="pv"><div class="win ed" style="height:210px"><div class="tbar"><i></i><i></i><i></i><span class="ttl">my-app — Visual Studio Code</span></div><div class="ebody"><div class="act"><b></b><b></b><b></b><b></b></div><div class="emain"><div class="tabs"><span class="on">web/api.ts</span><span>package.json</span></div><div class="code"><div class="gut"><div>1</div><div>2</div><div>3</div><div>4</div></div><div class="src"><div><span class="k">const</span> api = <span class="fn">client</span>&lt;Api&gt;(BASE);</div><div><span class="k">const</span> res = <span class="k">await</span> <span class="fn">api</span>(<span class="s">"GET /"</span></div><div>&nbsp;</div><div><span class="k">if</span> (res.ok) res.data.name;</div><div class="ac"><div class="on">"GET /users/:id"</div><div>"POST /users"</div><div>"GET /posts"</div><div>"DELETE /users/:id"</div></div></div></div></div></div></div></div><span class="zoom" aria-hidden="true">＋ 大きく見る</span></div><div class="cell f" role="button" tabindex="0" aria-haspopup="dialog" onClick="{{fo4}}"><div class="fh"><span class="num">05</span><h3>OpenAPI</h3><p>同じ表から、API の説明を作ります。</p></div><div class="pv"><div class="win br "><div class="bbar"><i></i><i></i><i></i><div class="url">localhost:3927/docs</div></div><div class="bbody"><div class="oa"><div class="oah">My API <span class="dm">1.0.0 · OAS 3.1</span></div>
+<div class="op"><span class="m get">GET</span>/users/{id}<span class="dm">ユーザーを 1 人取る</span></div>
+<div class="op"><span class="m post">POST</span>/users<span class="dm">ユーザーを作る</span></div>
+<div class="op"><span class="m del">DELETE</span>/users/{id}<span class="dm">ユーザーを消す</span></div></div></div></div></div><span class="zoom" aria-hidden="true">＋ 大きく見る</span></div><div class="cell f" role="button" tabindex="0" aria-haspopup="dialog" onClick="{{fo5}}"><div class="fh"><span class="num">06</span><h3>本番まで</h3><p>OpenTelemetry・Prometheus・WebSocket に対応しています。</p></div><div class="pv"><div class="win tm" style="height:210px"><div class="tbar"><i></i><i></i><i></i><span class="ttl">zsh — my-app</span></div><div class="tmb"><div><span class="dm">$</span> curl -s localhost:3927/metrics</div><div><span class="dm"># TYPE http_server_requests histogram</span></div><div>http_..._bucket{route="/users/:id",</div><div>  le="0.005"} 412</div><div>http_server_active_requests 3</div></div></div></div><span class="zoom" aria-hidden="true">＋ 大きく見る</span></div></div></section>
+
+<section class="row"><div class="box"><i class="p ptl"></i><i class="p ptr"></i><div class="head"><div class="big">PATTERNS</div><div class="carnav"><span class="pos">{{pos}}</span><button type="button" onClick="{{prev}}">PREV</button><button type="button" onClick="{{next}}">NEXT</button></div></div></div></section>
+<section class="row"><div class="box slides"><i class="p ptl"></i><i class="p ptr"></i><div class="track" style="transform:{{track}}"><div class="slide"><div class="cell"><span class="num">01</span><h3>返すだけで JSON</h3><p>オブジェクトを返せば、そのまま JSON のレスポンスになります。</p></div><div class="cell"><pre class="pc">app.get("/todos", () =&gt; [
+  { id: 1, title: "牛乳を買う" },
+]);</pre></div></div><div class="slide"><div class="cell"><span class="num">02</span><h3>1 行で守る</h3><p>CORS もセキュリティのヘッダーも、use するだけです。</p></div><div class="cell"><pre class="pc">app.use(cors());
+app.use(secureHeaders());
+app.use(rateLimit({ windowMs: 60_000, limit: 100 }));</pre></div></div><div class="slide"><div class="cell"><span class="num">03</span><h3>流し続ける</h3><p>Server-Sent Events も、切れないための heartbeat も最初から入っています。</p></div><div class="cell"><pre class="pc">app.get("/events", (c) =&gt;
+  streamSSE(c, async (s) =&gt; {
+    await s.writeSSE({ data: "hi" });
+  }));</pre></div></div><div class="slide"><div class="cell"><span class="num">04</span><h3>大きいファイルも少しずつ</h3><p>メモリに全部載せずに、パーツを 1 つずつ読みます。</p></div><div class="cell"><pre class="pc">for await (const part of multipart(c)) {
+  await save(part.name, part.body);
+}</pre></div></div></div></div></section>
+
+<section class="row" id="tl"><div class="box"><i class="p ptl"></i><i class="p ptr"></i><div class="head"><div class="big">TIMELINE</div><p>一歩ずつ、ここまで。</p></div></div></section>
+<section class="row"><div class="box"><i class="p ptl"></i><i class="p ptr"></i><div class="glwrap"><div class="glcmd mono"><span class="dl">$</span> git log --graph --tags</div><div class="gllist"><svg class="glsvg" width="88" height="532" viewBox="0 0 88 532" aria-hidden="true"><line x1="30" y1="114" x2="30" y2="494" stroke="#C9CDD2" stroke-width="2"/><path d="M58 38 V70 Q58 114 30 114" fill="none" stroke="#9AA0A8" stroke-width="2" stroke-dasharray="4 4"/><circle cx="58" cy="38" r="6" fill="#fff" stroke="#9AA0A8" stroke-width="2" stroke-dasharray="3 2"/><circle cx="30" cy="114" r="10" fill="#E3412B" opacity=".15"/><circle cx="30" cy="114" r="6" fill="#E3412B"/><circle cx="30" cy="190" r="5" fill="#fff" stroke="#5B616A" stroke-width="2"/><circle cx="30" cy="266" r="5" fill="#fff" stroke="#5B616A" stroke-width="2"/><circle cx="30" cy="342" r="5" fill="#fff" stroke="#5B616A" stroke-width="2"/><circle cx="30" cy="418" r="5" fill="#fff" stroke="#5B616A" stroke-width="2"/><circle cx="30" cy="494" r="5" fill="#fff" stroke="#5B616A" stroke-width="2"/></svg><div class="gl plan"><span class="gh mono">ippo</span><div class="gm"><div class="gt"><span class="ref plan">planned: ippo</span><b>Ippo</b></div><span class="dm">Senri の上で動く、React や Vue のメタフレームワーク。</span></div><span class="mono dm gd">予定</span></div><div class="gl now"><span class="gh mono">0.3.0</span><div class="gm"><div class="gt"><span class="ref head">HEAD -&gt; main</span><span class="ref">tag: v0.3.0</span><b>型付きクライアントと OpenAPI</b></div><span class="dm">いまここ。</span></div><span class="mono dm gd">2026-11-12</span></div><div class="gl"><span class="gh mono">0.2.22</span><div class="gm"><div class="gt"><span class="ref">tag: v0.2.22</span><b>JWT・CSRF・WebSocket ほか</b></div><span class="dm">本番で要るものがそろいました。</span></div><span class="mono dm gd">2026-11-11</span></div><div class="gl"><span class="gh mono">site</span><div class="gm"><div class="gt"><span class="ref">docs</span><b>senri.skyia.jp を公開</b></div><span class="dm">ドキュメントは日本語と英語で読めます。</span></div><span class="mono dm gd">2026-11-08</span></div><div class="gl"><span class="gh mono">0.2.18</span><div class="gm"><div class="gt"><span class="ref">tag: v0.2.18</span><b>マルチパート</b></div><span class="dm">大きいファイルを少しずつ読めます。</span></div><span class="mono dm gd">2026-11-07</span></div><div class="gl"><span class="gh mono">0.2.0</span><div class="gm"><div class="gt"><span class="ref">tag: v0.2.0</span><b>ブラウザへ</b></div><span class="dm">Service Worker でも動くようになりました。</span></div><span class="mono dm gd">2026-10-27</span></div><div class="gl"><span class="gh mono">0.1.0</span><div class="gm"><div class="gt"><span class="ref">tag: v0.1.0</span><b>最初の公開</b></div><span class="dm">npm と JSR に出しました。</span></div><span class="mono dm gd">2026-10-26</span></div></div></div></div></section>
+
+<section class="row" id="start"><div class="box cta" onMouseMove="{{roadMove}}"><i class="p ptl"></i><i class="p ptr"></i><canvas class="road" ref="{{roadRef}}" aria-hidden="true"></canvas><h2>はじめよう。</h2><p style="margin:14px 0 28px;color:var(--muted)">千里の道も、一歩から。</p><div class="pm" style="margin-top:0"><div class="pmtabs" role="group" aria-label="パッケージマネージャー"><sc-for list="{{pms}}" as="pm" hint-placeholder-count="5"><button type="button" onClick="{{pm.pick}}" aria-pressed="{{pm.pressed}}" class="{{pm.cls}}">{{pm.label}}</button></sc-for></div><button type="button" class="cmd" onClick="{{copy}}" aria-label="コマンドをコピー"><span class="dl">$</span><span>{{cmd}}</span><sc-if value="{{copied}}" hint-placeholder-val="{{ false }}"><span class="ok">Copied!</span></sc-if><sc-if value="{{notCopied}}" hint-placeholder-val="{{ true }}"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" style="color:#9AA0A8"><rect x="9" y="9" width="11" height="11"></rect><path d="M5 15V5h10"></path></svg></sc-if></button></div></div></section>
+
+<footer class="row"><div class="box grid foot"><i class="p ptl"></i><i class="p ptr"></i>
+<div class="cell"><div style="color:var(--fg)"><svg width="82" height="26" viewBox="2.8 -48.82 155.42 49.38" aria-hidden="true" style="display:block"><path fill="currentColor" d="M15.51 0.56Q11.7 0.56 8.85 -0.64Q5.99 -1.85 4.4 -3.98Q2.8 -6.1 2.8 -8.96H11.03Q11.03 -7.39 12.21 -6.61Q13.38 -5.82 15.51 -5.82H17.98Q20.27 -5.82 21.53 -6.61Q22.79 -7.39 22.79 -8.85Q22.79 -10.25 21.78 -10.89Q20.78 -11.54 18.7 -11.76L11.65 -12.6Q7.56 -13.1 5.38 -15.65Q3.19 -18.2 3.19 -22.01Q3.19 -31.36 15.18 -31.36H17.81Q23.46 -31.36 26.82 -28.9Q30.18 -26.43 30.18 -22.29H21.95Q21.95 -23.63 20.86 -24.36Q19.77 -25.09 17.81 -25.09H15.18Q13.22 -25.09 12.21 -24.36Q11.2 -23.63 11.2 -22.34Q11.2 -21.06 12.18 -20.61Q13.16 -20.16 14.95 -19.94L21.67 -19.1Q26.21 -18.54 28.5 -15.9Q30.8 -13.27 30.8 -8.96Q30.8 -4.42 27.55 -1.93Q24.3 0.56 17.98 0.56Z M48.78 0.56Q44.69 0.56 41.64 -0.98Q38.58 -2.52 36.93 -5.29Q35.28 -8.06 35.28 -11.76V-19.04Q35.28 -22.74 36.93 -25.51Q38.58 -28.28 41.64 -29.82Q44.69 -31.36 48.78 -31.36Q52.86 -31.36 55.86 -29.82Q58.86 -28.28 60.51 -25.51Q62.16 -22.74 62.16 -19.04V-13.33H43.29V-11.76Q43.29 -8.85 44.66 -7.5Q46.03 -6.16 48.78 -6.16Q50.57 -6.16 51.91 -6.72Q53.26 -7.28 53.48 -8.4H61.71Q60.82 -4.37 57.29 -1.9Q53.76 0.56 48.78 0.56ZM43.29 -19.04V-18.31L54.15 -18.42V-19.15Q54.15 -22.01 52.84 -23.58Q51.52 -25.14 48.78 -25.14Q46.03 -25.14 44.66 -23.52Q43.29 -21.9 43.29 -19.04Z M67.54 0V-30.8H75.66V-25.2Q76.33 -28 78.54 -29.68Q80.75 -31.36 83.94 -31.36Q88.42 -31.36 91.14 -28.22Q93.86 -25.09 93.86 -19.88V0H85.46V-19.04Q85.46 -21.45 84.2 -22.76Q82.94 -24.08 80.7 -24.08Q78.46 -24.08 77.2 -22.76Q75.94 -21.45 75.94 -19.04V0Z M100.58 0V-30.8H108.7V-24.98Q109.37 -27.94 111.64 -29.65Q113.9 -31.36 117.32 -31.36Q121.97 -31.36 124.6 -28.22Q127.23 -25.09 127.23 -19.6V-16.52H118.83V-19.04Q118.83 -21.45 117.54 -22.76Q116.26 -24.08 113.9 -24.08Q111.55 -24.08 110.26 -22.6Q108.98 -21.11 108.98 -18.37V0Z"></path><polygon fill="#E3412B" points="127.65,-0.29 137.36,-0.29 151.92,-34.26 142.21,-34.26"></polygon><polygon fill="#E3412B" points="144.73,-40.09 154.44,-40.09 158.22,-48.82 148.52,-48.82"></polygon></svg></div><div style="margin-top:14px">Web 標準で作った TypeScript のフレームワーク。<br>MIT License</div></div>
+<div class="cell"><b>ドキュメント</b>はじめに<br>ルーティング<br>ミドルウェア<br>開発モード</div>
+<div class="cell"><b>コミュニティ</b>GitHub<br>Issue<br>リリース</div>
+<div class="cell"><b>パッケージ</b>npm<br>JSR<br>create-senri</div>
+</div></footer>
+<div class="row"><div class="box" style="height:56px"><i class="p ptl"></i><i class="p ptr"></i></div></div>
+<sc-if value="{{dlgOpen}}" hint-placeholder-val="{{ false }}"><div class="scrim" onClick="{{close}}"></div><div class="dlg" role="dialog" aria-modal="true" aria-labelledby="dlg-title" style="{{dlgStyle}}"><button type="button" class="dlgx" onClick="{{close}}" aria-label="閉じる">×</button><sc-if value="{{dl0}}" hint-placeholder-val="{{ false }}"><div class="dlgh"><span class="num">01</span><h2 id="dlg-title">どこでも同じコード</h2><p>書き換えるのは、起動するところだけです。</p></div><div class="dlgb"><div class="dlgpv"><div class="win ed" style="height:210px"><div class="tbar"><i></i><i></i><i></i><span class="ttl">my-app — Visual Studio Code</span></div><div class="ebody"><div class="act"><b></b><b></b><b></b><b></b></div><div class="emain"><div class="tabs"><span class="on">src/index.ts</span><span>package.json</span></div><div class="code"><div class="gut"><div>1</div><div>2</div><div>3</div><div>4</div><div>5</div></div><div class="src"><div><span class="c">// Bun・Node.js・Deno</span></div><div><span class="k">await</span> <span class="fn">serve</span>(app);</div><div>&nbsp;</div><div><span class="c">// Cloudflare Workers</span></div><div><span class="k">export default</span> app;</div></div></div></div></div></div></div><ul><li>Bun・Node.js・Deno では serve(app)、Workers では export default app。</li><li>アプリ本体のコードは、どのランタイムでも同じです。</li><li>ブラウザの Service Worker でも app.fetch がそのまま動きます。</li><li class="lk"><a href="#docs">ドキュメントを読む →</a></li></ul></div></sc-if><sc-if value="{{dl1}}" hint-placeholder-val="{{ false }}"><div class="dlgh"><span class="num">02</span><h2 id="dlg-title">教えてくれるエラー</h2><p>原因の行と直し方を、日本語と英語で表示します。</p></div><div class="dlgb"><div class="dlgpv"><div class="win br "><div class="bbar"><i></i><i></i><i></i><div class="url">localhost:3927/users/42</div></div><div class="bbody"><div class="errp"><div class="e1"><span class="r">TypeError</span></div>
+<div class="e2">undefined か null から name を読もうとしました。</div>
+<div class="ecode"><div><span class="ln">15</span>  <span class="k">const</span> user = c.get("user");</div><div class="hl"><span class="ln">16</span>  <span class="k">return</span> { name: user.name };</div><div><span class="ln">17</span>});</div></div>
+<div class="e3">ヒント: c.get() に値をセットしていないか、await が抜けていないか確かめてください。</div></div></div></div></div><ul><li>開発モードでは、例外を投げた行とその前後のコードを表示します。</li><li>よくある原因と直し方のヒントを、日本語と英語で出します。</li><li>本番では 500 だけを返し、中身は見せません。</li><li class="lk"><a href="#docs">ドキュメントを読む →</a></li></ul></div></sc-if><sc-if value="{{dl2}}" hint-placeholder-val="{{ false }}"><div class="dlgh"><span class="num">03</span><h2 id="dlg-title">玉ねぎタイムライン</h2><p>どのミドルウェアで時間がかかったかが、/_senri で分かります。</p></div><div class="dlgb"><div class="dlgpv"><div class="win br "><div class="bbar"><i></i><i></i><i></i><div class="url">localhost:3927/_senri</div></div><div class="bbody"><div class="dash"><div class="dh"><span class="g">GET</span> /users/42 <span class="dm">200 · 3.4ms</span></div>
+<div class="bar" style="--l:0%;--w:100%"><span>requestId</span></div>
+<div class="bar" style="--l:4%;--w:92%"><span>cors</span></div>
+<div class="bar" style="--l:10%;--w:80%"><span>auth</span></div>
+<div class="bar hot" style="--l:30%;--w:52%"><span>handler</span></div></div></div></div></div><ul><li>/_senri を開くと、届いたリクエストが一覧になります。</li><li>1 つ選ぶと、ミドルウェアとハンドラーを通った順と時間が、入れ子の帯で分かります。</li><li>Server-Timing ヘッダーにも出るので、ブラウザの開発者ツールでも見られます。</li><li class="lk"><a href="#docs">ドキュメントを読む →</a></li></ul></div></sc-if><sc-if value="{{dl3}}" hint-placeholder-val="{{ false }}"><div class="dlgh"><span class="num">04</span><h2 id="dlg-title">型付きのクライアント</h2><p>ルートの表から、呼び出し側に型と補完が付きます。</p></div><div class="dlgb"><div class="dlgpv"><div class="win ed" style="height:210px"><div class="tbar"><i></i><i></i><i></i><span class="ttl">my-app — Visual Studio Code</span></div><div class="ebody"><div class="act"><b></b><b></b><b></b><b></b></div><div class="emain"><div class="tabs"><span class="on">web/api.ts</span><span>package.json</span></div><div class="code"><div class="gut"><div>1</div><div>2</div><div>3</div><div>4</div></div><div class="src"><div><span class="k">const</span> api = <span class="fn">client</span>&lt;Api&gt;(BASE);</div><div><span class="k">const</span> res = <span class="k">await</span> <span class="fn">api</span>(<span class="s">"GET /"</span></div><div>&nbsp;</div><div><span class="k">if</span> (res.ok) res.data.name;</div><div class="ac"><div class="on">"GET /users/:id"</div><div>"POST /users"</div><div>"GET /posts"</div><div>"DELETE /users/:id"</div></div></div></div></div></div></div></div><ul><li>defineRoutes の表の型を、そのままクライアントに渡します。</li><li>パス・パラメーター・ボディ・レスポンスの型と補完が付きます。</li><li>Proxy を使わない、関数 1 つの小さなクライアントです。</li><li class="lk"><a href="#docs">ドキュメントを読む →</a></li></ul></div></sc-if><sc-if value="{{dl4}}" hint-placeholder-val="{{ false }}"><div class="dlgh"><span class="num">05</span><h2 id="dlg-title">OpenAPI</h2><p>同じ表から、API の説明を作ります。</p></div><div class="dlgb"><div class="dlgpv"><div class="win br "><div class="bbar"><i></i><i></i><i></i><div class="url">localhost:3927/docs</div></div><div class="bbody"><div class="oa"><div class="oah">My API <span class="dm">1.0.0 · OAS 3.1</span></div>
+<div class="op"><span class="m get">GET</span>/users/{id}<span class="dm">ユーザーを 1 人取る</span></div>
+<div class="op"><span class="m post">POST</span>/users<span class="dm">ユーザーを作る</span></div>
+<div class="op"><span class="m del">DELETE</span>/users/{id}<span class="dm">ユーザーを消す</span></div></div></div></div></div><ul><li>同じ表から OpenAPI 3.1 の文書を作ります。</li><li>Zod・ArkType などのスキーマは、Standard JSON Schema で変換します。</li><li>Scalar や Swagger UI に読ませれば、試せるドキュメントになります。</li><li class="lk"><a href="#docs">ドキュメントを読む →</a></li></ul></div></sc-if><sc-if value="{{dl5}}" hint-placeholder-val="{{ false }}"><div class="dlgh"><span class="num">06</span><h2 id="dlg-title">本番まで</h2><p>OpenTelemetry・Prometheus・WebSocket に対応しています。</p></div><div class="dlgb"><div class="dlgpv"><div class="win tm" style="height:210px"><div class="tbar"><i></i><i></i><i></i><span class="ttl">zsh — my-app</span></div><div class="tmb"><div><span class="dm">$</span> curl -s localhost:3927/metrics</div><div><span class="dm"># TYPE http_server_requests histogram</span></div><div>http_..._bucket{route="/users/:id",</div><div>  le="0.005"} 412</div><div>http_server_active_requests 3</div></div></div></div><ul><li>otel() で、ルートごとの span を作ります。middlewareSpans: true で玉ねぎがそのままトレースに。</li><li>metrics() と metricsHandler() で、Prometheus の形式で出します。</li><li>WebSocket は Bun・Deno・Node.js(ws)・Workers で同じ書き方です。</li><li class="lk"><a href="#docs">ドキュメントを読む →</a></li></ul></div></sc-if></div></sc-if><div class="hud" style="left:20px">senr/ — v0.3.1</div><div class="hud" style="right:20px">2026-11-13 13:10:24</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":14050}}'>
+class Component extends DCLogic {
+constructor(props) {
+super(props);
+this.state = { ss_rt: 0, ss_lay: 0, ss_rtr: 0, method: 'GET', path: '/hello/senri', busy: false, res: { st: 200, body: 'こんにちは、senri さん', ms: '0.4', type: 'text/plain', hint: '' }, reqLine: 'GET /hello/senri', open: -1, fx: 0, fy: 0, fs: 1, pm: 0, copied: false, slide: 0, step: 0, back: false, t1: 0, t2: 0, phase: 0, logs: [] };
+this.cliRef = (el) => { this.cliEl = el; };
+// TRY IT: 見本の小さなルーター(本物では Worker の中で本物の Senri が動く)
+this.run = (method, path) => {
+const m = /^\/hello\/([^/]+)\/?$/.exec(path);
+if (m && method === 'GET') return { st: 200, body: 'こんにちは、' + decodeURIComponent(m[1]) + ' さん', type: 'text/plain', hint: '' };
+if (m) return { st: 405, body: '405 Method Not Allowed', type: 'text/plain', hint: '', allow: 'GET' };
+const near = /^\/h[a-z]{2,5}\/[^/]+$/.test(path);
+return { st: 404, body: '404 Not Found', type: 'text/plain', hint: near ? 'GET /hello/:name' : '' };
+};
+this.sendReq = (method, path) => {
+this.setState({ busy: true, method, path });
+clearTimeout(this.tr);
+this.tr = setTimeout(() => { const r = this.run(method, path); r.ms = (0.2 + Math.random() * 0.6).toFixed(1); this.setState({ busy: false, res: r, reqLine: method + ' ' + path }); }, 320);
+};
+this.openF = (i) => (e) => {
+const r = e.currentTarget.getBoundingClientRect();
+const vw = window.innerWidth, vh = window.innerHeight;
+const dw = Math.min(1040, vw * 0.92);
+this.lastCard = e.currentTarget;
+this.setState({ open: i, fx: Math.round(r.left + r.width / 2 - vw / 2), fy: Math.round(r.top + r.height / 2 - vh / 2), fs: Math.max(0.2, Math.min(1, r.width / dw)).toFixed(3) });
+};
+this.closeF = () => { this.setState({ open: -1 }); if (this.lastCard) this.lastCard.focus(); };
+this.onKey = (e) => { if (e.key === 'Escape' && this.state.open >= 0) this.closeF(); if ((e.key === 'Enter' || e.key === ' ') && e.target && e.target.getAttribute && e.target.getAttribute('aria-haspopup') === 'dialog') { e.preventDefault(); e.target.click(); } };
+this.roadRef = (el) => { this.roadEl = el; };
+// はじめようの背景: グリッド状に揃えた点の上を、赤いリクエストが曲がりながら進む
+this.mx = 0; this.tmx = 0;
+this.drawRoad = (now) => {
+this.raf2 = requestAnimationFrame(this.drawRoad);
+const cv = this.roadEl; if (!cv || document.hidden) return;
+const rr = cv.getBoundingClientRect();
+if (rr.bottom < 0 || rr.top > window.innerHeight || rr.width === 0) return;
+const dpr = Math.min(1.5, window.devicePixelRatio || 1);
+const w = cv.clientWidth, h = cv.clientHeight;
+if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(h * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
+const g = cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, w, h);
+this.mx += (this.tmx - this.mx) * 0.06;
+this.drawDots(g, w, h, now);
+};
+this.shots = [];
+this.drawDots = (g, w, h, now) => {
+// グリッド状に揃えた点 + 点から点へ曲がりながら進む赤いリクエスト
+const S = 24, ox = (w % S) / 2 + S / 2, oy = (h % S) / 2 + S / 2;
+const cols = Math.floor(w / S), rows = Math.floor(h / S);
+const mx = this.mpx, my = this.mpy;
+for (let j = 0; j < rows; j++) for (let i = 0; i < cols; i++) {
+const x = ox + i * S, y = oy + j * S;
+let r = 1.2, a = 0.5;
+if (mx != null) { const d = Math.hypot(x - mx, y - my); if (d < 110) { const k = 1 - d / 110; r += k * 1.4; a += k * 0.45; } }
+g.globalAlpha = a; g.fillStyle = '#9AA0A8'; g.fillRect(x - r, y - r, r * 2, r * 2);
+}
+if (this.shots.length < 7 && Math.random() < 0.03) {
+const fromLeft = Math.random() < 0.5;
+this.shots.push({ i: fromLeft ? -1 : cols, j: 1 + Math.floor(Math.random() * (rows - 2)), di: fromLeft ? 1 : -1, dj: 0, p: 0, v: 0.12 + Math.random() * 0.1, trail: [] });
+}
+// 頭が外に出ても、残像が全部外に抜けるまでは消さない
+const inb = (i, j) => i >= -1 && i <= cols && j >= -1 && j <= rows;
+this.shots = this.shots.filter((q) => inb(q.i, q.j) || q.trail.some(([i, j]) => inb(i, j)));
+for (const q of this.shots) {
+q.p += q.v;
+while (q.p >= 1) {
+q.p -= 1; q.trail.push([q.i, q.j]); if (q.trail.length > 6) q.trail.shift();
+q.i += q.di; q.j += q.dj;
+if (inb(q.i, q.j) && Math.random() < 0.12) { if (q.dj === 0) { q.dj = Math.random() < 0.5 ? 1 : -1; q.di = 0; } else { q.di = q.dj = 0; q.di = Math.random() < 0.5 ? 1 : -1; } }
+}
+const hx = ox + (q.i + q.di * q.p) * S, hy2 = oy + (q.j + q.dj * q.p) * S;
+const pts = q.trail.map(([i, j]) => [ox + i * S, oy + j * S]).concat([[ox + q.i * S, oy + q.j * S], [hx, hy2]]);
+g.globalAlpha = 1; g.lineWidth = 2; g.lineCap = 'round'; g.lineJoin = 'round';
+for (let k = 1; k < pts.length; k++) {
+g.strokeStyle = 'rgba(227,65,43,' + (0.08 + 0.8 * k / pts.length).toFixed(2) + ')';
+g.beginPath(); g.moveTo(pts[k - 1][0], pts[k - 1][1]); g.lineTo(pts[k][0], pts[k][1]); g.stroke();
+}
+for (const [i, j] of q.trail) { g.fillStyle = 'rgba(227,65,43,.35)'; g.fillRect(ox + i * S - 1.6, oy + j * S - 1.6, 3.2, 3.2); }
+g.fillStyle = '#E3412B'; g.fillRect(hx - 3, hy2 - 3, 6, 6);
+}
+const fade = g.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, Math.max(w, h) * 0.45);
+fade.addColorStop(0, 'rgba(255,255,255,.92)'); fade.addColorStop(0.55, 'rgba(255,255,255,.55)'); fade.addColorStop(1, 'rgba(255,255,255,0)');
+g.globalAlpha = 1; g.fillStyle = fade; g.fillRect(0, 0, w, h);
+};
+this.roadMove = (e) => { const r = e.currentTarget.getBoundingClientRect(); this.tmx = ((e.clientX - r.left) / r.width - 0.5) * 2; const c = this.roadEl && this.roadEl.getBoundingClientRect(); if (c) { this.mpx = e.clientX - c.left; this.mpy = e.clientY - c.top; } };
+this.mpx = null; this.mpy = null;
+this.L1 = 'npm create senri@latest my-app';
+this.L2 = 'cd my-app && bun run dev';
+this.pool = [
+ { m: 'GET', mc: '#7FD6A0', path: '/users/42', st: '200', sc: '#7FD6A0', ms: '3.4ms', note: '' },
+ { m: 'POST', mc: '#7DD3E8', path: '/users', st: '201', sc: '#7FD6A0', ms: '5.1ms', note: '' },
+ { m: 'GET', mc: '#7FD6A0', path: '/user/42', st: '404', sc: '#FF6B5E', ms: '0.6ms', note: 'もしかして /users/:id' },
+ { m: 'GET', mc: '#7FD6A0', path: '/never-gonna-give-you-up', st: '200', sc: '#7FD6A0', ms: '0.9ms', note: '' },
+ { m: 'DELETE', mc: '#FF6B5E', path: '/users/7', st: '204', sc: '#7FD6A0', ms: '2.2ms', note: '' },
+ { m: 'GET', mc: '#7FD6A0', path: '/files/logo.svg', st: '200', sc: '#7FD6A0', ms: '1.3ms', note: '' },
+];
+this.n = 0;
+this.tick = () => {
+const st = this.state;
+if (st.phase === 0) { if (st.t1 < this.L1.length) { this.setState({ t1: st.t1 + 1 }); this.tm = setTimeout(this.tick, 45); } else { this.setState({ phase: 1 }); this.tm = setTimeout(this.tick, 400); } return; }
+if (st.phase === 1) { if (st.t2 < this.L2.length) { this.setState({ t2: st.t2 + 1 }); this.tm = setTimeout(this.tick, 45); } else { this.setState({ phase: 2 }); this.tm = setTimeout(this.tick, 900); } return; }
+if (st.phase === 2) { this.setState({ phase: 3 }); this.tm = setTimeout(this.tick, 700); return; }
+const d = new Date();
+const pad = (x) => String(x).padStart(2, '0');
+const log = Object.assign({ time: pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds()) }, this.pool[this.n++ % this.pool.length]);
+this.setState({ logs: st.logs.concat([log]).slice(-6) });
+this.tm = setTimeout(this.tick, 1100 + Math.random() * 900);
+};
+this.jRef = (el) => { this.jEl = el; };
+// スムーズスクロール: ホイールに慣性をつける + ページ内リンクも同じ動きで移動する
+this.sm = { y: 0, ty: 0, on: false, raf: 0 };
+this.smMax = () => document.documentElement.scrollHeight - window.innerHeight;
+this.smLoop = () => {
+const m = this.sm;
+m.y += (m.ty - m.y) * 0.1;
+if (Math.abs(m.ty - m.y) < 0.5) { m.y = m.ty; m.on = false; }
+window.scrollTo({ top: m.y, behavior: 'instant' });
+m.raf = m.on ? requestAnimationFrame(this.smLoop) : 0;
+};
+this.smTo = (y) => {
+const m = this.sm;
+if (!m.on) { m.y = window.scrollY; }
+m.ty = Math.max(0, Math.min(this.smMax(), y));
+if (!m.on) { m.on = true; m.raf = requestAnimationFrame(this.smLoop); }
+};
+this.onWheel = (e) => {
+if (e.ctrlKey || this.state.open >= 0 || Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
+e.preventDefault();
+const d = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaMode === 2 ? e.deltaY * window.innerHeight : e.deltaY;
+this.smTo((this.sm.on ? this.sm.ty : window.scrollY) + d);
+};
+this.onLink = (e) => {
+const a = e.target.closest && e.target.closest('a[href^="#"]'); if (!a) return;
+const t = document.getElementById(a.getAttribute('href').slice(1)); if (!t) return;
+e.preventDefault();
+const y = t.getBoundingClientRect().top + window.scrollY - 64;
+if (this.reduce) window.scrollTo({ top: y, behavior: 'instant' }); else this.smTo(y);
+};
+// キーボードやスクロールバーで動かしたときは、慣性の目標をいまの位置に合わせる
+this.smSync = () => { if (!this.sm.on) { this.sm.y = this.sm.ty = window.scrollY; } };
+// ストーリースクロール(ランタイム・レイヤー・ルーティング): 進み具合からステップを決める
+this.ssEls = {};
+this.rtRef = (el) => { this.ssEls.rt = el; }; this.layRef = (el) => { this.ssEls.lay = el; }; this.rtrRef = (el) => { this.ssEls.rtr = el; };
+this.ssN = { rt: 5, lay: 4, rtr: 5 };
+this.ssStep = () => {
+const nx = {}; let ch = false;
+for (const k of Object.keys(this.ssN)) {
+const el = this.ssEls[k]; if (!el) continue;
+const r = el.getBoundingClientRect(); const span = r.height - window.innerHeight;
+const p = span <= 0 ? 0 : Math.min(1, Math.max(0, -r.top / span));
+const st = Math.min(this.ssN[k] - 1, Math.floor(p * this.ssN[k]));
+if (st !== this.state['ss_' + k]) { nx['ss_' + k] = st; ch = true; }
+}
+if (ch) this.setState(nx);
+};
+this.pkRef = (el) => { this.pkEl = el; };
+this.fillRef = (el) => { this.fillEl = el; };
+this.onScroll = () => {
+if (this.raf) return;
+this.raf = requestAnimationFrame(() => {
+this.raf = 0;
+this.ssStep();
+const el = this.jEl; if (!el) return;
+const r = el.getBoundingClientRect();
+const span = r.height - window.innerHeight;
+const p = span <= 0 ? 0 : Math.min(1, Math.max(0, -r.top / span));
+// 0〜0.8 で行き、0.8〜1 で戻る
+const go = Math.min(1, p / 0.8);
+const back = p > 0.8;
+const x = back ? 1 - (p - 0.8) / 0.2 : go;
+const left = 10 + x * 80;
+if (this.pkEl) this.pkEl.style.left = left + '%';
+if (this.fillEl) this.fillEl.style.width = (back ? 0 : x * 80) + '%';
+const step = back ? 4 : Math.min(4, Math.floor(go * 4 + 0.15));
+if (step !== this.state.step || back !== this.state.back) this.setState({ step, back });
+});
+};
+}
+componentDidMount() {
+window.addEventListener('scroll', this.onScroll, { passive: true }); this.onScroll();
+window.addEventListener('keydown', this.onKey);
+this.reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+if (!this.reduce) window.addEventListener('wheel', this.onWheel, { passive: false });
+window.addEventListener('scroll', this.smSync, { passive: true });
+document.addEventListener('click', this.onLink);
+// 画面に入ったら動き出し、出たら止める
+this.io = new IntersectionObserver((es) => { es.forEach((e) => { clearTimeout(this.tm); if (e.isIntersecting) this.tm = setTimeout(this.tick, 300); }); }, { threshold: 0.3 });
+if (this.cliEl) this.io.observe(this.cliEl);
+this.raf2 = requestAnimationFrame(this.drawRoad);
+}
+componentWillUnmount() { window.removeEventListener('wheel', this.onWheel); window.removeEventListener('scroll', this.smSync); document.removeEventListener('click', this.onLink); cancelAnimationFrame(this.sm.raf); window.removeEventListener('scroll', this.onScroll); window.removeEventListener('keydown', this.onKey); clearTimeout(this.tm); this.io && this.io.disconnect(); cancelAnimationFrame(this.raf2); }
+renderVals() {
+const cmds = [["npm", "npm create senri@latest"], ["pnpm", "pnpm create senri"], ["yarn", "yarn create senri"], ["bun", "bun create senri"], ["deno", "deno run -A npm:create-senri@latest"]];
+const slide = this.state.slide;
+const scenes = [['リクエストが届く','GET /users/42。Web 標準の Request が、そのまま Senri に渡されます。'],['ルートを探す','枝分かれしたルートから、/users/:id にまっすぐたどり着きます。id は型付きで受け取れます。'],['ミドルウェアをくぐる','requestId、cors、auth。玉ねぎの皮を 1 枚ずつくぐるように、順番に通っていきます。'],['ハンドラーが答える','返したいものを返すだけです。オブジェクトは、そのまま JSON になります。'],['レスポンスが戻る','Response が来た道を戻っていきます。どこで何ミリ秒かかったかは、ダッシュボードで見られます。']];
+const st = this.state.back ? 4 : this.state.step;
+const ph = this.state.phase;
+return {
+method: this.state.method, path: this.state.path, reqLine: this.state.reqLine,
+onMethod: (e) => this.setState({ method: e.target.value }),
+onPath: (e) => this.setState({ path: e.target.value }),
+send: (e) => { e && e.preventDefault && e.preventDefault(); this.sendReq(this.state.method, this.state.path.startsWith('/') ? this.state.path : '/' + this.state.path); },
+try1: () => this.sendReq('GET', '/hello/senri'), try2: () => this.sendReq('GET', '/helo/senri'), try3: () => this.sendReq('POST', '/hello/senri'),
+busy: this.state.busy, done: !this.state.busy,
+resStatus: this.state.res.st + ' ' + ({ 200: 'OK', 404: 'Not Found', 405: 'Method Not Allowed' })[this.state.res.st],
+resColor: this.state.res.st < 300 ? '#1F8A4C' : '#C2362B',
+resMeta: this.state.res.type + ' · ' + (this.state.res.ms || '0.4') + 'ms' + (this.state.res.allow ? ' · allow: ' + this.state.res.allow : ''),
+resBody: this.state.res.body, resHint: this.state.res.hint,
+dlgOpen: this.state.open >= 0, close: this.closeF,
+dlgStyle: '--fx:' + this.state.fx + 'px;--fy:' + this.state.fy + 'px;--fs:' + this.state.fs,
+fo0: this.openF(0), fo1: this.openF(1), fo2: this.openF(2), fo3: this.openF(3), fo4: this.openF(4), fo5: this.openF(5),
+dl0: this.state.open === 0, dl1: this.state.open === 1, dl2: this.state.open === 2, dl3: this.state.open === 3, dl4: this.state.open === 4, dl5: this.state.open === 5,
+cliRef: this.cliRef, roadRef: this.roadRef, roadMove: this.roadMove,
+l1: this.L1.slice(0, this.state.t1), c1: ph === 0,
+show2: ph >= 1, l2: this.L2.slice(0, this.state.t2), c2: ph === 1,
+booting: ph === 2, ready: ph >= 3, logs: this.state.logs,
+jRef: this.jRef, pkRef: this.pkRef, fillRef: this.fillRef,
+rtRef: this.rtRef, layRef: this.layRef, rtrRef: this.rtrRef,
+rtCls: 's' + this.state.ss_rt, layCls: 's' + this.state.ss_lay, rtrCls: 's' + this.state.ss_rtr,
+pkCls: this.state.back ? 'back' : '',
+jno: '0' + (st + 1), jt: scenes[st][0], jd: scenes[st][1],
+o1: this.state.back ? 'done' : (this.state.step >= 1 ? 'on' : ''), o2: this.state.back ? 'done' : (this.state.step >= 2 ? 'on' : ''), o3: this.state.back ? 'done' : (this.state.step >= 3 ? 'on' : ''), o4: this.state.back ? 'done' : (this.state.step >= 4 ? 'on' : ''),
+resDone: this.state.back, resWait: !this.state.back,
+jn0: this.state.step >= 0 ? 'on' : '', jn1: this.state.step >= 1 ? 'on' : '', jn2: this.state.step >= 2 ? 'on' : '', jn3: this.state.step >= 3 ? 'on' : '', jn4: this.state.step >= 4 ? 'on' : '',
+cmd: cmds[this.state.pm][1],
+copied: this.state.copied, notCopied: !this.state.copied,
+pms: cmds.map((c, i) => ({ label: c[0], pressed: i === this.state.pm ? 'true' : 'false', cls: i === this.state.pm ? 'on' : '', pick: () => this.setState({ pm: i, copied: false }) })),
+copy: () => { try { navigator.clipboard && navigator.clipboard.writeText(cmds[this.state.pm][1]); } catch (e) {} this.setState({ copied: true }); clearTimeout(this.t); this.t = setTimeout(() => this.setState({ copied: false }), 1400); },
+track: 'translateX(-' + (slide * 100) + '%)',
+pos: '0' + (slide + 1) + ' / 04',
+prev: () => this.setState({ slide: (slide + 3) % 4 }),
+next: () => this.setState({ slide: (slide + 1) % 4 }),
+};
+}
+}
+</script>
+</body></html>

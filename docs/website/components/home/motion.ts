@@ -1,6 +1,6 @@
 "use client";
 // 動きを止めるかどうか。OS の「視差効果を減らす」と、フッターの「動きを止める」ボタン(<html data-motion="off">)の両方を見る
-// CSS のアニメーションは home.css が止める。ここはパーティクル、カルーセル、CLI など JavaScript で動かすもののため
+// CSS のアニメーションは components/top/top.css が止める。ここは Canvas、CLI、ストーリースクロールなど JavaScript で動かすもののため
 import { useSyncExternalStore } from "react";
 
 const KEY = "senri.motion";

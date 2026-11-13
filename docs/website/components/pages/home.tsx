@@ -1,23 +1,23 @@
-// トップページとブログの外側(app/(ja)/(home) と app/(en)/en/(home) から使う)
+// トップページとブログの外側(app/(ja)/(home) と app/(en)/en/(home) から使う)。中身は components/top(グリッド版)
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
-import { HomePage as Page } from "@/components/home/home-page";
-import { SiteShell } from "@/components/home/site-shell";
-import { homeDict } from "@/lib/home/dict";
+import { GridShell } from "@/components/top/shell";
+import { TopPage } from "@/components/top/top-page";
+import { gridDict } from "@/lib/home/grid-dict";
 import type { Lang } from "@/lib/i18n";
 import { appName, descriptions } from "@/lib/shared";
 
 export function HomeShell({ lang, children }: { lang: Lang; children: ReactNode }) {
-    return <SiteShell lang={lang}>{children}</SiteShell>;
+    return <GridShell lang={lang}>{children}</GridShell>;
 }
 
 export function HomePage({ lang }: { lang: Lang }) {
-    return <Page lang={lang} />;
+    return <TopPage lang={lang} />;
 }
 
 export function homeMetadata(lang: Lang): Metadata {
-    const t = homeDict[lang];
-    const title = `${appName} — ${t.h1a}${lang === "ja" ? "" : " "}${t.h1b}`;
+    const t = gridDict[lang];
+    const title = `${appName} — ${t.h1.join(lang === "ja" ? "" : " ")}`;
     const image = `/og/${lang}/image.png`;
     return {
         title: { absolute: title },
