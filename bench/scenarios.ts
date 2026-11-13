@@ -69,6 +69,26 @@ export function honoScenario(scenario: ScenarioName): FetchApp {
     return { name: "hono", fetch: (req) => app.fetch(req) };
 }
 
+// Hono との差の原因を切り分けるための、Hono の変種(src に手を入れずに、仮説を 1 つずつ確かめる)
+// - hono-async: fetch を async で包み、いつも Promise を返す(Senri の app.fetch と同じ)。Promise の分の差を見る
+// - hono-init: ハンドラーが Senri と同じ形の Response を返す(status と、使い回す Headers を渡す)
+//   Hono の c.text("hi") は new Response(text) と init なしで作るので、Response の作り方の分の差を見る
+const TEXT_HEADERS = new Headers({ "content-type": "text/plain; charset=utf-8" });
+const JSON_HEADERS = new Headers({ "content-type": "application/json" });
+export const HONO_VARIANTS = ["hono-async", "hono-init"] as const;
+
+export function honoVariant(name: (typeof HONO_VARIANTS)[number], scenario: ScenarioName): FetchApp {
+    if (name === "hono-async") {
+        const { fetch } = honoScenario(scenario);
+        return { name, fetch: async (req) => fetch(req) };
+    }
+    if (scenario === "mw") throw new Error("hono-init は static と param だけ");
+    const app = new Hono();
+    if (scenario === "static") app.get("/", () => new Response("hi", { status: 200, headers: TEXT_HEADERS }));
+    else app.get("/users/:id", (c) => new Response(JSON.stringify({ id: c.req.param("id") }), { status: 200, headers: JSON_HEADERS }));
+    return { name, fetch: (req) => app.fetch(req) };
+}
+
 // 期待どおりの本文と status か。だめなら理由を返す
 export async function checkScenario(res: Response, scenario: ScenarioName): Promise<string | null> {
     const body = await res.text();

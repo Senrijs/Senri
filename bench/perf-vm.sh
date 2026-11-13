@@ -5,6 +5,7 @@
 # 使い方(bench で。先に bun install --frozen-lockfile):
 #   bash perf-vm.sh main        # Bun / Node.js / Deno × static / param / mw。今の src と raw を Hono と比べる(約 14 分)
 #   bash perf-vm.sh main bun    # 1 つのランタイムだけ(約 5 分)
+#   bash perf-vm.sh causes      # Hono との差の原因の切り分け。Bun と Deno で、Hono の変種(hono-async / hono-init)と今の src を比べる(約 11 分)
 #   bash perf-vm.sh versions    # Bun で 0.2.8 / 0.2.9 / 0.2.10 / 0.3.1 / 今の src を Hono と比べる(約 9 分)
 #
 # - 古い版は、リポジトリの外の一時フォルダーに npm から入れて、終わったら消す(VERSIONS_DIR を渡せばそこを使い、消さない)
@@ -22,6 +23,14 @@ main)
     runtimes="${2:-bun node deno}"
     for rt in $runtimes; do
         RUNTIME="$rt" TARGETS="${TARGETS:-senri}" bun perf-abab.ts 2>&1 | tee -a "$log"
+    done
+    ;;
+causes)
+    # Hono との差の原因の切り分け(bench/scenarios.ts の honoVariant)。Hono の変種を Hono と比べる
+    # hono-async が Hono より遅ければ Promise の分、hono-init が遅ければ Response の作り方の分の差がある
+    runtimes="${2:-bun deno}"
+    for rt in $runtimes; do
+        RUNTIME="$rt" TARGETS="senri,hono-async,hono-init" SCENARIOS="${SCENARIOS:-static,param}" bun perf-abab.ts 2>&1 | tee -a "$log"
     done
     ;;
 versions)
@@ -43,7 +52,7 @@ versions)
         bun perf-abab.ts 2>&1 | tee -a "$log"
     ;;
 *)
-    echo "使い方: bash perf-vm.sh main [bun|node|deno] / bash perf-vm.sh versions" >&2
+    echo "使い方: bash perf-vm.sh main [bun|node|deno] / bash perf-vm.sh causes [bun|node|deno] / bash perf-vm.sh versions" >&2
     exit 1
     ;;
 esac
