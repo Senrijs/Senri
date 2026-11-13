@@ -27,6 +27,8 @@ export const routes = mergeRoutes(userRoutes, orgRoutes);
 export type Api = typeof routes;
 ```
 
+{/* verify: merge */}
+
 ```ts twoslash title="index.ts"
 // @filename: routes.ts
 import { defineRoutes } from "@senrijs/senri";
@@ -57,4 +59,4 @@ app.routes(routes);
 - 前置きは `/` で始め、`/` で終わらないように書きます(`"/users"`)
 - 表の全部のルートにミドルウェアを付けるときは、`defineRoutes("/admin", { use: [auth] })({ ... })` と書きます
 - `c.get()` に型を付けるときは、前置きと一緒にアプリの型を渡します: `defineRoutes<"/admin", Vars>("/admin")({ ... })`
-- パスの書き方の確認と、同じルートを 2 回登録していないかの確認は、`app.routes()` に渡したときに、`app.get()` と同じく行います
+- パスの書き方の確認と、同じルートを 2 回登録していないかの確認は、`app.routes()` に渡したときに、`app.get()` と同じく行います {/* verify: checked-on-routes */}

@@ -16,9 +16,9 @@ app.onError((err, c) => {
 ```
 
 - ハンドラーやミドルウェアが投げたものは、全部 `app.onError` に届きます
-- `HttpError` のときは、その status とヘッダーが先に入っているので、値を返すだけで正しい status になります。それ以外は 500 です
+- `HttpError` のときは、その status とヘッダーが先に入っているので、値を返すだけで正しい status になります。それ以外は 500 です {/* verify: status */}
 - `c.status()` で変えることもできます
-- `onError` の中で投げると、固定の 500 になります
+- `onError` の中で投げると、固定の 500 になります {/* verify: throw-inside */}
 
 ## 開発モードとの関係
 

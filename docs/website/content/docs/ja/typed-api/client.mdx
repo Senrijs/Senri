@@ -42,16 +42,16 @@ await api("POST /users", { body: { name: "a" } });   // 本文はスキーマの
 ## 送るもの
 
 - 呼び方は、表のキーと同じ文字列です
-- `params` はエンコードしてパスに入れます
+- `params` はエンコードしてパスに入れます {/* verify: send */}
 - `query` は文字列にして付けます(配列は同じキーを繰り返します)
 - `body` は JSON で送ります。`FormData`・`URLSearchParams`・`Blob`・バイト列・ストリームはそのまま送ります
 
 ## 戻り値
 
-`{ ok, status, data, error, response }` を返します。2xx でなくても例外にしません(ネットワークのエラーと、壊れた JSON だけ例外です)。
+`{ ok, status, data, error, response }` を返します。2xx でなくても例外にしません(ネットワークのエラーと、壊れた JSON だけ例外です)。 {/* verify: result */}
 
-- 本文は Content-Type で読み分けます。JSON は値に、`text/*` は文字列に、それ以外は `Blob` にします
-- `data` の型は、ハンドラーの戻り値を JSON にしたあとの形です(`Date` は `string` になります)。`endpoint({ response })` のスキーマがあれば、そちらの出力の型です
+- 本文は Content-Type で読み分けます。JSON は値に、`text/*` は文字列に、それ以外は `Blob` にします {/* verify: content-type */}
+- `data` の型は、ハンドラーの戻り値を JSON にしたあとの形です(`Date` は `string` になります)。`endpoint({ response })` のスキーマがあれば、そちらの出力の型です {/* verify: json-shape */}
 
 ## status ごとの型
 

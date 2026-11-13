@@ -20,7 +20,7 @@ app.use(
 );
 ```
 
-ヘッダーごとに、文字列ならその値、`true` か省略なら既定の値、`false` なら付けません。
+ヘッダーごとに、文字列ならその値、`true` か省略なら既定の値、`false` なら付けません。 {/* verify: options */}
 
 ## 既定で付くもの
 
@@ -36,7 +36,7 @@ app.use(
 | `X-Download-Options` | `noopen` |
 | `X-Frame-Options` | `SAMEORIGIN` |
 | `X-Permitted-Cross-Domain-Policies` | `none` |
-| `X-XSS-Protection` | `0`(古い XSS フィルターを切る) |
+| `X-XSS-Protection` | `0`(古い XSS フィルターを切る) {/* verify: defaults */} |
 
 `Content-Security-Policy` と `Cross-Origin-Embedder-Policy` は、アプリによって壊れやすいので、既定では付けません。文字列を渡したときだけ付けます(`true` はエラーです)。
 

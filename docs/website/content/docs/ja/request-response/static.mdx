@@ -13,9 +13,12 @@ app.use(serveStatic({ root: "./public", prefix: "/static", cacheControl: "public
 // GET /static/app.js → ./public/app.js
 ```
 
-- GET と HEAD に答えます。当たるファイルがなければ `next()` を呼ぶので、後ろのルートに進みます
-- 弱い `ETag` と `Last-Modified` を付けて、変わっていなければ 304 を返します
-- `Content-Type` は拡張子から決めます(分からなければ `application/octet-stream`)
+{/* verify: serve */}
+
+- GET と HEAD に答えます。当たるファイルがなければ `next()` を呼ぶので、後ろのルートに進みます {/* verify: next */}
+- 弱い `ETag` と `Last-Modified` を付けて、変わっていなければ 304 を返します {/* verify: etag-304 */}
+- `Content-Type` は拡張子から決めます(分からなければ `application/octet-stream`) {/* verify: content-type */}
+- フォルダへのリクエストには、その中の `index.html` を返します(`index` で変えられます) {/* verify: index */}
 - Bun・Deno・Node.js で動きます。Cloudflare Workers ではファイルを読めないので、[Static Assets](https://developers.cloudflare.com/workers/static-assets/) を使ってください
 
 ## オプション
@@ -25,7 +28,7 @@ app.use(serveStatic({ root: "./public", prefix: "/static", cacheControl: "public
 ## 守っていること
 
 - `root` の外のファイルは、シンボリックリンクを通しても配りません。開いたファイルそのもので確かめるので、処理の途中でリンクを差し替えられても外には出ません
-- ドットファイル(`.env`・`.git` など)は、既定で配りません
+- ドットファイル(`.env`・`.git` など)は、既定で配りません {/* verify: dotfiles */}
 - Windows と macOS では、ディスクにある名前と綴りが同じパスだけに答えます(大文字・小文字、8.3 形式の短い名前、末尾の `.` は当たりません)
 
 守りたいファイルは、`app.use(path, ...)` で `root` の一部を守るのではなく、`root` の外に置いてください。

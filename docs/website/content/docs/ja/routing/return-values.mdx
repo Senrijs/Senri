@@ -18,11 +18,11 @@ app.get("/raw", () => new Response("そのまま", { status: 202 }));
 | 文字列 | `text/plain; charset=utf-8` |
 | オブジェクト・配列 | JSON |
 | `Blob`・`ArrayBuffer`・`Uint8Array` など・`ReadableStream`・`FormData`・`URLSearchParams` | そのまま本文になる |
-| `Response` | そのまま |
+| `Response` | そのまま {/* verify: table */} |
 
 ## status とヘッダーを決める
 
-`c.status()` と `c.header()` で決めてから、値を返します。
+`c.status()` と `c.header()` で決めてから、値を返します。 {/* verify: status-header */}
 
 ```ts twoslash
 import { createApp } from "@senrijs/senri";
@@ -39,7 +39,7 @@ app.post("/items", (_, c) => {
 
 ## 関数を返したとき
 
-関数を返す(呼び忘れ)と、型のエラーになります。実行したときも 500 になります。
+関数を返す(呼び忘れ)と、型のエラーになります。実行したときも 500 になります。 {/* verify: function */}
 
 ```ts twoslash
 // @errors: 2345

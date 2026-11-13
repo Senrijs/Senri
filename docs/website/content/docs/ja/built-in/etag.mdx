@@ -12,7 +12,7 @@ app.use(etag());
 ```
 
 - GET の 2xx に、弱い `ETag` を付けます
-- `If-None-Match` が同じなら、304 を返します
+- `If-None-Match` が同じなら、304 を返します {/* verify: 304 */}
 - ハンドラーは毎回動きます(本文から `ETag` を作るため)
 - ストリームの本文と HEAD には付けません
 - `compress()` と `cache()` は、`etag()` より先に登録します

@@ -19,8 +19,8 @@ curl -i http://localhost:3927/secret
 # 見せられません
 ```
 
-- `HttpError` の `message` は、本番でもそのまま返します。クライアントに見せてよい文だけを書きます
-- `HttpError` でないエラーは、本番では中身を出さず、`500 Internal Server Error` とだけ返します。開発モードでは、エラーページにエラーの文とコードが出ます
+- `HttpError` の `message` は、本番でもそのまま返します。クライアントに見せてよい文だけを書きます {/* verify: message */}
+- `HttpError` でないエラーは、本番では中身を出さず、`500 Internal Server Error` とだけ返します。開発モードでは、エラーページにエラーの文とコードが出ます {/* verify: other-500 */}
 - 標準のミドルウェアが返すエラー(`basicAuth()` の 401、`rateLimit()` の 429 など)も `HttpError` です。`WWW-Authenticate`・`Retry-After` などのヘッダーが付きます
 
 応答の形を変えたいときは、[onError](/docs/errors/on-error) を使います。

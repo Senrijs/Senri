@@ -16,6 +16,8 @@ posts.get("/:postId", ({ id, postId }) => `${id} / ${postId}`);
 app.route(posts);
 ```
 
+{/* verify: router */}
+
 - `createRouter(prefix)` で作ったものに、`app` と同じようにルートを足します
 - 前置きのパラメーター(`:id`)にも、中のハンドラーで型が付きます
 - `app.route(router)` で、アプリにつなぎます
@@ -34,6 +36,8 @@ admin.get("/stats", () => ({ users: 42 }));
 app.route("/admin", admin);   // GET /admin/stats
 ```
 
+{/* verify: mount-app */}
+
 ## ルートの表で前置きを付ける
 
 型の付いたルートの表(`defineRoutes()`)でも、前置きを付けられます([ルートの表](/docs/typed-api/define-routes))。
@@ -49,3 +53,5 @@ const orgRoutes = defineRoutes("/orgs/:orgId")({
 
 app.routes(orgRoutes);
 ```
+
+{/* verify: define-routes-prefix */}

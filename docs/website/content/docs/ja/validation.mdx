@@ -26,7 +26,7 @@ app.post(
 ```
 
 - `params`・`query`・`body` を渡せます
-- `params` が通ると、ハンドラーの 1 つ目の引数が、変換したあとの値になります(上の `id` は `number`)
+- `params` が通ると、ハンドラーの 1 つ目の引数が、変換したあとの値になります(上の `id` は `number`) {/* verify: params-converted */}
 - `query` と `body` の値は、`c.valid("query")`・`c.valid("body")` で読みます
 - 表のルートでは、`endpoint({ body }, handler)` と書きます([ルートの表](/docs/typed-api/define-routes))
 
@@ -34,12 +34,12 @@ app.post(
 
 400 を返します。
 
-- **本番:** 本文は `400 Bad Request` だけです
-- **開発モード:** どこが違うかを一覧にして返します。スキーマの書き間違いも、登録した時点で知らせます
+- **本番:** 本文は `400 Bad Request` だけです {/* verify: 400-production */}
+- **開発モード:** どこが違うかを一覧にして返します。スキーマの書き間違いも、登録した時点で知らせます {/* verify: 400-dev */}
 
 ## 自分の形で返す
 
-`app.onError` で `ValidationError` を受けます。`err.target`(`"params"`・`"query"`・`"body"`)と `err.issues`(違うところの一覧)を持ちます。
+`app.onError` で `ValidationError` を受けます。`err.target`(`"params"`・`"query"`・`"body"`)と `err.issues`(違うところの一覧)を持ちます。 {/* verify: on-error */}
 
 ```ts twoslash
 import { createApp } from "@senrijs/senri";

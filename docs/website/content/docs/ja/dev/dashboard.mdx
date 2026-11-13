@@ -27,10 +27,10 @@ await serve(app);   // → http://localhost:3927/_senri
 - 記録はメモリの中だけで、再起動すると消えます
 - `/_senri` そのものへのリクエストと、リクエスト・レスポンスの本文は記録しません
 - `authorization`・`cookie`・`set-cookie` や、名前に `token`・`secret`・`session`・`api-key` などを含むヘッダーとクエリは、`***` に伏せます
-- **同じ PC(localhost)からしか開けません。** 接続元が同じ PC で、かつ `Host` も `localhost` などのときだけです。それ以外は、`/_senri` がないものとして扱います(ふつうの 404)
+- **同じ PC(localhost)からしか開けません。** 接続元が同じ PC で、かつ `Host` も `localhost` などのときだけです。それ以外は、`/_senri` がないものとして扱います(ふつうの 404) {/* verify: local-only */}
 
 ## 開けないとき
 
 - **Docker などのコンテナ:** 接続元が localhost に見えないので開けません
-- **`app.fetch` を包んでいるとき:** 接続元は `app.fetch` の 2 つ目の引数から取ります。`fetch: (req) => app.fetch(req)` のように包むと渡らないので、`(req, info) => app.fetch(req, info)` と書きます
+- **`app.fetch` を包んでいるとき:** 接続元は `app.fetch` の 2 つ目の引数から取ります。`fetch: (req) => app.fetch(req)` のように包むと渡らないので、`(req, info) => app.fetch(req, info)` と書きます {/* verify: needs-info */}
 - **Cloudflare Workers:** ダッシュボードはありません

@@ -11,7 +11,7 @@ const app = createApp();
 app.use("/assets", cache({ cacheControl: "public, max-age=3600" }));
 ```
 
-- GET・HEAD の 2xx と 304 に、`Cache-Control` と `Vary` を付けます
+- GET・HEAD の 2xx と 304 に、`Cache-Control` と `Vary` を付けます {/* verify: 2xx */}
 - 保存はしません。ブラウザや CDN に任せます
 - `etag()` より先に登録します
 

@@ -26,9 +26,9 @@ app.post("/photos", async (_, c) => {
 `multipart/form-data` のファイルを確かめてから、ハンドラーに渡します。
 
 - 大きさ(`maxTotalSize` は必須、`maxFileSize`)・数(`maxFiles`)・種類(`types`・`extensions`)を確かめます
-- 大きすぎれば 413、種類が違えば 415 です
-- PNG・JPEG・GIF・WebP・PDF は、中身の先頭のバイトも確かめます
-- 読んだ結果は `c.body()` で受け取れます。ルートのスキーマも、確かめたあとに動きます
+- 大きすぎれば 413、種類が違えば 415 です {/* verify: 413-415 */}
+- PNG・JPEG・GIF・WebP・PDF は、中身の先頭のバイトも確かめます {/* verify: magic */}
+- 読んだ結果は `c.body()` で受け取れます。ルートのスキーマも、確かめたあとに動きます {/* verify: ok */}
 - アプリの既定の上限(1 MiB)の代わりに、`maxTotalSize` が効きます
 
 ## メモリ
@@ -37,7 +37,7 @@ app.post("/photos", async (_, c) => {
 
 ## ファイル名
 
-送られたファイル名(`file.name`)は、`../../etc/passwd` のようなものかもしれません。保存先のパスにそのまま使わず、`crypto.randomUUID()` などで自分で決めるか、`safeFileName()` を通してください。
+送られたファイル名(`file.name`)は、`../../etc/passwd` のようなものかもしれません。保存先のパスにそのまま使わず、`crypto.randomUUID()` などで自分で決めるか、`safeFileName()` を通してください。 {/* verify: safe-file-name */}
 
 ## オプション
 

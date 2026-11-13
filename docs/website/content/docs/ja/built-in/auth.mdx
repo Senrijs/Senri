@@ -13,14 +13,16 @@ app.use("/admin", basicAuth({ username: "admin", password: env.ADMIN_PASSWORD })
 app.use("/api", bearerAuth({ token: env.API_TOKEN }));
 ```
 
-- 通らなければ、401 と `WWW-Authenticate` を返します
+{/* verify: pass */}
+
+- 通らなければ、401 と `WWW-Authenticate` を返します {/* verify: 401 */}
 - 比べるときは、かかる時間が値によって変わらない比べ方を使います
 - パスワードとトークンは、コードに書かず、環境変数や `c.env` から読みます
 - `cors()` と一緒に使うときは、`cors()` を先に登録します
 
 ## 自分で確かめる
 
-固定の値の代わりに、関数で確かめられます。`true` を返したときだけ通します。
+固定の値の代わりに、関数で確かめられます。`true` を返したときだけ通します。 {/* verify: verify */}
 
 ```ts twoslash
 import { basicAuth, bearerAuth, createApp } from "@senrijs/senri";

@@ -28,7 +28,7 @@ const app = createApp({ dev: devtools() });
 | --- | --- |
 | `production` | しない(`devtools()` は何もしない) |
 | `development`・`test` | 全部のリクエスト |
-| 未設定・それ以外(`staging` など) | **localhost へのリクエストだけ** |
+| 未設定・それ以外(`staging` など) | **localhost へのリクエストだけ** {/* verify: local-only */} |
 
 「localhost へのリクエスト」は、URL のホスト名が `localhost`(`127.0.0.1`・`[::1]`・`*.localhost` を含む)で、**かつ**接続元が同じ PC のときです。`Host` ヘッダーはだれでも付けられるので、接続元も見ます。
 
@@ -61,6 +61,7 @@ Cloudflare Workers とブラウザ(Service Worker)では `NODE_ENV` が読めな
 
 - 決められないとき(`Accept-Language` のない curl、`LANG=C` など)は英語です
 - `devtools({ lang: "ja" })` で、画面もターミナルも固定できます。`serve()` の案内は `serve(app, { lang: "ja" })` で固定できます
+- `lang` に `"ja"`・`"en"` 以外を渡すと、TypeError です {/* verify: lang */}
 - **Windows の Bun は OS の言語を読めず英語になります。** 日本語にしたいときは、`lang` か `LANG=ja_JP.UTF-8` を指定してください
 - 本番でも出るエラーメッセージは翻訳しません
 

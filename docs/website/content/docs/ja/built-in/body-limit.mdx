@@ -15,7 +15,7 @@ app.use("/import", bodyLimit({ maxSize: 50 * 1024 * 1024 }));   // このルー�
 - アプリの既定の上限(1 MiB)を**置き換えます**。重ねないので、既定より大きくも小さくもできます
 - Content-Length があれば、読む前に断ります。ない(チャンク転送)ときは、読みながら数えます
 - `c.req.body` をストリームで流すルートにも効きます
-- `maxSize` は有限の数で書きます。上限をまったく付けたくないときは、`createApp({ maxBodySize: Infinity })` を使います
+- `maxSize` は有限の数で書きます。上限をまったく付けたくないときは、`createApp({ maxBodySize: Infinity })` を使います {/* verify: finite */}
 
 本文の上限の全体の話は、[本文の読み方と上限](/docs/request-response/body)にあります。
 
@@ -28,7 +28,7 @@ const app = createApp();
 app.use("/import", bodyLimit({ maxSize: 1024 * 1024, onError: () => ({ error: "too large" }) }));
 ```
 
-`onError` を呼ぶ前に status を 413 にしてあるので、文字列やオブジェクトを返すと 413 で送ります。`Response` を返したときは、その status のままです。
+`onError` を呼ぶ前に status を 413 にしてあるので、文字列やオブジェクトを返すと 413 で送ります。`Response` を返したときは、その status のままです。 {/* verify: 413 */}
 
 ## オプション
 

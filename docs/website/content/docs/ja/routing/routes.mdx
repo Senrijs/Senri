@@ -19,12 +19,12 @@ app.all("/any", () => "どのメソッドでも");
 | 書き方 | 当たるメソッド |
 | --- | --- |
 | `app.get` / `post` / `put` / `patch` / `delete` / `head` / `options` | その名前のメソッド |
-| `app.all(path, handler)` | どのメソッドでも |
+| `app.all(path, handler)` | どのメソッドでも {/* verify: on-all */} |
 | `app.on(method, path, handler)` | 1 つ、または配列で渡したメソッド |
 
-- **HEAD:** 登録していなければ、GET のルートで処理して本文を捨てます
-- **OPTIONS:** 登録していなければ、204 と `Allow` を返します
-- **QUERY**([RFC 10008](https://www.rfc-editor.org/rfc/rfc10008.html)): `app.on("QUERY", path, handler)` で登録します。本文がなければ 400、Content-Type がなければ 415 です
+- **HEAD:** 登録していなければ、GET のルートで処理して本文を捨てます {/* verify: head */}
+- **OPTIONS:** 登録していなければ、204 と `Allow` を返します {/* verify: options */}
+- **QUERY**([RFC 10008](https://www.rfc-editor.org/rfc/rfc10008.html)): `app.on("QUERY", path, handler)` で登録します。本文がなければ 400、Content-Type がなければ 415 です {/* verify: query-method */}
 - **CONNECT・TRACE・TRACK:** 扱いません(501)
 
 ## ハンドラーの引数
@@ -57,9 +57,11 @@ app.routes({
 });
 ```
 
+{/* verify: table */}
+
 表を別のファイルに出したり、クライアントで型を使ったりするときは、[`defineRoutes()`](/docs/typed-api/define-routes) を使います。
 
 ## 登録のときのエラー
 
-- 同じメソッドと同じパスを 2 回登録すると、エラーになります。パラメーターの名前だけが違うもの(`/users/:id` と `/users/:userId`)も同じです
-- 省略できるパラメーター(`:id?`)や正規表現(`:id{[0-9]+}`)は書けません。登録のときのエラーになります。値は、ハンドラーか[スキーマ](/docs/validation)で確かめます
+- 同じメソッドと同じパスを 2 回登録すると、エラーになります。パラメーターの名前だけが違うもの(`/users/:id` と `/users/:userId`)も同じです {/* verify: duplicate */}
+- 省略できるパラメーター(`:id?`)や正規表現(`:id{[0-9]+}`)は書けません。登録のときのエラーになります。値は、ハンドラーか[スキーマ](/docs/validation)で確かめます {/* verify: no-optional-or-regex */}

@@ -11,9 +11,9 @@ const app = createApp();
 app.use("/api", rateLimit({ windowMs: 60_000, limit: 100 }));   // 1 分に 100 回まで
 ```
 
-- 超えたら 429 と `Retry-After` を返します
+- 超えたら 429 と `Retry-After` を返します {/* verify: 429 */}
 - 固定ウィンドウで数えます
-- 既定のキーは接続元の IP です(IPv6 は /64 ごと)。IP が分からないリクエストは制限せず、最初の 1 回だけ警告します
+- 既定のキーは接続元の IP です(IPv6 は /64 ごと)。IP が分からないリクエストは制限せず、最初の 1 回だけ警告します {/* verify: ipv6 */}
 - プロキシの後ろでは、IP の取り方を [`trustProxy()`](/docs/request-response/request) で決めます
 
 ## 保存先

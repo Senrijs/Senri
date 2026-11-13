@@ -22,7 +22,7 @@ app.get("/metrics", metricsHandler());                           // Prometheus �
 | `http_server_active_requests` | gauge(処理中の数) | `method` |
 
 - ラベルの数が増えすぎないよう、`route` はパスではなくルートのパターンです(`/users/42` ではなく `/users/:id`)
-- ルートに当たらなかったもの(404 など)は `unmatched`、標準でないメソッドは `_OTHER` にまとめます
+- ルートに当たらなかったもの(404 など)は `unmatched`、標準でないメソッドは `_OTHER` にまとめます {/* verify: names */}
 - 時間は、`metrics()` に入ってからレスポンスを返すまでです(ストリームの本文は、まだ送っている途中のことがあります)
 - 例外は、`onError` が返した status(500 など)で数えます
 
