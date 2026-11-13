@@ -1,2 +1,4 @@
 # bench/http.ts が書く生の値(まとめた表は bench/README.md に載せる)
 results/
+# bench/perf-vm.sh が書くログ
+perf-*.txt
