@@ -1,6 +1,38 @@
 ---
 title: "Wildcards"
-description: "Match the rest of the path"
+description: "Match a path and everything under it with *"
 ---
 
-This page is coming soon.
+Make the last segment `*` to match that path and everything under it. The rest of the path is in `"*"`.
+
+```ts twoslash
+import { createApp } from "@senrijs/senri";
+const app = createApp();
+declare const indexHtml: string;
+// ---cut---
+app.get("/docs/*", ({ "*": page }) => `page: ${page}`);
+app.get("/users/:id/files/*", ({ id, "*": path }) => `${id}: ${path}`);
+app.get("/*", (_, c) => c.html(indexHtml));   // SPA fallback (also matches /)
+```
+
+| Request to `/docs/*` | `"*"` |
+| --- | --- |
+| `/docs`, `/docs/` | `""` |
+| `/docs/a`, `/docs/a/`, `/docs//a` | `"a"` |
+| `/docs/a/b` | `"a/b"` |
+| `/docsx` | No match |
+
+## Where you can write it
+
+`*` can only be the whole last segment. `/a/*/c`, `/*.js`, `/files*` and `/*name` are errors when registering.
+
+## Not counted for 405 and OPTIONS
+
+A POST or OPTIONS request to a path that only has `GET /docs/*` is 404. To answer it, register `app.post`, `app.options` or `app.all`.
+
+## Do not use the value as a file path
+
+The value of `"*"` can contain `\`, `:` and NUL (for `/docs/..%5C..%5Csecret` it is `..\..\secret`). To serve files, use [`serveStatic()`](/en/docs/request-response/static), which checks for these.
+
+- The value is decoded once per segment. Do not decode it again (`%252F` stays `%2F`)
+- In middleware, `app.use("/docs/*", mw)` means the same as `app.use("/docs", mw)`

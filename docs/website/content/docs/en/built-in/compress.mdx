@@ -1,5 +1,21 @@
 ---
 title: "Compression"
+description: "Compress responses with gzip or deflate using compress()"
 ---
 
-This page is coming soon.
+```ts twoslash
+import { compress, createApp } from "@senrijs/senri";
+
+const app = createApp();
+
+app.use(compress());
+```
+
+- It compresses with gzip or deflate, following the client's `Accept-Encoding`
+- Bodies smaller than 1 KB are sent as is
+- Streams sent bit by bit (such as SSE) are not compressed, so that they do not look stuck
+- With `etag()`, register `compress()` first
+
+## Options
+
+<AutoTypeTable path="../../src/middleware/compress.ts" name="CompressOptions" />

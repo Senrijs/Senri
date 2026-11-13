@@ -1,5 +1,29 @@
 ---
 title: "IP restriction"
+description: "Allow or deny by client IP with ipRestriction()"
 ---
 
-This page is coming soon.
+```ts twoslash
+import { createApp, ipRestriction } from "@senrijs/senri";
+
+const app = createApp();
+
+app.use("/admin", ipRestriction({ allow: ["192.0.2.0/24"], deny: ["192.0.2.13"] }));
+```
+
+- `deny` is checked first. Denied requests get 403
+- An unknown IP also gets 403. In tests, use `allowUnknown: true`
+- Behind a proxy, pass how to get the IP, as in `ip: trustProxy({ hops: 1 })`
+
+```ts twoslash
+import { createApp, ipRestriction } from "@senrijs/senri";
+const app = createApp();
+// ---cut---
+import { trustProxy } from "@senrijs/senri/ip";
+
+app.use("/admin", ipRestriction({ allow: ["10.0.0.0/8"], ip: trustProxy({ hops: 1 }) }));
+```
+
+## Options
+
+<AutoTypeTable path="../../src/middleware/ip-restriction.ts" name="IpRestrictionOptions" />

@@ -1,6 +1,36 @@
 ---
 title: "Dashboard"
-description: "Watch requests at /_senri"
+description: "See the requests that came in and the routes at /_senri"
 ---
 
-This page is coming soon.
+Start in development mode and open http://localhost:3927/_senri in the browser.
+
+```ts twoslash
+import { createApp } from "@senrijs/senri";
+import { devtools } from "@senrijs/senri/dev";
+import { serve } from "@senrijs/senri/serve";
+
+const app = createApp({ dev: devtools() });
+app.get("/", () => "hi");
+
+await serve(app);   // → http://localhost:3927/_senri
+```
+
+## What you can see
+
+- **Requests:** the latest 200, shown as they come in. Select one to see its headers, query, status and the [onion timeline](/en/docs/dev/timeline)
+- **Routes and middleware:** the registered routes and the middleware on each
+- **Warnings:** middleware paths that look like mistakes and so on
+
+## Records and security
+
+- Records are kept only in memory and are gone after a restart
+- Requests to `/_senri` itself and request and response bodies are not recorded
+- `authorization`, `cookie`, `set-cookie`, and headers and query values whose names contain `token`, `secret`, `session`, `api-key` and the like are masked as `***`
+- **It opens only from the same machine (localhost).** Only when the client is on the same machine and `Host` is `localhost` or similar. Otherwise `/_senri` is treated as not existing (a normal 404)
+
+## When it does not open
+
+- **Containers such as Docker:** the client does not look like localhost, so it does not open
+- **When you wrap `app.fetch`:** the client address comes from the second argument of `app.fetch`. Wrapping it as in `fetch: (req) => app.fetch(req)` drops it, so write `(req, info) => app.fetch(req, info)`
+- **Cloudflare Workers:** there is no dashboard

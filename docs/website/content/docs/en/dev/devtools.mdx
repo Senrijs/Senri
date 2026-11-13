@@ -1,6 +1,74 @@
 ---
 title: "Using devtools()"
-description: "Enable dev mode"
+description: "Add devtools(). Which requests get development output (NODE_ENV). Languages"
 ---
 
-This page is coming soon.
+```ts twoslash
+import { createApp } from "@senrijs/senri";
+import { devtools } from "@senrijs/senri/dev";
+
+const app = createApp({ dev: devtools() });
+```
+
+All development features are in `@senrijs/senri/dev`. These work only when you pass `devtools()`:
+
+- [Error and 404 pages](/en/docs/dev/error-pages)
+- The [dashboard](/en/docs/dev/dashboard) (`/_senri`) and the [onion timeline](/en/docs/dev/timeline)
+- [Server-Timing](/en/docs/dev/server-timing)
+- Detailed messages: the error message in 500 bodies, "did you mean" in 404s, the methods that exist in 405s, and the list of problems in validation 400s
+- Warnings about likely mistakes: path middleware that matches no route (`app.use("/admni", ...)`) and paths that look like another framework's syntax (`/a?`, `/[id]`, `/{id}`), reported once on the first request
+
+Without it, only fixed messages (such as `500 Internal Server Error`) are returned, and nothing is measured or recorded. The core (`@senrijs/senri`) never imports the development code, so without it, no bundler includes that code.
+
+## Which requests get it
+
+`NODE_ENV` decides.
+
+| `NODE_ENV` | Development output |
+| --- | --- |
+| `production` | None (`devtools()` does nothing) |
+| `development`, `test` | Every request |
+| Unset, or anything else (`staging` and so on) | **Only requests to localhost** |
+
+A "request to localhost" is one whose URL host is `localhost` (including `127.0.0.1`, `[::1]` and `*.localhost`) **and** whose client is on the same machine. Anyone can send any `Host` header, so the client address is checked too.
+
+Other requests get only the same fixed messages as in production. The first time such a request comes, this is logged once.
+
+Set `NODE_ENV=development` when:
+
+- The app runs in Docker and you open it from the host's browser
+- You open it from another device on the same LAN (a phone and so on)
+- You open it with a host name other than `localhost`
+
+`bun test` sets `NODE_ENV=test`, so every request gets development output in tests.
+
+### On Workers and in the browser
+
+Cloudflare Workers and the browser (Service Worker) cannot read `NODE_ENV`, so only requests to localhost get it. There the platform decides the URL, so only the URL host is checked. On Workers, it works only with `wrangler dev` (`localhost:8787`).
+
+### On Deno
+
+Without permission to read `NODE_ENV` (`--allow-env=NODE_ENV`), Senri cannot tell whether this is production, so `devtools()` stays off and prints one line saying so.
+
+## Languages
+
+Pages and messages are in Japanese and English.
+
+| What | How the language is chosen |
+| --- | --- |
+| Error pages, 404 pages, the dashboard and text responses | The request's `Accept-Language` |
+| Terminal warnings and notices, and registration error messages | The environment variables `LC_ALL` → `LC_MESSAGES` → `LANG` → the OS language |
+
+- When no language can be chosen (curl without `Accept-Language`, `LANG=C` and so on), English is used
+- `devtools({ lang: "ja" })` fixes the language of both pages and the terminal. `serve(app, { lang: "ja" })` fixes the language of `serve()` messages
+- `lang` other than `"ja"` or `"en"` is a TypeError
+- **Bun on Windows cannot read the OS language and uses English.** For Japanese, set `lang` or `LANG=ja_JP.UTF-8`
+- Error messages that also appear in production are not translated
+
+## In production
+
+As in [Deployment](/en/docs/production/deploy), removing it from production builds is the safest.
+
+## Options
+
+<AutoTypeTable path="../../src/dev/index.ts" name="DevtoolsOptions" />

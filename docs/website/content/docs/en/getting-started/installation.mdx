@@ -1,6 +1,84 @@
 ---
 title: "Installation"
-description: "Create a new project or add Senri to an existing one"
+description: "Create a new app with npm create senri, or add Senri to an existing project"
 ---
 
-This page is coming soon.
+## Create a new app
+
+```npm
+npm create senri@latest my-app
+```
+
+You are asked for the runtime (Bun, Node.js, Deno or Cloudflare Workers). When it finishes, it prints the commands to run the app.
+
+```bash
+cd my-app
+npm install
+npm run dev   # → http://localhost:3927
+```
+
+Pass both the folder name and `--template` to create the app without any questions.
+
+```npm
+npm create senri@latest my-app -- --template bun
+```
+
+| `--template` | Runtime | Start | URL |
+| --- | --- | --- | --- |
+| `bun` | Bun | `bun install` → `bun run dev` | http://localhost:3927 |
+| `node` | Node.js | `npm install` → `npm run dev` | http://localhost:3927 |
+| `deno` | Deno | `deno task dev` | http://localhost:3927 |
+| `workers` | Cloudflare Workers | `npm install` → `npm run dev` | http://localhost:8787 |
+
+When started with `dev`, the app restarts when you edit a file.
+
+## What you get
+
+The Bun template (`--template bun`) creates these files.
+
+<Files>
+  <Folder name="my-app" defaultOpen>
+    <Folder name="src" defaultOpen>
+      <File name="index.ts" />
+    </Folder>
+    <File name=".gitignore" />
+    <File name="package.json" />
+    <File name="README.md" />
+    <File name="tsconfig.json" />
+  </Folder>
+</Files>
+
+```ts twoslash title="src/index.ts"
+import { createApp } from "@senrijs/senri";
+import { devtools } from "@senrijs/senri/dev";
+import { serve } from "@senrijs/senri/serve";
+
+const app = createApp({ dev: devtools() });
+
+app.get("/", () => "Hello, Senri!");
+app.get("/users/:id", ({ id }) => ({ id }));
+
+serve(app);
+```
+
+- The Node.js template has the same layout
+- The Deno template has `deno.json` instead of `package.json`, and its entry is `src/main.ts`
+- The Cloudflare Workers template writes `export default app` instead of `serve(app)`, and has `wrangler.jsonc`
+
+## Add Senri to an existing project
+
+```npm
+npm i @senrijs/senri
+```
+
+On Deno, install it from JSR (`deno add jsr:@senrijs/senri` in the "deno" tab).
+
+## Supported versions
+
+- **Node.js:** 22 or later. The Node.js template runs TypeScript as is, so it needs 22.18 or later
+- **Bun and Deno:** tested in CI with the latest versions at the time
+- **Cloudflare Workers:** the template's `compatibility_date` is `2026-10-01`
+
+<Cards>
+  <Card title="Your first app" href="/en/docs/getting-started/first-app" description="Add routes and look at development mode" />
+</Cards>

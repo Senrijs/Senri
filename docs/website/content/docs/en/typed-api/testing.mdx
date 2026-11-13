@@ -1,5 +1,48 @@
 ---
 title: "Testing"
+description: "Call an app without a server with testClient() and request() from @senrijs/senri/testing"
 ---
 
-This page is coming soon.
+```ts twoslash title="app.test.ts"
+import { createApp, defineRoutes } from "@senrijs/senri";
+import { setCookie, getCookie } from "@senrijs/senri/cookie";
+declare function expect(value: unknown): { toBe(expected: unknown): void };
+const routes = defineRoutes({
+    "POST /login": (_, c) => (setCookie(c, "session", "ok"), "ok"),
+    "GET /me": (_, c) => ({ session: getCookie(c, "session") }),
+});
+const app = createApp();
+app.routes(routes);
+type Api = typeof routes;
+const form = new FormData();
+// ---cut---
+import { request, testClient } from "@senrijs/senri/testing";
+
+// call app.fetch with a typed client, without a server
+const api = testClient<Api>(app, { cookies: true });
+await api("POST /login");
+const me = await api("GET /me");          // sent with the login cookie
+expect(me.status).toBe(200);
+
+// routes outside the table, or requests the typed client cannot send, use request() (it returns a Response)
+const res = await request(app, "POST /upload", { body: form });
+expect(res.status).toBe(404);
+```
+
+It works with any test runner (`bun test`, `node --test`, Vitest, `deno test`).
+
+## testClient() and request()
+
+| Function | Use it for | Returns |
+| --- | --- | --- |
+| `testClient<Api>(app, options)` | Calling table routes, typed | The same result as the [typed client](/en/docs/typed-api/client) |
+| `request(app, "METHOD /path", init)` | Routes outside the table, or requests the typed client cannot send | A `Response` |
+
+## Options
+
+- **Client address:** passed as `127.0.0.1`, so `getIp()`, `ipRestriction()` and the development mode's localhost check work as with a real server. Change it with `{ ip }`
+- **Cloudflare Workers apps:** pass `{ env, ctx }` (for `c.env` and `c.executionCtx`). Then, as on Workers, no client address is passed
+- **Cookies:** with `{ cookies: true }`, `Set-Cookie` from a response is sent with the next requests (one per name; domain and path are not checked)
+- **Headers:** `{ headers }` sets headers sent with every request
+
+<AutoTypeTable path="../../src/testing.ts" name="TestOptions" />

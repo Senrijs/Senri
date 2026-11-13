@@ -1,6 +1,51 @@
 ---
 title: "Large uploads"
-description: "Read multipart bodies part by part with multipart()"
+description: "Read multipart bodies one part at a time with multipart(), without buffering them in memory"
 ---
 
-This page is coming soon.
+```ts twoslash
+import { createApp } from "@senrijs/senri";
+declare function save(name: string, body: ReadableStream<Uint8Array>): Promise<void>;
+// ---cut---
+import { multipart } from "@senrijs/senri/multipart";
+
+const app = createApp();
+
+app.post("/upload", async (_, c) => {
+    for await (const part of multipart(c, { maxFileSize: 100 * 1024 * 1024 })) {
+        if (part.filename !== undefined) await save(crypto.randomUUID(), part.stream);
+        else console.log(part.name, await part.text());
+    }
+    return "ok";
+});
+```
+
+It reads `multipart/form-data` one part at a time. It does not read the whole body into memory, so large files can be passed on to storage (files, object storage and so on) as they arrive.
+
+## Parts
+
+| Property | What it is |
+| --- | --- |
+| `name` | The form field name |
+| `filename` | The file name. `undefined` for fields that are not files, `""` for file fields with no file chosen |
+| `contentType` | `text/plain` if missing |
+| `headers` | The part headers |
+| `stream` | The content as a stream |
+| `text()`, `bytes()` | Read all the content |
+
+`filename` and `contentType` are exactly what was sent. Do not use them in storage paths: choose the name yourself (with `crypto.randomUUID()` and so on) or pass it through `safeFileName()`.
+
+## Limits
+
+<AutoTypeTable path="../../src/multipart.ts" name="MultipartLimits" />
+
+- Over a limit, the response is 413. A broken body or a missing `boundary` is 400, and a body that is not multipart is 415
+- On routes that use `multipart()`, these limits apply instead of the app's default limit (1 MiB)
+
+## Rules for reading
+
+- When the loop moves on, unread parts are skipped. Reading the previous part's `stream` after that is an error, so `await` the save before moving on
+- After `break`, nothing more is read
+- Calling it after the body was read (`c.body()`, `uploadLimit()`, a route's `body` schema) or a second time is an error
+
+To take small files as `File` and check their types, use [`uploadLimit()`](/en/docs/built-in/upload-limit). To stream large files, use `multipart()`. Choose per route.

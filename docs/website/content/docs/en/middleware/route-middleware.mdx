@@ -1,5 +1,66 @@
 ---
 title: "Per-route middleware"
+description: "Add middleware by path, to a whole table, or to one route"
 ---
 
-This page is coming soon.
+```ts twoslash
+import { createApp, defineRoutes, endpoint, type Middleware } from "@senrijs/senri";
+type User = { id: string; admin: boolean };
+declare const auth: Middleware<{ user: User }>;
+declare const requireAdmin: Middleware;
+declare function deleteUser(id: string): Promise<void>;
+// ---cut---
+// for every route in the table
+export const adminRoutes = defineRoutes("/admin", { use: [auth] })({
+    "GET /me": (_, c) => ({ user: c.get("user") }),
+    //                              ^?
+    // only for this route
+    "DELETE /users/:id": endpoint({ use: [requireAdmin] }, async ({ id }) => {
+        await deleteUser(id);
+        return { deleted: id };
+    }),
+});
+
+const app = createApp();
+app.routes(adminRoutes);
+```
+
+## Ways to add it
+
+| Write | Runs for |
+| --- | --- |
+| `app.use(mw)` | Every request |
+| `app.use("/admin", mw)` | `/admin` and below |
+| `defineRoutes(prefix, { use: [mw] })` | The routes in that table |
+| `endpoint({ use: [mw] }, handler)` | That route only |
+
+Middleware in a table's or a route's `use` runs only for requests that matched that route. For a table without a prefix, write `defineRoutes("", { use })`.
+
+## Order
+
+1. The app's `app.use()`
+2. The table's `use`
+3. The route's `use`
+4. Checking the schemas (reading the body)
+5. The handler
+
+If middleware returns a value, it stops before the schemas are checked. The body of a request that fails authentication is not read.
+
+## Types
+
+Put middleware written as `Middleware<{ user: User }>` in `use`, and `c.get("user")` is typed in that route.
+
+## Raise a limit
+
+It also raises the default body limit (1 MiB) on one route only.
+
+```ts twoslash
+import { bodyLimit, defineRoutes, endpoint } from "@senrijs/senri";
+// ---cut---
+const routes = defineRoutes({
+    "POST /import": endpoint({ use: [bodyLimit({ maxSize: 20 * 1024 * 1024 })] }, async (_, c) => {
+        const rows = await c.req.json();
+        return { count: rows.length };
+    }),
+});
+```

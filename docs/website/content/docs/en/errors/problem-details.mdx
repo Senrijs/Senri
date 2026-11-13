@@ -1,5 +1,47 @@
 ---
 title: "Problem Details"
+description: "Return errors as RFC 9457 application/problem+json with @senrijs/senri/problem"
 ---
 
-This page is coming soon.
+```ts twoslash
+import { createApp } from "@senrijs/senri";
+import { ProblemError, problem, problemDetails } from "@senrijs/senri/problem";
+
+const app = createApp();
+
+const problems = problemDetails();
+app.onError(problems.onError);
+app.notFound(problems.notFound);
+
+app.post("/transfer", () => {
+    throw new ProblemError(403, {
+        type: "https://example.com/probs/out-of-credit",
+        title: "You do not have enough credit.",
+        detail: "Your current balance is 30, but that costs 50.",
+        extensions: { balance: 30 },
+    });
+});
+
+app.get("/legacy", (_, c) => problem(c, { status: 410, detail: "Use /v2 instead." }));   // return without throwing
+```
+
+```json
+{
+  "type": "https://example.com/probs/out-of-credit",
+  "title": "You do not have enough credit.",
+  "status": 403,
+  "detail": "Your current balance is 30, but that costs 50.",
+  "balance": 30
+}
+```
+
+The format changes only when you opt in. The default error format (text) stays as it is.
+
+## Rules
+
+- Without `type`, it is `about:blank`, and `title` is the status name (`"Not Found"` and so on)
+- For `HttpError`s that are not `ProblemError`s (405 from the router, 401 from `basicAuth()` and so on), a `message` that is only the status (`"405 Method Not Allowed"`) gets no `detail`; any other message becomes `detail`. Headers such as `Allow`, `WWW-Authenticate` and `Retry-After` are kept
+- Errors that are not `HttpError`s become a 500 with only `title`, without showing their content
+- The details of validation errors (`errors`) are not included by default, because they show how the schemas are built. Include them with `problemDetails({ validationErrors: true })`
+- In apps that do not use `problemDetails()`, a `ProblemError` is a plain `HttpError` and is sent as text: its `detail` (or `title`)
+- Like any `app.onError`, it also replaces the development error and 404 pages. You can set it only in production

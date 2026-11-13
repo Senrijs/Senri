@@ -1,6 +1,47 @@
 ---
 title: "Browser (Service Worker)"
-description: "Run inside a Service Worker"
+description: "Answer the Service Worker fetch event, or call app.fetch in a page"
 ---
 
-This page is coming soon.
+Senri can answer the Service Worker `fetch` event directly. Without a server, Senri replies to `fetch` calls from the page.
+
+```ts twoslash title="sw.ts"
+// @lib: esnext,webworker
+declare const self: ServiceWorkerGlobalScope;
+// ---cut---
+import { createApp } from "@senrijs/senri";
+
+const app = createApp();
+app.get("/api/todos/:id", ({ id }) => ({ id, done: false }));
+
+self.addEventListener("fetch", (event) => {
+    if (new URL(event.request.url).pathname.startsWith("/api/")) {
+        event.respondWith(app.fetch(event.request));
+    }
+});
+```
+
+Bundle `sw.ts` into one file with `bun build` or Vite, then register it in the page.
+
+```ts
+navigator.serviceWorker.register("/sw.js");
+```
+
+- Requests outside `/api/` are not answered, so they go to the network as usual
+- For the Service Worker types, add `"webworker"` to `lib` in tsconfig and write `declare const self: ServiceWorkerGlobalScope;`
+
+## Call app.fetch in a page
+
+You can also call `app.fetch` directly in a page, without a Service Worker. This is useful for tests and for imitating a server.
+
+```ts twoslash
+import { createApp } from "@senrijs/senri";
+
+const app = createApp();
+app.get("/api/todos/:id", ({ id }) => ({ id, done: false }));
+
+const res = await app.fetch(new Request("http://localhost/api/todos/1"));
+await res.json();   // { id: "1", done: false }
+```
+
+CI checks that it works both in a Chromium page and in a Service Worker.

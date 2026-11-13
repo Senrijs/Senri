@@ -1,5 +1,24 @@
 ---
 title: "Cache"
+description: "Add Cache-Control and Vary with cache()"
 ---
 
-This page is coming soon.
+```ts twoslash
+import { cache, createApp } from "@senrijs/senri";
+
+const app = createApp();
+
+app.use("/assets", cache({ cacheControl: "public, max-age=3600" }));
+```
+
+- It adds `Cache-Control` and `Vary` to 2xx and 304 responses to GET and HEAD
+- It does not store anything. Storing is left to browsers and CDNs
+- Register it before `etag()`
+
+<Callout type="warn" title="Do not mark personal pages public">
+  Cookies set with `setCookie()` are not visible to middleware. If you add `public` to a path with pages for logged-in users, a CDN might serve one person's page to someone else.
+</Callout>
+
+## Options
+
+<AutoTypeTable path="../../src/middleware/cache.ts" name="CacheOptions" />

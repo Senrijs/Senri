@@ -1,6 +1,75 @@
 ---
 title: "Reading requests"
-description: "Read the query, headers and body"
+description: "The query, headers, cookies and the client IP"
 ---
 
-This page is coming soon.
+```ts twoslash
+import { createApp } from "@senrijs/senri";
+import { getCookie, setCookie } from "@senrijs/senri/cookie";
+import { getIp } from "@senrijs/senri/ip";
+
+const app = createApp();
+
+app.get("/search", (_, c) => {
+    c.query("page");                     // "2" (undefined if missing; c.query() for all)
+    c.queries("tag");                    // ["a", "b"]
+    c.req.headers.get("user-agent");     // read headers from the Request
+    getCookie(c, "session");             // a cookie (getCookie(c) for all)
+    setCookie(c, "seen", "1");
+    getIp(c);                            // the client IP (null if unknown)
+    return "ok";
+});
+```
+
+Reading the body is covered in [Request bodies and limits](/en/docs/request-response/body).
+
+## Cookies
+
+They are in `@senrijs/senri/cookie`, a separate entry point so that apps that do not use them do not bundle them.
+
+- `getCookie(c, name)` / `getCookie(c)`: read one / all
+- `setCookie(c, name, value, options)`: set one. The defaults are `Path=/`, `HttpOnly` and `SameSite=Lax`
+- `deleteCookie(c, name, options)`: delete one
+
+### Signed cookies
+
+```ts twoslash
+import { createApp } from "@senrijs/senri";
+declare const env: { COOKIE_SECRET: string };
+const app = createApp();
+// ---cut---
+import { getSignedCookie, setSignedCookie } from "@senrijs/senri/cookie";
+
+app.post("/login", async (_, c) => {
+    await setSignedCookie(c, "user", "42", env.COOKIE_SECRET);
+    return "ok";
+});
+app.get("/me", async (_, c) => {
+    const user = await getSignedCookie(c, "user", env.COOKIE_SECRET);   // false if tampered with, undefined if missing
+    return user ? `user ${user}` : "please log in";
+});
+```
+
+- The signature is HMAC-SHA256 (Web Crypto). The client can read the value: this detects tampering, it does not encrypt
+- Use a random secret of 32 bytes or more, read from an environment variable or `c.env`. Pass an array such as `["new secret", "old secret"]` to sign with the new one and accept signatures from both
+- The signature includes the cookie name, so copying a value into a cookie with another name does not pass
+- `maxAge` only asks the browser to drop the cookie. To enforce an expiry, put it in the value and check it
+
+## The client IP
+
+`getIp(c)` from `@senrijs/senri/ip` returns the client address that the runtime passes. It does not read headers such as `X-Forwarded-For`, which can be forged. On Cloudflare Workers, it reads `CF-Connecting-IP`.
+
+Behind a proxy, use a function made with `trustProxy()`.
+
+```ts twoslash
+import { createApp } from "@senrijs/senri";
+const app = createApp();
+// ---cut---
+import { trustProxy } from "@senrijs/senri/ip";
+
+const clientIp = trustProxy({ proxies: ["10.0.0.0/8"] });   // or trustProxy({ hops: 1 })
+app.get("/ip", (_, c) => clientIp(c) ?? "unknown");
+```
+
+- It does not trust the first entry of `X-Forwarded-For`: it counts from the right
+- `hops` can be forged where requests can reach the app without going through the proxy. Use `proxies` there

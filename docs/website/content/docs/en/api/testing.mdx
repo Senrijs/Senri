@@ -1,5 +1,25 @@
 ---
 title: "/testing"
+description: "@senrijs/senri/testing: Calling an app without a server"
 ---
 
-This page is coming soon.
+Calling an app without a server.
+
+```ts
+import { ... } from "@senrijs/senri/testing";
+```
+
+## Functions and classes
+
+| Name | What it does |
+| --- | --- |
+| [`testClient<Api>(app, options?)`](/en/docs/typed-api/testing) | Calls `app.fetch` with a typed client |
+| [`request(app, "METHOD /path", init?)`](/en/docs/typed-api/testing) | Returns a `Response` |
+
+## Types
+
+### TestOptions
+
+<AutoTypeTable path="../../src/testing.ts" name="TestOptions" />
+
+Source: [`src/testing.ts`](https://github.com/Senrijs/Senri/blob/main/src/testing.ts)

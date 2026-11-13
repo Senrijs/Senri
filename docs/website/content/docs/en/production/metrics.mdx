@@ -1,5 +1,40 @@
 ---
 title: "Prometheus"
+description: "Expose HTTP metrics in the Prometheus format with @senrijs/senri/metrics"
 ---
 
-This page is coming soon.
+```ts twoslash
+import { createApp, ipRestriction } from "@senrijs/senri";
+import { metrics, metricsHandler } from "@senrijs/senri/metrics";
+
+const app = createApp();
+
+app.use(metrics());                                              // first, and only once
+app.use("/metrics", ipRestriction({ allow: ["10.0.0.0/8"] }));  // protect /metrics (it shows routes and traffic)
+app.get("/metrics", metricsHandler());                           // the Prometheus text format
+```
+
+## Metrics
+
+| Metric | Type | Labels |
+| --- | --- | --- |
+| `http_server_request_duration_seconds` | histogram (default buckets from 5 ms to 10 s; change them with `metrics({ buckets })`) | `method`, `route`, `status` |
+| `http_server_active_requests` | gauge (requests in flight) | `method` |
+
+- To keep the number of label values small, `route` is the route pattern, not the path (`/users/:id`, not `/users/42`)
+- Requests that matched no route (404 and so on) are `unmatched`, and non-standard methods are `_OTHER`
+- The time is from entering `metrics()` until the response is returned (a stream body may still be sending)
+- Exceptions are counted with the status `onError` returned (500 and so on)
+
+## Where they are kept
+
+In the process memory.
+
+- With several processes, each has its own numbers. Add them up in Prometheus
+- On Cloudflare Workers, each isolate has its own numbers, so they are not totals
+
+For now there are only HTTP metrics. There is no way to add your own counters.
+
+## Options
+
+<AutoTypeTable path="../../src/metrics.ts" name="MetricsOptions" />

@@ -1,5 +1,69 @@
 ---
 title: "Request bodies and limits"
+description: "c.body(), c.req.json() and the like. The default 1 MiB limit, and raising it with bodyLimit()"
 ---
 
-This page is coming soon.
+```ts twoslash
+import { createApp } from "@senrijs/senri";
+
+const app = createApp();
+
+app.post("/notes", async (_, c) => {
+    const note = await c.body<{ title: string }>();   // read by Content-Type
+    return { saved: note.title };
+});
+```
+
+## Ways to read
+
+| Write | Result |
+| --- | --- |
+| `c.body()` | A value for JSON, an object for forms, a string for text, an `ArrayBuffer` for anything else |
+| `c.req.json()`, `text()`, `formData()`, `arrayBuffer()` | The `Request` methods as is |
+| `c.req.body` | Read it as a stream |
+| A route's `body` schema | Read the checked value with `c.valid("body")` ([Validation](/en/docs/validation)) |
+
+`c.body()` returns the same result however many times you call it, so both middleware and the handler can read it.
+
+## The default limit is 1 MiB
+
+Reading a body is limited to **1 MiB** by default. Over it, the response is 413.
+
+- It applies only when the body is read. Routes that do not read the body behave the same with a large body
+- If Content-Length is over the limit, the request gets 413 without the body being read. A body without Content-Length (chunked transfer and so on) is counted as it is read
+- Reading `c.req.body` as a stream also gets 413 over 1 MiB
+- Even if the handler swallows the read error, the response is 413
+
+### Raise the limit on a route
+
+Add `bodyLimit({ maxSize })` only to the routes that take large bodies. The route's limit **replaces** the default 1 MiB (they do not stack).
+
+```ts twoslash
+import { createApp } from "@senrijs/senri";
+const app = createApp();
+// ---cut---
+import { bodyLimit } from "@senrijs/senri";
+
+app.use("/import", bodyLimit({ maxSize: 50 * 1024 * 1024 }));   // up to 50 MiB on this route
+app.post("/import", async (_, c) => {
+    const rows = await c.req.json();
+    return { count: rows.length };
+});
+```
+
+- For a table route, write `endpoint({ use: [bodyLimit({ maxSize })] }, handler)` ([Per-route middleware](/en/docs/middleware/route-middleware))
+- `uploadLimit()` and `multipart()` also replace the default with their own limits
+
+### Change the limit for the whole app
+
+```ts twoslash
+import { createApp } from "@senrijs/senri";
+// ---cut---
+const app = createApp({ maxBodySize: 10 * 1024 * 1024 });   // Infinity removes it
+```
+
+A body without Content-Length is wrapped in a stream to be counted, so reading it is slightly slower (tens of µs for a small body). A body with Content-Length is not wrapped, so its speed does not change.
+
+## The server-wide limit
+
+`serve(app, { maxRequestBodySize })` limits the bodies the server takes. Over it, the response is 413. Without it, there is no limit on any runtime ([serve() options](/en/docs/production/serve)).

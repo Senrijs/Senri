@@ -1,6 +1,51 @@
 ---
 title: "Groups"
-description: "Share a path prefix and middleware"
+description: "Group routes under a prefix, or mount another app"
 ---
 
-This page is coming soon.
+```ts twoslash
+import { createApp, createRouter } from "@senrijs/senri";
+
+const app = createApp();
+
+const posts = createRouter("/users/:id/posts");
+posts.get("/", ({ id }) => `posts of user ${id}`);
+posts.get("/:postId", ({ id, postId }) => `${id} / ${postId}`);
+//                           ^?
+
+app.route(posts);
+```
+
+- Add routes to what `createRouter(prefix)` returns, the same way as to `app`
+- Parameters in the prefix (`:id`) are typed in the handlers too
+- Mount it on the app with `app.route(router)`
+
+## Mount another app
+
+Mount another app made with `createApp()` under a prefix.
+
+```ts twoslash
+import { createApp } from "@senrijs/senri";
+const app = createApp();
+// ---cut---
+const admin = createApp();
+admin.get("/stats", () => ({ users: 42 }));
+
+app.route("/admin", admin);   // GET /admin/stats
+```
+
+## Prefixes in route tables
+
+Typed route tables (`defineRoutes()`) can have a prefix too ([Route tables](/en/docs/typed-api/define-routes)).
+
+```ts twoslash
+import { createApp, defineRoutes } from "@senrijs/senri";
+const app = createApp();
+// ---cut---
+const orgRoutes = defineRoutes("/orgs/:orgId")({
+    "GET /": ({ orgId }) => `org ${orgId}`,
+    "GET /members/:memberId": ({ orgId, memberId }) => ({ orgId, memberId }),
+});
+
+app.routes(orgRoutes);
+```

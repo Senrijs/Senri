@@ -1,5 +1,60 @@
 ---
 title: "Route tables"
+description: "Make route tables that keep their types with defineRoutes(), endpoint() and mergeRoutes()"
 ---
 
-This page is coming soon.
+Put routes in a table and you can move them to another file while keeping their types (paths, parameters, schemas and handler return values). From those types you can make a [client](/en/docs/typed-api/client), [tests](/en/docs/typed-api/testing) and [OpenAPI](/en/docs/typed-api/openapi) documents.
+
+```ts twoslash title="routes.ts"
+import { defineRoutes, endpoint, mergeRoutes } from "@senrijs/senri";
+import { z } from "zod";
+
+// keys are "METHOD /path"; parameters are typed from the key
+export const userRoutes = defineRoutes({
+    "GET /users/:id": ({ id }) => ({ id }),
+    // wrap routes with schemas in endpoint(schemas, handler)
+    "POST /users": endpoint({ body: z.object({ name: z.string() }) }, (_, c) => ({ created: c.valid("body").name })),
+});
+
+// a prefix is written in two steps; its parameters are typed too
+export const orgRoutes = defineRoutes("/orgs/:orgId")({
+    "GET /": ({ orgId }) => `org ${orgId}`,                   // GET /orgs/:orgId
+    "GET /members/:memberId": ({ orgId, memberId }) => ({ orgId, memberId }),
+});
+
+// merge tables (the same key twice is an error)
+export const routes = mergeRoutes(userRoutes, orgRoutes);
+export type Api = typeof routes;
+```
+
+```ts twoslash title="index.ts"
+// @filename: routes.ts
+import { defineRoutes } from "@senrijs/senri";
+export const routes = defineRoutes({ "GET /users/:id": ({ id }) => ({ id }) });
+// @filename: index.ts
+// ---cut---
+import { createApp } from "@senrijs/senri";
+import { routes } from "./routes.ts";
+
+const app = createApp();
+app.routes(routes);
+```
+
+## endpoint()
+
+The `options` of `endpoint(options, handler)` can have:
+
+| Key | What it is |
+| --- | --- |
+| `params`, `query`, `body` | Schemas to check ([Validation](/en/docs/validation)) |
+| `use` | Middleware for this route only ([Per-route middleware](/en/docs/middleware/route-middleware)) |
+| `response`, `responses` | Schemas of the response bodies (for 200, and per status). Used for client types and OpenAPI |
+| `bodyType` | `"form"` for routes that take forms (used for OpenAPI) |
+| `openapi` | `summary`, `tags` and so on for OpenAPI |
+
+## Rules
+
+- A prefix starts with `/` and does not end with `/` (`"/users"`)
+- To add middleware to every route in a table, write `defineRoutes("/admin", { use: [auth] })({ ... })`
+- To type `c.get()`, pass the app's types with the prefix: `defineRoutes<"/admin", Vars>("/admin")({ ... })`
+- The path syntax and duplicate routes are checked when the table is passed to `app.routes()`, the same as with `app.get()`

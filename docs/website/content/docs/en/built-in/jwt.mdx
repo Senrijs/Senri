@@ -1,5 +1,62 @@
 ---
 title: "JWT"
+description: "Sign and verify JWTs with @senrijs/senri/jwt"
 ---
 
-This page is coming soon.
+```ts twoslash
+import { createApp } from "@senrijs/senri";
+import { jwt, signJwt, type JwtVariables } from "@senrijs/senri/jwt";
+declare const env: { JWT_SECRET: string };
+
+const app = createApp<JwtVariables>();
+
+app.post("/login", async () => ({
+    token: await signJwt({ sub: "42" }, env.JWT_SECRET, { alg: "HS256", expiresIn: 3600 }),
+}));
+
+app.use("/api", jwt({ keys: env.JWT_SECRET, algorithms: ["HS256"] }));   // Authorization: Bearer <token>
+app.get("/api/me", (_, c) => ({ payload: c.get("jwtPayload") }));
+```
+
+It uses only Web Crypto, and runs on Bun, Deno, Node.js, Cloudflare Workers and the browser.
+
+## Rules
+
+- **`algorithms` is required.** A token is verified only when its `alg` is in it. `none` is never accepted
+- `exp` and `nbf` are checked when present (`clockTolerance` allows for clock skew). `issuer`, `audience`, `subject` and `maxAge` can also be set
+- To always set an expiry, use `expiresIn` in `signJwt()`
+- To read the token from a cookie, write `jwt({ cookie: "name", ... })`
+- An invalid token is a `JwtError` (a 401 `HttpError`) with `WWW-Authenticate: Bearer error="invalid_token"`. `err.reason` tells why (`expired`, `signature` and so on)
+
+## Algorithms and keys
+
+| Algorithms | Keys |
+| --- | --- |
+| HS256, HS384, HS512 | A string secret (32 bytes or more for HS256, 48 for HS384, 64 for HS512; shorter is a TypeError) |
+| RS256, RS384, RS512, PS256, PS384, PS512, ES256, ES384, EdDSA, Ed25519 | PEM (`PUBLIC KEY` / `PRIVATE KEY`), JWK or `CryptoKey` |
+
+- A PEM public key is never used as an HMAC secret (this prevents algorithm confusion attacks)
+- ES512 is not supported yet
+
+## Key rotation
+
+```ts twoslash
+import { createApp } from "@senrijs/senri";
+import { jwt } from "@senrijs/senri/jwt";
+const app = createApp();
+declare const newKey: string;
+declare const oldKey: string;
+// ---cut---
+app.use("/api", jwt({
+    keys: [{ kid: "2026-11", key: newKey }, { kid: "2026-10", key: oldKey }],
+    algorithms: ["HS256"],
+}));
+```
+
+`signJwt()` puts `kid` in the header, and `verifyJwt()` tries only the key with the token's `kid` (and keys without a `kid`). The `keys` of a JWKS can be passed as is.
+
+Fetching keys from a remote JWKS URL and encryption (JWE) are not supported.
+
+## Options
+
+<AutoTypeTable path="../../src/jwt.ts" name="JwtOptions" />

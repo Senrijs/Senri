@@ -1,5 +1,45 @@
 ---
 title: "Security headers"
+description: "Add security headers at once with secureHeaders()"
 ---
 
-This page is coming soon.
+```ts twoslash
+import { createApp, secureHeaders } from "@senrijs/senri";
+
+const app = createApp();
+
+app.use(secureHeaders());
+
+// change, remove or add headers
+app.use(
+    secureHeaders({
+        xFrameOptions: "DENY",
+        strictTransportSecurity: false,
+        contentSecurityPolicy: "default-src 'self'",
+    }),
+);
+```
+
+For each header, a string sets that value, `true` or omitting it uses the default, and `false` leaves it out.
+
+## Added by default
+
+| Header | Default |
+| --- | --- |
+| `Cross-Origin-Opener-Policy` | `same-origin` |
+| `Cross-Origin-Resource-Policy` | `same-origin` |
+| `Origin-Agent-Cluster` | `?1` |
+| `Referrer-Policy` | `no-referrer` |
+| `Strict-Transport-Security` | `max-age=15552000; includeSubDomains` |
+| `X-Content-Type-Options` | `nosniff` |
+| `X-DNS-Prefetch-Control` | `off` |
+| `X-Download-Options` | `noopen` |
+| `X-Frame-Options` | `SAMEORIGIN` |
+| `X-Permitted-Cross-Domain-Policies` | `none` |
+| `X-XSS-Protection` | `0` (turns off the legacy XSS filter) |
+
+`Content-Security-Policy` and `Cross-Origin-Embedder-Policy` break apps easily, so they are not added by default. They are added only when given a string (`true` throws).
+
+## Options
+
+<AutoTypeTable path="../../src/middleware/secure-headers.ts" name="SecureHeadersOptions" />

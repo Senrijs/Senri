@@ -1,5 +1,44 @@
 ---
 title: "Upload limit"
+description: "Check the size, number and type of files with uploadLimit(). safeFileName()"
 ---
 
-This page is coming soon.
+```ts twoslash
+import { createApp, safeFileName, uploadLimit } from "@senrijs/senri";
+declare function save(name: string, file: File): Promise<void>;
+
+const app = createApp();
+
+app.use("/photos", uploadLimit({
+    maxTotalSize: 20 * 1024 * 1024,
+    maxFileSize: 5 * 1024 * 1024,
+    maxFiles: 3,
+    types: ["image/png", "image/jpeg"],
+}));
+
+app.post("/photos", async (_, c) => {
+    const { photo } = await c.body<{ photo: File }>();
+    await save(safeFileName(photo.name), photo);
+    return { size: photo.size };
+});
+```
+
+It checks the files of a `multipart/form-data` body before passing it to the handler.
+
+- It checks the size (`maxTotalSize` is required, `maxFileSize`), the number (`maxFiles`) and the type (`types`, `extensions`)
+- Too large is 413, and the wrong type is 415
+- For PNG, JPEG, GIF, WebP and PDF, the first bytes of the content are checked too
+- Read the result with `c.body()`. A route's schemas run after the check
+- `maxTotalSize` applies instead of the app's default limit (1 MiB)
+
+## Memory
+
+`c.body()` reads everything into memory, so it uses up to `maxTotalSize` of memory. To stream large files, use [`multipart()`](/en/docs/request-response/multipart).
+
+## File names
+
+The file name that was sent (`file.name`) might be something like `../../etc/passwd`. Do not use it as a storage path as is: choose the name yourself with `crypto.randomUUID()` and so on, or pass it through `safeFileName()`.
+
+## Options
+
+<AutoTypeTable path="../../src/middleware/upload-limit.ts" name="UploadLimitOptions" />

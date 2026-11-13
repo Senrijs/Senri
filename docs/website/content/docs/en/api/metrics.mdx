@@ -1,5 +1,26 @@
 ---
 title: "/metrics"
+description: "@senrijs/senri/metrics: Prometheus metrics"
 ---
 
-This page is coming soon.
+Prometheus metrics.
+
+```ts
+import { ... } from "@senrijs/senri/metrics";
+```
+
+## Functions and classes
+
+| Name | What it does |
+| --- | --- |
+| [`metrics(options?)`](/en/docs/production/metrics) | Middleware that counts requests |
+| [`metricsHandler()`](/en/docs/production/metrics) | A handler that returns the Prometheus text format |
+| [`resetMetrics()`](/en/docs/production/metrics) | Clears what was counted (for tests) |
+
+## Types
+
+### MetricsOptions
+
+<AutoTypeTable path="../../src/metrics.ts" name="MetricsOptions" />
+
+Source: [`src/metrics.ts`](https://github.com/Senrijs/Senri/blob/main/src/metrics.ts)

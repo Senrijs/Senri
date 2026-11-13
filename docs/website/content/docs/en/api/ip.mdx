@@ -1,5 +1,25 @@
 ---
 title: "/ip"
+description: "@senrijs/senri/ip: The client IP"
 ---
 
-This page is coming soon.
+The client IP.
+
+```ts
+import { ... } from "@senrijs/senri/ip";
+```
+
+## Functions and classes
+
+| Name | What it does |
+| --- | --- |
+| [`getIp(c)`](/en/docs/request-response/request) | The client IP that the runtime passes |
+| [`trustProxy(options)`](/en/docs/request-response/request) | Creates a function that returns the client IP behind a proxy |
+
+## Types
+
+### TrustProxyOptions
+
+<AutoTypeTable path="../../src/ip.ts" name="TrustProxyOptions" />
+
+Source: [`src/ip.ts`](https://github.com/Senrijs/Senri/blob/main/src/ip.ts)

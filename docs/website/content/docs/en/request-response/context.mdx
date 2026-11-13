@@ -1,5 +1,56 @@
 ---
 title: "Context"
+description: "What you can do with c, which handlers and middleware receive"
 ---
 
-This page is coming soon.
+A handler's second argument and a middleware's first argument are the Context (`c`) of the request.
+
+```ts twoslash
+import { createApp } from "@senrijs/senri";
+
+const app = createApp<{ user: string }>();
+
+app.use(async (c, next) => {
+    c.set("user", "alice");          // pass a value to the handler
+    await next();
+});
+
+app.get("/users/:id", ({ id }, c) => {
+    c.header("cache-control", "no-store");
+    return { id, user: c.get("user"), page: c.query("page") };
+});
+```
+
+## Read the request
+
+| Write | What it is |
+| --- | --- |
+| `c.req` | The real `Request` |
+| `c.path` | The normalized, decoded path |
+| `c.route` | The pattern of the matched route (`"/users/:id"`), or `undefined` |
+| `c.params` | The path parameters (the same as the handler's first argument) |
+| `c.query(name)` / `c.query()` | One query value / all of them |
+| `c.queries(name)` | All values of a query name (an array) |
+| `c.body()` | Reads the body by its Content-Type ([Request bodies and limits](/en/docs/request-response/body)) |
+| `c.valid(target)` | The values checked by a schema ([Validation](/en/docs/validation)) |
+
+`c.route` and `c.params` can be read in middleware before `next()`, because the route is decided before middleware runs.
+
+## Decide the response
+
+| Write | What it does |
+| --- | --- |
+| `c.status(code)` | Sets the status of the value you return |
+| `c.header(name, value)` | Adds a header to the response |
+| `c.json()`, `c.text()`, `c.html()`, `c.redirect()` | Make a `Response` ([Response helpers](/en/docs/request-response/response-helpers)) |
+| `c.notFound()` | Hands over to the 404 handler ([Not found](/en/docs/errors/not-found)) |
+
+Headers added with `c.header()` are added to the response once, at the end. They are added even when you return a `Response` directly, and on errors. `Content-Type` and `Location` in the response itself win, though.
+
+## Pass values (c.set / c.get)
+
+To pass values from middleware to the handler, use `c.set()` and `c.get()`. Set their types as in `createApp<{ user: string }>()`, or from the middleware's type ([Writing middleware](/en/docs/middleware/writing)).
+
+## env and ctx on Cloudflare Workers
+
+`c.env` and `c.executionCtx` give the Workers bindings and `waitUntil()` ([Cloudflare Workers](/en/docs/runtimes/cloudflare-workers)).

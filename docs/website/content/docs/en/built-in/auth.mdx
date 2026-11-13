@@ -1,5 +1,39 @@
 ---
 title: "Basic and Bearer auth"
+description: "Protect routes with a user name and password, or a token, with basicAuth() and bearerAuth()"
 ---
 
-This page is coming soon.
+```ts twoslash
+import { basicAuth, bearerAuth, createApp } from "@senrijs/senri";
+declare const env: { ADMIN_PASSWORD: string; API_TOKEN: string };
+
+const app = createApp();
+
+app.use("/admin", basicAuth({ username: "admin", password: env.ADMIN_PASSWORD }));
+app.use("/api", bearerAuth({ token: env.API_TOKEN }));
+```
+
+- If a request does not pass, the response is 401 with `WWW-Authenticate`
+- Values are compared in constant time
+- Read passwords and tokens from environment variables or `c.env`, not from the code
+- With `cors()`, register `cors()` first
+
+## Check it yourself
+
+Instead of fixed values, check with a function. The request passes only when it returns `true`.
+
+```ts twoslash
+import { basicAuth, bearerAuth, createApp } from "@senrijs/senri";
+const app = createApp();
+declare function checkPassword(user: string, password: string): Promise<boolean>;
+declare function isValidToken(token: string): Promise<boolean>;
+// ---cut---
+app.use("/admin", basicAuth({ verifyUser: (username, password) => checkPassword(username, password) }));
+app.use("/api", bearerAuth({ verifyToken: (token) => isValidToken(token) }));
+```
+
+## Options
+
+<AutoTypeTable path="../../src/middleware/auth.ts" name="BasicAuthOptions" />
+
+<AutoTypeTable path="../../src/middleware/auth.ts" name="BearerAuthOptions" />

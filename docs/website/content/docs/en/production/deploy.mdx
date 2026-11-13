@@ -1,5 +1,56 @@
 ---
 title: "Deployment"
+description: "Remove devtools() from production builds. NODE_ENV. Notes for each runtime"
 ---
 
-This page is coming soon.
+```ts twoslash title="src/index.ts"
+import { createApp } from "@senrijs/senri";
+import { serve } from "@senrijs/senri/serve";
+
+const app = createApp();   // no dev: devtools() in production builds
+app.get("/", () => "Hello!");
+
+await serve(app);
+```
+
+```bash
+NODE_ENV=production PORT=8080 node src/index.ts
+```
+
+## Remove devtools()
+
+There are two ways to handle development mode in production. **Removing it from production builds is the safest.**
+
+| Way | Result |
+| --- | --- |
+| Do not pass `dev: devtools()` | The development code is not bundled. Only the core remains (about 7 KB after gzip) |
+| Keep `dev: devtools()` and set `NODE_ENV=production` | `devtools()` does nothing, so no development pages appear. But bundlers that put everything in one file (such as wrangler for Workers) still include the code |
+
+If you forget `NODE_ENV`, development output still goes only to requests to localhost ([Using devtools()](/en/docs/dev/devtools)). Still, remove it or set `NODE_ENV=production`.
+
+<Callout type="warn" title="Behind a reverse proxy on the same machine">
+  If the proxy forwards `Host: localhost` as is, requests look like requests to localhost. In production, set `NODE_ENV=production` or remove `devtools()`.
+</Callout>
+
+## Environment variables
+
+| Variable | Used by |
+| --- | --- |
+| `NODE_ENV` | With `production`, `devtools()` does nothing |
+| `PORT` | The port of `serve()` (when there is no `port` option) |
+
+Many hosting services set `PORT` for you, and `serve()` reads it.
+
+## Notes for each runtime
+
+- **Node.js:** `node:http` limits the time to receive a whole request to 5 minutes by default (`requestTimeout`). Sending a large file over a slow connection can end in 408 midway
+- **Bun, Deno and Node.js:** on SIGTERM, the server waits for in-flight requests before stopping ([Graceful shutdown](/en/docs/production/graceful-shutdown))
+- **Cloudflare Workers:** deploy with `wrangler deploy`. `devtools()` only works with `wrangler dev`, but it is still bundled, so remove it ([Cloudflare Workers](/en/docs/runtimes/cloudflare-workers))
+- **Containers such as Docker:** the client does not look like localhost, so the development dashboard cannot be opened. When developing in a container, set `NODE_ENV=development`
+
+## Monitoring
+
+- Logs: [`logger()`](/en/docs/built-in/logger) (`{ format: "json" }` for logs that are easy to collect)
+- Health checks: [`health()`](/en/docs/built-in/health)
+- Traces: [OpenTelemetry](/en/docs/production/otel)
+- Metrics: [Prometheus](/en/docs/production/metrics)

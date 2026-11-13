@@ -1,5 +1,30 @@
 ---
 title: "/problem"
+description: "@senrijs/senri/problem: RFC 9457 Problem Details"
 ---
 
-This page is coming soon.
+RFC 9457 Problem Details.
+
+```ts
+import { ... } from "@senrijs/senri/problem";
+```
+
+## Functions and classes
+
+| Name | What it does |
+| --- | --- |
+| [`problemDetails(options?)`](/en/docs/errors/problem-details) | Creates handlers for `onError` and `notFound` |
+| [`ProblemError`](/en/docs/errors/problem-details) | An `HttpError` with Problem Details |
+| [`problem(c, details?)`](/en/docs/errors/problem-details) | Returns Problem Details without throwing |
+
+## Types
+
+### ProblemDetails
+
+<AutoTypeTable path="../../src/problem.ts" name="ProblemDetails" />
+
+### ProblemDetailsOptions
+
+<AutoTypeTable path="../../src/problem.ts" name="ProblemDetailsOptions" />
+
+Source: [`src/problem.ts`](https://github.com/Senrijs/Senri/blob/main/src/problem.ts)

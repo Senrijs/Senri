@@ -1,5 +1,20 @@
 ---
 title: "/context-storage"
+description: "@senrijs/senri/context-storage: Getting c from anywhere"
 ---
 
-This page is coming soon.
+Getting `c` from anywhere.
+
+```ts
+import { ... } from "@senrijs/senri/context-storage";
+```
+
+## Functions and classes
+
+| Name | What it does |
+| --- | --- |
+| [`contextStorage()`](/en/docs/production/context-storage) | Middleware that remembers `c` |
+| [`getContext()`](/en/docs/production/context-storage) | Gets the current `c` (throws if there is none) |
+| [`tryGetContext()`](/en/docs/production/context-storage) | Gets the current `c` (`undefined` if there is none) |
+
+Source: [`adapters/context-storage/index.ts`](https://github.com/Senrijs/Senri/blob/main/adapters/context-storage/index.ts)

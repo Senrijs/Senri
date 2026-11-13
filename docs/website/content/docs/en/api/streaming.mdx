@@ -1,5 +1,34 @@
 ---
 title: "/streaming"
+description: "@senrijs/senri/streaming: Sending a response bit by bit. Server-Sent Events"
 ---
 
-This page is coming soon.
+Sending a response bit by bit. Server-Sent Events.
+
+```ts
+import { ... } from "@senrijs/senri/streaming";
+```
+
+## Functions and classes
+
+| Name | What it does |
+| --- | --- |
+| [`stream(c, run, options?)`](/en/docs/request-response/streaming) | Sends bytes bit by bit |
+| [`streamText(c, run, options?)`](/en/docs/request-response/streaming) | Sends text bit by bit |
+| [`streamSSE(c, run, options?)`](/en/docs/request-response/streaming) | Sends Server-Sent Events |
+
+## Types
+
+### StreamingApi
+
+<AutoTypeTable path="../../src/streaming.ts" name="StreamingApi" />
+
+### SSEMessage
+
+<AutoTypeTable path="../../src/streaming.ts" name="SSEMessage" />
+
+### SSEOptions
+
+<AutoTypeTable path="../../src/streaming.ts" name="SSEOptions" />
+
+Source: [`src/streaming.ts`](https://github.com/Senrijs/Senri/blob/main/src/streaming.ts)

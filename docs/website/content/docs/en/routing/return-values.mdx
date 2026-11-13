@@ -1,6 +1,51 @@
 ---
 title: "Return values"
-description: "Return strings, objects, Responses and more"
+description: "What is sent when you return a string, an object, a Response and so on"
 ---
 
-This page is coming soon.
+```ts twoslash
+import { createApp } from "@senrijs/senri";
+
+const app = createApp();
+
+app.get("/text", () => "Hello");                             // text/plain; charset=utf-8
+app.get("/json", () => ({ ok: true }));                      // application/json
+app.get("/raw", () => new Response("as is", { status: 202 }));
+```
+
+| Return | Response |
+| --- | --- |
+| A string | `text/plain; charset=utf-8` |
+| An object or array | JSON |
+| `Blob`, `ArrayBuffer`, `Uint8Array` and the like, `ReadableStream`, `FormData`, `URLSearchParams` | Sent as the body |
+| A `Response` | Sent as is |
+
+## Set the status and headers
+
+Set them with `c.status()` and `c.header()`, then return a value.
+
+```ts twoslash
+import { createApp } from "@senrijs/senri";
+const app = createApp();
+// ---cut---
+app.post("/items", (_, c) => {
+    c.status(201);
+    c.header("location", "/items/1");
+    return { id: 1 };
+});
+```
+
+A helper such as `c.json(body, status)` can set the status in one go ([Response helpers](/en/docs/request-response/response-helpers)).
+
+## Returning a function
+
+Returning a function (forgetting to call it) is a type error. At run time, it is also 500.
+
+```ts twoslash
+// @errors: 2345
+import { createApp } from "@senrijs/senri";
+const app = createApp();
+const load = async () => ({ ok: true });
+// ---cut---
+app.get("/oops", () => load);   // forgot to call load()
+```

@@ -1,6 +1,41 @@
 ---
 title: "Path rules"
-description: "Parameters and how paths are matched"
+description: "Trailing slashes, decoding, route priority, 405 and the automatic OPTIONS"
 ---
 
-This page is coming soon.
+```ts twoslash
+import { createApp } from "@senrijs/senri";
+
+const app = createApp();
+
+app.get("/users/me", () => "that is you");         // static segments match first
+app.get("/users/:id", ({ id }) => `user ${id}`);   // registration order does not matter
+```
+
+## Trailing and repeated slashes
+
+Trailing slashes and repeated slashes are ignored. `/users`, `/users/` and `//users` all match the same route.
+
+To redirect to one form (for SEO), use [`trailingSlash()`](/en/docs/built-in/trailing-slash).
+
+## Decoding
+
+- The path is percent-decoded segment by segment. It matches a route written as is, such as `/こんにちは`
+- A path that cannot be decoded, or that contains `%2F` (an encoded `/`), is 400
+- `c.path` is the normalized, decoded path. Middleware that decides by path should use `c.path` or `app.use("/admin", mw)`, not `c.req.url`
+
+## Priority
+
+Whatever the registration order, routes match in the order **static → parameter → wildcard**. If nothing matches down the `/a/b/c` branch, Senri goes back and tries `/a/*`.
+
+## 405 and OPTIONS
+
+When a route matches the path but not the method, the response is 405 with `Allow`. If OPTIONS is not registered, the response is 204 with `Allow`.
+
+```bash
+curl -i -X DELETE http://localhost:3927/users/1
+# HTTP/1.1 405 Method Not Allowed
+# allow: GET, HEAD, OPTIONS
+```
+
+Wildcard routes do not count for 405 and OPTIONS ([Wildcards](/en/docs/routing/wildcards)).

@@ -1,6 +1,44 @@
 ---
 title: "Performance"
-description: "Benchmark results and how they are measured"
+description: "Benchmark results and how they were measured"
 ---
 
-This page is coming soon.
+Senri was compared with Hono 4.13.13 and Elysia 1.4.30 on the same routes (12) and the same requests. All run in production mode, with no middleware, and the handlers only return text.
+
+The steps and code are in [bench/](https://github.com/Senrijs/Senri/tree/main/bench) in the repository, so anyone can run the same thing.
+
+**Environment:** Intel N100 (4 cores), Windows 11, Bun 1.4.3. An everyday PC with other apps running; numbers vary by 10–20% between runs.
+
+## Calling app.fetch in the process
+
+Time per request, from passing a `Request` to reading the whole `Response` body, without the network (smaller is faster). Measured with `bun run fetch` (mitata 1.0.34).
+
+| Request | Senri | Hono | Elysia |
+| --- | ---: | ---: | ---: |
+| Static (`/user`) | 1.63 µs | 0.90 µs | 0.58 µs |
+| Static, long | 1.57 µs | 1.41 µs | 0.81 µs |
+| One parameter | 3.00 µs | 1.60 µs | 0.90 µs |
+| Three parameters | 3.12 µs | 1.95 µs | 1.24 µs |
+| 404 | 4.97 µs | 3.56 µs | 1.01 µs |
+
+In this measurement, Senri is the slowest of the three, taking 1.1 to 1.9 times as long as Hono. Part of the reason is known:
+
+- Senri sets the `Content-Type` of text itself, so that it is the same on every runtime. Hono and Elysia leave it to the runtime with `new Response(text)`
+- Elysia generates code from the registered routes to make them faster. Senri does not use `new Function` / `eval`, so that it runs on Cloudflare Workers
+
+## Over HTTP
+
+Requests per second, with all three on the same `Bun.serve({ fetch })` under load from [oha](https://github.com/hatoo/oha) 1.16.0 (larger is faster; `oha -z 10s -c 64`, the median of 3 alternating runs each).
+
+| Request | Senri | Hono | Elysia |
+| --- | ---: | ---: | ---: |
+| Static (`/user`) | 21,703 | 17,167 | 14,447 |
+| One parameter | 16,390 | 17,461 | 21,516 |
+| Three parameters | 19,426 | 23,692 | 12,186 |
+| 404 | 22,349 | 23,030 | 24,761 |
+
+The load generator runs on the same PC, so the server's own work dominates. Under these conditions all three are in the same range, and none can be called the fastest. The order changes between runs.
+
+<Callout title="To be measured again">
+  The benchmark now measures with wrk, so these numbers will be replaced with results measured again on the benchmark VM.
+</Callout>

@@ -1,6 +1,36 @@
 ---
 title: "What is Senri"
-description: "A small web framework built on Web standards"
+description: "A small web framework written only with the web-standard Request and Response"
 ---
 
-This page is coming soon.
+Senri is a small web framework written only with the web-standard `Request` and `Response`. The same code runs on Bun, Node.js, Deno, Cloudflare Workers and the browser (Service Worker).
+
+```ts twoslash
+import { createApp } from "@senrijs/senri";
+import { devtools } from "@senrijs/senri/dev";
+import { serve } from "@senrijs/senri/serve";
+
+const app = createApp({ dev: devtools() });
+
+app.get("/hello", () => "Hello");                // string → text/plain
+app.get("/users/:id", ({ id }) => ({ id }));    // object → JSON
+//                       ^?
+
+await serve(app);   // on Bun, Node.js and Deno
+```
+
+## Features
+
+- **What you return becomes the response.** A string becomes text and an object becomes JSON. You can also return a `Response` as is
+- **Types come from the path.** Write `/users/:id` and the handler's `id` is typed. You can check parameters, the query and the body with [Standard Schema](https://standardschema.dev) (Zod, Valibot, ArkType and others)
+- **A helpful development mode.** Error pages show the code where the error happened and hints. 404 pages show "did you mean". The `/_senri` dashboard shows how each request went through the middleware
+- **Runs anywhere.** It uses only web-standard APIs, with no `eval` and no `new Function`
+- **Small.** A minimal app bundles to about 7 KB after gzip. The development-mode code does not go into production builds
+
+## Read next
+
+<Cards>
+  <Card title="Installation" href="/en/docs/getting-started/installation" description="Create a working app with npm create senri" />
+  <Card title="Your first app" href="/en/docs/getting-started/first-app" description="Add routes and look at development mode" />
+  <Card title="Runtimes" href="/en/docs/runtimes/bun" description="Bun, Node.js, Deno, Workers and the browser" />
+</Cards>

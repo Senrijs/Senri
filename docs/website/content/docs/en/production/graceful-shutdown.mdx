@@ -1,6 +1,46 @@
 ---
 title: "Graceful shutdown"
-description: "Wait for in-flight requests before stopping"
+description: "On SIGTERM, stop after waiting for in-flight requests"
 ---
 
-This page is coming soon.
+```ts twoslash
+import { createApp } from "@senrijs/senri";
+const app = createApp();
+declare const db: { close(): Promise<void> };
+// ---cut---
+import { serve } from "@senrijs/senri/serve";
+
+await serve(app, {
+    shutdownTimeout: 30_000,     // wait up to 30 seconds for in-flight requests
+    onShutdown: () => db.close(),
+});
+```
+
+On SIGTERM or SIGINT, `serve()` stops in this order:
+
+1. Makes `/readyz` of [`health()`](/en/docs/built-in/health) return 503 (so that load balancers stop sending new requests)
+2. Stops accepting new connections and waits for in-flight requests (`shutdownTimeout`, 10 seconds by default; after that, the remaining connections are cut)
+3. Calls `onShutdown`, then exits the process
+
+A second signal while waiting exits at once (for example, pressing Ctrl+C twice).
+
+## Stop it yourself
+
+`server.stop()` stops the same way (steps 1 and 2). Use it to clean up after tests and so on.
+
+```ts twoslash
+import { createApp } from "@senrijs/senri";
+const app = createApp();
+// ---cut---
+import { serve } from "@senrijs/senri/serve";
+
+const server = await serve(app, { port: 0 });
+// ...
+await server.stop();
+```
+
+## Leave it to the runtime
+
+To keep the runtime's default behavior, set `gracefulShutdown: false`. Then `serve()` does nothing on signals.
+
+- Deno has no way to cut the remaining connections after it stops waiting. After `shutdownTimeout`, Senri stops waiting, and the connections are cut when the process exits

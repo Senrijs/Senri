@@ -1,6 +1,64 @@
 ---
 title: "Streaming and SSE"
-description: "stream(), streamText() and streamSSE()"
+description: "Send a response bit by bit with @senrijs/senri/streaming. Server-Sent Events"
 ---
 
-This page is coming soon.
+```ts twoslash
+import { createApp } from "@senrijs/senri";
+import { streamSSE } from "@senrijs/senri/streaming";
+
+const app = createApp();
+
+app.get("/events", (_, c) =>
+    streamSSE(c, async (s) => {
+        s.onAbort(() => console.log("disconnected"));
+        for (let i = 0; !s.aborted; i++) {
+            await s.writeSSE({ event: "tick", id: String(i), data: String(i) });
+            await s.sleep(1000);
+        }
+    }),
+);
+```
+
+| Function | Sends |
+| --- | --- |
+| `stream(c, run)` | Bytes |
+| `streamText(c, run)` | Text |
+| `streamSSE(c, run)` | Server-Sent Events |
+
+- When the client disconnects, `s.aborted` becomes `true` and the functions registered with `s.onAbort()` run
+- `s.write()` waits until the reader catches up
+
+## When an error happens midway
+
+Once the response has started, it cannot become a 500. Pass `onError` to write something last and close normally. Without it, the error is logged and the connection is cut (so that a partial download does not look complete).
+
+```ts twoslash
+import { createApp } from "@senrijs/senri";
+const app = createApp();
+declare function nextLine(): Promise<string | null>;
+// ---cut---
+import { streamText } from "@senrijs/senri/streaming";
+
+app.get("/log", (_, c) =>
+    streamText(
+        c,
+        async (s) => {
+            for (let line; (line = await nextLine()) !== null; ) await s.write(`${line}\n`);
+        },
+        { onError: async (_err, s) => s.write("\n(failed midway)\n") },
+    ),
+);
+```
+
+## SSE heartbeat
+
+`streamSSE()` first sends a `: connected` comment, so the headers arrive at once. After that, it sends a `: ping` comment every 5 seconds, because Bun (about 10 seconds) and proxies (often about a minute) close quiet connections.
+
+- Change the interval with `{ heartbeat: 15_000 }`, or stop it with `{ heartbeat: false }`
+- Clients ignore comments
+- `compress()` does not compress SSE
+
+## On Cloudflare Workers
+
+A disconnect is noticed only at the next write. On a quiet stream, `onAbort` is not called (with the heartbeat, it was called within 15 seconds). Do not leave urgent cleanup to `onAbort`.

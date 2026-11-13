@@ -1,5 +1,19 @@
 ---
 title: "Trailing slash"
+description: "Normalize trailing slashes with trailingSlash()"
 ---
 
-This page is coming soon.
+```ts twoslash
+import { createApp, trailingSlash } from "@senrijs/senri";
+
+const app = createApp();
+
+app.use(trailingSlash());   // 301 from /a/ to /a
+```
+
+- `/a` and `/a/` already match the same route ([Path rules](/en/docs/routing/path-rules)). Use this to keep one URL form (for SEO)
+- It redirects only GET and HEAD, and only paths that matched a route
+
+## Options
+
+<AutoTypeTable path="../../src/middleware/trailing-slash.ts" name="TrailingSlashOptions" />

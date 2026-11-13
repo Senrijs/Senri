@@ -1,6 +1,68 @@
 ---
 title: "Bun"
-description: "Run on Bun"
+description: "Run on Bun. Start with serve(), or pass the app to Bun.serve yourself"
 ---
 
-This page is coming soon.
+```ts twoslash title="src/index.ts"
+import { createApp } from "@senrijs/senri";
+import { serve } from "@senrijs/senri/serve";
+
+const app = createApp();
+app.get("/", () => "Hello, Bun!");
+
+await serve(app);   // http://localhost:3927
+```
+
+```bash
+bun --watch src/index.ts   # restarts when you edit a file (the template's bun run dev)
+```
+
+For a new app, the template is the quickest way.
+
+```bash
+bun create senri my-app --template bun
+```
+
+## What serve() does
+
+`serve()` from `@senrijs/senri/serve` starts the app with `Bun.serve` on Bun. It also:
+
+- Decides the port (the `port` option → the `PORT` environment variable → `3927`)
+- Prints the URL and the routes when it starts
+- On SIGTERM / SIGINT, waits for in-flight requests before stopping
+- Sets no body size limit (it does not use the 128 MiB default of `Bun.serve`, to match the other runtimes)
+- Wires up the events of WebSocket routes (`upgradeWebSocket()`)
+
+## Pass the app to Bun.serve yourself
+
+When you call `Bun.serve` yourself, pass `app.fetch`.
+
+```ts twoslash
+declare const Bun: { serve(options: { port?: number; fetch: (req: Request) => Response | Promise<Response> }): unknown };
+import { createApp } from "@senrijs/senri";
+const app = createApp();
+// ---cut---
+Bun.serve({ port: 3927, fetch: app.fetch });
+```
+
+With WebSocket routes, also pass `websocket` from `@senrijs/senri/websocket`.
+
+```ts twoslash
+declare const Bun: { serve(options: { fetch: (req: Request) => Response | Promise<Response>; websocket?: object }): unknown };
+import { createApp } from "@senrijs/senri";
+const app = createApp();
+// ---cut---
+import { websocket } from "@senrijs/senri/websocket";
+
+Bun.serve({ fetch: app.fetch, websocket });
+```
+
+Then the things in "What serve() does" are up to you. For example, bodies are cut at the `Bun.serve` default of 128 MiB.
+
+## Run in production
+
+Start with `NODE_ENV=production`. Even if `devtools()` is still there, it gives no development output.
+
+```bash
+NODE_ENV=production bun src/index.ts
+```
