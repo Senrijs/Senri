@@ -14,6 +14,7 @@ import {
     type Simplify,
 } from "./router.ts";
 import { compose, type Layer } from "./compose.ts";
+import { methodOf } from "./plain.ts";
 import { createMatcher } from "./matcher.ts";
 import { routeHandler, type RouteSchemas, type StandardSchemaV1, type Validated, type ValidatedParams } from "./validate.ts";
 import { groupEntries, joinPath, type GroupEntry, type Router } from "./group.ts";
@@ -644,7 +645,8 @@ export function createApp<V extends object = Record<string, unknown>>(options: A
             // どこが返した値かは、失敗したときだけ組み立てる
             throw markConversionError(err, { kind: "handler", name: `${route.method} ${route.path}` });
         }
-        if (c.req.method !== "HEAD") return res;
+        // Node のアダプターから来たときは、メソッドを読むためだけに Request を作らない
+        if (methodOf(c) !== "HEAD") return res;
         // HEAD はヘッダーと status だけ返す(ボディは捨てる)
         return (async () => {
             await res.body?.cancel();
