@@ -8,7 +8,7 @@
 // - ルートの bodyLimit()(と、それを使う uploadLimit())と multipart() は、自分の上限を持つので、既定を外す(releaseBodyCap)
 //   上限は読むたびに見るので、ストリームを作ったあとで外しても効く
 // - 超えたかどうか(exceeded)を覚えておき、ハンドラーがエラーを握りつぶしても、呼んだ側(app.fetch・アダプター)が 413 にする
-// 本体のサイズを抑えるため、短く書いている(本体の最小アプリは gzip 後 7 KB 以下が目標)
+// 本体のサイズを抑えるため、短く書いている(本体の最小アプリは gzip 後 8 KB 以下が目標)
 // 公開しない部品(package.json / jsr.json の exports に載せない)
 import { HttpError } from "./errors.ts";
 

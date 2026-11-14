@@ -23,7 +23,7 @@ app.get("/users/:id", ({ id }) => ({ id }));    // オブジェクト → JSON(i
 serve(app);   // Bun でも Deno でも Node.js でも
 ```
 
-本番のビルドでは `dev: devtools()` を外すと、開発用のコードがバンドルに入らず、本体だけ(bun build で minify して約 17.7 KB、gzip 後 6.9 KB)になります([開発モード](#開発モード))。
+本番のビルドでは `dev: devtools()` を外すと、開発用のコードがバンドルに入らず、本体だけ(bun build で minify して約 17.7 KB、gzip 後 7.0 KB)になります([開発モード](#開発モード))。
 
 - **返した値がレスポンスになる。** 文字列はテキスト、オブジェクトは JSON。`Response` もそのまま返せます
 - **型はパスから。** `/users/:id` と書けば、ハンドラーの `id` に型が付きます。[Standard Schema](https://standardschema.dev)(Zod・Valibot・ArkType など)で、パラメーター・クエリ・ボディも確かめられます
