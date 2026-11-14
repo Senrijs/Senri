@@ -397,6 +397,21 @@ async function respondLazily(core: AppCore, c: Context, resolved: Resolved, meth
     }
 }
 
+// URL.canParse(url) と同じ結果を、毎回は解析せずに返す(URL.canParse は 1 リクエストの数 % を使う)
+// "/" で始まるパス(origin-form)は、URL の解析で失敗しない。なので失敗するかどうかは、前の
+// 「プロトコル://Host」だけで決まる。最後に通った origin を覚えておき、同じなら解析しない
+// (Host はたいてい毎回同じ。違う Host が来たら、そのときだけ解析する)
+let parsedOrigin = "";
+function canParse(url: string, target: string): boolean {
+    // absolute-form は、toUrl がそのまま返したもの。毎回確かめる
+    if (!target.startsWith("/")) return URL.canParse(url);
+    const origin = url.slice(0, url.length - target.length);
+    if (origin === parsedOrigin) return true;
+    if (!URL.canParse(url)) return false;
+    parsedOrigin = origin;
+    return true;
+}
+
 // Request を作らずに答える道。app.fetch と同じ流れで、c.req を読まれたときだけ Request を作る
 async function serveLazily(core: AppCore, req: IncomingMessage, res: ServerResponse, cap: BodyCap | undefined) {
     const method = req.method!;
@@ -404,7 +419,7 @@ async function serveLazily(core: AppCore, req: IncomingMessage, res: ServerRespo
     try {
         url = toUrl(req);
         // Request を作らないこともあるので、Request なら投げる URL をここで 400 にする
-        if (!URL.canParse(url)) throw new TypeError(`Invalid URL: ${url}`);
+        if (!canParse(url, req.url ?? "/")) throw new TypeError(`Invalid URL: ${url}`);
     } catch {
         res.statusCode = 400;
         res.end("400 Bad Request");
