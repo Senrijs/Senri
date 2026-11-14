@@ -1,0 +1,82 @@
+---
+title: "0.4.0 への移行"
+description: "0.3.x から 0.4.0 に上げるときに、書き換えるところ"
+---
+
+0.4.0 には、速さのための壊れる変更が 2 つ入っています。
+
+| 変更 | 実行時の動き | 影響する人 |
+|---|---|---|
+| [`app.fetch` が Response をそのまま返すことがある](#appfetch-が-response-をそのまま返すことがある) | **変わる** | `app.fetch(...)` に `.then()` を直接つないでいる人。テストで `expect(app.fetch(...)).resolves` と書いている人。戻り値を `Promise<Response>` と書いている人 |
+| [Deno での文字列の Content-Type](#deno-での文字列の-content-type) | **変わる**(Deno だけ) | Deno で、`Content-Type` の値を文字列のまま比べている人 |
+
+<Callout type="warn" title="まず確かめること">
+  `app.fetch(` を検索して、`.then(` や `.resolves` がすぐあとに付いているところを `await` に書き換えてください。`Bun.serve({ fetch: app.fetch })`・`Deno.serve(app.fetch)`・`export default app`(Cloudflare Workers)・`serve()` は、そのままで動きます。
+</Callout>
+
+## `app.fetch` が Response をそのまま返すことがある
+
+| | 0.3.x | 0.4.0 |
+|---|---|---|
+| 戻り値の型 | `Promise<Response>` | `Response \| Promise<Response>` |
+| 当たるミドルウェアがなく、ハンドラーが同期で、例外が出ていないとき | `Promise` | **`Response` をそのまま** |
+| それ以外(ミドルウェアがある、ハンドラーが async、例外が出て `onError` を通る、404・405、HEAD、開発モード) | `Promise` | `Promise`(変わらない) |
+
+- 応答の中身(status・ヘッダー・Cookie・本文)は変わりません。変わるのは、`Promise` に包むかどうかだけです
+- `Bun.serve` と `Deno.serve` は、`Promise` を待たずに書き出せるので、そのぶん速くなります(Hono の `fetch` と同じ型です)
+
+### `.then()` を `await` にする
+
+```ts title="前(0.3.x)"
+app.fetch(req).then((res) => res.status);
+```
+
+```ts title="後(0.4.0)"
+(await app.fetch(req)).status;
+// await が使えないところでは、Promise.resolve で包む
+Promise.resolve(app.fetch(req)).then((res) => res.status);
+```
+
+### テストの `resolves`
+
+`expect(...).resolves` は、`Promise` でない値を渡すとエラーになります。
+
+```ts title="前(0.3.x)"
+await expect(app.fetch(req)).resolves.toBeInstanceOf(Response);
+```
+
+```ts title="後(0.4.0)"
+expect(await app.fetch(req)).toBeInstanceOf(Response);
+```
+
+- `expect(app.fetch(req)).rejects` はそのままで動きます。`app.fetch` が投げるときは、今までどおり `Promise` を返します
+- `@senrijs/senri/testing` の `request()` と `testClient()` は、中で `await` するので、書き換えは要りません
+
+### 戻り値の型を書いているところ
+
+`app.fetch` を受け取る型や、包む関数の型に `Promise<Response>` と書いていたら、`Response | Promise<Response>` にします。
+
+```ts title="前(0.3.x)"
+type FetchApp = { fetch(req: Request): Promise<Response> };
+```
+
+```ts title="後(0.4.0)"
+type FetchApp = { fetch(req: Request): Response | Promise<Response> };
+```
+
+## Deno での文字列の Content-Type
+
+| | 0.3.x | 0.4.0 |
+|---|---|---|
+| Deno で、`c.header()` を使わず status が 200 の文字列(`return "hi"`、`c.text("hi")`) | `text/plain; charset=utf-8` | `text/plain;charset=UTF-8`(Deno が付ける値) |
+| それ以外(Bun・Node.js・Workers、200 以外、`c.header()` を使ったとき) | `text/plain; charset=utf-8` | 変わらない |
+
+- 意味は同じです。Deno では、ヘッダーを渡さずに `Response` を作ると、ヘッダーの表を作らない近道で書き出せるので、そうしています
+- `Content-Type` の値を文字列のまま比べているテストは、`startsWith("text/plain")` のように比べるか、`c.header("content-type", "text/plain; charset=utf-8")` で値を決めてください
+
+## 変更点の一覧
+
+| 変更 | 書き換え |
+|---|---|
+| `app.fetch` の戻り値が `Response \| Promise<Response>` になった | `.then()` を `await` に。`.resolves` を `await` に。型の `Promise<Response>` を `Response \| Promise<Response>` に |
+| Deno で、ヘッダーのない 200 の文字列の `Content-Type` が `text/plain;charset=UTF-8` になった | 値を文字列のまま比べているところを直す |

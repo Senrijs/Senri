@@ -1,0 +1,82 @@
+---
+title: "Migrating to 0.4.0"
+description: "What to change when you upgrade from 0.3.x to 0.4.0"
+---
+
+0.4.0 has two breaking changes, both for speed.
+
+| Change | Runtime behavior | Who is affected |
+|---|---|---|
+| [`app.fetch` may return the Response itself](#appfetch-may-return-the-response-itself) | **Changes** | Code that chains `.then()` directly on `app.fetch(...)`, tests that write `expect(app.fetch(...)).resolves`, and code that types the result as `Promise<Response>` |
+| [Content-Type of text on Deno](#content-type-of-text-on-deno) | **Changes** (Deno only) | Code on Deno that compares the `Content-Type` value as a string |
+
+<Callout type="warn" title="Check this first">
+  Search for `app.fetch(` and rewrite any `.then(` or `.resolves` right after it with `await`. `Bun.serve({ fetch: app.fetch })`, `Deno.serve(app.fetch)`, `export default app` (Cloudflare Workers) and `serve()` work as they are.
+</Callout>
+
+## `app.fetch` may return the Response itself
+
+| | 0.3.x | 0.4.0 |
+|---|---|---|
+| Return type | `Promise<Response>` | `Response \| Promise<Response>` |
+| No middleware applies, the handler is sync, and nothing throws | `Promise` | **the `Response` itself** |
+| Anything else (middleware, an async handler, an error through `onError`, 404, 405, HEAD, development mode) | `Promise` | `Promise` (no change) |
+
+- The response itself (status, headers, cookies and body) does not change. Only whether it is wrapped in a `Promise` changes
+- `Bun.serve` and `Deno.serve` can write the response without waiting for a `Promise`, which is faster (it is the same type as Hono's `fetch`)
+
+### Replace `.then()` with `await`
+
+```ts title="Before (0.3.x)"
+app.fetch(req).then((res) => res.status);
+```
+
+```ts title="After (0.4.0)"
+(await app.fetch(req)).status;
+// Where you cannot use await, wrap it with Promise.resolve
+Promise.resolve(app.fetch(req)).then((res) => res.status);
+```
+
+### `resolves` in tests
+
+`expect(...).resolves` fails when it gets a value that is not a `Promise`.
+
+```ts title="Before (0.3.x)"
+await expect(app.fetch(req)).resolves.toBeInstanceOf(Response);
+```
+
+```ts title="After (0.4.0)"
+expect(await app.fetch(req)).toBeInstanceOf(Response);
+```
+
+- `expect(app.fetch(req)).rejects` works as before. When `app.fetch` throws, it still returns a `Promise`
+- `request()` and `testClient()` from `@senrijs/senri/testing` `await` internally, so they need no change
+
+### Places that write the return type
+
+If a type that takes `app.fetch`, or a function that wraps it, says `Promise<Response>`, change it to `Response | Promise<Response>`.
+
+```ts title="Before (0.3.x)"
+type FetchApp = { fetch(req: Request): Promise<Response> };
+```
+
+```ts title="After (0.4.0)"
+type FetchApp = { fetch(req: Request): Response | Promise<Response> };
+```
+
+## Content-Type of text on Deno
+
+| | 0.3.x | 0.4.0 |
+|---|---|---|
+| On Deno, text with status 200 and no `c.header()` (`return "hi"`, `c.text("hi")`) | `text/plain; charset=utf-8` | `text/plain;charset=UTF-8` (the value Deno sets) |
+| Anything else (Bun, Node.js, Workers, a status other than 200, or after `c.header()`) | `text/plain; charset=utf-8` | No change |
+
+- The meaning is the same. On Deno, a `Response` made without headers is written through a faster path that does not build a header list
+- Tests that compare the `Content-Type` value as a string should compare with something like `startsWith("text/plain")`, or set the value with `c.header("content-type", "text/plain; charset=utf-8")`
+
+## All changes
+
+| Change | What to change |
+|---|---|
+| `app.fetch` returns `Response \| Promise<Response>` | `.then()` to `await`, `.resolves` to `await`, and `Promise<Response>` in types to `Response \| Promise<Response>` |
+| On Deno, text with status 200 and no headers has `Content-Type: text/plain;charset=UTF-8` | Fix places that compare the value as a string |

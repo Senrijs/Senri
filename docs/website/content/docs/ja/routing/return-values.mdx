@@ -20,6 +20,8 @@ app.get("/raw", () => new Response("そのまま", { status: 202 }));
 | `Blob`・`ArrayBuffer`・`Uint8Array` など・`ReadableStream`・`FormData`・`URLSearchParams` | そのまま本文になる |
 | `Response` | そのまま {/* verify: table */} |
 
+Deno では、`c.header()` を使わず status が 200 の文字列だけ、Deno が付ける `text/plain;charset=UTF-8` になります(意味は同じです。Deno の速い書き出し方を使うためです)。
+
 ## status とヘッダーを決める
 
 `c.status()` と `c.header()` で決めてから、値を返します。 {/* verify: status-header */}
