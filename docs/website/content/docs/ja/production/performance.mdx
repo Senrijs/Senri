@@ -23,7 +23,7 @@ Hono 4.13.13・Elysia 1.4.30 と、同じルート(12 個)・同じリクエス�
 
 この測り方では、Senri は 3 つの中でいちばん遅く、Hono の 1.1〜1.9 倍の時間がかかっています。理由の一部は分かっています。
 
-- Senri は、どのランタイムでも同じになるよう、テキストの `Content-Type` を自分で付けます。Hono と Elysia は `new Response(text)` でランタイムに任せます
+- Senri は、どのランタイムでも同じになるよう、テキストの `Content-Type` を自分で付けます(Deno で、`c.header()` を使わない 200 だけは Deno に任せます)。Hono と Elysia は `new Response(text)` でランタイムに任せます
 - Elysia は、登録したルートからコードを生成して速くします。Senri は Cloudflare Workers でも動くよう、`new Function` / `eval` を使いません
 
 ## HTTP 越し

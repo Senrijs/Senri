@@ -20,6 +20,8 @@ app.get("/raw", () => new Response("as is", { status: 202 }));
 | `Blob`, `ArrayBuffer`, `Uint8Array` and the like, `ReadableStream`, `FormData`, `URLSearchParams` | Sent as the body |
 | A `Response` | Sent as is |
 
+On Deno, text with status 200 and no `c.header()` gets `text/plain;charset=UTF-8`, the value Deno sets (the meaning is the same; it lets Deno use its faster way of writing the response).
+
 ## Set the status and headers
 
 Set them with `c.status()` and `c.header()`, then return a value.
