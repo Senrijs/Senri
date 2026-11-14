@@ -2,7 +2,7 @@
 import { createApp } from "../../src/index.ts";
 import { setup } from "./app.ts";
 
-type FetchEvent = Event & { request: Request; respondWith(response: Promise<Response>): void };
+type FetchEvent = Event & { request: Request; respondWith(response: Response | Promise<Response>): void };
 type WorkerScope = typeof globalThis & {
     skipWaiting(): Promise<void>;
     clients: { claim(): Promise<void> };

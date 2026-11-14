@@ -3,9 +3,9 @@ import { z } from "zod";
 import { createApp, defineRoutes, endpoint, mergeRoutes, ValidationError, type Middleware } from "../src/index.ts";
 import { devtools } from "../src/dev/index.ts";
 
-const get = (app: { fetch(req: Request): Promise<Response> }, path: string, init?: RequestInit) =>
+const get = (app: { fetch(req: Request): Response | Promise<Response> }, path: string, init?: RequestInit) =>
     app.fetch(new Request(`http://localhost${path}`, init));
-const postJson = (app: { fetch(req: Request): Promise<Response> }, path: string, body: unknown) =>
+const postJson = (app: { fetch(req: Request): Response | Promise<Response> }, path: string, body: unknown) =>
     get(app, path, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
 
 describe("defineRoutes()", () => {

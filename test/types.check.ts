@@ -292,7 +292,7 @@ worker.get("/", (_, c) => {
     return `${greeting} ${count} ${user}`;
 });
 // export default app で、Workers の ExportedHandler の fetch(req, env, ctx) として渡せる
-const exported: { fetch(req: Request, env: Env, ctx: ExecutionContext): Promise<Response> } = worker;
+const exported: { fetch(req: Request, env: Env, ctx: ExecutionContext): Response | Promise<Response> } = worker;
 void exported;
 
 // Bindings だけ指定したときは、変数は今までどおり何でも入れられる

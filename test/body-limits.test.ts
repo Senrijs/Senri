@@ -23,7 +23,7 @@ const chunked = (size: number, onPull?: () => void) => {
         { highWaterMark: 0 },
     );
 };
-const post = (app: { fetch(req: Request): Promise<Response> }, path: string, body: BodyInit, headers: Record<string, string> = {}) =>
+const post = (app: { fetch(req: Request): Response | Promise<Response> }, path: string, body: BodyInit, headers: Record<string, string> = {}) =>
     app.fetch(new Request(`http://localhost${path}`, { method: "POST", body, headers, duplex: "half" } as RequestInit));
 
 function readingApp(options?: Parameters<typeof createApp>[0]) {

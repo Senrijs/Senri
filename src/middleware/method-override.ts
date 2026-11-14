@@ -19,7 +19,7 @@ export type MethodOverrideOptions = {
 /** What {@link methodOverride} wraps: an app, from `createApp()`. */
 export type MethodOverrideTarget = {
     /** Handles a request. */
-    fetch(req: Request, info?: unknown, ctx?: ExecutionContext): Promise<Response>;
+    fetch(req: Request, info?: unknown, ctx?: ExecutionContext): Response | Promise<Response>;
     /** Lists the routes, for the banner of `serve()`. */
     routeList(): { method: string; path: string }[];
 };
