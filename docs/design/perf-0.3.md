@@ -232,17 +232,17 @@ VM の causes(7.2)では、Hono を 2 通りに変えて、差を切り分けま
 
 | # | 何をするか | 効きそうなランタイム | 上がりそうな幅 | 大きさ | 壊れる心配 | 手間 |
 |---|---|---|---|---:|---|---|
-| 1 | ミドルウェアがなく同期のハンドラーなら、`app.fetch` が Response をそのまま返す(Promise にしない) | Deno・Bun(ミドルウェアなし) | Deno +6〜9%、Bun +3〜4% | -1 B | 中(型が変わる) | 小 |
-| 2 | Node のアダプターで、`URL.canParse` を毎回呼ばない | Node(static・param) | +3〜5% | 0 B | 中 | 小 |
-| 3 | `respond()` の HEAD の確かめを `methodOf(c)` にして、Node で Request を作らない | Node(利用者のミドルウェアがあるとき) | +5〜10%(自信なし) | +18 B | 小 | 小 |
-| 4 | Deno では、ヘッダーがなく 200 の文字列を `new Response(text)` で作る | Deno(static) | +10〜15% | +35 B | 中 | 小 |
+| 1(入れた、#134) | ミドルウェアがなく同期のハンドラーなら、`app.fetch` が Response をそのまま返す(Promise にしない) | Deno・Bun(ミドルウェアなし) | Deno +6〜9%、Bun +3〜4% | -1 B | 中(型が変わる) | 小 |
+| 2(入れた、#134) | Node のアダプターで、`URL.canParse` を毎回呼ばない | Node(static・param) | +3〜5% | 0 B | 中 | 小 |
+| 3(入れた、#134) | `respond()` の HEAD の確かめを `methodOf(c)` にして、Node で Request を作らない | Node(利用者のミドルウェアがあるとき) | +5〜10%(自信なし) | +18 B | 小 | 小 |
+| 4(入れた、#134) | Deno では、ヘッダーがなく 200 の文字列を `new Response(text)` で作る | Deno(static) | +10〜15% | +35 B | 中 | 小 |
 | 5 | `c.header()` のあとの `c.json()` / `c.text()` / `c.html()` は、最初から全部のヘッダーを入れて作り、`finalize` で作り直さない | 全部(`c.header()` を使うミドルウェアがあるとき) | +10〜20%(自信なし) | +138 B | 中 | 中 |
 | 6 | `splitPath` を、`split` を使わない 1 回の走査にする | 全部(パラメーターのあるルート) | +2〜4%(自信なし) | +64 B | 小 | 小 |
 | 7 | Host を信頼する設定(`createApp({ trustHost: true })` など)を足し、Deno で Host を読まずに済むようにする | Deno | +5〜10%(自信なし) | +20 B ほど | 大 | 小 |
 
-1〜4 は、合わせて +52 B ほどで、余裕の 56 B に収まる見込みです(6.9)。
+1〜4 は、#134 で入れました。合わせて +52 B(7,112 → 7,164 B)で、上限に収まりました(6.9)。
 
-### 6.1 同期で返せるときは、`app.fetch` が Response をそのまま返す
+### 6.1 同期で返せるときは、`app.fetch` が Response をそのまま返す(入れた、#134)
 
 - **何をするか:** `app.fetch` の近道(ミドルウェアがないとき)の `return Promise.resolve(end(res))` を `return end(res)` にします。戻り値の型は `Promise<Response>` から `Response | Promise<Response>` になります(Hono の `fetch` と同じ型です)。`Bun.serve` も `Deno.serve` も、どちらの形でも受け取れます
 - **根拠:** causes の `hono-async` が、Bun で -4% / -3%、Deno で -9% / -6% でした(5.3)
@@ -251,14 +251,14 @@ VM の causes(7.2)では、Hono を 2 通りに変えて、差を切り分けま
 - ミドルウェアがあるときは `compose` が Promise なので、変わりません
 - 0.3 の破壊的な変更として入れるかどうかを、決めてください
 
-### 6.2 Node で `URL.canParse` を毎回呼ばない
+### 6.2 Node で `URL.canParse` を毎回呼ばない(入れた、#134)
 
 - **何をするか:** `serveLazily` は、Request を作らない道でも、Request にしたら投げる URL を 400 にするため、毎回 `URL.canParse(url)` を呼んでいます。アダプターは Host とリクエストの対象をすでに自分で確かめているので、`URL.canParse` が落とすものだけを安く見分ける形にします
 - **根拠:** Node の HTTP 経由のプロファイルで、`canParse` の self が static 5.0%、param 4.3% です。VM では Node はどのシナリオでも約 13% 負けています
 - **大きさ:** アダプター(`@senrijs/senri/node`)は本体の最小アプリに入らないので、0 B です
 - **壊れる心配:** 中。`URL.canParse` が落とすもの(不正な Host の残り、ポートの範囲など)を取りこぼすと、Request を作ったときに初めて投げるようになります。今の 400 のテストを、Request を作らない道でも全部通す必要があります
 
-### 6.3 Node で、HEAD の確かめのために Request を作らない
+### 6.3 Node で、HEAD の確かめのために Request を作らない(入れた、#134)
 
 - **何をするか:** `app.ts` の `respond()` の `c.req.method !== "HEAD"` を `methodOf(c) !== "HEAD"`(`src/plain.ts`)にします。Node のアダプターから来たときは、Request を作らずにメソッドを読みます
 - **根拠:** mw の Node のプロファイルで、`create`(Request を作る)が total 9.9%、undici の `_Request` が 8.2% です。このシナリオのハンドラーもミドルウェアも、`c.req` を読んでいません。VM の mw は 0.87 倍です
@@ -266,7 +266,7 @@ VM の causes(7.2)では、Hono を 2 通りに変えて、差を切り分けま
 - **壊れる心配:** 小。`methodOf` はメソッドを読むだけで、純正のミドルウェアがもう使っています
 - 純正でないミドルウェアがあると Response を作る点は変わりません(これは #47 で決めたことです)
 
-### 6.4 Deno で、ヘッダーのない文字列を `new Response(text)` で作る
+### 6.4 Deno で、ヘッダーのない文字列を `new Response(text)` で作る(入れた、#134)
 
 - **何をするか:** Deno で動いていて、`c.header()` がなく、status が 200 のとき、`c.text()` は init なしの `new Response(text)` にします。Deno だけに当てます(Bun では効かないため。5.2)
 - **根拠:** causes の `hono-init` が Deno の static で -16% でした。Response を作るだけなら 2.2 → 0.6 µs で(5.1)、プロセスの中の static は 1,704 → 965 ns(Deno、7 ラウンド)でした。HTTP では Deno の近道の op(`..._with_default_header`)も使えるようになります
