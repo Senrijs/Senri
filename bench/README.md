@@ -115,6 +115,31 @@ Node.js v24.22.2 / AMD EPYC ... x 8 / wrk -t4 -c64 -d15s / 5 rounds (median) / s
 
 - 細かい値(ラウンドごとの req/s)は `results/*.json` にあります
 
+## Hono との比べ方と、版ごとの比べ方(速度の調査)
+
+[docs/design/perf-0.3.md](../docs/design/perf-0.3.md) の調査で使うものです。上の `http` と違い、Senri と Hono を交互に測って「Hono に対して何倍か」を出します。ほかの VM の負荷で数字がぶれても比べられるようにするためです。
+
+```sh
+bash perf-vm.sh main       # Bun / Node.js / Deno × static / param / mw。今の src と raw を Hono と比べる(約 14 分)
+bash perf-vm.sh causes     # Hono との差の切り分け(hono-async / hono-init。約 11 分)
+bash perf-vm.sh versions   # Bun で公開済みの版を比べる(約 9 分)
+```
+
+| ファイル | 中身 |
+|---|---|
+| `scenarios.ts` | 3 つのシナリオ(static / param / mw)の Senri・Hono のアプリと、差を切り分けるための Hono の変種 |
+| `perf-serve.ts` | シナリオのサーバー。ランタイムを見て `Bun.serve` / `Deno.serve` / Node のアダプターで立てる |
+| `perf-abab.ts` | 「Hono, A, Hono, B, …」の順に wrk で測り、すぐ前後の Hono との比を出す。raw も毎ラウンド測って、頭打ちを見分ける |
+| `perf-vm.sh` | VM でそのまま動かす入口。古い版は一時フォルダーに入れて、終わったら消す |
+| `versions.ts` | 版どうし(と Hono)を、プロセスの中で `app.fetch` を呼んで比べる。どのランタイムでも動く |
+| `perf-profile.ts` | プロセスの中で `app.fetch` を回して CPU プロファイルを取る |
+| `perf-profile-http.ts` | サーバーを立てて要求を流し、そのあいだのサーバーの CPU プロファイルを取る(送る側の数字は使わない) |
+| `perf-profile-summary.ts` | `.cpuprofile` を、分類ごと・関数ごとの割合の表にまとめる |
+
+- 古い版を手元で比べるときは、リポジトリの外のフォルダーに npm から別名で入れて(`bun add senri-0.2.9@npm:@senrijs/senri@0.2.9`)、そのフォルダーを `VERSIONS_DIR` に渡します。例: `VERSIONS_DIR=/tmp/v VERSIONS=0.2.9,src bun versions.ts`
+- Bun のプロファイルは、HTTP 経由で取ると待っている時間まで JS の関数に付いてしまうので、`perf-profile.ts`(プロセスの中)で取ります
+- Windows でサンプリングを 100 µs にすると、サーバーが極端に遅くなります。既定の 1000 µs のままにしてください
+
 ## 結果
 
 ベンチ用の VM で測った結果を、ここに載せます(まだ測っていません)。
