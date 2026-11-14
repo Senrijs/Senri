@@ -461,8 +461,16 @@ describe("c.req は、読んだときに作られる本物の Request", () => {
             withMiddleware.get("/", () => "Hello");
             const middlewarePort = await listen(withMiddleware);
             counts.Response = 0;
+            counts.Request = 0;
             await raw(middlewarePort, GET("/"));
             assert.equal(counts.Response, 1, "ミドルウェア");
+            // HEAD かどうかを確かめるためだけに、Request は作らない
+            assert.equal(counts.Request, 0, "ミドルウェア: Request");
+            counts.Request = 0;
+            const head = await raw(middlewarePort, GET("/", "", "HEAD"));
+            assert.match(head, /^HTTP\/1\.1 200/);
+            assert.ok(head.endsWith("\r\n\r\n"), "HEAD は本文を送らない");
+            assert.equal(counts.Request, 0, "ミドルウェア + HEAD: Request");
 
             // app.notFound() で差し替えた 404 は、今までどおり本物の Response を通る
             const custom = createApp();
