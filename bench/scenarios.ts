@@ -98,12 +98,22 @@ export async function checkScenario(res: Response, scenario: ScenarioName): Prom
     return null;
 }
 
-// 今の src か、VERSIONS_DIR(npm から別名 senri-<版> で入れたフォルダー)の版を読み込む
-// "src" なら今のリポジトリ。版の名前("0.2.9")なら <VERSIONS_DIR>/node_modules/senri-<版>/dist/src/index.js
-export async function loadSenri(version: string, versionsDir: string | undefined): Promise<SenriModule> {
+// 今の src か、VERSIONS_DIR(npm から別名 senri-<版> で入れたフォルダー)の版か、REF_DIR(git archive で取り出した別のブランチ)を読み込む
+// - "src" なら今のリポジトリ
+// - "ref" なら <REF_DIR>/src/index.ts。TS のまま読む(node_modules の外なので、Node も型を外して読める)
+// - 版の名前("0.2.9")なら <VERSIONS_DIR>/node_modules/senri-<版>/dist/src/index.js
+export async function loadSenri(version: string, versionsDir: string | undefined, refDir?: string): Promise<SenriModule> {
     if (version === "src") return (await import("../src/index.ts")) as unknown as SenriModule;
+    return (await import(senriFileUrl(version, versionsDir, refDir, "src/index"))) as SenriModule;
+}
+
+// 版ごとのファイルの場所(Node のアダプターも、同じ版のものを使うため)
+export function senriFileUrl(version: string, versionsDir: string | undefined, refDir: string | undefined, file: "src/index" | "adapters/node/index"): string {
+    const fileUrl = (dir: string, path: string) => new URL(`file:///${dir.replaceAll("\\", "/").replace(/^\//, "").replace(/\/$/, "")}/${path}`).href;
+    if (version === "ref") {
+        if (!refDir) throw new Error("senri@ref を読むには REF_DIR が要ります(bench/perf-vm.sh の compare)");
+        return fileUrl(refDir, `${file}.ts`);
+    }
     if (!versionsDir) throw new Error(`版 ${version} を読むには VERSIONS_DIR が要ります(bench/README.md の「版ごとに比べる」)`);
-    const base = versionsDir.replaceAll("\\", "/").replace(/\/$/, "");
-    const url = new URL(`file:///${base.replace(/^\//, "")}/node_modules/senri-${version}/dist/src/index.js`);
-    return (await import(url.href)) as SenriModule;
+    return fileUrl(versionsDir, `node_modules/senri-${version}/dist/${file}.js`);
 }

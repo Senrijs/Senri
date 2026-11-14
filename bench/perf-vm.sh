@@ -7,6 +7,7 @@
 #   bash perf-vm.sh main bun    # 1 つのランタイムだけ(約 5 分)
 #   bash perf-vm.sh causes      # Hono との差の原因の切り分け。Bun と Deno で、Hono の変種(hono-async / hono-init)と今の src を比べる(約 11 分)
 #   bash perf-vm.sh versions    # Bun で 0.2.8 / 0.2.9 / 0.2.10 / 0.3.1 / 今の src を Hono と比べる(約 9 分)
+#   bash perf-vm.sh compare     # main と今のブランチを、Bun / Node.js / Deno × static / param / mw で Hono と比べる(約 12 分)
 #
 # - 古い版は、リポジトリの外の一時フォルダーに npm から入れて、終わったら消す(VERSIONS_DIR を渡せばそこを使い、消さない)
 # - 条件は環境変数で変えられる(bench/perf-abab.ts の頭を参照)。既定は 1 回 6 秒、3 ラウンド
@@ -51,8 +52,26 @@ versions)
     RUNTIME="${RUNTIME:-bun}" TARGETS="${targets#,},senri" SCENARIOS="${SCENARIOS:-static,param}" ROUNDS="${ROUNDS:-3}" \
         bun perf-abab.ts 2>&1 | tee -a "$log"
     ;;
+compare)
+    # main(REF で変えられる)と今のブランチ(src)を、ランタイムごとに Hono と交互に測る
+    # main の src と adapters は git archive でリポジトリの外の一時フォルダーに取り出し、TS のまま読む(終わったら消す)
+    # 15 分に収めるため、既定は 1 回 5 秒・3 ラウンドで、raw は測らない(RAW=1 で測る。そのぶん延びる)
+    ref="${REF:-origin/main}"
+    runtimes="${2:-bun node deno}"
+    git -C .. fetch -q origin
+    REF_DIR="$(mktemp -d "${TMPDIR:-/tmp}/senri-ref.XXXXXX")"
+    trap 'rm -rf "$REF_DIR"' EXIT
+    git -C .. archive "$ref" src adapters | tar -x -C "$REF_DIR"
+    echo '{"type":"module"}' > "$REF_DIR/package.json"
+    export REF_DIR
+    echo "ref: $ref ($(git -C .. rev-parse --short "$ref")) / src: $(git -C .. rev-parse --short HEAD)" | tee -a "$log"
+    for rt in $runtimes; do
+        RUNTIME="$rt" TARGETS="senri@ref,senri" RAW="${RAW:-0}" DURATION="${DURATION:-5s}" ROUNDS="${ROUNDS:-3}" \
+            bun perf-abab.ts 2>&1 | tee -a "$log"
+    done
+    ;;
 *)
-    echo "使い方: bash perf-vm.sh main [bun|node|deno] / bash perf-vm.sh causes [bun|node|deno] / bash perf-vm.sh versions" >&2
+    echo "使い方: bash perf-vm.sh main [bun|node|deno] / causes [bun|node|deno] / versions / compare [bun|node|deno]" >&2
     exit 1
     ;;
 esac

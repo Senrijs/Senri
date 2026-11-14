@@ -123,6 +123,7 @@ Node.js v24.22.2 / AMD EPYC ... x 8 / wrk -t4 -c64 -d15s / 5 rounds (median) / s
 bash perf-vm.sh main       # Bun / Node.js / Deno × static / param / mw。今の src と raw を Hono と比べる(約 14 分)
 bash perf-vm.sh causes     # Hono との差の切り分け(hono-async / hono-init。約 11 分)
 bash perf-vm.sh versions   # Bun で公開済みの版を比べる(約 9 分)
+bash perf-vm.sh compare    # main と今のブランチを、ランタイムごとに Hono と比べる(約 12 分。raw は測らない)
 ```
 
 | ファイル | 中身 |
