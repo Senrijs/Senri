@@ -46,4 +46,6 @@ await res.json();   // { id: "1", done: false }
 
 {/* verify: app-fetch */}
 
+`app.fetch` の戻り値の型は `Response | Promise<Response>` です。同期で答えられるとき(当たるミドルウェアがなく、ハンドラーが同期で、例外が出ていないとき)は `Response` をそのまま返し、それ以外は `Promise` を返します。`await` で受ければ、どちらでも動きます([0.4.0 への移行](/docs/migrate-0-4-0))。
+
 Chromium のページと Service Worker の両方で動くことを、CI で確かめています。

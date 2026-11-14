@@ -62,6 +62,8 @@ function contentTypeOf(value: BodyValue): string | undefined {
 const TEXT_HEADERS = new Headers({ "content-type": "text/plain; charset=utf-8" });
 const JSON_HEADERS = new Headers({ "content-type": "application/json" });
 const HTML_HEADERS = new Headers({ "content-type": "text/html; charset=utf-8" });
+// Deno で動いているか。読み込んだときに 1 回だけ見る(runtime.ts を読み込むより小さい)
+const DENO = "Deno" in globalThis;
 
 /** A status code accepted by {@link Context.redirect}. */
 export type RedirectStatus = 301 | 302 | 303 | 307 | 308;
@@ -426,8 +428,11 @@ export class Context<V extends object = any, I extends object = {}> {
      * Like {@link Context.json}, the return type keeps `status` ({@link TypedResponse}).
      */
     text<S extends number = 200>(body: string, status?: S): TypedResponse<string, S, "text"> {
-        // 明示しないと、Bun は Headers に Content-Type を入れない(Node / Deno は入れる)のでランタイムで差が出る
-        const init = initOf(status ?? this.#status, this.#headers?.get("content-type"), TEXT_HEADERS);
+        const s = status ?? this.#status;
+        // Deno では、c.header() がなく 200 なら init なしで作る。Deno が text/plain;charset=UTF-8 を付け、
+        // ヘッダーの表を作らない近道で書き出せる(VM で 1 割以上速い。docs/design/perf-0.3.md の 6.4)
+        // ほかのランタイムでは明示する。Bun は、明示しないと Headers に Content-Type を入れない(Node / Deno は入れる)
+        const init = DENO && s === 200 && !this.#headers ? undefined : initOf(s, this.#headers?.get("content-type"), TEXT_HEADERS);
         return new Response(body, init) as TypedResponse<string, S, "text">;
     }
 

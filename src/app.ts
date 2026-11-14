@@ -14,6 +14,7 @@ import {
     type Simplify,
 } from "./router.ts";
 import { compose, type Layer } from "./compose.ts";
+import { methodOf } from "./plain.ts";
 import { createMatcher } from "./matcher.ts";
 import { routeHandler, type RouteSchemas, type StandardSchemaV1, type Validated, type ValidatedParams } from "./validate.ts";
 import { groupEntries, joinPath, type GroupEntry, type Router } from "./group.ts";
@@ -190,10 +191,13 @@ export type App<V extends object = Record<string, unknown>> = {
      * Handles a request. Pass it to your runtime (`Bun.serve({ fetch: app.fetch })`, `Deno.serve(app.fetch)`)
      * or `export default app` on Cloudflare Workers.
      *
+     * Returns the Response itself when it can be made synchronously (no middleware applies, the handler is sync and
+     * nothing throws), and a Promise otherwise. Use `await app.fetch(req)` to accept both.
+     *
      * @param info The runtime's second argument (Bun's server, Deno's info, or `env` on Workers). Used for the client address and `c.env`.
      * @param ctx Cloudflare Workers' execution context, available as `c.executionCtx`.
      */
-    fetch(req: Request, info?: unknown, ctx?: ExecutionContext): Promise<Response>;
+    fetch(req: Request, info?: unknown, ctx?: ExecutionContext): Response | Promise<Response>;
 };
 
 /** Options for {@link createApp}. */
@@ -567,7 +571,7 @@ export function createApp<V extends object = Record<string, unknown>>(options: A
         // info: ランタイムが渡す2つ目の引数(Bun の server、Deno の info など)。接続元のアドレスを取るのに使う
         // (形で見分けるので、Cloudflare Workers の env のような別のものが来ても壊れない。src/dev/dashboard/access.ts)
         // ctx: Cloudflare Workers の3つ目の引数(c.executionCtx)。export default app で、Workers がそのまま呼ぶ
-        fetch(req: Request, info?: unknown, ctx?: ExecutionContext): Promise<Response> {
+        fetch(req: Request, info?: unknown, ctx?: ExecutionContext): Response | Promise<Response> {
             // 開発モードは計測・記録をするので別の道を通る(@senrijs/senri/dev)
             if (devHooks) return devHooks.fetch(req, info, ctx);
             try {
@@ -591,7 +595,8 @@ export function createApp<V extends object = Record<string, unknown>>(options: A
                     res = fail(err);
                 }
                 if (res instanceof Promise) return res.catch(fail).then(end);
-                return Promise.resolve(end(res));
+                // 同期で答えられたら、Promise に包まずに返す(Bun.serve / Deno.serve は、待たずに書き出せる)
+                return end(res);
             } catch (err) {
                 return Promise.reject(err);
             }
@@ -640,7 +645,8 @@ export function createApp<V extends object = Record<string, unknown>>(options: A
             // どこが返した値かは、失敗したときだけ組み立てる
             throw markConversionError(err, { kind: "handler", name: `${route.method} ${route.path}` });
         }
-        if (c.req.method !== "HEAD") return res;
+        // Node のアダプターから来たときは、メソッドを読むためだけに Request を作らない
+        if (methodOf(c) !== "HEAD") return res;
         // HEAD はヘッダーと status だけ返す(ボディは捨てる)
         return (async () => {
             await res.body?.cancel();

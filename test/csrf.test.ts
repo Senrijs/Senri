@@ -89,7 +89,7 @@ describe("csrf()", () => {
         app.post("/api/items", () => "created");
         app.post("/form", () => "posted");
         const post = (path: string, headers: Record<string, string>) =>
-            app.fetch(new Request(`http://example.com${path}`, { method: "POST", headers })).then((res) => res.status);
+            Promise.resolve(app.fetch(new Request(`http://example.com${path}`, { method: "POST", headers }))).then((res) => res.status);
         for (const path of ["/api/items", "/form"]) {
             expect(await post(path, { "sec-fetch-site": "same-origin", origin: "http://example.com" })).toBe(200);
             expect(await post(path, { "sec-fetch-site": "cross-site", origin: "https://admin.example.com" })).toBe(200);

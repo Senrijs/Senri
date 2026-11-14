@@ -44,4 +44,6 @@ const res = await app.fetch(new Request("http://localhost/api/todos/1"));
 await res.json();   // { id: "1", done: false }
 ```
 
+`app.fetch` returns `Response | Promise<Response>`. When it can answer synchronously (no middleware applies, the handler is sync and nothing throws), it returns the `Response` itself; otherwise it returns a `Promise`. `await` works for both ([Migrating to 0.4.0](/en/docs/migrate-0-4-0)).
+
 CI checks that it works both in a Chromium page and in a Service Worker.

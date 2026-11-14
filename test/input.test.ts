@@ -197,7 +197,7 @@ describe("Cookie", () => {
             return "ok";
         });
 
-        return app.fetch(req("/c")).then(() => expect(error).toBeInstanceOf(TypeError));
+        return Promise.resolve(app.fetch(req("/c"))).then(() => expect(error).toBeInstanceOf(TypeError));
     });
 
     // __Host- の Cookie に Domain を付けると、ブラウザに捨てられる(黙って効かないより、エラーにする)
@@ -316,7 +316,7 @@ describe("Cookie の接頭辞は大文字小文字を区別しない", () => {
             return "ok";
         });
 
-        return app.fetch(req("/c")).then(() => {
+        return Promise.resolve(app.fetch(req("/c"))).then(() => {
             expect(errors.map((e) => (e as { code?: string }).code)).toEqual(["cookie_host_domain", "cookie_host_domain"]);
         });
     });
@@ -339,7 +339,7 @@ describe("Cookie の接頭辞は大文字小文字を区別しない", () => {
             return "ok";
         });
 
-        return app.fetch(req("/c")).then((res) => {
+        return Promise.resolve(app.fetch(req("/c"))).then((res) => {
             expect(errors.map((e) => (e as { code?: string }).code)).toEqual([
                 "cookie_host_path",
                 "cookie_host_path",
