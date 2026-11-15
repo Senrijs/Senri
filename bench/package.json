@@ -12,11 +12,11 @@
   },
   "dependencies": {
     "@elysiajs/node": "1.4.5",
-    "@hono/node-server": "2.1.6",
-    "elysia": "1.4.30",
-    "hono": "4.13.16",
+    "@hono/node-server": "2.1.8",
+    "elysia": "1.4.32",
+    "hono": "4.13.18",
     "memoirist": "0.4.0",
     "mitata": "1.0.34",
-    "senri-0.2.9": "npm:@senrijs/senri@0.2.9"
+    "senri-0.2.9": "npm:@senrijs/senri@0.3.1"
   }
 }
