@@ -156,6 +156,13 @@ const REQUESTS: [string, string][] = [
     ["Host: x/admin#", "GET / HTTP/1.1\r\nHost: x/admin#\r\nConnection: close\r\n\r\n"],
     ["Host: x:99999", "GET / HTTP/1.1\r\nHost: x:99999\r\nConnection: close\r\n\r\n"],
     ["Host: [", "GET / HTTP/1.1\r\nHost: [\r\nConnection: close\r\n\r\n"],
+    // URL.canParse は、前に通った Host と同じなら呼ばない。違う Host の不正なものが、そのあとも 400 になること
+    ...["x:65536", "x:abc", "a<b", "a^b", "a%zz", "example.999", "1.2.3.999", "[::1]:3000", "LOCALHOST", "[::1", "x:"].flatMap((host): [string, string][] => [
+        ["Host: localhost(前)", GET("/url")],
+        [`Host: ${host}`, `GET /url HTTP/1.1\r\nHost: ${host}\r\nConnection: close\r\n\r\n`],
+        [`Host: ${host}(2 回目)`, `GET /url HTTP/1.1\r\nHost: ${host}\r\nConnection: close\r\n\r\n`],
+    ]),
+    ["absolute-form(不正なポート)", "GET http://localhost:99999/url HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n"],
     ["Host なし(HTTP/1.0)", "GET /url HTTP/1.0\r\n\r\n"],
     ["absolute-form", "GET http://localhost/url HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n"],
     ["target @evil", "GET @evil.example/url HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n"],
@@ -323,7 +330,21 @@ describe("Request を作らない道と app.fetch の道で、応答が同じ", 
     }
 
     test("比べているリクエストの数(減っていないこと)", () => {
-        assert.equal(REQUESTS.length, 118);
+        assert.equal(REQUESTS.length, 152);
+    });
+
+    test("URL の確かめは、確かめ済みの Host のあとに来た不正な Host も 400 にする(順番どおりに送る)", async () => {
+        const app = createApp();
+        app.get("/url", (_, c) => c.req.url);
+        const port = await listen(app);
+        const send = (host: string) => raw(port, `GET /url HTTP/1.1\r\nHost: ${host}\r\nConnection: close\r\n\r\n`);
+        for (const host of ["x:65536", "x:abc", "a<b", "example.999", "[::1"]) {
+            assert.match(await send("localhost"), /^HTTP\/1\.1 200[\s\S]*http:\/\/localhost\/url$/, `前: ${host}`);
+            assert.match(await send(host), /^HTTP\/1\.1 400/, host);
+            assert.match(await send(host), /^HTTP\/1\.1 400/, `${host}(2 回目)`);
+        }
+        assert.match(await send("[::1]:3000"), /^HTTP\/1\.1 200[\s\S]*http:\/\/\[::1\]:3000\/url$/);
+        assert.match(await send("localhost"), /^HTTP\/1\.1 200/);
     });
 
     test("読まれない本文のあとも、同じ接続で次のリクエストが通る", async () => {
@@ -440,8 +461,16 @@ describe("c.req は、読んだときに作られる本物の Request", () => {
             withMiddleware.get("/", () => "Hello");
             const middlewarePort = await listen(withMiddleware);
             counts.Response = 0;
+            counts.Request = 0;
             await raw(middlewarePort, GET("/"));
             assert.equal(counts.Response, 1, "ミドルウェア");
+            // HEAD かどうかを確かめるためだけに、Request は作らない
+            assert.equal(counts.Request, 0, "ミドルウェア: Request");
+            counts.Request = 0;
+            const head = await raw(middlewarePort, GET("/", "", "HEAD"));
+            assert.match(head, /^HTTP\/1\.1 200/);
+            assert.ok(head.endsWith("\r\n\r\n"), "HEAD は本文を送らない");
+            assert.equal(counts.Request, 0, "ミドルウェア + HEAD: Request");
 
             // app.notFound() で差し替えた 404 は、今までどおり本物の Response を通る
             const custom = createApp();

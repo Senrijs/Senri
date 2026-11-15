@@ -133,8 +133,9 @@ try {
     }
 
     console.log(`\n${header}\n`);
-    console.log("| scenario | target | x Hono (median) | min–max | req/s | Hono req/s | Hono ÷ raw |");
-    console.log("|---|---|---:|---:|---:|---:|---:|");
+    // raw を測らなかったとき(RAW=0)は、「Hono ÷ raw」の列も ⚠ の説明も出さない
+    console.log(`| scenario | target | x Hono (median) | min–max | req/s | Hono req/s |${RAW ? " Hono ÷ raw |" : ""}`);
+    console.log(`|---|---|---:|---:|---:|---:|${RAW ? "---:|" : ""}`);
     for (const [scenario, cells] of Object.entries(results)) {
         // raw の中央値で割る
         const raw = cells.raw ? median(cells.raw.rps) : undefined;
@@ -142,11 +143,11 @@ try {
             const hono = median(c.hono);
             const ceiling = raw ? `${(hono / raw).toFixed(2)}${hono / raw > 0.9 ? " ⚠" : ""}` : "-";
             console.log(
-                `| ${scenario} | ${target} | ${median(c.ratios).toFixed(3)} | ${Math.min(...c.ratios).toFixed(3)}–${Math.max(...c.ratios).toFixed(3)} | ${fmt(median(c.rps))} | ${fmt(hono)} | ${ceiling} |`,
+                `| ${scenario} | ${target} | ${median(c.ratios).toFixed(3)} | ${Math.min(...c.ratios).toFixed(3)}–${Math.max(...c.ratios).toFixed(3)} | ${fmt(median(c.rps))} | ${fmt(hono)} |${RAW ? ` ${ceiling} |` : ""}`,
             );
         }
     }
-    console.log("\n⚠: Hono が raw の 9 割を超えている。頭打ちの可能性があるので、倍率は 1 に寄って見える");
+    if (RAW) console.log("\n⚠: Hono が raw の 9 割を超えている。頭打ちの可能性があるので、倍率は 1 に寄って見える");
     console.log(`かかった時間: ${((Date.now() - started) / 60000).toFixed(1)} 分`);
     const dir = join(import.meta.dir, "results");
     mkdirSync(dir, { recursive: true });

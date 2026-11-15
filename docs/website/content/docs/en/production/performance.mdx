@@ -23,7 +23,7 @@ Time per request, from passing a `Request` to reading the whole `Response` body,
 
 In this measurement, Senri is the slowest of the three, taking 1.1 to 1.9 times as long as Hono. Part of the reason is known:
 
-- Senri sets the `Content-Type` of text itself, so that it is the same on every runtime. Hono and Elysia leave it to the runtime with `new Response(text)`
+- Senri sets the `Content-Type` of text itself, so that it is the same on every runtime (except on Deno for status 200 without `c.header()`, where it leaves it to Deno). Hono and Elysia leave it to the runtime with `new Response(text)`
 - Elysia generates code from the registered routes to make them faster. Senri does not use `new Function` / `eval`, so that it runs on Cloudflare Workers
 
 ## Over HTTP
