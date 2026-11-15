@@ -1,5 +1,6 @@
 // アプリをバンドルして、サイズを測る
-// 使い方: bun scripts/size.ts [リポジトリのルート(既定はこのリポジトリ。変更前と比べるときは main の worktree を渡す)]
+// 使い方: bun scripts/size.ts [--check] [リポジトリのルート(既定はこのリポジトリ。変更前と比べるときは main の worktree を渡す)]
+// --check: 上限(LIMIT)だけを確かめる。hi のアプリを bun build で minify した gzip 後の大きさが LIMIT を超えたら、0 以外で終わる(CI で使う)
 // 測るアプリは2つ:
 // - hi: app.get("/", () => "hi") だけ(開発用のコードは入れない)
 // - devtools: それに開発モード(createApp({ dev: devtools() }))を足したもの
@@ -22,7 +23,12 @@ declare const Bun: {
         logs: unknown[];
     }>;
 };
-const TARGET = resolve(process.argv[2] ?? ROOT);
+// 本体の大きさの上限(gzip 後のバイト数)。hi のアプリを bun build で minify したもの(表の「bun build・あり」の行)で比べる
+// 7 KB は軽さの目安で、#134 の高速化で残りが 3 B になったので 8 KB に見直した(docs/design/perf-0.3.md)
+const LIMIT = 8192;
+
+const CHECK = process.argv.includes("--check");
+const TARGET = resolve(process.argv.slice(2).find((arg) => arg !== "--check") ?? ROOT);
 const SRC = join(TARGET, "src").replaceAll("\\", "/");
 const WRANGLER = join(ROOT, "node_modules", ".bin", process.platform === "win32" ? "wrangler.exe" : "wrangler");
 
@@ -162,6 +168,26 @@ async function breakdown(): Promise<[string, number][]> {
 }
 
 console.log(`対象: ${TARGET}${legacy ? "(0.1 の書き方: createApp({ dev: true }))" : ""}`);
+
+if (CHECK) {
+    const dir = await mkdtemp(join(tmpdir(), "senri-size-"));
+    let gzip: number;
+    try {
+        gzip = (await bun(dir, true, false)).total.gzip;
+    } finally {
+        await rm(dir, { recursive: true, force: true });
+    }
+    const diff = gzip - LIMIT;
+    if (diff > 0) {
+        const message = `本体の大きさが上限を超えました: ${gzip} B(上限 ${LIMIT} B、${diff} B 超過。hi のアプリ、bun build・minify・gzip)`;
+        // GitHub Actions では、PR の画面にも出るように注釈にする
+        console.error(process.env.GITHUB_ACTIONS ? `::error title=size::${message}` : message);
+        process.exit(1);
+    }
+    console.log(`本体の大きさ: ${gzip} B(上限 ${LIMIT} B、残り ${-diff} B。hi のアプリ、bun build・minify・gzip)`);
+    process.exit(0);
+}
+
 for (const [name, code] of Object.entries(APPS)) {
     APP = code;
     const rows: Row[] = [];
