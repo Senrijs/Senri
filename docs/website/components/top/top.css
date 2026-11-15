@@ -2406,7 +2406,8 @@ html[data-motion="off"] .g .rvc {
         padding: 16px;
     }
     .g .jn {
-        padding: 40px 4px 28px;
+        /* 上の余白は PC と同じにする(線と光る点の位置 top: 80px / 74px に丸をそろえる) */
+        padding: 48px 4px 28px;
     }
     .g .jn b {
         font-size: 10px;
