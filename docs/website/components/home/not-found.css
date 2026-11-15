@@ -34,8 +34,8 @@
     --bar4: #ee8e7f;
     --code: #0e1013;
     --code-2: #14171c;
-    --sans: "Geist Sans", var(--font-jp), sans-serif;
-    --display: "Geist Sans", var(--font-jp), sans-serif;
+    --sans: var(--font-geist), var(--font-jp), sans-serif;
+    --display: var(--font-geist), var(--font-jp), sans-serif;
     --mono: var(--font-mono), ui-monospace, monospace;
 
     position: relative;
@@ -227,7 +227,7 @@ body:has(.site) .s-search-content {
 }
 .s-nf-code {
     margin: 12px 0 0;
-    font-family: "Geist Sans", sans-serif;
+    font-family: var(--font-geist), sans-serif;
     font-weight: 800;
     font-size: clamp(88px, 18vw, 160px);
     line-height: 1;
@@ -274,7 +274,14 @@ body:has(.site) .s-search-content {
     flex-wrap: wrap;
     font-size: 14px;
 }
+/* タップしやすい高さにする */
+.s-nf-links a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 40px;
+}
 .s-nf-links button {
+    min-height: 40px;
     display: inline-flex;
     align-items: center;
     gap: 6px;

@@ -34,7 +34,7 @@ export function GridShell({ lang, children }: { lang: Lang; children: ReactNode 
                             <Wordmark height={24} />
                         </Link>
                         <span className="grow" />
-                        <Link className="wide" href={localePath(lang, "/docs")}>
+                        <Link className="navdocs" href={localePath(lang, "/docs")}>
                             {t.docs}
                         </Link>
                         <a className="wide" href={`${home === "/" ? "" : home}/#timeline`}>
