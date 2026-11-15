@@ -35,11 +35,16 @@ export function useScrollTick(ref: React.RefObject<HTMLElement | null>, active: 
         io.observe(el);
         window.addEventListener("scroll", onScroll, { passive: true });
         window.addEventListener("resize", onScroll);
+        // スマホのアドレスバーの出入りと画面の回転でも、画面の高さが変わるので計算し直す
+        window.visualViewport?.addEventListener("resize", onScroll);
+        window.addEventListener("orientationchange", onScroll);
         return () => {
             io.disconnect();
             cancelAnimationFrame(raf);
             window.removeEventListener("scroll", onScroll);
             window.removeEventListener("resize", onScroll);
+            window.visualViewport?.removeEventListener("resize", onScroll);
+            window.removeEventListener("orientationchange", onScroll);
         };
     }, [ref, active]);
 }

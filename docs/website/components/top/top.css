@@ -36,8 +36,8 @@
     --chrome-dot: #d5d7db;
     --dk: #0b0c0e;
     /* 英字は Geist Sans、日本語は Noto Sans JP */
-    --sans: "Geist Sans", var(--font-jp), sans-serif;
-    --display: "Geist Sans", var(--font-jp), sans-serif;
+    --sans: var(--font-geist), var(--font-jp), sans-serif;
+    --display: var(--font-geist), var(--font-jp), sans-serif;
     --mono: var(--font-mono), ui-monospace, monospace;
 
     display: flex;
@@ -278,6 +278,30 @@
 .g .langl {
     font: 500 12px var(--mono);
 }
+.g .nav a,
+.g .nav .search {
+    white-space: nowrap;
+}
+/* ナビの文字のリンクは、幅が足りないと 2 行に折れるので、900px 以下では隠す(フッターにもある) */
+@media (max-width: 900px) {
+    /* 「ドキュメント」だけは、どの幅でも出す。EN/JA と一緒に、タップしやすい大きさにする */
+    .g .nav .navdocs,
+    .g .langl {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 36px;
+    }
+    .g .langl {
+        min-width: 36px;
+    }
+    .g .nav .wide {
+        display: none;
+    }
+    .g .nav .box {
+        gap: 10px;
+    }
+}
 
 /* --- ヒーロー --- */
 
@@ -436,6 +460,14 @@ html[data-motion="off"] .g .rvc {
     margin-top: 28px;
     font-size: 13px;
     color: var(--muted);
+}
+/* スマホでは、タップしやすい高さにする(PC 幅の見た目は変えない) */
+@media (max-width: 1000px) {
+    .g .stats a {
+        display: inline-flex;
+        align-items: center;
+        min-height: 36px;
+    }
 }
 .g .stats b {
     color: var(--fg);
@@ -869,6 +901,8 @@ html[data-motion="off"] .g .rvc {
     position: sticky;
     top: 64px;
     height: calc(min(100vh, 900px) - 64px);
+    /* スマホのアドレスバーが出入りしても中身が切れないよう、いちばん小さい画面の高さ(svh)で決める */
+    height: calc(min(100svh, 900px) - 64px);
     display: flex;
     flex-direction: column;
 }
@@ -1130,6 +1164,8 @@ html[data-motion="off"] .g .rvc {
     position: sticky;
     top: 64px;
     height: calc(min(100vh, 900px) - 64px);
+    /* スマホのアドレスバーが出入りしても中身が切れないよう、いちばん小さい画面の高さ(svh)で決める */
+    height: calc(min(100svh, 900px) - 64px);
     display: flex;
     flex-direction: column;
 }
@@ -2399,6 +2435,7 @@ html[data-motion="off"] .g .rvc {
         padding: 20px 16px;
     }
     .g .pv {
+        height: auto;
         padding: 0 16px 24px;
     }
     .g .fh {
@@ -2423,7 +2460,7 @@ html[data-motion="off"] .g .rvc {
     }
 }
 
-/* ストーリースクロールを縦に並べる(狭い画面と、動きを減らす設定。JS が data-static を付ける) */
+/* ストーリースクロールを縦に並べる(高さが足りない画面と、動きを減らす設定。JS が data-static を付ける) */
 .g .ss[data-static],
 .g .jscroll[data-static] {
     height: auto !important;
@@ -2463,7 +2500,8 @@ html[data-motion="off"] .g .rvc {
 .g .jscroll[data-static] .packet {
     display: none;
 }
-@media (max-width: 1000px) {
+/* 高さが 600px より低い画面(スマホの横向き、iPhone SE など)では、貼り付けた箱に中身が収まらないので、縦に並べる */
+@media (max-height: 599px) {
     .g .ss,
     .g .jscroll {
         height: auto !important;
@@ -2472,6 +2510,177 @@ html[data-motion="off"] .g .rvc {
     .g .jsticky {
         position: static;
         height: auto;
+    }
+}
+
+/* --- スマホ・狭い画面のストーリースクロール: 貼り付けたまま、画面の高さに収まる詰めた形にする --- */
+@media (max-width: 1000px) {
+    .g .ss:not([data-static]) .sst > .row > .box,
+    .g .jscroll:not([data-static]) .jsticky {
+        overflow: hidden;
+    }
+    .g .ss:not([data-static]) .two {
+        align-content: start;
+    }
+    .g .ss:not([data-static]) .two > .cell:first-child {
+        padding: 20px 16px 12px;
+    }
+    .g .ss:not([data-static]) .big.md {
+        font-size: 36px;
+    }
+    .g .ss:not([data-static]) .two h2 {
+        margin-top: 10px;
+        font-size: 22px;
+    }
+    .g .ss:not([data-static]) .scap {
+        margin-top: 14px;
+        min-height: 112px;
+    }
+    .g .ss:not([data-static]) .scap b {
+        font-size: 17px;
+        margin: 4px 0;
+    }
+    .g .ss:not([data-static]) .scap p {
+        font-size: 14px;
+        line-height: 1.7;
+    }
+
+    /* RUNTIMES: ランタイムの一覧を横 1 列のタブにする */
+    .g .rts:not([data-static]) .rsl {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        padding: 14px 16px 10px;
+    }
+    .g .rts:not([data-static]) .rsh {
+        display: none;
+    }
+    .g .rts:not([data-static]) .rsi {
+        grid-template-columns: 1fr;
+        justify-items: center;
+        gap: 0;
+        min-height: 44px;
+        padding: 8px 2px;
+        border-bottom: 1px solid var(--line);
+    }
+    .g .rts:not([data-static]) .rsi b {
+        font-size: 13px;
+        white-space: nowrap;
+    }
+    .g .rts:not([data-static]) .rsi .rsn,
+    .g .rts:not([data-static]) .rsi .rsf {
+        display: none;
+    }
+    .g .rts:not([data-static]) .rsi::before {
+        top: auto;
+        right: 0;
+        width: auto;
+        height: 2px;
+        transform: scaleX(0);
+    }
+    .g .rts:not([data-static]) .rcap,
+    .g .rts:not([data-static]) .rbar {
+        grid-column: 1 / -1;
+    }
+    .g .rts:not([data-static]) .rcap {
+        margin-top: 10px;
+        min-height: 48px;
+    }
+    .g .rts:not([data-static]) .rcap p {
+        font-size: 14px;
+        line-height: 1.7;
+    }
+    .g .rts:not([data-static]) .rbar {
+        margin-top: 8px;
+    }
+    .g .rts:not([data-static]) .rsr {
+        justify-content: flex-start;
+        gap: 6px;
+        padding: 12px 16px;
+    }
+    .g .rts:not([data-static]) .rsr .ed {
+        height: auto;
+        font-size: 11.5px;
+        line-height: 1.6;
+    }
+    /* 高さを詰めるため、エディタのタブと左の列、ターミナルの上の帯を外す */
+    .g .rts:not([data-static]) .rsr .ed .tabs,
+    .g .rts:not([data-static]) .rsr .ed .act,
+    .g .rts:not([data-static]) .rsr .tm .tbar {
+        display: none;
+    }
+    .g .rts:not([data-static]) .rsr .ed .code {
+        padding: 8px 0;
+    }
+    .g .rts:not([data-static]) .rlab {
+        font-size: 10px;
+    }
+    .g .rts:not([data-static]) .ent {
+        padding: 10px 12px;
+        font-size: 11.5px;
+    }
+    .g .rts:not([data-static]) .rsr .tm .tmb {
+        min-height: 0;
+        padding: 10px 12px;
+        font-size: 11.5px;
+        line-height: 1.6;
+    }
+
+    /* LAYERS と ROUTING: 図を小さくする */
+    .g .lys:not([data-static]) .layers {
+        justify-content: flex-start;
+        padding: 16px;
+        font-size: 11px;
+    }
+    .g .lys:not([data-static]) .mws > span {
+        padding: 8px 9px;
+    }
+    .g .trs:not([data-static]) .tree {
+        justify-content: flex-start;
+        padding: 16px;
+        font-size: 12px;
+        line-height: 1.8;
+    }
+    .g .trs:not([data-static]) .treq {
+        margin-bottom: 10px;
+        font-size: 12px;
+    }
+    .g .trs:not([data-static]) .tres {
+        margin-top: 10px;
+    }
+
+    /* JOURNEY: REQUEST と下の帯を外し、ONION と RESPONSE を縦に並べる */
+    .g .jscroll:not([data-static]) .jfoot,
+    .g .jscroll:not([data-static]) .jviz > .cell:first-of-type {
+        display: none;
+    }
+    .g .jscroll:not([data-static]) .jcap {
+        min-height: 0;
+        padding: 16px;
+    }
+    .g .jscroll:not([data-static]) .jcap h3 {
+        margin-top: 6px;
+        font-size: 22px;
+    }
+    .g .jscroll:not([data-static]) .jcap p {
+        margin-top: 6px;
+        font-size: 14px;
+        line-height: 1.7;
+    }
+    .g .jscroll:not([data-static]) .jv {
+        padding: 12px 16px;
+    }
+    .g .jscroll:not([data-static]) .jvh {
+        margin-bottom: 8px;
+    }
+    .g .jscroll:not([data-static]) .onion {
+        height: 120px;
+    }
+    .g .jscroll:not([data-static]) .ol {
+        top: calc(var(--i) * 26px);
+    }
+    .g .jscroll:not([data-static]) .jpre {
+        font-size: 12px;
+        line-height: 1.7;
     }
 }
 
@@ -2493,4 +2702,14 @@ html[data-motion="off"] .g-dlg,
 html[data-motion="off"] .g-scrim {
     animation: none !important;
     transition: none !important;
+}
+
+/* スマホでは「すべてのリリース →」をタップしやすい高さにする(PC 幅の見た目は変えない) */
+@media (max-width: 1000px) {
+    .g .tlall {
+        display: inline-flex;
+        align-items: center;
+        min-height: 36px;
+        margin-top: 8px;
+    }
 }

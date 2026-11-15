@@ -4,7 +4,8 @@
 import { useEffect, useState } from "react";
 import { useStill } from "@/components/home/motion";
 
-export const NARROW = "(max-width: 1000px)";
+// 貼り付けた箱に中身が収まらない、低い画面(スマホの横向きなど)。top.css の @media (max-height: 599px) と同じ
+export const SHORT = "(max-height: 599px)";
 
 export function isStill(): boolean {
     return document.documentElement.dataset.motion === "off" || window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -25,9 +26,9 @@ export function useMedia(query: string): boolean {
 // ストーリースクロールを縦に並べるか(描いたあとで決める。サーバーで描くときは貼り付ける形)
 export function useStatic(): boolean {
     const still = useStill();
-    const narrow = useMedia(NARROW);
+    const short = useMedia(SHORT);
     const [on, setOn] = useState(false);
-    useEffect(() => setOn(still || narrow), [still, narrow]);
+    useEffect(() => setOn(still || short), [still, short]);
     return on;
 }
 
