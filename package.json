@@ -128,7 +128,7 @@
     "@types/bun": "latest",
     "@types/node": "^26.6.5",
     "@types/ws": "8.18.2",
-    "@vitejs/plugin-vue": "6.0.10",
+    "@vitejs/plugin-vue": "6.0.11",
     "arktype": "2.2.9",
     "playwright": "1.64.0",
     "typescript": "^7",
