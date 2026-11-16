@@ -79,13 +79,13 @@ See the [CHANGELOG](./CHANGELOG.md) for details.
 - [x] Middleware: pretty JSON (`prettyJSON()`)
 - [x] Performance: a fast path for string responses (no Request or Response on Node.js, including the default 404), no Host header read on Bun, HTTP benchmarks with wrk (Bun, Node.js and Deno)
 - [x] Trusted-proxy support (`trustProxy()`; counts proxies from the right and never trusts the first `X-Forwarded-For` value)
-- [ ] Documentation site (senri.skyia.jp): the top page, 404 page and playground are live; the docs content is still to come
+- [x] Documentation site (senri.skyia.jp): the top page, 404 page, playground and docs (Japanese and English)
 
-## 0.3.0 — All the way to production
+## 0.3.0 — All the way to production (released 2026-11-12)
 
-- [ ] Typed client (RPC)
-- [ ] OpenAPI generation
-- [ ] Testing helpers
+- [x] Typed client (RPC)
+- [x] OpenAPI generation
+- [x] Testing helpers
 - [x] OpenTelemetry: the onion timeline becomes production traces
 - [x] Prometheus metrics
 - [x] WebSocket
@@ -94,7 +94,7 @@ See the [CHANGELOG](./CHANGELOG.md) for details.
 - [x] Signed cookies
 - [x] Problem Details (RFC 9457) error responses
 - [x] Context storage (access `c` anywhere)
-- [ ] API cleanup: hide unintentionally public exports (`parseCookies`, `serializeCookie`, `deletionCookie`, `resolvePort`, `DEFAULT_PORT`, `PortSource`, `isLocalUrl`), and stop public types from referring to private ones
+- [x] API cleanup: hide unintentionally public exports (`parseCookies`, `serializeCookie`, `deletionCookie`, `resolvePort`, `DEFAULT_PORT`, `PortSource`, `isLocalUrl`), and stop public types from referring to private ones
 - [x] `serveStatic` symlink hardening (re-check that the opened file is inside the root)
 
 ## 0.4.0 — Deploy anywhere

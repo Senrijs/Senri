@@ -1,0 +1,41 @@
+name: 機能の提案 / Feature request
+description: 新しい機能や、今の動きの変更を提案する / Suggest a new feature or a change in behavior
+labels: ["enhancement", "needs triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        提案ありがとうございます。日本語でも英語でも大丈夫です。
+        Thanks for the idea! You can write in English or Japanese.
+
+        まだアイデアの段階なら、[Discussions](https://github.com/Senrijs/Senri/discussions) で気軽に話すのもおすすめです。
+        If it's still a rough idea, feel free to start in [Discussions](https://github.com/Senrijs/Senri/discussions).
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: 困っていること / The problem
+      description: 何をしようとして、何が不便だったか / What you were trying to do, and what got in the way
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: こうなってほしい / Proposed solution
+      description: できれば、使う側のコードの例も / If you can, show how the code using it would look
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: 今の回避策やほかの案 / Workarounds and alternatives
+
+  - type: checkboxes
+    id: extra
+    attributes:
+      label: そのほか / Extra
+      options:
+        - label: 今の API や動きを変える(壊れる)提案です / This would change existing APIs or behavior (breaking)
+        - label: Pull Request を出してみたいです / I'd like to send a pull request for this
