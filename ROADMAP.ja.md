@@ -79,13 +79,13 @@ Senri がこれから向かう先です。バージョンは目標であって�
 - [x] ミドルウェア: Pretty JSON(`prettyJSON()`)
 - [x] 性能: 文字列を返すときの速い道(Node.js で Request も Response も作らない。既定の 404 も)、Bun で Host を読まない、wrk での HTTP のベンチマーク(Bun・Node.js・Deno)
 - [x] プロキシ対応(`trustProxy()`。右から数えて、`X-Forwarded-For` の先頭は信じない)
-- [ ] ドキュメントサイト(senri.skyia.jp): トップページ、404、プレイグラウンドまで公開。ドキュメントの中身はこれから
+- [x] ドキュメントサイト(senri.skyia.jp): トップページ、404、プレイグラウンド、ドキュメント(日本語・英語)
 
-## 0.3.0 — 本番まで届く
+## 0.3.0 — 本番まで届く(2026-11-12 公開済み)
 
-- [ ] 型付きクライアント(RPC)
-- [ ] OpenAPI の生成
-- [ ] テスト用ヘルパー
+- [x] 型付きクライアント(RPC)
+- [x] OpenAPI の生成
+- [x] テスト用ヘルパー
 - [x] OpenTelemetry: 玉ねぎタイムラインが、そのまま本番のトレースに
 - [x] Prometheus メトリクス
 - [x] WebSocket
@@ -94,7 +94,7 @@ Senri がこれから向かう先です。バージョンは目標であって�
 - [x] 署名付き Cookie
 - [x] Problem Details(RFC 9457)形式のエラーレスポンス
 - [x] Context Storage(どこからでも `c` を取れる)
-- [ ] API の整理: 意図せず公開されているもの(`parseCookies`・`serializeCookie`・`deletionCookie`・`resolvePort`・`DEFAULT_PORT`・`PortSource`・`isLocalUrl`)を隠し、公開の型が非公開の型を参照しないようにする
+- [x] API の整理: 意図せず公開されているもの(`parseCookies`・`serializeCookie`・`deletionCookie`・`resolvePort`・`DEFAULT_PORT`・`PortSource`・`isLocalUrl`)を隠し、公開の型が非公開の型を参照しないようにする
 - [x] `serveStatic` のシンボリックリンクへの対策(ファイルを開いたあとで、root の中かを確かめ直す)
 
 ## 0.4.0 — どこにでもデプロイ

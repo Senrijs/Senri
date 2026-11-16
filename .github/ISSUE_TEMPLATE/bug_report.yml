@@ -1,0 +1,67 @@
+name: バグ報告 / Bug report
+description: 思ったとおりに動かないときはこちら / Something doesn't work as expected
+labels: ["bug", "needs triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        報告ありがとうございます。日本語でも英語でも大丈夫です。
+        Thanks for reporting! You can write in English or Japanese.
+
+        セキュリティの問題は Issue にせず、[非公開の報告](https://github.com/Senrijs/Senri/security/advisories/new)からお願いします。
+        Please report security issues [privately](https://github.com/Senrijs/Senri/security/advisories/new), not here.
+
+  - type: textarea
+    id: what
+    attributes:
+      label: 何が起きたか / What happened
+      description: 起きたことと、本来どうなってほしかったか / What happened, and what you expected instead
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: 再現するコード / Minimal reproduction
+      description: できるだけ短いコードか、リポジトリの URL / The smallest code that shows the problem, or a link to a repository
+      render: ts
+    validations:
+      required: true
+
+  - type: dropdown
+    id: runtime
+    attributes:
+      label: ランタイム / Runtime
+      multiple: true
+      options:
+        - Bun
+        - Node.js
+        - Deno
+        - Cloudflare Workers
+        - Browser (Service Worker)
+        - その他 / Other
+    validations:
+      required: true
+
+  - type: input
+    id: versions
+    attributes:
+      label: バージョン / Versions
+      description: Senri とランタイムのバージョン / Senri and runtime versions
+      placeholder: "@senrijs/senri 0.3.2, Bun 1.3.0"
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: エラーやログ / Errors or logs
+      render: shell
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: 確認 / Checklist
+      options:
+        - label: 同じ Issue がないか探しました / I searched for existing issues
+          required: true
