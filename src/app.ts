@@ -16,7 +16,7 @@ import {
 import { compose, type Layer } from "./compose.ts";
 import { methodOf } from "./plain.ts";
 import { createMatcher } from "./matcher.ts";
-import { routeHandler, type RouteSchemas, type StandardSchemaV1, type Validated, type ValidatedParams } from "./validate.ts";
+import { routeHandler, type CheckParamTypes, type RouteSchemas, type StandardSchemaV1, type Validated, type ValidatedParams } from "./validate.ts";
 import { groupEntries, joinPath, type GroupEntry, type Router } from "./group.ts";
 import { isEndpoint, type TableShape } from "./routes.ts";
 import { attachBodyCap, capBody, checkMaxBodySize, declaredLength, tooLargeResponse, type BodyCap } from "./body-cap.ts";
@@ -56,7 +56,7 @@ export type RouteMethod<V extends object> = {
     <Path extends string>(path: Path, handler: Handler<Simplify<ExtractParams<Path>>, V>): void;
     <Path extends string, S extends RouteSchemas>(
         path: Path,
-        schemas: S,
+        schemas: S & NoInfer<CheckParamTypes<S, Simplify<ExtractParams<Path>>>>,
         handler: Handler<ValidatedParams<S, Simplify<ExtractParams<Path>>>, V, Validated<S>>,
     ): void;
 };
@@ -67,7 +67,7 @@ export type OnMethod<V extends object> = {
     <Path extends string, S extends RouteSchemas>(
         method: string | readonly string[],
         path: Path,
-        schemas: S,
+        schemas: S & NoInfer<CheckParamTypes<S, Simplify<ExtractParams<Path>>>>,
         handler: Handler<ValidatedParams<S, Simplify<ExtractParams<Path>>>, V, Validated<S>>,
     ): void;
 };

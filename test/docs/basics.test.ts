@@ -44,6 +44,68 @@ const json = (body: unknown) => ({ body: JSON.stringify(body), headers: { "conte
     });
 }
 
+// ---------- validation(スキーマなしで、パスの値を整数として読む) ----------
+{
+    const intApp = (type: "int" | "uint", dev = false) => {
+        const a = createApp({ dev: dev ? devtools({ lang: "ja" }) : undefined });
+        a.get("/notes/:id", { params: { id: type } }, ({ id }) => ({ id }));
+        return a;
+    };
+    const status = async (a: ReturnType<typeof intApp>, value: string) => (await req(a, "GET", `/notes/${value}`)).status;
+
+    claim("validation#int-others-string", "書いた名前だけが number。ほかは文字列のまま", async () => {
+        const a = createApp();
+        a.get("/users/:uid/notes/:id", { params: { id: "uint" } }, (params) => params);
+        expect(await (await req(a, "GET", "/users/007/notes/7")).json()).toEqual({ uid: "007", id: 7 });
+    });
+    claim("validation#int-c-params-string", "数になるのは 1 つ目の引数だけ。c.params は文字列のまま", async () => {
+        const a = createApp();
+        a.get("/notes/:id", { params: { id: "uint" } }, ({ id }, c) => ({ id, params: c.params }));
+        expect(await (await req(a, "GET", "/notes/7")).json()).toEqual({ id: 7, params: { id: "7" } });
+    });
+    claim("validation#int-register-error", '"int"・"uint" 以外の値は、本番でも登録のときに止める', () => {
+        expect(() => createApp().get("/notes/:id", { params: { id: "number" } } as never, () => "x")).toThrow();
+    });
+    claim("validation#int-openapi", 'OpenAPI では integer("uint" は minimum: 0 も)', async () => {
+        const { openAPI } = await import("../../src/openapi.ts");
+        const routes = defineRoutes({ "GET /n/:a/:b": endpoint({ params: { a: "int", b: "uint" } }, ({ a, b }) => ({ a, b })) });
+        const doc = openAPI(routes, { info: { title: "t", version: "1" } }) as any;
+        expect(doc.paths["/n/{a}/{b}"].get.parameters.map((p: any) => p.schema)).toEqual([{ type: "integer" }, { type: "integer", minimum: 0 }]);
+    });
+    claim("validation#int-boundary", "整数とみなす範囲(表のとおり)", async () => {
+        const int = intApp("int");
+        const uint = intApp("uint");
+        for (const v of ["0", "7", "42", "9007199254740991"]) {
+            expect([v, await status(int, v), await status(uint, v)]).toEqual([v, 200, 200]);
+        }
+        for (const v of ["-1", "-42", "-9007199254740991"]) {
+            expect([v, await status(int, v), await status(uint, v)]).toEqual([v, 200, 404]);
+        }
+        const rejected = ["01", "00", "1.5", "1.0", "%201%20", "+1", "-0", "1e3", "0x10", "1_000", "9007199254740992", "-9007199254740992", "%EF%BC%91", "abc", "-", "Infinity", "NaN"];
+        for (const v of rejected) {
+            expect([v, await status(int, v), await status(uint, v)]).toEqual([v, 404, 404]);
+        }
+    });
+    claim("validation#int-not-found-handler", "整数でなければ app.notFound のハンドラーが返す", async () => {
+        const a = createApp();
+        a.notFound((c) => c.json({ error: "not found" }));
+        a.get("/notes/:id", { params: { id: "uint" } }, ({ id }) => ({ id }));
+        const r = await req(a, "GET", "/notes/abc");
+        expect([r.status, await r.json()]).toEqual([404, { error: "not found" }]);
+    });
+    claim("validation#int-404-production", "本番の本文は 404 Not Found だけ", async () => {
+        const r = await req(intApp("uint"), "GET", "/notes/abc");
+        expect([r.status, await r.text()]).toEqual([404, "404 Not Found"]);
+    });
+    claim("validation#int-404-dev", "開発モードでは、どの名前に何が来たかを返す", async () => {
+        const r = await req(intApp("uint", true), "GET", "/notes/abc");
+        expect(r.status).toBe(404);
+        expect(await r.text()).toBe(
+            '404 Not Found: GET /notes/abc\n:id に 0 以上の整数でない値 "abc" が来ました("uint" は、0 か先頭が 0 でない数字の並びで、Number.MAX_SAFE_INTEGER まで)',
+        );
+    });
+}
+
 // ---------- middleware/writing ----------
 {
     const app = createApp();

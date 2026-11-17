@@ -41,7 +41,8 @@ app.get("/orgs/:org/members/:member", ({ org, member }, c) => {
 });
 ```
 
-- パラメーターの型は、パスから付きます
+- パラメーターの型は、パスから付きます。値はいつも文字列です
+- 整数として読むなら、`{ params: { id: "uint" } }` と書きます。整数でなければ 404 です([バリデーション](/docs/validation)) {/* verify: int-params */}
 - `c` で、リクエストを読んだり、ヘッダーや status を決めたりします([Context](/docs/request-response/context))
 - 戻り値がレスポンスになります([戻り値がレスポンスになる](/docs/routing/return-values))
 
@@ -64,4 +65,4 @@ app.routes({
 ## 登録のときのエラー
 
 - 同じメソッドと同じパスを 2 回登録すると、エラーになります。パラメーターの名前だけが違うもの(`/users/:id` と `/users/:userId`)も同じです {/* verify: duplicate */}
-- 省略できるパラメーター(`:id?`)や正規表現(`:id{[0-9]+}`)は書けません。登録のときのエラーになります。値は、ハンドラーか[スキーマ](/docs/validation)で確かめます {/* verify: no-optional-or-regex */}
+- 省略できるパラメーター(`:id?`)や正規表現(`:id{[0-9]+}`)は書けません。登録のときのエラーになります。値は、ハンドラーか[スキーマ](/docs/validation)で確かめます。整数だけなら `{ params: { id: "uint" } }` です {/* verify: no-optional-or-regex */}

@@ -19,7 +19,7 @@
 // - JSON Schema にできないスキーマは、空のスキーマ({})にして警告する(黙って抜かさない)
 // - 本体の実行時のコードは読まない(表の値は形で見分ける)
 import type { OpenAPIOperationInfo } from "./routes.ts";
-import type { StandardSchemaV1 } from "./validate.ts";
+import type { ParamTypes, StandardSchemaV1 } from "./validate.ts";
 
 /** A JSON Schema object (or an OpenAPI 3.0 Schema Object). */
 export type JSONSchema = Record<string, unknown>;
@@ -51,7 +51,7 @@ export type OpenAPIOptions = {
 };
 
 type Schemas = {
-    params?: StandardSchemaV1;
+    params?: StandardSchemaV1 | ParamTypes;
     query?: StandardSchemaV1;
     body?: StandardSchemaV1;
     response?: StandardSchemaV1;
@@ -86,8 +86,9 @@ function schemasOf(value: unknown): Schemas {
  *
  * - Paths and methods come from the keys (`"GET /users/:id"` → `paths["/users/{id}"].get`). A wildcard (`*`) becomes
  *   a `{path}` parameter. Methods that OpenAPI does not have (such as `QUERY`) are skipped with a warning.
- * - Path parameters are strings, or typed by the route's `params` schema. `query` becomes query parameters (the
- *   schema must be an object), `body` the request body (`application/json`, or form types with `bodyType: "form"`).
+ * - Path parameters are strings, typed by the route's `params` schema, or `integer` for `{ id: "int" }` (`"uint"` adds
+ *   `minimum: 0`). `query` becomes query parameters (the schema must be an object), `body` the request body
+ *   (`application/json`, or form types with `bodyType: "form"`).
  * - Responses come from `endpoint({ response, responses })`. Without them, only a `200` without a schema is listed:
  *   handler return types are not known at runtime.
  * - Request schemas are converted as input and response schemas as output, with Standard JSON Schema
@@ -157,8 +158,14 @@ export function openAPI(routes: object, options: OpenAPIOptions): JSONSchema {
 
         const parameters: Record<string, unknown>[] = [];
         // パスパラメーター。params のスキーマがあれば、そのプロパティの型
-        const paramsSchema = schemas.params ? convert(schemas.params, "input", `${key} params`) : undefined;
-        const paramProps = (paramsSchema?.properties ?? {}) as Record<string, JSONSchema>;
+        // { id: "int" } の表なら integer("uint" は 0 以上)
+        const p = schemas.params;
+        let paramProps: Record<string, JSONSchema> = {};
+        if (typeof p === "object" && p !== null && !("~standard" in p)) {
+            for (const [name, type] of Object.entries(p)) paramProps[name] = type === "uint" ? { type: "integer", minimum: 0 } : { type: "integer" };
+        } else if (p) {
+            paramProps = (convert(p as StandardSchemaV1, "input", `${key} params`).properties ?? {}) as Record<string, JSONSchema>;
+        }
         for (const name of names) {
             const wildcard = name === "*";
             parameters.push({

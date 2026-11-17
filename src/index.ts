@@ -67,7 +67,10 @@ export {
 } from "./routes.ts";
 export {
     ValidationError,
+    type CheckParamTypes,
     type InferInput,
+    type ParamType,
+    type ParamTypes,
     type InferOutput,
     type RouteSchemas,
     type StandardIssue,

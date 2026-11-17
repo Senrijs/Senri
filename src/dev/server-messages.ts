@@ -20,6 +20,8 @@ const en = {
     "res.websocketOriginRejected": "403 Forbidden: upgradeWebSocket() rejected a connection from a page on another origin ({origin})\nIf you trust that origin, add it with upgradeWebSocket(..., { origin: [...] })",
     "res.websocketNotUpgrade": "426 Upgrade Required: {path} is a WebSocket route. Connect with a WebSocket client (new WebSocket(\"ws://...\")), not a normal request",
     "res.didYouMean": "Did you mean: {method} {path} ?",
+    "res.paramInt": ':{name} got {value}, which is not an integer ("int": 0 or digits without a leading zero, optionally after "-", up to Number.MAX_SAFE_INTEGER)',
+    "res.paramUint": ':{name} got {value}, which is not an integer of 0 or more ("uint": 0 or digits without a leading zero, up to Number.MAX_SAFE_INTEGER)',
     "res.validation": "400 Bad Request: {target} failed schema validation",
 
     "target.params": "The path parameters",
@@ -29,6 +31,7 @@ const en = {
     "schema.shape": "{path}: the second argument must be { params, query, body } schemas or a handler",
     "schema.key": '{path}: only params, query and body can be given as schemas ("{key}" cannot be used)',
     "schema.type": "{path}: {key} is not a Standard Schema schema (pass a schema from Zod, Valibot, ArkType or similar)",
+    "schema.paramName": '{path}: params has "{name}", which is not a parameter of this path',
     "route.reserved": "{method} {path}: paths under /_senri are reserved for the dashboard in development mode",
     "response.mismatch": "{route}: the handler returned a value that does not match its response schema (the client and OpenAPI expect that shape)",
 };
@@ -54,6 +57,8 @@ const ja: Record<ServerMessageKey, string> = {
     "res.websocketOriginRejected": "403 Forbidden: よそのオリジン({origin})のページからの接続を、upgradeWebSocket() が拒否しました\n信頼できるオリジンなら、upgradeWebSocket(..., { origin: [...] }) に足してください",
     "res.websocketNotUpgrade": "426 Upgrade Required: {path} は WebSocket のルートです。ふつうのリクエストではなく、WebSocket のクライアント(new WebSocket(\"ws://...\"))でつないでください",
     "res.didYouMean": "もしかして: {method} {path} ?",
+    "res.paramInt": ':{name} に整数でない値 {value} が来ました("int" は、0 か先頭が 0 でない数字の並び。前に "-" を付けてもよく、Number.MAX_SAFE_INTEGER まで)',
+    "res.paramUint": ':{name} に 0 以上の整数でない値 {value} が来ました("uint" は、0 か先頭が 0 でない数字の並びで、Number.MAX_SAFE_INTEGER まで)',
     "res.validation": "400 Bad Request: {target}が、スキーマに合いません",
 
     "target.params": "パスパラメーター",
@@ -63,6 +68,7 @@ const ja: Record<ServerMessageKey, string> = {
     "schema.shape": "{path}: 2つ目の引数には { params, query, body } のスキーマかハンドラーを渡してください",
     "schema.key": '{path}: スキーマに渡せるのは params / query / body だけです("{key}" は使えません)',
     "schema.type": "{path}: {key} が Standard Schema のスキーマではありません(Zod・Valibot・ArkType などのスキーマを渡してください)",
+    "schema.paramName": '{path}: params の "{name}" は、このパスのパラメーターではありません',
     "route.reserved": "{method} {path}: /_senri 以下は、開発モードではダッシュボード用に予約されています",
     "response.mismatch": "{route}: ハンドラーの戻り値が、response のスキーマに合いません(クライアントと OpenAPI は、スキーマの形だと思っています)",
 };

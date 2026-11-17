@@ -2,7 +2,7 @@
 // (あとから app.route("/users/:id", router) のように付ける形だと、中のハンドラーで id の型が分からないため)
 import type { Handler, Middleware } from "./context.ts";
 import { normalizeMethod, splitPattern, type ExtractParams, type Simplify } from "./router.ts";
-import { routeHandler, type RouteSchemas, type Validated, type ValidatedParams } from "./validate.ts";
+import { routeHandler, type CheckParamTypes, type RouteSchemas, type Validated, type ValidatedParams } from "./validate.ts";
 import { senriError } from "./errors.ts";
 
 // プレフィックスとパスをつないだときのパラメーター。"/" を挟むので、"posts" のように "/" なしで書いてもよい
@@ -15,7 +15,7 @@ export type RouterMethod<Prefix extends string, V extends object> = {
     <Path extends string>(path: Path, handler: Handler<RouterParams<Prefix, Path>, V>): void;
     <Path extends string, S extends RouteSchemas>(
         path: Path,
-        schemas: S,
+        schemas: S & NoInfer<CheckParamTypes<S, RouterParams<Prefix, Path>>>,
         handler: Handler<ValidatedParams<S, RouterParams<Prefix, Path>>, V, Validated<S>>,
     ): void;
 };
@@ -62,7 +62,7 @@ export type Router<Prefix extends string = string, V extends object = any> = {
     on<Path extends string, S extends RouteSchemas>(
         method: string | readonly string[],
         path: Path,
-        schemas: S,
+        schemas: S & NoInfer<CheckParamTypes<S, RouterParams<Prefix, Path>>>,
         handler: Handler<ValidatedParams<S, RouterParams<Prefix, Path>>, V, Validated<S>>,
     ): void;
     // ルーターの中にルーターをつなげる。中のルーターのプレフィックスは、このルーターからの相対パス

@@ -48,14 +48,33 @@ export type InferInput<S> = S extends StandardSchemaV1<infer Input, any> ? Input
 /** The output type of a {@link StandardSchemaV1} (after any transforms). */
 export type InferOutput<S> = S extends StandardSchemaV1<any, infer Output> ? Output : never;
 
+// スキーマなしで、パスの値を整数として読む: { params: { id: "uint" } }(#142)
+// - "int": 0 か、先頭が 0 でない数字の並び(前に "-" を付けてもよい)。^(0|-?[1-9][0-9]*)$ に合い、安全な整数に収まるもの
+// - "uint": そのうち 0 以上のもの(id 向け)
+// "01"・"1.5"・" 1 "・"+1"・"1e3"・"-0"・MAX_SAFE_INTEGER を超える値などは、整数とみなさずに 404 にする
+/**
+ * How to read a path parameter without a schema: `"int"` is an integer (negative allowed), `"uint"` an integer of 0 or more.
+ * The value must be `0` or digits without a leading zero (with a leading `-` for `"int"`), within `Number.MAX_SAFE_INTEGER`.
+ * Anything else (`"01"`, `"1.5"`, `" 1 "`, `"+1"`, `"1e3"`, `"-0"`, ...) gets 404.
+ */
+export type ParamType = "int" | "uint";
+
+/** Path parameters read as integers: `{ id: "uint" }`. Each key is a parameter name in the path. */
+export type ParamTypes = { readonly [name: string]: ParamType };
+
 /**
  * Schemas passed to a route: `app.post(path, { params, query, body }, handler)`.
  * They are checked in the order params, query, body; if one fails, the handler is not called and a
  * {@link ValidationError} (400) is thrown.
  */
 export type RouteSchemas = {
-    /** Validates the path parameters. The output replaces the handler's first argument and `c.params`. */
-    params?: StandardSchemaV1;
+    /**
+     * Validates the path parameters. The output replaces the handler's first argument and `c.params`.
+     * Instead of a schema, `{ id: "int" }` or `{ id: "uint" }` reads the parameter as an integer ({@link ParamType})
+     * in the handler's first argument only (`c.params` keeps the strings, as its type says);
+     * if it is not one, the handler is not called and the response is 404 (the `app.notFound` handler).
+     */
+    params?: StandardSchemaV1 | ParamTypes;
     /** Validates `c.query()`. The output is available as `c.valid("query")`. */
     query?: StandardSchemaV1;
     /** Validates `c.body()`. The output is available as `c.valid("body")`. */
@@ -69,10 +88,25 @@ export type Validated<S extends RouteSchemas> = {
 };
 
 // params のスキーマがあれば、その変換後の型。なければパスから取り出した型
-/** The handler's first argument: the `params` schema's output, or `Fallback` (the parameters from the path). */
+// { id: "int" } なら、その名前だけ number にする
+/**
+ * The handler's first argument: the `params` schema's output, `Fallback` (the parameters from the path) with the
+ * names in {@link ParamTypes} as `number`, or `Fallback`.
+ */
+// (S が any のとき any になるよう、S["params"] で読む。defineRoutes() の表の型が、どの endpoint も受けられるように)
 export type ValidatedParams<S extends RouteSchemas, Fallback> = S extends { params: StandardSchemaV1 }
     ? InferOutput<S["params"]>
-    : Fallback;
+    : S extends { params: ParamTypes }
+      ? { [K in keyof Fallback]: K extends keyof S["params"] ? number : Fallback[K] }
+      : Fallback;
+
+// { id: "int" } の名前がパスにないときに、型エラーにする(スキーマのときは何もしない)
+/** Rejects names in {@link ParamTypes} that are not parameters of the path (`P`). Schemas are not checked. */
+export type CheckParamTypes<S, P> = S extends { params: infer T }
+    ? T extends StandardSchemaV1
+        ? unknown
+        : { params: { [K in keyof T]: K extends keyof P ? ParamType : `"${K & string}" is not a parameter of this path` } }
+    : unknown;
 
 /** Which part of the request failed validation. */
 export type ValidationTarget = "params" | "query" | "body";
@@ -106,12 +140,53 @@ async function run(schema: StandardSchemaV1, target: ValidationTarget, value: un
     return result.value;
 }
 
+// 整数として読めなかったパスの値。開発モードの 404 が「:id に整数でない値 "abc" が来ました」と出すのに使う
+/** A path parameter that could not be read as its {@link ParamType}. Used by `@senrijs/senri/dev`. */
+export type ParamMiss = { name: string; value: string; type: ParamType };
+export const paramMisses = new WeakMap<Context, ParamMiss>();
+
+// "-0" は弾く(-0 と 0 は別の値ではないが、"-0" と書く理由がない)
+const INT = /^(?:0|-?[1-9][0-9]*)$/;
+
+// { id: "int" } の通りに読む。読めなければ c.notFound()(app.notFound のハンドラーに回る)
+function readParams(types: ParamTypes, params: Record<string, string>, c: Context): Record<string, unknown> {
+    const out: Record<string, unknown> = { ...params };
+    for (const name in types) {
+        const type = types[name]!;
+        const value = params[name];
+        // 型と開発モードで登録時に止めるが、createRouter のルートなどで通ってきたとき
+        if (value === undefined) throw senriError("param_unknown", new TypeError(`Unknown parameter: ${name}`));
+        const n = Number(value);
+        if (!INT.test(value) || !Number.isSafeInteger(n) || (type === "uint" && n < 0)) {
+            paramMisses.set(c, { name, value, type });
+            c.notFound();
+        }
+        out[name] = n;
+    }
+    return out;
+}
+
 // スキーマで確かめてからハンドラーを呼ぶハンドラーにする。params → query → body の順に確かめる
 export function withValidation(schemas: RouteSchemas, handler: Handler): Handler {
+    const p = schemas.params;
+    // スキーマでなければ { id: "int" } の表。値の書き間違いは登録した時点で止める
+    const types = typeof p === "object" && p !== null && !("~standard" in p) ? p : undefined;
+    if (types) {
+        for (const name in types) {
+            if (types[name] !== "int" && types[name] !== "uint") {
+                // 本体の文言は短く。開発モードでは code から説明を付ける(src/dev/explain.ts)
+                throw senriError("param_type", new TypeError(`Invalid parameter type: ${name}`));
+            }
+        }
+    }
     return async (params, c: Context) => {
         let validParams = params;
-        if (schemas.params) {
-            validParams = (await run(schemas.params, "params", params)) as Record<string, string>;
+        // { id: "int" } で数にするのは、ハンドラーの 1 つ目の引数だけ。c.params は文字列のまま残す
+        // (c.params の型は Record<string, string> なので、値を数にすると型と食い違う)
+        if (types) {
+            validParams = readParams(types, params, c) as Record<string, string>;
+        } else if (p) {
+            validParams = (await run(p as StandardSchemaV1, "params", params)) as Record<string, string>;
             c.params = validParams;
         }
         if (schemas.query) setValidated(c, "query", await run(schemas.query, "query", c.query()));

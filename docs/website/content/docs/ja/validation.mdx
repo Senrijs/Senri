@@ -30,9 +30,61 @@ app.post(
 - `query` と `body` の値は、`c.valid("query")`・`c.valid("body")` で読みます
 - 表のルートでは、`endpoint({ body }, handler)` と書きます([ルートの表](/docs/typed-api/define-routes))
 
+## スキーマなしで、パスの値を整数として読む
+
+パスの値はいつも文字列です。整数として読むだけなら、スキーマの代わりに `"int"` か `"uint"` を書けます。
+
+```ts twoslash
+import { createApp } from "@senrijs/senri";
+const app = createApp();
+// ---cut---
+app.get("/notes/:id", { params: { id: "uint" } }, ({ id }) => {
+    return { id };
+    //       ^?
+});
+```
+
+- `"int"` は整数(負の数も含む)、`"uint"` は 0 以上の整数です。`:id` には `"uint"` を使います
+- 書いた名前だけが `number` になります。ほかのパラメーターは文字列のままです {/* verify: int-others-string */}
+- 数になるのは、ハンドラーの 1 つ目の引数だけです。`c.params` は、型のとおり文字列のまま残ります {/* verify: int-c-params-string */}
+- `"int"`・`"uint"` 以外の値は、型のエラーになり、登録のときも止めます(本番でも) {/* verify: int-register-error */}
+- パスにない名前は、`app.get()` などと `createRouter()` では型のエラーになります。開発モードでは、`app.routes()` の表も登録のときに止めます
+- `query`・`body` のスキーマと一緒に使えます。`params` には、スキーマか `{ id: "int" }` のどちらかを渡します
+- `createRouter()` と `endpoint()` でも同じように書けます。[OpenAPI](/docs/typed-api/openapi) では `integer` になります(`"uint"` は `minimum: 0` も付きます) {/* verify: int-openapi */}
+
+### 整数とみなすもの
+
+`^(0|-?[1-9][0-9]*)$` に合い、`Number.isSafeInteger()` が真になるものだけです。`"uint"` は、そのうち 0 以上のものです。紛らわしいものを整数に直すことはしません。 {/* verify: int-boundary */}
+
+| パスの値 | `"int"` | `"uint"` |
+| --- | --- | --- |
+| `0`、`7`、`42`、`9007199254740991`(`Number.MAX_SAFE_INTEGER`) | その数 | その数 |
+| `-1`、`-42`、`-9007199254740991` | その数 | 404 |
+| `01`、`00`(先頭の 0) | 404 | 404 |
+| `1.5`、`1.0`(小数) | 404 | 404 |
+| `" 1 "`(前後の空白。URL では `%201%20`) | 404 | 404 |
+| `+1`、`-0` | 404 | 404 |
+| `1e3`、`0x10`、`1_000`(数の別の書き方) | 404 | 404 |
+| `9007199254740992`、`-9007199254740992`(安全な整数の範囲の外) | 404 | 404 |
+| `１`(全角の数字) | 404 | 404 |
+| `abc`、`-`、`Infinity`、`NaN` | 404 | 404 |
+
+### 整数でなかったとき
+
+ハンドラーは呼ばずに、404 を返します。「その id のものはない」と同じ扱いです(スキーマが通らなかったときの 400 とは違います)。
+
+- `app.notFound` のハンドラーが返します(`c.notFound()` と同じです) {/* verify: int-not-found-handler */}
+- **本番:** 本文は `404 Not Found` だけです {/* verify: int-404-production */}
+- **開発モード:** どの名前に何が来たかを返します {/* verify: int-404-dev */}
+
+```text
+404 Not Found: GET /notes/abc
+:id に 0 以上の整数でない値 "abc" が来ました("uint" は、0 か先頭が 0 でない数字の並びで、Number.MAX_SAFE_INTEGER まで)
+```
+
 ## 通らなかったとき
 
-400 を返します。
+スキーマが通らなければ、400 を返します。
 
 - **本番:** 本文は `400 Bad Request` だけです {/* verify: 400-production */}
 - **開発モード:** どこが違うかを一覧にして返します。スキーマの書き間違いも、登録した時点で知らせます {/* verify: 400-dev */}
