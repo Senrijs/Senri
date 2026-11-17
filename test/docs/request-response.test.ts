@@ -112,6 +112,59 @@ import { claim, ipInfo, quiet, req } from "./claim.ts";
     claim("request-response/body#c-body-same", "c.body() は何度呼んでも同じ結果", async () => {
         expect((await (await post('{"a":1}', "application/json")).json()).same).toBe(true);
     });
+    {
+        const a = createApp();
+        a.post("/json", async (_, c) => ({ v: await c.bodyJson(), same: (await c.bodyJson()) === (await c.bodyJson()) }));
+        a.post("/bytes", async (_, c) => {
+            const v = await c.bodyBytes();
+            return { isBuffer: v instanceof ArrayBuffer, size: v.byteLength, same: v === (await c.bodyBytes()) };
+        });
+        a.post("/mix", async (_, c) => ({ body: await c.body(), json: await c.bodyJson() }));
+        a.post("/mix2", async (_, c) => ({ json: await c.bodyJson(), body: await c.body() }));
+        a.post("/req-json", async (_, c) => c.req.json());
+        a.post("/req-twice", async (_, c) => {
+            await c.req.arrayBuffer();
+            return { size: (await c.req.arrayBuffer()).byteLength };
+        });
+        a.use("/webhook", async (c, next) => {
+            c.set("size", (await c.bodyBytes()).byteLength);
+            return next();
+        });
+        a.post("/webhook", async (_, c) => ({ size: c.get("size"), type: (await c.bodyJson<{ type: string }>()).type }));
+        a.post("/after", async (_, c) => {
+            await c.body();
+            return { code: await c.bodyBytes().then(() => null, (err: { code?: string }) => err.code) };
+        });
+        const send = (path: string, body: BodyInit, type?: string) => req(a, "POST", path, { body, headers: type ? { "content-type": type } : {} });
+        claim("request-response/body#body-json", "c.bodyJson(): Content-Type を見ずに JSON として読む。読めなければ 400", async () => {
+            expect((await (await send("/json", '{"a":1}', "text/plain")).json()).v).toEqual({ a: 1 });
+            expect((await (await send("/json", '{"a":1}')).json()).v).toEqual({ a: 1 });
+            expect((await send("/json", "{bad", "application/json")).status).toBe(400);
+            expect((await send("/json", "", "application/json")).status).toBe(400);
+        });
+        claim("request-response/body#body-bytes", "c.bodyBytes(): Content-Type を見ずに ArrayBuffer で読む", async () => {
+            expect(await (await send("/bytes", '{"a":1}', "application/json")).json()).toEqual({ isBuffer: true, size: 7, same: true });
+            expect(await (await send("/bytes", "hi", "text/plain")).json()).toEqual({ isBuffer: true, size: 2, same: true });
+        });
+        claim("request-response/body#mix", "何度呼んでも同じ値。c.body() と c.bodyJson() はどちらを先に呼んでも読める", async () => {
+            expect((await (await send("/json", "[1]")).json()).same).toBe(true);
+            expect(await (await send("/mix", '{"a":1}', "application/json")).json()).toEqual({ body: { a: 1 }, json: { a: 1 } });
+            expect(await (await send("/mix2", '{"a":1}', "application/json")).json()).toEqual({ json: { a: 1 }, body: { a: 1 } });
+        });
+        claim("request-response/body#vs-req", "c.req.json() / arrayBuffer() は 2 回目と壊れた JSON で 500。上限はどちらにも効く", async () => {
+            expect((await send("/req-twice", "x")).status).toBe(500);
+            expect((await send("/req-json", "{bad", "application/json")).status).toBe(500);
+            expect((await send("/req-json", JSON.stringify("x".repeat(1024 * 1024)), "application/json")).status).toBe(413);
+            expect((await send("/json", JSON.stringify("x".repeat(1024 * 1024)))).status).toBe(413);
+            expect((await send("/bytes", "x".repeat(1024 * 1024 + 1))).status).toBe(413);
+        });
+        claim("request-response/body#bytes-first", "先に c.bodyBytes() を呼べば、あとの c.bodyJson() はそのバイト列から読む", async () => {
+            expect(await (await send("/webhook", '{"type":"paid"}', "application/json")).json()).toEqual({ size: 15, type: "paid" });
+        });
+        claim("request-response/body#bytes-after", "文字列として読んだあとの c.bodyBytes() は body_bytes_after_read", async () => {
+            expect(await (await send("/after", '{"a":1}', "application/json")).json()).toEqual({ code: "body_bytes_after_read" });
+        });
+    }
     claim("request-response/body#default-1mib", "既定の上限 1 MiB を超えたら 413", async () => {
         expect((await post("x".repeat(1024 * 1024), "text/plain")).status).toBe(200);
         expect((await post("x".repeat(1024 * 1024 + 1), "text/plain")).status).toBe(413);
