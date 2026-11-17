@@ -32,6 +32,7 @@ app.get("/users/:id", ({ id }, c) => {
 | `c.query(name)` / `c.query()` | クエリの値 1 つ / 全部 |
 | `c.queries(name)` | 同じ名前のクエリを全部(配列) |
 | `c.body()` | 本文を Content-Type に合わせて読む([本文の読み方と上限](/docs/request-response/body)) |
+| `c.bodyJson()` / `c.bodyBytes()` | 本文を JSON / `ArrayBuffer` と決めて読む |
 | `c.valid(target)` | スキーマで確かめた値([バリデーション](/docs/validation)) |
 
 `c.route` と `c.params` は、ミドルウェアの `next()` の前から読めます。ルートは、ミドルウェアより先に決まるためです。 {/* verify: route-before-next */}

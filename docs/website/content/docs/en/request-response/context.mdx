@@ -32,6 +32,7 @@ app.get("/users/:id", ({ id }, c) => {
 | `c.query(name)` / `c.query()` | One query value / all of them |
 | `c.queries(name)` | All values of a query name (an array) |
 | `c.body()` | Reads the body by its Content-Type ([Request bodies and limits](/en/docs/request-response/body)) |
+| `c.bodyJson()` / `c.bodyBytes()` | Reads the body as JSON / an `ArrayBuffer`, whatever its Content-Type |
 | `c.valid(target)` | The values checked by a schema ([Validation](/en/docs/validation)) |
 
 `c.route` and `c.params` can be read in middleware before `next()`, because the route is decided before middleware runs.

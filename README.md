@@ -481,6 +481,7 @@ app.post("/search", async (_, c) => {
     c.query("page");               // "2"(なければ undefined。c.query() で全部)
     c.queries("tag");              // ["a", "b"]
     await c.body();                // Content-Type に合わせて読む(JSON・フォーム・テキスト・それ以外は ArrayBuffer)
+    await c.bodyJson();            // Content-Type を見ずに JSON として読む(読めなければ 400)。c.bodyBytes() は ArrayBuffer
     getCookie(c, "session");       // Cookie(getCookie(c) で全部)
     setCookie(c, "seen", "1");     // deleteCookie(c, name) で消す
     getIp(c);                      // 接続元の IP アドレス(分からなければ null)
@@ -488,11 +489,12 @@ app.post("/search", async (_, c) => {
 });
 ```
 
-- `c.body()` は何度呼んでも同じ結果です(ミドルウェアとハンドラーの両方から読めます)
+- `c.body()`・`c.bodyJson()`・`c.bodyBytes()` は何度呼んでも同じ結果です(ミドルウェアとハンドラーの両方から読めます)。`c.req.json()` などは `Request` のメソッドそのままなので、2回目はエラーです
+- 元のバイト列が要るとき(Webhook の署名など)は、先に `c.bodyBytes()` を呼んでください。あとの `c.body()`・`c.bodyJson()`・スキーマはそのバイト列から読みます
 
 ### 本文の大きさの既定の上限
 
-本文を全部読むもの(`c.body()`・ルートの `body` のスキーマ・`c.req.json()` / `text()` / `formData()` / `arrayBuffer()`)は、既定で **1 MiB** までです。超えたら 413 です。
+本文を全部読むもの(`c.body()`・`c.bodyJson()`・`c.bodyBytes()`・ルートの `body` のスキーマ・`c.req.json()` / `text()` / `formData()` / `arrayBuffer()`)は、既定で **1 MiB** までです。超えたら 413 です。
 
 ```ts
 const app = createApp({ maxBodySize: 10 * 1024 * 1024 });   // アプリ全体で 10 MiB に(Infinity で上限なし)

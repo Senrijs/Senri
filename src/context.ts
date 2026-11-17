@@ -1,7 +1,7 @@
 import { pathnameOf, requestPathname, splitPath } from "./router.ts";
 import { isConnectionInfo } from "./connection.ts";
 import type { Timing } from "./compose.ts";
-import { readBody } from "./body.ts";
+import { parseJson, readBody } from "./body.ts";
 import { HttpError, senriError } from "./errors.ts";
 import { PlainResponse, setLazySourceOf, type LazyRequest } from "./plain.ts";
 
@@ -186,6 +186,9 @@ export class Context<V extends object = any, I extends object = {}> {
     #vars: Map<string, unknown> | undefined;
     // 一度読んだボディ(ミドルウェアとハンドラーの両方から読めるように覚えておく)
     #body: Promise<unknown> | undefined;
+    #json: Promise<unknown> | undefined;
+    #bytes: Promise<ArrayBuffer> | undefined;
+    #string: Promise<string> | undefined;
     #query: URLSearchParams | undefined;
     /**
      * The error being handled. Set when an error is thrown that is not an {@link HttpError},
@@ -378,8 +381,42 @@ export class Context<V extends object = any, I extends object = {}> {
      * `T` is not checked at runtime; use a `body` schema to validate.
      */
     body<T = unknown>(): Promise<T> {
-        this.#body ??= readBody(this.req);
+        this.#body ??= readBody(this.req, this.#bytes, () => this.#text(), () => this.bodyBytes());
         return this.#body as Promise<T>;
+    }
+
+    // Content-Type を見ずに JSON として読む(壊れていたら・空なら 400)。c.json() は応答を作るほうなので、名前を分ける
+    /**
+     * Reads the request body as JSON, whatever its `Content-Type`. Invalid or empty JSON throws an {@link HttpError} 400.
+     * The result is cached. It shares the read with {@link Context.body}, so both can be called on the same request.
+     * Like `c.body()`, it is subject to the body limit (413 over it).
+     *
+     * `T` is not checked at runtime; use a `body` schema to validate.
+     */
+    bodyJson<T = unknown>(): Promise<T> {
+        this.#json ??= this.#text().then(parseJson);
+        return this.#json as Promise<T>;
+    }
+
+    // 本文を文字列で読む(1回だけ)。c.bodyBytes() を先に呼んでいれば、そのバイト列から
+    // 先に呼んでいなければ req.text() で読む(バイト列から文字列にするより、Bun で 1 µs ほど速い)
+    #text(): Promise<string> {
+        return (this.#string ??= this.#bytes ? this.#bytes.then((b) => new TextDecoder().decode(b)) : this.req.text());
+    }
+
+    // 本文をそのまま読む。先に呼んでおけば、c.body() と c.bodyJson() もここから読む
+    // 本文を文字列やフォームとして読んだあと(c.req.text() なども)は、元のバイト列が残っていないのでエラー
+    /**
+     * Reads the request body as an `ArrayBuffer`, whatever its `Content-Type`. The result is cached (the same
+     * `ArrayBuffer` every time). Called first, it can be followed by {@link Context.body} and {@link Context.bodyJson},
+     * which then read from these bytes (for example, middleware that checks a webhook signature, then a `body` schema).
+     * Called after the body was read as text or a form (by `c.body()`, `c.bodyJson()`, a `body` schema or `c.req.text()`),
+     * it rejects, because the original bytes are gone. Like `c.body()`, it is subject to the body limit (413 over it).
+     */
+    bodyBytes(): Promise<ArrayBuffer> {
+        if (!this.#bytes && this.req.bodyUsed) return Promise.reject(senriError("body_bytes_after_read", "c.bodyBytes(): the request body has already been read"));
+        this.#bytes ??= this.req.arrayBuffer();
+        return this.#bytes;
     }
 
     /**
