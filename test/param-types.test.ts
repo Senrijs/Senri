@@ -53,11 +53,11 @@ function makeApp(type: "int" | "uint", dev?: "ja" | "en") {
 }
 
 describe('{ params: { id: "int" } }', () => {
-    for (const [url, , int] of [...ACCEPTED, ...ACCEPTED_NEGATIVE]) {
-        test(`"${url}" は ${int}`, async () => {
+    for (const [url, value, int] of [...ACCEPTED, ...ACCEPTED_NEGATIVE]) {
+        test(`"${url}" は ${int}(c.params は文字列のまま)`, async () => {
             const res = await makeApp("int").app.fetch(req(`/notes/${url}`));
             expect(res.status).toBe(200);
-            expect(await res.json()).toEqual({ id: int, type: "number", params: { id: int } });
+            expect(await res.json()).toEqual({ id: int, type: "number", params: { id: value } });
         });
     }
 

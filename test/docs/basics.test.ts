@@ -58,6 +58,11 @@ const json = (body: unknown) => ({ body: JSON.stringify(body), headers: { "conte
         a.get("/users/:uid/notes/:id", { params: { id: "uint" } }, (params) => params);
         expect(await (await req(a, "GET", "/users/007/notes/7")).json()).toEqual({ uid: "007", id: 7 });
     });
+    claim("validation#int-c-params-string", "数になるのは 1 つ目の引数だけ。c.params は文字列のまま", async () => {
+        const a = createApp();
+        a.get("/notes/:id", { params: { id: "uint" } }, ({ id }, c) => ({ id, params: c.params }));
+        expect(await (await req(a, "GET", "/notes/7")).json()).toEqual({ id: 7, params: { id: "7" } });
+    });
     claim("validation#int-register-error", '"int"・"uint" 以外の値は、本番でも登録のときに止める', () => {
         expect(() => createApp().get("/notes/:id", { params: { id: "number" } } as never, () => "x")).toThrow();
     });

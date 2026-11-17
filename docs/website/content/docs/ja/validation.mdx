@@ -39,14 +39,14 @@ import { createApp } from "@senrijs/senri";
 const app = createApp();
 // ---cut---
 app.get("/notes/:id", { params: { id: "uint" } }, ({ id }) => {
-    //                                             ^?
     return { id };
+    //       ^?
 });
 ```
 
 - `"int"` は整数(負の数も含む)、`"uint"` は 0 以上の整数です。`:id` には `"uint"` を使います
 - 書いた名前だけが `number` になります。ほかのパラメーターは文字列のままです {/* verify: int-others-string */}
-- 型は、ハンドラーの 1 つ目の引数に付きます(`c.params` の値も数になりますが、型は付きません)
+- 数になるのは、ハンドラーの 1 つ目の引数だけです。`c.params` は、型のとおり文字列のまま残ります {/* verify: int-c-params-string */}
 - `"int"`・`"uint"` 以外の値は、型のエラーになり、登録のときも止めます(本番でも) {/* verify: int-register-error */}
 - パスにない名前は、`app.get()` などと `createRouter()` では型のエラーになります。開発モードでは、`app.routes()` の表も登録のときに止めます
 - `query`・`body` のスキーマと一緒に使えます。`params` には、スキーマか `{ id: "int" }` のどちらかを渡します

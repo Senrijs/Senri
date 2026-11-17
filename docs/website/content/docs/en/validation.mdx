@@ -39,14 +39,14 @@ import { createApp } from "@senrijs/senri";
 const app = createApp();
 // ---cut---
 app.get("/notes/:id", { params: { id: "uint" } }, ({ id }) => {
-    //                                             ^?
     return { id };
+    //       ^?
 });
 ```
 
 - `"int"` is an integer (negative allowed), and `"uint"` an integer of 0 or more. Use `"uint"` for an `:id`
 - Only the names you list become `number`. Other parameters stay strings
-- The type is on the handler's first argument (the values in `c.params` are numbers too, but not typed)
+- Only the handler's first argument has numbers. `c.params` keeps the strings, as its type says
 - A value other than `"int"` or `"uint"` is a type error, and is also refused when the route is registered (in production too)
 - A name that is not in the path is a type error with `app.get()` and the other methods, and with `createRouter()`. Development mode also refuses it when an `app.routes()` table is registered
 - It works together with `query` and `body` schemas. `params` takes either a schema or `{ id: "int" }`

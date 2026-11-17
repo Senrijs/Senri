@@ -70,7 +70,8 @@ export type ParamTypes = { readonly [name: string]: ParamType };
 export type RouteSchemas = {
     /**
      * Validates the path parameters. The output replaces the handler's first argument and `c.params`.
-     * Instead of a schema, `{ id: "int" }` or `{ id: "uint" }` reads the parameter as an integer ({@link ParamType});
+     * Instead of a schema, `{ id: "int" }` or `{ id: "uint" }` reads the parameter as an integer ({@link ParamType})
+     * in the handler's first argument only (`c.params` keeps the strings, as its type says);
      * if it is not one, the handler is not called and the response is 404 (the `app.notFound` handler).
      */
     params?: StandardSchemaV1 | ParamTypes;
@@ -180,9 +181,10 @@ export function withValidation(schemas: RouteSchemas, handler: Handler): Handler
     }
     return async (params, c: Context) => {
         let validParams = params;
+        // { id: "int" } で数にするのは、ハンドラーの 1 つ目の引数だけ。c.params は文字列のまま残す
+        // (c.params の型は Record<string, string> なので、値を数にすると型と食い違う)
         if (types) {
             validParams = readParams(types, params, c) as Record<string, string>;
-            c.params = validParams;
         } else if (p) {
             validParams = (await run(p as StandardSchemaV1, "params", params)) as Record<string, string>;
             c.params = validParams;
