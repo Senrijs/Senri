@@ -30,6 +30,8 @@ function readingApp(options?: Parameters<typeof createApp>[0]) {
     const app = createApp(options);
     app.post("/text", async (_, c) => `${(await c.req.text()).length}`);
     app.post("/body", async (_, c) => `${String(await c.body()).length}`);
+    app.post("/json", async (_, c) => `${String(await c.bodyJson()).length}`);
+    app.post("/bytes", async (_, c) => `${(await c.bodyBytes()).byteLength}`);
     app.post("/ignore", () => "not read");
     app.post("/swallow", async (_, c) => {
         try {
@@ -61,6 +63,29 @@ describe("既定の上限(1 MiB)", () => {
             }),
         );
         expect((await post(schemaApp, "/s", JSON.stringify({ a: "x".repeat(MIB) }), { "content-type": "application/json" })).status).toBe(413);
+    });
+
+    test("c.bodyJson() と c.bodyBytes() にも効く(Content-Length あり・なし)", async () => {
+        // JSON の文字列 "xxx…" は、両端の " を足して MIB バイトちょうど
+        const json = (n: number) => JSON.stringify("x".repeat(n - 2));
+        expect(await (await post(app, "/json", json(MIB))).text()).toBe(String(MIB - 2));
+        expect((await post(app, "/json", json(MIB + 1))).status).toBe(413);
+        expect((await post(app, "/json", new Blob([json(MIB + 1)]).stream())).status).toBe(413);
+        expect(await (await post(app, "/bytes", new Uint8Array(MIB))).text()).toBe(String(MIB));
+        expect(await (await post(app, "/bytes", chunked(MIB))).text()).toBe(String(MIB));
+        const over = await post(app, "/bytes", chunked(MIB + 1));
+        expect(over.status).toBe(413);
+        expect(await over.text()).toBe("413 Content Too Large");
+        expect((await post(app, "/bytes", new Uint8Array(MIB + 1))).status).toBe(413);
+    });
+
+    test("ハンドラーが c.bodyBytes() の 413 を握りつぶしても 413", async () => {
+        const app2 = createApp();
+        app2.post("/b", async (_, c) => {
+            await c.bodyBytes().catch(() => {});
+            return "swallowed";
+        });
+        expect((await post(app2, "/b", chunked(MIB + 1))).status).toBe(413);
     });
 
     test("本文を読まないルートは変わらない(大きくても 200)", async () => {
@@ -135,6 +160,9 @@ describe("createApp({ maxBodySize })", () => {
         const small = readingApp({ maxBodySize: 10 });
         expect((await post(small, "/text", "x".repeat(10))).status).toBe(200);
         expect((await post(small, "/text", "x".repeat(11))).status).toBe(413);
+        expect((await post(small, "/json", "1234567890")).status).toBe(200);
+        expect((await post(small, "/json", "12345678901")).status).toBe(413);
+        expect((await post(small, "/bytes", chunked(11))).status).toBe(413);
         const none = readingApp({ maxBodySize: Infinity });
         expect(await (await post(none, "/text", "x".repeat(2 * MIB))).text()).toBe(String(2 * MIB));
     });
@@ -163,6 +191,17 @@ describe("ルートの上限は、既定を置き換える", () => {
         expect(await (await post(app, "/limited", chunked(2 * MIB))).text()).toBe(String(2 * MIB));
         // bodyLimit() 自身の上限は効く
         expect((await post(app, "/limited", chunked(5 * MIB + 1))).status).toBe(413);
+    });
+
+    test("bodyLimit() は c.bodyJson() と c.bodyBytes() の上限も置き換える", async () => {
+        const app = createApp();
+        app.use("/limited/*", bodyLimit({ maxSize: 3 * MIB }));
+        app.post("/limited/json", async (_, c) => `${String(await c.bodyJson()).length}`);
+        app.post("/limited/bytes", async (_, c) => `${(await c.bodyBytes()).byteLength}`);
+        expect(await (await post(app, "/limited/json", JSON.stringify("x".repeat(2 * MIB)))).text()).toBe(String(2 * MIB));
+        expect(await (await post(app, "/limited/bytes", chunked(2 * MIB))).text()).toBe(String(2 * MIB));
+        expect((await post(app, "/limited/bytes", chunked(3 * MIB + 1))).status).toBe(413);
+        expect((await post(app, "/limited/json", new Uint8Array(3 * MIB + 1))).status).toBe(413);
     });
 
     test("endpoint({ use: [bodyLimit()] }) でも置き換えられる", async () => {

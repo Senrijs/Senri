@@ -1,6 +1,6 @@
 ---
 title: "本文の読み方と上限"
-description: "c.body() と c.req.json() など。既定の 1 MiB の上限と、bodyLimit() で上げる方法"
+description: "c.body()・c.bodyJson()・c.bodyBytes() と c.req.json() など。既定の 1 MiB の上限と、bodyLimit() で上げる方法"
 ---
 
 ```ts twoslash
@@ -19,15 +19,77 @@ app.post("/notes", async (_, c) => {
 | 書き方 | 結果 |
 | --- | --- |
 | `c.body()` | JSON は値、フォームはオブジェクト、テキストは文字列、それ以外は `ArrayBuffer` {/* verify: c-body */} |
+| `c.bodyJson()` | Content-Type を見ずに JSON として読む。読めなければ 400 {/* verify: body-json */} |
+| `c.bodyBytes()` | Content-Type を見ずに `ArrayBuffer` で読む {/* verify: body-bytes */} |
 | `c.req.json()`・`text()`・`formData()`・`arrayBuffer()` | `Request` のメソッドそのまま |
 | `c.req.body` | ストリームのまま読む |
 | ルートの `body` のスキーマ | 確かめた値を `c.valid("body")` で読む([バリデーション](/docs/validation)) |
 
 `c.body()` は何度呼んでも同じ結果です。ミドルウェアとハンドラーの両方から読めます。 {/* verify: c-body-same */}
 
+## JSON・バイト列と決めて読む
+
+`c.body()` は、Content-Type によって返すものの形が変わります。形を決めて読みたいときは、`c.bodyJson()` か `c.bodyBytes()` を使います。
+
+```ts twoslash
+import { createApp } from "@senrijs/senri";
+const app = createApp();
+// ---cut---
+app.post("/notes", async (_, c) => {
+    const note = await c.bodyJson<{ title: string }>();   // Content-Type が何でも JSON として読む
+    return { saved: note.title };
+});
+
+app.post("/upload", async (_, c) => {
+    const bytes = await c.bodyBytes();   // いつも ArrayBuffer
+    return { size: bytes.byteLength };
+});
+```
+
+- `c.bodyJson()` は、壊れた JSON と空の本文を 400 にします。`<T>` は型を付けるだけで、中身は確かめません。確かめるならルートの `body` のスキーマを使います
+- 3 つとも、何度呼んでも同じ値を返します。`c.body()` と `c.bodyJson()` は、同じリクエストでどちらを先に呼んでも両方読めます {/* verify: mix */}
+
+### c.req.json() との違い
+
+`c.req.json()`・`c.req.arrayBuffer()` は `Request` のメソッドそのままです。
+
+| | `c.bodyJson()`・`c.bodyBytes()` | `c.req.json()`・`c.req.arrayBuffer()` |
+| --- | --- | --- |
+| 2 回目に呼んだとき | 1 回目と同じ値 | エラー(本文はもう読まれている)で 500 |
+| 壊れた JSON | 400 | 500 |
+| 既定の上限(1 MiB)と `bodyLimit()` | 効く | 効く |
+
+{/* verify: vs-req */}
+
+上限はどちらにも同じに効きます。違うのは、覚えておくかどうかと、エラーの応答です。
+
+### 署名を確かめてから読む
+
+Webhook の署名のように元のバイト列が要るときは、ミドルウェアで先に `c.bodyBytes()` を呼びます。そのあとの `c.body()`・`c.bodyJson()`・ルートの `body` のスキーマは、そのバイト列から読みます。 {/* verify: bytes-first */}
+
+```ts twoslash
+import { createApp } from "@senrijs/senri";
+const app = createApp();
+declare function verify(bytes: ArrayBuffer, signature: string | null): Promise<boolean>;
+// ---cut---
+import { HttpError } from "@senrijs/senri";
+
+app.use("/webhook", async (c, next) => {
+    const ok = await verify(await c.bodyBytes(), c.req.headers.get("x-signature"));
+    if (!ok) throw new HttpError(401);
+    return next();
+});
+app.post("/webhook", async (_, c) => {
+    const event = await c.bodyJson<{ type: string }>();   // 同じバイト列から読む
+    return { received: event.type };
+});
+```
+
+順番が逆だと読めません。本文を文字列やフォームとして読んだあと(`c.body()`・`c.bodyJson()`・スキーマ・`c.req.text()` など)の `c.bodyBytes()` は、元のバイト列が残っていないので、`code` が `"body_bytes_after_read"` のエラーになります。 {/* verify: bytes-after */}
+
 ## 既定の上限は 1 MiB
 
-本文を読むときは、既定で **1 MiB** までです。超えたら 413 を返します。 {/* verify: default-1mib */}
+本文を読むときは(`c.body()`・`c.bodyJson()`・`c.bodyBytes()`・`c.req.json()` など)、既定で **1 MiB** までです。超えたら 413 を返します。 {/* verify: default-1mib */}
 
 - 本文を読んだときだけ効きます。読まないルートは、大きい本文が来ても変わりません
 - Content-Length が上限より大きければ、中身を読まずに 413 にします。Content-Length のない本文(チャンク転送など)は、読みながら数えます

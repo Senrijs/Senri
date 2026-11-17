@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { createApp } from "../src/index.ts";
+import { createApp, defineRoutes, endpoint } from "../src/index.ts";
+import { explainText } from "../src/dev/explain.ts";
 import { deleteCookie, getCookie, setCookie } from "../src/cookie.ts";
 
 const req = (path: string, init?: RequestInit) => new Request(`http://localhost${path}`, init);
@@ -104,6 +105,134 @@ describe("c.body", () => {
 
         expect(res.status).toBe(400);
         expect(await res.text()).toBe("400 Bad Request: Invalid form data");
+    });
+});
+
+describe("c.bodyJson / c.bodyBytes", () => {
+    const post = (body: BodyInit, type?: string) =>
+        req("/b", { method: "POST", body, headers: type ? { "content-type": type } : {} });
+    // 受け取った値を検査せずにそのまま通すスキーマ
+    const anything = { "~standard": { version: 1 as const, vendor: "t", validate: (value: unknown) => ({ value }) } };
+
+    test("c.bodyJson() は Content-Type を見ずに JSON として読む", async () => {
+        const app = createApp();
+        app.post("/b", async (_, c) => ({ got: await c.bodyJson<{ a: number }>() }));
+
+        for (const type of ["application/json", "text/plain", "application/octet-stream", undefined]) {
+            expect(await (await app.fetch(post('{"a":1}', type))).json()).toEqual({ got: { a: 1 } });
+        }
+    });
+
+    test("c.bodyJson(): 壊れた JSON と空の本文は 400(c.req.json() は 500)", async () => {
+        const app = createApp();
+        app.post("/b", async (_, c) => ({ got: await c.bodyJson() }));
+        app.post("/req", async (_, c) => ({ got: await c.req.json() }));
+
+        for (const body of ["{bad", "", "<a>"]) {
+            const res = await app.fetch(post(body, "application/json"));
+            expect(res.status).toBe(400);
+            expect(await res.text()).toBe("400 Bad Request: Invalid JSON");
+        }
+        // 比べるため: Request のメソッドそのままだと、ふつうのエラー(500)
+        expect((await app.fetch(req("/req", { method: "POST", body: "{bad" }))).status).toBe(500);
+    });
+
+    test("c.bodyBytes() は Content-Type を見ずに ArrayBuffer で読む", async () => {
+        const app = createApp();
+        let got: unknown;
+        app.post("/b", async (_, c) => {
+            got = await c.bodyBytes();
+            return "ok";
+        });
+
+        for (const type of ["application/json", "text/plain", "application/x-www-form-urlencoded", undefined]) {
+            await app.fetch(post("a=1", type));
+            expect(got).toBeInstanceOf(ArrayBuffer);
+            expect(new TextDecoder().decode(got as ArrayBuffer)).toBe("a=1");
+        }
+        await app.fetch(post(new Uint8Array([0, 255, 1])));
+        expect(new Uint8Array(got as ArrayBuffer)).toEqual(new Uint8Array([0, 255, 1]));
+    });
+
+    test("一度読んだら覚えておく(何度呼んでも同じ値。c.req.json() は2回目でエラー)", async () => {
+        const app = createApp();
+        app.use("/b", async (c, next) => {
+            await c.bodyJson();
+            return next();
+        });
+        app.post("/b", async (_, c) => ({ same: (await c.bodyJson()) === (await c.bodyJson()), again: await c.bodyJson() }));
+        app.post("/bytes", async (_, c) => ({ same: (await c.bodyBytes()) === (await c.bodyBytes()) }));
+        app.post("/req", async (_, c) => {
+            await c.req.json();
+            return c.req.json();
+        });
+
+        expect(await (await app.fetch(post('{"a":1}'))).json()).toEqual({ same: true, again: { a: 1 } });
+        expect(await (await app.fetch(req("/bytes", { method: "POST", body: "x" }))).json()).toEqual({ same: true });
+        expect((await app.fetch(req("/req", { method: "POST", body: "{}" }))).status).toBe(500);
+    });
+
+    test("c.body() と c.bodyJson() は、どちらを先に呼んでも両方読める", async () => {
+        const app = createApp();
+        app.post("/b", async (_, c) => {
+            const first = c.req.headers.get("x-first");
+            const a = first === "body" ? await c.body() : await c.bodyJson();
+            const b = first === "body" ? await c.bodyJson() : await c.body();
+            return { a, b };
+        });
+
+        for (const first of ["body", "json"]) {
+            const res = await app.fetch(req("/b", { method: "POST", body: '{"a":1}', headers: { "content-type": "application/json", "x-first": first } }));
+            expect(await res.json()).toEqual({ a: { a: 1 }, b: { a: 1 } });
+        }
+    });
+
+    test("c.bodyBytes() を先に呼べば、c.body()・c.bodyJson()・ルートの body のスキーマは、そのバイト列から読む", async () => {
+        const app = createApp();
+        // 署名を確かめるミドルウェアのように、元のバイト列を先に読む
+        app.use(async (c, next) => {
+            c.set("size", (await c.bodyBytes()).byteLength);
+            return next();
+        });
+        app.post("/b", async (_, c) => ({ size: c.get("size"), body: await c.body(), json: await c.bodyJson() }));
+        app.post("/text", async (_, c) => ({ body: await c.body() }));
+        app.post("/form", async (_, c) => ({ body: await c.body() }));
+        app.routes(defineRoutes({ "POST /schema": endpoint({ body: anything }, (_, c) => ({ size: c.get("size"), valid: c.valid("body") })) }));
+
+        expect(await (await app.fetch(post('{"a":1}', "application/json"))).json()).toEqual({ size: 7, body: { a: 1 }, json: { a: 1 } });
+        expect(await (await app.fetch(req("/text", { method: "POST", body: "こんにちは", headers: { "content-type": "text/plain" } }))).json()).toEqual({ body: "こんにちは" });
+        const form = new FormData();
+        form.append("name", "yahari");
+        form.append("tag", "a");
+        form.append("tag", "b");
+        expect(await (await app.fetch(req("/form", { method: "POST", body: form }))).json()).toEqual({ body: { name: "yahari", tag: ["a", "b"] } });
+        const schema = await app.fetch(req("/schema", { method: "POST", body: '{"b":2}', headers: { "content-type": "application/json" } }));
+        expect(await schema.json()).toEqual({ size: 7, valid: { b: 2 } });
+    });
+
+    test("文字列やフォームとして読んだあとの c.bodyBytes() は、code の付いたエラー(元のバイト列が残っていないため)", async () => {
+        const app = createApp();
+        app.post("/b", async (_, c) => {
+            const how = c.req.headers.get("x-read");
+            if (how === "body") await c.body();
+            else if (how === "json") await c.bodyJson();
+            else await c.req.text();
+            return { code: await c.bodyBytes().then(() => null, (err: { code?: string }) => err.code) };
+        });
+
+        for (const how of ["body", "json", "req"]) {
+            const res = await app.fetch(req("/b", { method: "POST", body: '{"a":1}', headers: { "content-type": "application/json", "x-read": how } }));
+            expect(await res.json()).toEqual({ code: "body_bytes_after_read" });
+        }
+        expect(explainText({ code: "body_bytes_after_read" }, "ja")).toContain("先に c.bodyBytes()");
+        expect(explainText({ code: "body_bytes_after_read" }, "en")).toContain("Call c.bodyBytes() first");
+    });
+
+    test("c.body() が ArrayBuffer で読んだあとなら、c.bodyBytes() は同じ ArrayBuffer", async () => {
+        const app = createApp();
+        app.post("/b", async (_, c) => ({ same: (await c.body()) === (await c.bodyBytes()) }));
+
+        expect(await (await app.fetch(post(new Uint8Array([1, 2]), "application/octet-stream"))).json()).toEqual({ same: true });
     });
 });
 

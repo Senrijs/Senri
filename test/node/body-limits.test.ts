@@ -10,6 +10,8 @@ const MIB = 1024 * 1024;
 function makeApp() {
     const app = createApp();
     app.post("/text", async (_, c) => `${(await c.req.text()).length}`);
+    app.post("/json", async (_, c) => `${String(await c.bodyJson()).length}`);
+    app.post("/bytes", async (_, c) => `${(await c.bodyBytes()).byteLength}`);
     app.post("/ignore", () => "not read");
     app.post("/swallow", async (_, c) => {
         try {
@@ -68,6 +70,12 @@ describe("本文の既定の上限(Node)", () => {
                 assert.equal(await (await post("/text", "x".repeat(MIB))).text(), String(MIB));
                 assert.equal((await post("/text", "x".repeat(MIB + 1))).status, 413);
                 assert.equal((await post("/text", chunked(MIB + 1))).status, 413);
+                // c.bodyJson() と c.bodyBytes() にも効く
+                assert.equal(await (await post("/json", JSON.stringify("x".repeat(MIB - 2)))).text(), String(MIB - 2));
+                assert.equal((await post("/json", JSON.stringify("x".repeat(MIB)))).status, 413);
+                assert.equal(await (await post("/bytes", chunked(MIB))).text(), String(MIB));
+                assert.equal((await post("/bytes", chunked(MIB + 1))).status, 413);
+                assert.equal((await post("/bytes", "x".repeat(MIB + 1))).status, 413);
                 // 読まないルートは変わらない
                 assert.equal(await (await post("/ignore", "x".repeat(2 * MIB))).text(), "not read");
                 // 握りつぶしても 413

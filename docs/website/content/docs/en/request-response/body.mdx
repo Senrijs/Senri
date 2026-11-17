@@ -1,6 +1,6 @@
 ---
 title: "Request bodies and limits"
-description: "c.body(), c.req.json() and the like. The default 1 MiB limit, and raising it with bodyLimit()"
+description: "c.body(), c.bodyJson(), c.bodyBytes(), c.req.json() and the like. The default 1 MiB limit, and raising it with bodyLimit()"
 ---
 
 ```ts twoslash
@@ -19,15 +19,75 @@ app.post("/notes", async (_, c) => {
 | Write | Result |
 | --- | --- |
 | `c.body()` | A value for JSON, an object for forms, a string for text, an `ArrayBuffer` for anything else |
+| `c.bodyJson()` | Reads JSON whatever the Content-Type. 400 if it cannot be parsed |
+| `c.bodyBytes()` | Reads an `ArrayBuffer` whatever the Content-Type |
 | `c.req.json()`, `text()`, `formData()`, `arrayBuffer()` | The `Request` methods as is |
 | `c.req.body` | Read it as a stream |
 | A route's `body` schema | Read the checked value with `c.valid("body")` ([Validation](/en/docs/validation)) |
 
 `c.body()` returns the same result however many times you call it, so both middleware and the handler can read it.
 
+## Read as JSON or as bytes
+
+The shape of what `c.body()` returns depends on the Content-Type. To decide the shape yourself, use `c.bodyJson()` or `c.bodyBytes()`.
+
+```ts twoslash
+import { createApp } from "@senrijs/senri";
+const app = createApp();
+// ---cut---
+app.post("/notes", async (_, c) => {
+    const note = await c.bodyJson<{ title: string }>();   // JSON, whatever the Content-Type
+    return { saved: note.title };
+});
+
+app.post("/upload", async (_, c) => {
+    const bytes = await c.bodyBytes();   // always an ArrayBuffer
+    return { size: bytes.byteLength };
+});
+```
+
+- `c.bodyJson()` turns invalid JSON and an empty body into 400. `<T>` only adds a type and does not check the value. To check it, use the route's `body` schema
+- All three return the same value however many times you call them. `c.body()` and `c.bodyJson()` can both be read on the same request, in either order
+
+### How they differ from c.req.json()
+
+`c.req.json()` and `c.req.arrayBuffer()` are the `Request` methods as is.
+
+| | `c.bodyJson()`, `c.bodyBytes()` | `c.req.json()`, `c.req.arrayBuffer()` |
+| --- | --- | --- |
+| Called a second time | The same value as the first time | An error (the body was already read), so 500 |
+| Invalid JSON | 400 | 500 |
+| The default limit (1 MiB) and `bodyLimit()` | Apply | Apply |
+
+The limit applies the same to both. What differs is whether the result is kept, and the error response.
+
+### Check a signature, then read
+
+When you need the original bytes, as for a webhook signature, call `c.bodyBytes()` first in a middleware. `c.body()`, `c.bodyJson()` and the route's `body` schema then read from those bytes.
+
+```ts twoslash
+import { createApp } from "@senrijs/senri";
+const app = createApp();
+declare function verify(bytes: ArrayBuffer, signature: string | null): Promise<boolean>;
+// ---cut---
+import { HttpError } from "@senrijs/senri";
+
+app.use("/webhook", async (c, next) => {
+    const ok = await verify(await c.bodyBytes(), c.req.headers.get("x-signature"));
+    if (!ok) throw new HttpError(401);
+    return next();
+});
+app.post("/webhook", async (_, c) => {
+    const event = await c.bodyJson<{ type: string }>();   // reads the same bytes
+    return { received: event.type };
+});
+```
+
+The other order does not work. After the body was read as text or a form (by `c.body()`, `c.bodyJson()`, a schema, `c.req.text()` and so on), the original bytes are gone, so `c.bodyBytes()` fails with an error whose `code` is `"body_bytes_after_read"`.
+
 ## The default limit is 1 MiB
 
-Reading a body is limited to **1 MiB** by default. Over it, the response is 413.
+Reading a body (`c.body()`, `c.bodyJson()`, `c.bodyBytes()`, `c.req.json()` and so on) is limited to **1 MiB** by default. Over it, the response is 413.
 
 - It applies only when the body is read. Routes that do not read the body behave the same with a large body
 - If Content-Length is over the limit, the request gets 413 without the body being read. A body without Content-Length (chunked transfer and so on) is counted as it is read
