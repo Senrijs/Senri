@@ -41,7 +41,8 @@ app.get("/orgs/:org/members/:member", ({ org, member }, c) => {
 });
 ```
 
-- The parameter types come from the path
+- The parameter types come from the path. The values are always strings
+- To read one as an integer, write `{ params: { id: "uint" } }`. If it is not an integer, the response is 404 ([Validation](/en/docs/validation))
 - Use `c` to read the request and to set headers and the status ([Context](/en/docs/request-response/context))
 - What you return becomes the response ([Return values](/en/docs/routing/return-values))
 
@@ -62,4 +63,4 @@ To move the table to another file or to use its types in a client, use [`defineR
 ## Errors when registering
 
 - Registering the same method and path twice is an error. Routes that differ only in the parameter name (`/users/:id` and `/users/:userId`) count as the same
-- Optional parameters (`:id?`) and regular expressions (`:id{[0-9]+}`) are not supported and are an error when registering. Check values in the handler or with a [schema](/en/docs/validation)
+- Optional parameters (`:id?`) and regular expressions (`:id{[0-9]+}`) are not supported and are an error when registering. Check values in the handler or with a [schema](/en/docs/validation). For integers only, write `{ params: { id: "uint" } }`

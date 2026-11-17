@@ -5,6 +5,7 @@ import type { Context, HandlerResult } from "../context.ts";
 import { defaultNotFound } from "../errors.ts";
 import type { Lang } from "../lang.ts";
 import type { Route } from "../router.ts";
+import { paramMisses } from "../validate.ts";
 import { notFoundPage } from "./not-found-page.ts";
 import { wantsHtml } from "./render.ts";
 import { serverMessage } from "./server-messages.ts";
@@ -20,6 +21,13 @@ export function devNotFound(c: Context, routes: Route[], lang: () => Lang): Hand
         path = c.path;
     } catch {
         return defaultNotFound(c);
+    }
+    // { id: "int" } で読めなかった: 何が来たかを出す(ルートはあるので、一覧のページや「もしかして」は出さない)
+    const miss = paramMisses.get(c);
+    if (miss) {
+        const key = miss.type === "uint" ? "res.paramUint" : "res.paramInt";
+        return c.text(`404 Not Found: ${c.req.method} ${path}
+${serverMessage(lang(), key, { name: miss.name, value: JSON.stringify(miss.value) })}`);
     }
     if (wantsHtml(c.req)) return notFoundPage(c, routes, lang());
     let message = `404 Not Found: ${c.req.method} ${path}`;

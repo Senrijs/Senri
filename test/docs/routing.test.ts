@@ -28,6 +28,12 @@ import { claim, quiet, req } from "./claim.ts";
         expect((await req(app, "QUERY", "/search")).status).toBe(400);
         expect((await req(app, "QUERY", "/search", { body: new Uint8Array([1]) })).status).toBe(415);
     });
+    claim("routing/routes#int-params", '{ params: { id: "uint" } } で整数として読む。整数でなければ 404', async () => {
+        const a = createApp();
+        a.get("/notes/:id", { params: { id: "uint" } }, ({ id }) => ({ id, type: typeof id }));
+        expect(await (await req(a, "GET", "/notes/7")).json()).toEqual({ id: 7, type: "number" });
+        expect((await req(a, "GET", "/notes/abc")).status).toBe(404);
+    });
     claim("routing/routes#duplicate", "パラメーターの名前だけ違う同じルートは、登録のときのエラー", () => {
         expect(() => app.get("/users/:userId", () => "x")).toThrow();
     });

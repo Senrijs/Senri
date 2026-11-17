@@ -30,9 +30,61 @@ app.post(
 - Read the `query` and `body` values with `c.valid("query")` and `c.valid("body")`
 - For table routes, write `endpoint({ body }, handler)` ([Route tables](/en/docs/typed-api/define-routes))
 
+## Read a path value as an integer, without a schema
+
+Path values are always strings. To read one as an integer, write `"int"` or `"uint"` instead of a schema.
+
+```ts twoslash
+import { createApp } from "@senrijs/senri";
+const app = createApp();
+// ---cut---
+app.get("/notes/:id", { params: { id: "uint" } }, ({ id }) => {
+    //                                             ^?
+    return { id };
+});
+```
+
+- `"int"` is an integer (negative allowed), and `"uint"` an integer of 0 or more. Use `"uint"` for an `:id`
+- Only the names you list become `number`. Other parameters stay strings
+- The type is on the handler's first argument (the values in `c.params` are numbers too, but not typed)
+- A value other than `"int"` or `"uint"` is a type error, and is also refused when the route is registered (in production too)
+- A name that is not in the path is a type error with `app.get()` and the other methods, and with `createRouter()`. Development mode also refuses it when an `app.routes()` table is registered
+- It works together with `query` and `body` schemas. `params` takes either a schema or `{ id: "int" }`
+- It works the same with `createRouter()` and `endpoint()`. In [OpenAPI](/en/docs/typed-api/openapi), it becomes `integer` (with `minimum: 0` for `"uint"`)
+
+### What counts as an integer
+
+Only values that match `^(0|-?[1-9][0-9]*)$` and for which `Number.isSafeInteger()` is true. `"uint"` takes the ones of 0 or more. Ambiguous values are never turned into integers.
+
+| Path value | `"int"` | `"uint"` |
+| --- | --- | --- |
+| `0`, `7`, `42`, `9007199254740991` (`Number.MAX_SAFE_INTEGER`) | that number | that number |
+| `-1`, `-42`, `-9007199254740991` | that number | 404 |
+| `01`, `00` (leading zero) | 404 | 404 |
+| `1.5`, `1.0` (decimals) | 404 | 404 |
+| `" 1 "` (spaces around it; `%201%20` in the URL) | 404 | 404 |
+| `+1`, `-0` | 404 | 404 |
+| `1e3`, `0x10`, `1_000` (other ways to write a number) | 404 | 404 |
+| `9007199254740992`, `-9007199254740992` (outside the safe integer range) | 404 | 404 |
+| `１` (full-width digit) | 404 | 404 |
+| `abc`, `-`, `Infinity`, `NaN` | 404 | 404 |
+
+### When it is not an integer
+
+The handler is not called, and the response is 404: the same as "there is nothing with that id" (not the 400 of a failed schema).
+
+- The `app.notFound` handler responds (the same as `c.notFound()`)
+- **Production:** the body is only `404 Not Found`
+- **Development mode:** the body says which name got what
+
+```text
+404 Not Found: GET /notes/abc
+:id got "abc", which is not an integer of 0 or more ("uint": 0 or digits without a leading zero, up to Number.MAX_SAFE_INTEGER)
+```
+
 ## When a value does not pass
 
-The response is 400.
+When a schema does not pass, the response is 400.
 
 - **Production:** the body is only `400 Bad Request`
 - **Development mode:** the body lists what is wrong. Mistakes in the schema itself are reported when the route is registered

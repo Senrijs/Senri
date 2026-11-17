@@ -2,6 +2,7 @@
 // - 登録した時点で、スキーマの書き間違いに気づけるようにする
 // - 通らなかったとき、どこが違うかを一覧にする
 import { senriError } from "../errors.ts";
+import { splitPattern } from "../router.ts";
 import type { Lang } from "../lang.ts";
 import type { Handler } from "../context.ts";
 import type { RouteSchemas, StandardIssue, StandardSchemaV1, ValidationError } from "../validate.ts";
@@ -75,6 +76,16 @@ export function checkSchemas(path: string, schemas: RouteSchemas, lang: Lang): v
     for (const [key, schema] of Object.entries(schemas)) {
         if (key !== "params" && key !== "query" && key !== "body") {
             throw senriError("schema_key", new TypeError(serverMessage(lang, "schema.key", { path, key })));
+        }
+        // params は { id: "int" } の表でもよい。名前がパスにあるかを確かめる(値は本体の withValidation が先に確かめる)
+        if (key === "params" && typeof schema === "object" && schema !== null && !isSchema(schema)) {
+            const names = splitPattern(path).flatMap((s) => (s === "*" ? [s] : s.startsWith(":") ? [s.slice(1)] : []));
+            for (const name of Object.keys(schema)) {
+                if (!names.includes(name)) {
+                    throw senriError("schema_param_name", new TypeError(serverMessage(lang, "schema.paramName", { path, name })));
+                }
+            }
+            continue;
         }
         if (schema !== undefined && !isSchema(schema)) {
             throw senriError(

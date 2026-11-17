@@ -569,3 +569,48 @@ app.get("/s/as-response", (_, c) => {
 const inlineTable = { "GET /rt/:id": ({ id }: { id: string }) => id } as const;
 const checked: RouteTable<typeof inlineTable> = inlineTable;
 void checked;
+
+// --- パスの値を整数として読む(#142) ---
+{
+    const app = createApp();
+    // { id: "uint" } の名前だけ number。ほかは文字列のまま
+    app.get("/users/:uid/notes/:id", { params: { id: "uint" } }, ({ uid, id }) => {
+        const n: number = id;
+        const s: string = uid;
+        // @ts-expect-error id は number
+        const t: string = id;
+        return { n, s, t };
+    });
+    // パスにない名前は型エラー
+    // @ts-expect-error
+    app.get("/notes/:id", { params: { nid: "int" } }, () => "x");
+    // "int" / "uint" 以外は型エラー
+    // @ts-expect-error
+    app.get("/notes/:id", { params: { id: "number" } }, () => "x");
+    // query のスキーマと一緒に
+    app.get("/q/:id", { params: { id: "int" }, query: z.object({ q: z.string() }) }, ({ id }, c) => {
+        const n: number = id;
+        const q: string = c.valid("query").q;
+        return { n, q };
+    });
+    // app.on と endpoint()
+    app.on(["PUT"], "/on/:id", { params: { id: "uint" } }, ({ id }) => {
+        const n: number = id;
+        return { n };
+    });
+    defineRoutes({
+        "GET /e/:id": endpoint({ params: { id: "uint" } }, ({ id }) => {
+            const n: number = id;
+            return { n };
+        }),
+    });
+}
+{
+    const router = createRouter("/r142/:uid");
+    router.get("/notes/:id", { params: { uid: "uint", id: "int" } }, ({ uid, id }) => {
+        const n: number = uid + id;
+        return { n };
+    });
+    // @ts-expect-error プレフィックスにもパスにもない名前
+    router.get("/notes/:id", { params: { x: "int" } }, () => "x");
+}
