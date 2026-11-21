@@ -1,5 +1,5 @@
 {
   ".": "0.3.4",
   "packages/create-senri": "0.1.1",
-  "packages/cli": "0.0.0"
+  "packages/cli": "0.1.0"
 }
