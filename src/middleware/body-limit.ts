@@ -9,13 +9,14 @@ export type BodyLimitOptions = {
     // バイト数
     /** The maximum body size in bytes. */
     maxSize: number;
-    // 超えたときのレスポンス。既定は "413 Content Too Large"
+    // 超えたときのレスポンス。渡さなければ HttpError(413) を投げて、アプリの onError に任せる(ほかのミドルウェアと同じ)
     /**
-     * The response when the body is too large. Default: 413 `413 Content Too Large`.
+     * The response when the body is too large. Without it, an {@link HttpError} 413 (`413 Content Too Large`) is
+     * thrown, so the app's `onError` makes the response, as for the other built-in middleware.
      * The status is set to 413 before it is called, so a returned string or object is sent with 413;
      * a returned `Response` keeps its own status.
      */
-    onError?: (c: Context) => HandlerResult | Promise<HandlerResult>;
+    onError?: (c: Context<any, any>) => HandlerResult | Promise<HandlerResult>;
 };
 
 // serve() の maxRequestBodySize を確かめる。省略すると上限なし(Infinity)。Infinity も渡せる
@@ -59,11 +60,16 @@ export function countBytes(
 
 /**
  * Middleware that limits the request body size. Requests without a body pass through.
- * - With `Content-Length`: decided before reading. Over the limit, `onError` responds; a non-numeric value gets 400.
+ * - With `Content-Length`: decided before reading. Over the limit, `options.onError` responds (or an {@link HttpError}
+ *   413 is thrown); a non-numeric value throws an `HttpError` 400.
  *   The body is not counted in this case, so this assumes `Content-Length` can be trusted
  *   (the runtime's HTTP server does not accept a longer body than it declares).
  * - Without it (chunked): the body is counted while it is read. Over the limit, reading fails with an
- *   {@link HttpError} 413 and `onError` responds, even if the handler caught the error.
+ *   {@link HttpError} 413, and `options.onError` responds (or an `HttpError` 413 is thrown again), even if the handler
+ *   caught the error.
+ *
+ * Without `options.onError`, every error is thrown, so the body comes from `app.onError` and a typed client sees
+ * 400 and 413 as declared statuses.
  *
  * Throws if `maxSize` is not a finite number of 0 or more.
  *
@@ -75,16 +81,23 @@ export function countBytes(
  * app.use(bodyLimit({ maxSize: 1024 * 1024 })); // 1 MiB
  * ```
  */
-export function bodyLimit(options: BodyLimitOptions): Middleware {
+// options.onError を渡したときの 413 は、その onError が返したもの。アプリの onError の本文ではないので、型には 400 だけを出す
+export function bodyLimit(options: BodyLimitOptions & { onError: NonNullable<BodyLimitOptions["onError"]> }): Middleware<any, { errors: 400 }>;
+/** Limits the request body size (see above). Without `options.onError`, it throws 400 and 413 for `app.onError` to answer. */
+export function bodyLimit(options: BodyLimitOptions): Middleware<any, { errors: 400 | 413 }>;
+export function bodyLimit(options: BodyLimitOptions): Middleware<any, any> {
     const max = options.maxSize;
     if (typeof max !== "number" || !Number.isFinite(max) || max < 0) {
         throw new Error(`bodyLimit(): maxSize must be a number of bytes, 0 or more (${String(max)})`);
     }
     // onError が文字列などを返しても 413 になるよう、先に status を入れておく(Response を返したら、その status のまま)
-    const tooLarge = (c: Context) =>
-        options.onError ? options.onError(c.status(413)) : new Response("413 Content Too Large", { status: 413 });
+    // onError がなければ投げる。アプリの onError が本文を作る(0.4.0 から。それまでは固定の文字列を返していた)
+    const tooLarge = (c: Context<any, any>) => {
+        if (options.onError) return options.onError(c.status(413));
+        throw new HttpError(413, "413 Content Too Large");
+    };
 
-    return markPlainSafe<Middleware>(async function bodyLimit(c, next) {
+    return markPlainSafe<Middleware<any, any>>(async function bodyLimit(c, next) {
         // アプリの既定の上限(createApp({ maxBodySize }))を、この上限で置き換える(重ねない)
         releaseBodyCap(c);
         // 本文がないと分かっていれば、Request を作らずに済ませる
@@ -96,7 +109,7 @@ export function bodyLimit(options: BodyLimitOptions): Middleware {
         const length = c.req.headers.get("content-length");
         if (length !== null) {
             // 数字でない値(ふつうはランタイムの HTTP パーサーがはじく)は、長さが分からないので通さない
-            if (!/^\s*\d+\s*$/.test(length)) return new Response("400 Bad Request", { status: 400 });
+            if (!/^\s*\d+\s*$/.test(length)) throw new HttpError(400, "400 Bad Request");
             return Number(length) > max ? tooLarge(c) : next();
         }
 
@@ -107,6 +120,8 @@ export function bodyLimit(options: BodyLimitOptions): Middleware {
 
         const res = await next();
         // ハンドラーがエラーを握りつぶしていても、超えていたら 413 にする
-        return exceeded ? tooLarge(c) : res;
+        // onError を渡していなければ、もう 413 になっている(アプリの onError が作った)応答は、そのまま返す(onError を 2 回呼ばない)
+        if (!exceeded || (!options.onError && res.status === 413)) return res;
+        return tooLarge(c);
     });
 }

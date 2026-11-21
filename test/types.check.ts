@@ -614,3 +614,190 @@ void checked;
     // @ts-expect-error プレフィックスにもパスにもない名前
     router.get("/notes/:id", { params: { x: "int" } }, () => "x");
 }
+
+// --- ミドルウェアの宣言を、ルートの c とクライアントに届ける(#140・#141・#155) ---
+
+import { bodyLimit, HttpError, rateLimit, requestId, timeout, type MiddlewareErrors, type MiddlewareProvides } from "../src/index.ts";
+import { jwt } from "../src/jwt.ts";
+import { getCookie } from "../src/cookie.ts";
+
+type TUser = { id: string; name: string };
+// vars: 必ず入れる変数。errors: 投げうる状態コード
+const requireUser: Middleware<{}, { vars: { user: TUser }; errors: 401 }> = async (c, next) => {
+    // 中では、set の前なので undefined が付く
+    { const got = c.get("user"); same<typeof got, TUser | undefined>(true); }
+    c.set("user", { id: "1", name: "a" });
+    return next();
+};
+// 読むだけのミドルウェア(これまでの書き方)。use に入れても、undefined は消えない
+declare const readsUser: Middleware<{ user: TUser }, { errors: 403 }>;
+
+same<MiddlewareProvides<[typeof requireUser, typeof readsUser]>, { user: TUser }>(true);
+same<MiddlewareErrors<[typeof requireUser, typeof readsUser]>, 401 | 403>(true);
+
+// app.get の use: 宣言した変数は undefined なし
+{
+    const a = createApp();
+    a.get("/me", { use: [requireUser] }, (_, c) => {
+        { const got = c.get("user"); same<typeof got, TUser>(true); }
+        return c.get("user").name;
+    });
+    // 読むだけのものは undefined が付く
+    a.get("/reads", { use: [readsUser] }, (_, c) => {
+        { const got = c.get("user"); same<typeof got, TUser | undefined>(true); }
+        return "x";
+    });
+    // use がなければ、アプリの型にない変数は読めない
+    // @ts-expect-error
+    a.get("/none", (_, c) => c.get("user"));
+    // スキーマと一緒に
+    a.post("/posts", { use: [requireUser], body: z.object({ title: z.string() }) }, (_, c) => ({
+        by: c.get("user").name,
+        title: c.valid("body").title,
+    }));
+    // app.on も同じ
+    a.on(["PUT"], "/on", { use: [requireUser] }, (_, c) => c.get("user").name);
+}
+
+// アプリの型にある変数は、use がなければ今までどおり undefined が付く。use で宣言されていれば消える
+{
+    const a = createApp<{ user: TUser; other: number }>();
+    a.get("/a", (_, c) => {
+        { const got = c.get("user"); same<typeof got, TUser | undefined>(true); }
+        return "a";
+    });
+    a.get("/b", { use: [requireUser] }, (_, c) => {
+        { const got = c.get("user"); same<typeof got, TUser>(true); }
+        { const got = c.get("other"); same<typeof got, number | undefined>(true); }
+        return "b";
+    });
+    // { Bindings, Variables } の形でも
+    const w = createApp<{ Bindings: { KV: string }; Variables: { other: number } }>();
+    w.get("/w", { use: [requireUser] }, (_, c) => {
+        const kv: string = c.env.KV;
+        { const got = c.get("user"); same<typeof got, TUser>(true); }
+        return kv;
+    });
+}
+
+// endpoint() と defineRoutes(prefix, { use })
+{
+    const t = defineRoutes("/admin", { use: [requireUser] })({
+        "GET /me": (_, c) => c.get("user").name,
+        "GET /e": endpoint({ query: z.object({ q: z.string() }) }, (_, c) => `${c.get("user").name} ${c.valid("query").q}`),
+        "GET /own": endpoint({ use: [readsUser] }, (_, c) => c.get("user").name),
+    });
+    same<ReturnType<(typeof t)["GET /admin/me"]["handler"]>, string>(true);
+    // 表の use は、endpoint の型にも入る(実行時と同じ順番)
+    same<MiddlewareErrors<(typeof t)["GET /admin/e"]["schemas"]["use"]>, 401>(true);
+    same<MiddlewareErrors<(typeof t)["GET /admin/own"]["schemas"]["use"]>, 401 | 403>(true);
+    defineRoutes({ "GET /x": endpoint({ use: [requireUser] }, (_, c) => c.get("user").name) });
+}
+
+// createRouter(prefix, { use })
+{
+    const r = createRouter("/admin/:org", { use: [requireUser] });
+    r.get("/me", ({ org }, c) => `${org} ${c.get("user").name}`);
+    r.post("/p", { body: z.object({ a: z.string() }) }, (_, c) => c.get("user").name + c.valid("body").a);
+    const plain = createRouter("/plain");
+    // @ts-expect-error use がなければ読めない
+    plain.get("/me", (_, c) => c.get("user"));
+    const a = createApp();
+    a.route(r);
+    a.route(plain);
+}
+
+// #155: params のスキーマで変換したら、c.params の型も変換後
+{
+    const a = createApp();
+    a.get("/notes/:id", { params: z.object({ id: z.coerce.number() }) }, (params, c) => {
+        same<typeof c.params, { id: number }>(true);
+        same<typeof params, { id: number }>(true);
+        // @ts-expect-error 数なので文字列のメソッドはない
+        c.params.id.toUpperCase();
+        return "x";
+    });
+    // "int" では、c.params は文字列のまま(実行時と同じ)
+    a.get("/n/:id", { params: { id: "int" } }, (params, c) => {
+        same<typeof params, { id: number }>(true);
+        same<typeof c.params, Record<string, string>>(true);
+        return "x";
+    });
+    // スキーマがなければ、今までどおり
+    a.get("/s/:id", (_, c) => {
+        same<typeof c.params, Record<string, string>>(true);
+        return "x";
+    });
+    defineRoutes({
+        "GET /d/:id": endpoint({ params: z.object({ id: z.coerce.number() }) }, (_, c) => {
+            same<typeof c.params, { id: number }>(true);
+            return "x";
+        }),
+    });
+}
+
+// ルートの c は、引数なしの Context を受ける関数に渡せる(params を文字列以外に変換したときだけは渡せない)
+{
+    const helper = (c: Context) => c.path;
+    const a = createApp();
+    a.get("/h1", { use: [requireUser] }, (_, c) => helper(c));
+    a.get("/h2", { query: z.object({ q: z.string() }) }, (_, c) => helper(c));
+    a.get("/h3/:id", { params: z.object({ id: z.string() }) }, (_, c) => helper(c));
+    // @ts-expect-error c.params.id は数なので、Record<string, string> を前提にした関数には渡せない
+    a.get("/h4/:id", { params: z.object({ id: z.coerce.number() }) }, (_, c) => helper(c));
+    // Senri の補助関数は、どのルートの c でも受ける
+    a.get("/h5/:id", { params: z.object({ id: z.coerce.number() }) }, (_, c) => getCookie(c, "a") ?? "");
+}
+
+// 標準ミドルウェアの宣言
+{
+    same<MiddlewareErrors<[ReturnType<typeof rateLimit>]>, 429>(true);
+    same<MiddlewareErrors<[ReturnType<typeof bodyLimit>]>, 400 | 413>(true);
+    const t504 = timeout(1000);
+    same<MiddlewareErrors<[typeof t504]>, 504>(true);
+    const t503 = timeout(1000, { status: 503 });
+    same<MiddlewareErrors<[typeof t503]>, 503>(true);
+    const j = jwt<{ sub: string }>({ keys: "x".repeat(32), algorithms: ["HS256"] });
+    same<MiddlewareProvides<[typeof j]>, { jwtPayload: { sub: string } }>(true);
+    same<MiddlewareProvides<[ReturnType<typeof requestId>]>, { requestId: string }>(true);
+    const a = createApp();
+    a.get("/j", { use: [j] }, (_, c) => c.get("jwtPayload").sub);
+    // rateLimit の key の c に、アプリの型を付けられる
+    rateLimit<{ user: TUser }>({ windowMs: 1000, limit: 1, key: (c) => c.get("user")?.id ?? null });
+}
+
+// #141: クライアントの型に、ミドルウェアの状態コードを出す
+{
+    const routes141 = defineRoutes("/api", { use: [requireUser, rateLimit({ windowMs: 1, limit: 1 })] })({
+        "GET /me": (_, c) => ({ name: c.get("user").name }),
+        "POST /notes": endpoint({ body: z.object({ text: z.string() }) }, () => c404()),
+    });
+    const c404 = () => ({ ok: true });
+    const api = client<typeof routes141, { error: { message: string } }>("https://example.com");
+    async function check() {
+        const res = await api("GET /api/me");
+        if (res.status === 401 || res.status === 429) same<typeof res.error, { message: string }>(true);
+        if (res.status === 404) same<typeof res.error, unknown>(true);
+        if (res.ok) same<typeof res.data, { name: string }>(true);
+        // スキーマのあるルートは 400 も
+        const posted = await api("POST /api/notes", { body: { text: "a" } });
+        if (posted.status === 400) same<typeof posted.error, { message: string }>(true);
+    }
+    void check;
+    // 2 つ目の型引数を渡さなければ unknown
+    const plainApi = client<typeof routes141>("https://example.com");
+    async function checkPlain() {
+        const res = await plainApi("GET /api/me");
+        if (res.status === 401) same<typeof res.error, unknown>(true);
+    }
+    void checkPlain;
+    void HttpError;
+}
+
+// bodyLimit に onError を渡したときの 413 は、アプリの onError の本文ではないので、型には 400 だけを出す
+{
+    const own = bodyLimit({ maxSize: 1, onError: () => "too large" });
+    same<MiddlewareErrors<[typeof own]>, 400>(true);
+    const thrown = bodyLimit({ maxSize: 1 });
+    same<MiddlewareErrors<[typeof thrown]>, 400 | 413>(true);
+}

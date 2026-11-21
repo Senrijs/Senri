@@ -27,6 +27,7 @@ app.post(
 
 - You can give `params`, `query` and `body`
 - When `params` passes, the handler's first argument is the converted value (`id` above is a `number`)
+- `c.params` in the handler is the converted value too, and is typed so (`c.params.id` is a `number`). For middleware and `onError`, `c.params` is the strings from the path, before and after the handler
 - Read the `query` and `body` values with `c.valid("query")` and `c.valid("body")`
 - For table routes, write `endpoint({ body }, handler)` ([Route tables](/en/docs/typed-api/define-routes))
 

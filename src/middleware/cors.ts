@@ -13,7 +13,7 @@ export type CorsOptions = {
      * - A string or an array: allowed only on an exact match
      * - A function: `true` allows the request's origin, a string is sent as is, and `false` / `null` / `undefined` deny it
      */
-    origin?: string | readonly string[] | ((origin: string, c: Context) => boolean | string | null | undefined);
+    origin?: string | readonly string[] | ((origin: string, c: Context<any, any>) => boolean | string | null | undefined);
     // プリフライトで許可するメソッド
     /** Methods allowed in preflight responses. Default GET, HEAD, PUT, POST, DELETE, PATCH, QUERY. */
     allowMethods?: readonly string[];
@@ -57,7 +57,7 @@ export function cors(options: CorsOptions = {}): Middleware {
     // "*" 以外は、リクエストのオリジンによって答えが変わるので Vary: Origin が要る
     const varies = origin !== "*";
 
-    const allowOrigin = (requestOrigin: string, c: Context): string | null => {
+    const allowOrigin = (requestOrigin: string, c: Context<any, any>): string | null => {
         if (origin === "*") return "*";
         if (typeof origin === "string") return origin === requestOrigin ? origin : null;
         if (typeof origin === "function") {

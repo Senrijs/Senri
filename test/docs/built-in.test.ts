@@ -387,3 +387,19 @@ claim("built-in/health#paths", "/healthz は 200。/readyz は ready() が true 
     ready = false;
     expect((await req(app, "GET", "/readyz")).status).toBe(503);
 });
+
+// ---------- 0.4.0: bodyLimit() は、onError がなければ投げる ----------
+claim("built-in/body-limit#throws", "超えたら HttpError(413) を投げ、本文はアプリの onError が作る。数字でない Content-Length は 400", async () => {
+    const app = createApp();
+    app.onError((err, c) => c.json({ status: err instanceof HttpError ? err.status : 500 }));
+    app.use(bodyLimit({ maxSize: 10 }));
+    app.post("/", async (_, c) => c.req.text());
+    const over = await req(app, "POST", "/", { body: "x".repeat(11) });
+    expect([over.status, await over.json()]).toEqual([413, { status: 413 }]);
+    const bad = await req(app, "POST", "/", { body: "x", headers: { "content-length": "abc" } });
+    expect([bad.status, await bad.json()]).toEqual([400, { status: 400 }]);
+    const plain = createApp();
+    plain.use(bodyLimit({ maxSize: 10 }));
+    plain.post("/", async (_, c) => c.req.text());
+    expect(await (await req(plain, "POST", "/", { body: "x".repeat(11) })).text()).toBe("413 Content Too Large");
+});

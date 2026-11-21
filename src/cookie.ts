@@ -38,7 +38,7 @@ export type { CookieOptions } from "./cookie-header.ts";
  * app.get("/cookies", (_, c) => getCookie(c));
  * ```
  */
-export function getCookie(c: Context): Record<string, string>;
+export function getCookie(c: Context<any, any>): Record<string, string>;
 /**
  * Reads one cookie of the request, or `undefined` if it is not sent.
  *
@@ -51,9 +51,9 @@ export function getCookie(c: Context): Record<string, string>;
  * app.get("/", (_, c) => (getCookie(c, "session") ? "signed in" : "guest"));
  * ```
  */
-export function getCookie(c: Context, name: string): string | undefined;
+export function getCookie(c: Context<any, any>, name: string): string | undefined;
 /** Reads one cookie of the request (with `name`), or all of them (without it). */
-export function getCookie(c: Context, name?: string): string | undefined | Record<string, string> {
+export function getCookie(c: Context<any, any>, name?: string): string | undefined | Record<string, string> {
     const all = parseCookies(c.req.headers.get("cookie"));
     return name === undefined ? { ...all } : all[name];
 }
@@ -79,7 +79,7 @@ export function getCookie(c: Context, name?: string): string | undefined | Recor
  * });
  * ```
  */
-export function setCookie(c: Context, name: string, value: string, options?: CookieOptions): void {
+export function setCookie(c: Context<any, any>, name: string, value: string, options?: CookieOptions): void {
     c.header("set-cookie", serializeCookie(name, value, options));
 }
 
@@ -91,7 +91,7 @@ export function setCookie(c: Context, name: string, value: string, options?: Coo
  * Throws a `TypeError` if the name is not a valid cookie name,
  * or if `domain` (or a `path` other than `"/"`) is given for a name starting with `__Host-` (case-insensitive).
  */
-export function deleteCookie(c: Context, name: string, options?: Pick<CookieOptions, "path" | "domain">): void {
+export function deleteCookie(c: Context<any, any>, name: string, options?: Pick<CookieOptions, "path" | "domain">): void {
     c.header("set-cookie", deletionCookie(name, options));
 }
 
@@ -167,7 +167,7 @@ function fromBase64url(text: string): Uint8Array<ArrayBuffer> | null {
  * ```
  */
 export async function setSignedCookie(
-    c: Context,
+    c: Context<any, any>,
     name: string,
     value: string,
     secret: CookieSecret,
@@ -202,7 +202,7 @@ export async function setSignedCookie(
  * });
  * ```
  */
-export async function getSignedCookie(c: Context, name: string, secret: CookieSecret): Promise<string | false | undefined> {
+export async function getSignedCookie(c: Context<any, any>, name: string, secret: CookieSecret): Promise<string | false | undefined> {
     const secrets = secretsOf(secret);
     const raw = getCookie(c, name);
     if (raw === undefined) return undefined;

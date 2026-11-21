@@ -312,26 +312,25 @@ app.routes(routes);
 #### ルートごとのミドルウェア
 
 ```ts
-const auth: Middleware<{ user: User }> = async (c, next) => {
+// 2 つ目の型引数: 必ず入れる変数(vars)と、投げうる状態コード(errors)
+const auth: Middleware<{}, { vars: { user: User }; errors: 401 }> = async (c, next) => {
     const user = await findUser(c.req.headers.get("authorization"));
-    if (!user) {
-        c.status(401);
-        return "ログインしてね";
-    }
+    if (!user) throw new HttpError(401, "401 Unauthorized");
     c.set("user", user);
-    await next();
+    return next();
 };
 
 // 表の全部のルートに付ける(前置きがなければ "")
 export const adminRoutes = defineRoutes("/admin", { use: [auth] })({
-    "GET /me": (_, c) => ({ user: c.get("user") }),                             // c.get("user") は User | undefined
+    "GET /me": (_, c) => ({ user: c.get("user") }),                             // c.get("user") は User(undefined なし)
     // このルートだけに付ける
     "DELETE /users/:id": endpoint({ use: [requireOwner], params: idSchema }, ({ id }) => deleteUser(id)),
 });
 ```
 
 - 動く順番は、アプリの `app.use()` → 表の `use` → ルートの `use` → スキーマの確認 → ハンドラーです。ミドルウェアが値を返したら、スキーマの確認(本文を読む)の前に止まります
-- ミドルウェアを `Middleware<{ user: User }>` のように書くと、`c.get("user")` に型が付きます
+- `Middleware<{}, { vars: { user: User } }>` と宣言したミドルウェアを `use` に入れると、`c.get("user")` から `undefined` が消えます。`vars` は宣言した人の約束で、Senri は実行時に確かめません(`c.set()` を忘れると、型と値が食い違います)
+- `errors` に書いた状態コードは、型付きクライアントの型に出ます。`app.get(path, { use }, handler)` と `createRouter(prefix, { use })` にも付けられます
 - そのルートに当たったリクエストでだけ動きます。開発モードのタイムラインと、ダッシュボードの「ルート」の行にも出ます
 
 ### 型付きクライアント(@senrijs/senri/client)

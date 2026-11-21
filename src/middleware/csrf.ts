@@ -44,10 +44,10 @@ const SAFE = new Set(["GET", "HEAD", "OPTIONS"]);
  * app.use(csrf({ origin: ["https://admin.example.com"] }));
  * ```
  */
-export function csrf(options: CsrfOptions = {}): Middleware {
+export function csrf(options: CsrfOptions = {}): Middleware<any, { errors: 403 }> {
     const trusted = originMatcher(options.origin, "csrf_origin", "csrf()");
 
-    return markPlainSafe<Middleware>(async function csrf(c, next) {
+    return markPlainSafe<Middleware<any, any>>(async function csrf(c, next) {
         if (SAFE.has(methodOf(c))) return next();
         const origin = headerOf(c, "origin");
         const site = headerOf(c, "sec-fetch-site");

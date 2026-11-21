@@ -26,6 +26,9 @@ export {
     type DevInstalled,
     type MountableApp,
     type OnMethod,
+    type OptionsHandler,
+    type PathParams,
+    type PlainHandler,
     type Resolved,
     type RouteMethod,
 } from "./app.ts";
@@ -41,9 +44,16 @@ export {
     type JsonObject,
     type TypedResponse,
     type Middleware,
+    type MiddlewareDecl,
+    type MiddlewareErrors,
+    type MiddlewareProvides,
     type Next,
     type RedirectStatus,
+    type NoRoute,
+    type RouteInfo,
+    type VarsRoute,
     type VariablesOf,
+    type WithVars,
 } from "./context.ts";
 export { HttpError, type ErrorHandler, type NotFoundHandler } from "./errors.ts";
 export {
@@ -51,6 +61,7 @@ export {
     endpoint,
     mergeRoutes,
     type Endpoint,
+    type EndpointContext,
     type EndpointOptions,
     type JoinPath,
     type MergeRoutes,
@@ -64,14 +75,18 @@ export {
     type TableOptions,
     type TableShape,
     type UnionToIntersection,
+    type WithTableUse,
 } from "./routes.ts";
 export {
     ValidationError,
     type CheckParamTypes,
+    type ContextParams,
     type InferInput,
     type ParamType,
     type ParamTypes,
     type InferOutput,
+    type RouteInfoOf,
+    type RouteOptions,
     type RouteSchemas,
     type StandardIssue,
     type StandardResult,

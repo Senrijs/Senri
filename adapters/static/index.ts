@@ -179,7 +179,7 @@ export function serveStatic(options: ServeStaticOptions): Middleware {
     });
 
     // 開いたファイルが配ってよいものなら、そのレスポンスを返す。だめなら null
-    async function respond(c: Context, handle: FileHandle, file: string, names: string[], method: string): Promise<Response | null> {
+    async function respond(c: Context<any, any>, handle: FileHandle, file: string, names: string[], method: string): Promise<Response | null> {
         const info = await handle.stat({ bigint: true });
         if (!info.isFile()) return null;
 

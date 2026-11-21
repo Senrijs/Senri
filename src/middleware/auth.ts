@@ -23,7 +23,7 @@ export type BasicAuthOptions = {
            * Checks the credentials; only `true` lets the request through. Comparing them safely is up to this function
            * (for example, a password hash function made for this purpose).
            */
-          verifyUser: (username: string, password: string, c: Context) => boolean | Promise<boolean>;
+          verifyUser: (username: string, password: string, c: Context<any, any>) => boolean | Promise<boolean>;
       }
 );
 
@@ -40,7 +40,7 @@ export type BearerAuthOptions = {
     | {
           token?: never;
           /** Checks the token; only `true` lets the request through. Comparing it safely is up to this function. */
-          verifyToken: (token: string, c: Context) => boolean | Promise<boolean>;
+          verifyToken: (token: string, c: Context<any, any>) => boolean | Promise<boolean>;
       }
 );
 
@@ -101,7 +101,7 @@ function parseBasic(header: string | null): [username: string, password: string]
  * app.use("/staff", basicAuth({ verifyUser: (username, password) => checkStaff(username, password) }));
  * ```
  */
-export function basicAuth(options: BasicAuthOptions): Middleware {
+export function basicAuth(options: BasicAuthOptions): Middleware<any, { errors: 401 }> {
     const { username, password, verifyUser } = options;
     const fixed = typeof username === "string" && typeof password === "string" && username !== "" && password !== "" && !username.includes(":");
     if (verifyUser ? typeof verifyUser !== "function" || username !== undefined || password !== undefined : !fixed) {
@@ -111,7 +111,7 @@ export function basicAuth(options: BasicAuthOptions): Middleware {
     const expectedUser = fixed ? encoder.encode(username) : null;
     const expectedPassword = fixed ? encoder.encode(password) : null;
 
-    return markPlainSafe<Middleware>(async function basicAuth(c, next) {
+    return markPlainSafe<Middleware<any, any>>(async function basicAuth(c, next) {
         const credentials = parseBasic(headerOf(c, "authorization"));
         if (!credentials) throw unauthorized(challenge);
         const [user, pass] = credentials;
@@ -152,7 +152,7 @@ const TOKEN = /^[A-Za-z0-9\-._~+/]+=*$/;
  * app.use("/v2", bearerAuth({ verifyToken: (token) => tokens.has(token) }));
  * ```
  */
-export function bearerAuth(options: BearerAuthOptions): Middleware {
+export function bearerAuth(options: BearerAuthOptions): Middleware<any, { errors: 401 }> {
     const { token, verifyToken } = options;
     const list = token === undefined ? [] : typeof token === "string" ? [token] : token;
     const fixed = Array.isArray(list) && list.length > 0 && list.every((t) => typeof t === "string" && TOKEN.test(t));
@@ -162,7 +162,7 @@ export function bearerAuth(options: BearerAuthOptions): Middleware {
     const realm = quotedRealm(options.realm);
     const expected = list.map((t) => encoder.encode(t));
 
-    return markPlainSafe<Middleware>(async function bearerAuth(c, next) {
+    return markPlainSafe<Middleware<any, any>>(async function bearerAuth(c, next) {
         const header = headerOf(c, "authorization");
         // 何も送っていないときは、error を付けない(RFC 6750)
         if (header === null) throw unauthorized(`Bearer ${realm}`);

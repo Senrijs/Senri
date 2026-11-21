@@ -6,8 +6,8 @@ description: "Add middleware by path, to a whole table, or to one route"
 ```ts twoslash
 import { createApp, defineRoutes, endpoint, type Middleware } from "@senrijs/senri";
 type User = { id: string; admin: boolean };
-declare const auth: Middleware<{ user: User }>;
-declare const requireAdmin: Middleware;
+declare const auth: Middleware<{}, { vars: { user: User }; errors: 401 }>;
+declare const requireAdmin: Middleware<{ user: User }, { errors: 403 }>;
 declare function deleteUser(id: string): Promise<void>;
 // ---cut---
 // for every route in the table
@@ -32,9 +32,26 @@ app.routes(adminRoutes);
 | `app.use(mw)` | Every request |
 | `app.use("/admin", mw)` | `/admin` and below |
 | `defineRoutes(prefix, { use: [mw] })` | The routes in that table |
+| `createRouter(prefix, { use: [mw] })` | The routes of that router (including routers nested in it) |
 | `endpoint({ use: [mw] }, handler)` | That route only |
+| `app.get(path, { use: [mw] }, handler)` | That route only |
 
-Middleware in a table's or a route's `use` runs only for requests that matched that route. For a table without a prefix, write `defineRoutes("", { use })`.
+Middleware in a table's, a router's or a route's `use` runs only for requests that matched that route. For a table without a prefix, write `defineRoutes("", { use })`.
+
+```ts twoslash
+import { createApp, createRouter, type Middleware } from "@senrijs/senri";
+type User = { id: string };
+declare const requireUser: Middleware<{}, { vars: { user: User }; errors: 401 }>;
+// ---cut---
+const app = createApp();
+app.get("/me", { use: [requireUser] }, (_, c) => c.get("user"));
+
+const admin = createRouter("/admin", { use: [requireUser] });
+admin.get("/whoami", (_, c) => c.get("user").id);
+app.route(admin);
+```
+
+When another app is mounted with `app.route(prefix, app)`, the `use` of its routes comes along too.
 
 ## Order
 
@@ -48,7 +65,34 @@ If middleware returns a value, it stops before the schemas are checked. The body
 
 ## Types
 
-Put middleware written as `Middleware<{ user: User }>` in `use`, and `c.get("user")` is typed in that route.
+How the middleware is typed decides the type of `c.get()` in the routes whose `use` it is in.
+
+| Middleware type | `c.get("user")` in that route |
+| --- | --- |
+| `Middleware<{}, { vars: { user: User } }>` (always sets it) | `User` |
+| `Middleware<{ user: User }>` (only reads it) | `User \| undefined` |
+
+`vars` is a promise made by whoever declares it. Senri does not check it at runtime, so if the middleware forgets `c.set()`, the type and the value disagree.
+
+The statuses in `errors` show up in the types of the [typed client](/en/docs/typed-api/client).
+
+### What the built-in middleware declares
+
+| Middleware | Variables it sets (`vars`) | Statuses it may throw (`errors`) |
+| --- | --- | --- |
+| `basicAuth()`, `bearerAuth()` | — | 401 |
+| `jwt<T>()` | `jwtPayload: T` | 401 |
+| `rateLimit()` | — | 429 |
+| `bodyLimit()` | — | 400, 413 (only 400 with `onError`) |
+| `uploadLimit()` | — | 400, 413, 415 |
+| `csrf()`, `ipRestriction()` | — | 403 |
+| `timeout()` | — | 504 (or the `status` you give) |
+| `requestId()` | `requestId: string` | — |
+| `languageDetector()` | `language: string` | — |
+
+The `T` of `jwt<T>()` is not checked at runtime either. The signature and the times (`exp` and so on) are checked, but the payload does not have to have the shape of `T`.
+
+The `c` passed to `key` of `rateLimit()` can be typed: `rateLimit<{ user: User }>({ ... })`.
 
 ## Raise a limit
 

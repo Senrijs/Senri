@@ -59,7 +59,40 @@ When a handler returns `c.json(body, status)` or `c.text(body, status)` with a s
 
 - 2xx (such as `c.json(body, 201)`) goes into the successful `data`
 - `c.json(body)` without a status counts as 200. A status set with `c.status()` is not kept in the type
-- Responses from `onError`, middleware and `notFound` are not in the type: their `error` is `unknown`
+- Responses from `onError` and `notFound` that are not covered by "Middleware statuses" below are not in the type: their `error` is `unknown`
+
+## Middleware statuses
+
+Statuses declared by the middleware in a route's `use` (`Middleware<V, { errors: 401 }>`; the [built-in middleware](/en/docs/middleware/route-middleware) declare theirs), and 400 on routes with schemas, are also split by status.
+
+Their bodies come from the server's `app.onError`. The table's type cannot tell what that returns, so give it as the client's second type argument (`unknown` without it).
+
+```ts twoslash title="client.ts"
+// @filename: routes.ts
+import { defineRoutes, HttpError, rateLimit, type Middleware } from "@senrijs/senri";
+type User = { name: string };
+declare const requireUser: Middleware<{}, { vars: { user: User }; errors: 401 }>;
+export const routes = defineRoutes("/api", { use: [requireUser, rateLimit({ windowMs: 60_000, limit: 100 })] })({
+    "GET /me": (_, c) => ({ name: c.get("user").name }),
+});
+export type Api = typeof routes;
+// @filename: client.ts
+// ---cut---
+import { client } from "@senrijs/senri/client";
+import type { Api } from "./routes.ts";
+
+// The server uses the default onError, which answers errors with text
+const api = client<Api, { error: string }>("https://example.com");
+
+const res = await api("GET /api/me");
+if (res.status === 401 || res.status === 429) {
+    res.error;
+    //  ^?
+}
+```
+
+- With the default `onError`, it is `{ error: string }`; with [`problemDetails()`](/en/docs/api/problem), `{ error: ProblemDetails }`
+- This type is your statement about the server. The client does not check it
 
 ## Call without a server
 

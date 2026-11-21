@@ -1,0 +1,90 @@
+---
+title: "0.4.0 への移行"
+description: "0.3.x から 0.4.0 に上げるときに、書き換えるところ"
+---
+
+0.4.0 では、ルートやミドルウェアで決めた型を、`c`(Context)と型付きクライアントまで届くようにしました。型と実行時の値を一致させるため、壊れる変更がいくつか入っています。
+
+| 変わること | 実行時の動き | 影響する人 |
+|---|---|---|
+| [params のスキーマと `c.params`](#params-のスキーマと-cparams) | **変わる**(ミドルウェアと `onError` だけ) | params のスキーマで値を変換するルートがある人 |
+| [`bodyLimit()` が投げるようになった](#bodylimit-が投げるようになった) | **変わる**(`onError` を替えているときだけ) | `bodyLimit()` を `onError` なしで使い、`app.onError` を替えている人 |
+| [つないだアプリのルートの `use`](#つないだアプリのルートの-use) | **変わる**(直した) | `app.route(prefix, app)` でつないだアプリに、ルートの `use` がある人 |
+| [`Context` の型引数](#context-の型引数) | 変わらない(型だけ) | `Context<V, { body: ... }>` や `Handler<P, V, I>` を自分で書いている人 |
+
+<Callout type="warn" title="まず確かめること">
+  `app.route(prefix, app)` でつないだアプリに `endpoint({ use })` や `defineRoutes(prefix, { use })` のルートがあるなら、0.3 まではそのミドルウェアが**動いていませんでした**。0.4.0 からは動きます。認証などが急に効くようになるので、つないだアプリのルートを確かめてください。
+</Callout>
+
+## params のスキーマと `c.params`
+
+params のスキーマで値を変換するルート(`z.coerce.number()` など)で、`c.params` の型が変換後の型になりました。0.3 までは、値は変換後なのに、型は `Record<string, string>` のままでした。
+
+```ts
+app.get("/notes/:id", { params: z.object({ id: z.coerce.number() }) }, (params, c) => {
+    params.id;   // number(今までどおり)
+    c.params.id; // 0.3: 型は string、値は 7 → 0.4.0: 型も number
+});
+```
+
+あわせて、実行時の動きも 1 つ変わりました。
+
+| どこから見た `c.params` | 0.3.x | 0.4.0 |
+|---|---|---|
+| ハンドラーの中 | 変換後の値 | 変換後の値(変わらない) |
+| ミドルウェアの `next()` の前 | パスの文字列 | パスの文字列(変わらない) |
+| ミドルウェアの `next()` のあと・`onError` | 変換後の値 | **パスの文字列** |
+
+ミドルウェアと `onError` の `c.params` の型は `Record<string, string>` なので、値もそれに合わせました。`next()` のあとで変換後の値を使っていたなら、ハンドラーで `c.set()` して渡してください。
+
+### 型のエラーになるところ
+
+- `c.params.id.toUpperCase()` のように、文字列のつもりで書いていたところ。値は数なので、0.3 では実行して初めて落ちていました
+- 文字列以外に変換したルートの `c` を、`(c: Context) => ...` の関数に渡しているところ。その関数の中では `c.params` が `Record<string, string>` に見えるため、型のエラーにしています。関数の側を `(c: Context<any, any>) => ...` にするか、要る値だけを渡してください。Senri の関数(`setCookie(c)`・`getIp(c)` など)は、どのルートの `c` も受けます
+
+`{ id: "int" }` / `{ id: "uint" }`、またはスキーマのないルートの `c.params` は、今までどおり `Record<string, string>` です。
+
+## `bodyLimit()` が投げるようになった
+
+`bodyLimit()` を `onError` なしで使うと、上限を超えたときに `HttpError`(413)を投げるようになりました。数字でない Content-Length の 400 も同じです。0.3 までは、`"413 Content Too Large"` という決まった本文を、その場で返していました。
+
+| | 0.3.x | 0.4.0 |
+|---|---|---|
+| 応答の本文 | いつも `413 Content Too Large` | `app.onError` が作る(既定の `onError` なら同じ本文) |
+
+`app.onError` を替えていなければ、応答は変わりません。替えているなら、413 と 400 もそこを通るようになります。ほかの標準のミドルウェア(`rateLimit()` の 429、`basicAuth()` の 401 など)とそろえました。
+
+前と同じ本文にしたいときは、`onError` を渡します。
+
+```ts
+app.use(bodyLimit({ maxSize: 1024 * 1024, onError: () => new Response("413 Content Too Large", { status: 413 }) }));
+```
+
+## つないだアプリのルートの `use`
+
+`app.route(prefix, app)` で別のアプリをつないだとき、そのアプリのルートに付けたミドルウェア(`endpoint({ use })`・`defineRoutes(prefix, { use })`)が落ちていました。0.4.0 からは、一緒につながって動きます。
+
+`createRouter()` で作ったルーターは、もともと影響を受けません。
+
+## `Context` の型引数
+
+`Context` の 2 つ目の型引数は、`c.valid()` で読める値の型でした。0.4.0 からは、ルートが `c` に足すものをまとめた形(`RouteInfo`)です。
+
+```ts
+// 0.3.x
+type C = Context<Vars, { body: Note }>;
+
+// 0.4.0
+type C = Context<Vars, { valid: { body: Note }; params: Record<string, string>; vars: {} }>;
+```
+
+`Handler<P, V, I>` の 3 つ目も同じです。ふつうはハンドラーの `c` に型が付くので、自分で書くことはあまりありません。
+
+## 新しくできること(壊れない)
+
+- ミドルウェアが「必ず入れる変数」と「投げうる状態コード」を宣言できます: `Middleware<{}, { vars: { user: User }; errors: 401 }>`。ルートの `use` に入れると、`c.get("user")` から `undefined` が消えます([ミドルウェアを書く](/docs/middleware/writing))
+- `app.get(path, { use }, handler)` と `createRouter(prefix, { use })` で、ルートだけにミドルウェアを付けられます([ルートごとに付ける](/docs/middleware/route-middleware))
+- 型付きクライアントに、ミドルウェアの状態コード(401・429 など)とスキーマの 400 が出ます。本文の型は `client<Api, { error: E }>()` で渡します([型付きクライアント](/docs/typed-api/client))
+- 標準のミドルウェアに宣言が付きました(`rateLimit()` の 429、`jwt()` の `jwtPayload` など)
+
+`Middleware<{ user: User }>` と書いた今までのミドルウェアは、そのまま動きます。`use` に入れたルートの `c.get("user")` は、今までどおり `User | undefined` です。

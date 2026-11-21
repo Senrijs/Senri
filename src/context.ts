@@ -122,35 +122,129 @@ export type VariablesOf<E> =
 /** The bindings type (`c.env`) of an app type: `E["Bindings"]` in the `{ Bindings, Variables }` form, otherwise `unknown`. */
 export type BindingsOf<E> = 0 extends 1 & E ? any : E extends { Bindings: infer B extends object } ? B : unknown;
 
+// アプリの型 V に、変数を足す({ Bindings, Variables } の形なら Variables に足す)。X が {} なら V のまま
+/** The app type `V` with the variables `X` added (to `Variables` in the `{ Bindings, Variables }` form). */
+export type WithVars<V, X> = {} extends X
+    ? V
+    : 0 extends 1 & V
+      ? V
+      : V extends { Bindings: object } | { Variables: object }
+        ? Omit<V, "Variables"> & { Variables: VariablesOf<V> & X }
+        : V & X;
+
+// ルートが Context の型に足すもの(app.get / endpoint() などが、ルートごとに決める)
+// - valid: スキーマで確かめた値(c.valid() で読む)
+// - params: c.params の型(params のスキーマがあれば変換後、なければ Record<string, string>)
+// - vars: ルートの use のミドルウェアが「必ず入れる」と宣言した変数(c.get() に undefined が付かない)
+// 3 つとも必ず書く形にする。条件型で読むと、TypeScript が R を「反変」と見て、
+// ルートの c を (c: Context) => ... の関数に渡せなくなるため(R["vars"] のように直接読めば、共変になる)
+/**
+ * What a route adds to the type of its context (`Context<V, R>`). Set by `app.get`, `endpoint()` and the like.
+ * - `valid`: the values validated by the route's schemas, read with `c.valid()`
+ * - `params`: the type of `c.params` (the `params` schema's output, or `Record<string, string>`)
+ * - `vars`: variables that the route's middleware declare they always set, so `c.get()` has no `undefined`
+ *
+ * A route's context can be passed where a plain `Context` is expected, unless its `params` schema changes the values
+ * to something other than strings (then `c.params` is not a `Record<string, string>`).
+ */
+export type RouteInfo = { valid: object; params: unknown; vars: object };
+
+/** The {@link RouteInfo} of a context outside any route (middleware, `onError`) or of a route without options. */
+export type NoRoute = { valid: {}; params: Record<string, string>; vars: {} };
+
+// ルートのオプションのないハンドラーで、表やルーターの use が「必ず入れる」変数だけを足したもの
+/** The {@link RouteInfo} of a route without options, under middleware that always sets the variables `X`. */
+export type VarsRoute<X extends object> = { valid: {}; params: Record<string, string>; vars: X };
+
 // V はアプリの型(上の2通りのどちらか)。createApp<...>() で決める
 // 既定の any は「どのアプリでも使える」という意味。logger() のような汎用ミドルウェアのため
-// I はスキーマで確かめた値の型(c.valid() で読めるもの)。スキーマを渡したルートだけ決まる(src/validate.ts)
+// R はルートが足すもの(RouteInfo)。c.params の型は P とは別に R で決める("int" の params は、第1引数だけ数になるので)
 /**
  * A route handler. Receives the path parameters and the context, and returns a {@link HandlerResult}.
- * `P` is the parameters, `V` the app's type, and `I` the values validated by the route's schemas (`c.valid()`).
+ * `P` is the parameters, `V` the app's type, and `R` what the route adds to the context ({@link RouteInfo}).
  */
-export type Handler<P = Record<string, string>, V extends object = any, I extends object = {}> = (
+export type Handler<P = Record<string, string>, V extends object = any, R extends RouteInfo = NoRoute> = (
     params: P,
-    c: Context<V, I>,
+    c: Context<V, R>,
 ) => HandlerResult | Promise<HandlerResult>;
 
 /** Runs the rest of the chain and returns its response. Throws if called twice. */
 export type Next = () => Promise<Response>;
 
+// ミドルウェアの宣言(型だけ。実行時には何もない)
+// - vars: next() の前に必ず c.set() する変数。ルートの use に入れると、そのルートの c.get() から undefined が消える
+// - errors: 投げうる状態コード(HttpError)。本文は app.onError が作る。型付きクライアントの型に出る
+// vars は宣言した人の約束で、Senri は実行時に確かめない
+/**
+ * What a middleware declares about itself, for types only (see {@link Middleware}).
+ * - `vars`: variables it always sets with `c.set()` before calling `next()`
+ * - `errors`: the statuses it may respond with by throwing an {@link HttpError} (the body comes from `app.onError`)
+ *
+ * Senri does not check `vars` at runtime: it is a promise made by whoever declares it.
+ */
+export type MiddlewareDecl = { vars?: object; errors?: number };
+
 /**
  * Middleware. Call `next()` to run the rest of the chain, then either return nothing to use its response,
  * or return a value to respond with that instead. Returning a value without calling `next()` stops the chain there.
  * Returning nothing without calling `next()` is an error.
+ *
+ * `V` is the app's type the middleware reads. `D` declares what it adds ({@link MiddlewareDecl}): put it in a route's
+ * `use`, and the variables in `D["vars"]` are typed in that route's `c.get()` without `undefined`, and the statuses in
+ * `D["errors"]` are typed in a typed client. `D` is not checked at runtime: if the middleware does not set a declared
+ * variable, the type and the value disagree.
+ *
+ * @example
+ * ```ts
+ * import { HttpError, type Middleware } from "@senrijs/senri";
+ *
+ * const requireUser: Middleware<{}, { vars: { user: User }; errors: 401 }> = async (c, next) => {
+ *     const user = await findUser(c);
+ *     if (!user) throw new HttpError(401, "401 Unauthorized");
+ *     c.set("user", user);
+ *     return next();
+ * };
+ * ```
  */
-export type Middleware<V extends object = any> = (
-    c: Context<V>,
+export type Middleware<V extends object = any, D extends MiddlewareDecl = {}> = ((
+    c: Context<WithVars<V, D extends { vars: infer X extends object } ? X : {}>>,
     next: Next,
-) => HandlerResult | void | Promise<HandlerResult | void>;
+) => HandlerResult | void | Promise<HandlerResult | void>) & {
+    /** Type information only; not present at runtime. */
+    readonly "~middleware"?: D;
+};
+
+/** Turns a union into an intersection (`A | B` → `A & B`). */
+export type UnionToIntersection<U> = (U extends unknown ? (x: U) => void : never) extends (x: infer I) => void ? I : never;
+
+// use に並べたミドルウェアが読む変数の型を合わせる(Middleware<{ user: User }> なら { user: User })
+// 「あるかもしれない」変数として足す(c.get() には undefined が付く)。型を決めていないもの(logger() など)は何も足さない
+/** The variables read by a list of middleware: `Middleware<{ user: User }>` adds `{ user: User }` (possibly unset). */
+export type MiddlewareVars<U> = U extends readonly (infer M)[]
+    ? [M] extends [never]
+        ? {}
+        : UnionToIntersection<M extends (c: Context<infer X, any>, next: any) => any ? (0 extends 1 & X ? {} : VariablesOf<X>) : {}>
+    : {};
+
+// 宣言(Middleware<V, D> の D)を読む
+type DeclOf<M> = M extends { readonly "~middleware"?: infer D } ? D : {};
+
+// use に並べたミドルウェアが「必ず入れる」と宣言した変数
+/** The variables a list of middleware declare they always set (`Middleware<V, { vars: ... }>`). */
+export type MiddlewareProvides<U> = U extends readonly (infer M)[]
+    ? [M] extends [never]
+        ? {}
+        : UnionToIntersection<M extends unknown ? (DeclOf<M> extends { vars: infer X extends object } ? X : {}) : never>
+    : {};
+
+// use に並べたミドルウェアが投げうる状態コード
+/** The statuses a list of middleware declare they may respond with (`Middleware<V, { errors: ... }>`). */
+export type MiddlewareErrors<U> = U extends readonly (infer M)[] ? (M extends unknown ? (DeclOf<M> extends { errors: infer E extends number } ? E : never) : never) : never;
 
 // スキーマで確かめた値(src/validate.ts が入れる)。c.valid() で読む
-const validated = new WeakMap<Context, Record<string, unknown>>();
+const validated = new WeakMap<Context<any, any>, Record<string, unknown>>();
 
-export function setValidated(c: Context, target: string, value: unknown): void {
+export function setValidated(c: Context<any, any>, target: string, value: unknown): void {
     let values = validated.get(c);
     if (!values) validated.set(c, (values = {}));
     values[target] = value;
@@ -158,20 +252,20 @@ export function setValidated(c: Context, target: string, value: unknown): void {
 
 // app.fetch に渡された元のリクエストと2つ目の引数を読む(Context の外から。@senrijs/senri/ip で使う)
 // Context のメソッドにしないのは、使わないアプリのバンドルに入れないため
-export let connectionOf: (c: Context) => { req: Request; info: unknown };
+export let connectionOf: (c: Context<any, any>) => { req: Request; info: unknown };
 
 // c.req を最初に読んだときに本物の Request を作る Context(Node のアダプターだけが使う)
 export let lazyContext: (source: LazyRequest, info: unknown) => Context;
 
 // ハンドラーの戻り値を、Response を作らずに書くための中身にする(Node のアダプターだけが使う)
 // 文字列と、素のオブジェクト・配列だけ。それ以外と、Response なら投げる status は null(今までどおり Response にする)
-export let plainOf: (c: Context, value: unknown) => PlainResponse | null;
+export let plainOf: (c: Context<any, any>, value: unknown) => PlainResponse | null;
 
 /**
  * The per-request context passed to handlers and middleware as `c`.
  * Holds the request, path parameters, variables, and the status and headers to add to the response.
  */
-export class Context<V extends object = any, I extends object = {}> {
+export class Context<V extends object = any, out R extends RouteInfo = NoRoute> {
     // ふつうのプロパティ(ここでは定義だけ)。Bun / Deno / Workers / ブラウザでは、読み方が速さに影響しないように getter にしない
     /** The request. Middleware may replace it (for example, with a body that has a size limit). */
     declare req: Request;
@@ -200,11 +294,15 @@ export class Context<V extends object = any, I extends object = {}> {
     /** The matched route's pattern (`"/users/:id"`), or `undefined` if none matched. Set before middleware runs. */
     route: string | undefined = undefined;
     // パスパラメーター。ハンドラーでは第1引数でも受け取れる
+    // 型はルートが決める(params のスキーマがあれば変換後の値、なければパスから取ったもの。ミドルウェアでは Record<string, string>)
+    // スキーマで変換した値が入るのは、ハンドラーが動いている間だけ。終わったら文字列に戻す(src/validate.ts)
     /**
      * The path parameters. Handlers also receive them as the first argument.
-     * Replaced by the validated value when the route has a `params` schema.
+     * When the route has a `params` schema, this is the schema's output while the handler runs (and so is its type
+     * in the handler); before and after that (in middleware and `onError`), it is the strings from the path.
+     * With `{ id: "int" }`, it keeps the strings.
      */
-    params: Record<string, string> = {};
+    params: R["params"] = {} as R["params"];
     #timings: Timing[] | undefined;
 
     // app.fetch に渡された元のリクエストと2つ目の引数(@senrijs/senri/ip の getIp で使う)
@@ -318,25 +416,33 @@ export class Context<V extends object = any, I extends object = {}> {
      * A value validated by the route's schema: `c.valid("query")` or `c.valid("body")`.
      * Throws if the route has no schema for `target`.
      */
-    valid<K extends keyof I & string>(target: K): I[K] {
+    valid<K extends keyof R["valid"] & string>(target: K): R["valid"][K] {
         const values = validated.get(this);
         if (!values || !(target in values)) {
             throw senriError("no_valid", `c.valid("${target}"): no schema for ${target}`);
         }
-        return values[target] as I[K];
+        return values[target] as R["valid"][K];
     }
 
     // ミドルウェアからハンドラーへ値を渡す(ログインしたユーザーなど)
     /** Sets a variable for later middleware and the handler (the logged-in user, for example). */
-    set<K extends keyof VariablesOf<V> & string>(key: K, value: VariablesOf<V>[K]): this {
+    set<K extends keyof (VariablesOf<V> & R["vars"]) & string>(key: K, value: (VariablesOf<V> & R["vars"])[K]): this {
         (this.#vars ??= new Map()).set(key, value);
         return this;
     }
 
     // set していなければ undefined(ミドルウェアが動かなかったときなど)
+    // 1 つ目: ルートの use のミドルウェアが「必ず入れる」と宣言したもの。2 つ目: アプリの型にあるもの(入っていなければ undefined)
+    // (条件型の戻り値にすると、R の変性が崩れるので、オーバーロードに分ける)
+    /**
+     * Reads a variable that the route's middleware declare they always set (`Middleware<V, { vars }>` in `use`),
+     * typed without `undefined`. That declaration is not checked at runtime.
+     */
+    get<K extends keyof R["vars"] & string>(key: K): R["vars"][K];
     /** Reads a variable set with {@link Context.set}, or `undefined` if it was not set. */
-    get<K extends keyof VariablesOf<V> & string>(key: K): VariablesOf<V>[K] | undefined {
-        return this.#vars?.get(key) as VariablesOf<V>[K] | undefined;
+    get<K extends keyof VariablesOf<V> & string>(key: K): VariablesOf<V>[K] | undefined;
+    get(key: string): unknown {
+        return this.#vars?.get(key);
     }
 
     // --- クエリ ---

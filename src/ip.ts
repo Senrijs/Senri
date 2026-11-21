@@ -44,7 +44,7 @@ import { headerOf } from "./plain.ts";
  * app.get("/ip", (_, c) => getIp(c) ?? "unknown");
  * ```
  */
-export function getIp(c: Context): string | null {
+export function getIp(c: Context<any, any>): string | null {
     const { req, info } = connectionOf(c);
     return clientIp(req, info);
 }
@@ -113,7 +113,7 @@ function forwardedValues(header: string): string[] {
  * app.get("/ip", (_, c) => clientIp(c) ?? "unknown");
  * ```
  */
-export function trustProxy(options: TrustProxyOptions): (c: Context) => string | null {
+export function trustProxy(options: TrustProxyOptions): (c: Context<any, any>) => string | null {
     const { hops, proxies } = options;
     const ranges = Array.isArray(proxies) ? proxies.map((proxy: string) => parseRange(proxy)) : undefined;
     const valid =

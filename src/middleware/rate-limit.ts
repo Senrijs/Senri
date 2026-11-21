@@ -25,20 +25,20 @@ export type RateLimitStore = {
 };
 
 /** Options for {@link rateLimit}. */
-export type RateLimitOptions = {
+export type RateLimitOptions<V extends object = any> = {
     /** The length of the window, in milliseconds. */
     windowMs: number;
     /** How many requests each key may make in a window. */
     limit: number;
     // クライアントの IP を返す関数。プロキシの後ろでは trustProxy() で作った関数を渡す
     /** Returns the client's IP. Default `getIp`. Behind a proxy, pass a function made with `trustProxy()`. */
-    ip?: (c: Context) => string | null;
+    ip?: (c: Context<any, any>) => string | null;
     // 数える単位。null を返すと制限しない
     /**
      * Returns what to count by, such as a user ID, instead of the IP. Requests with the same key share a limit, and
      * `null` lets the request through without counting it.
      */
-    key?: (c: Context) => string | null | Promise<string | null>;
+    key?: (c: Context<V, any>) => string | null | Promise<string | null>;
     /** Where to keep the counts. Default: in memory, in this process. */
     store?: RateLimitStore;
     // メモリの保存先の上限
@@ -115,7 +115,7 @@ function ipKey(text: string | null): string | null {
  * // app.use(rateLimit({ windowMs: 60_000, limit: 100, key: (c) => c.get("userId") ?? null }));
  * ```
  */
-export function rateLimit(options: RateLimitOptions): Middleware {
+export function rateLimit<V extends object = any>(options: RateLimitOptions<V>): Middleware<V, { errors: 429 }> {
     const { windowMs, limit, store: custom } = options;
     const maxKeys = options.maxKeys ?? 100_000;
     if (!positive(windowMs) || !Number.isInteger(limit) || limit <= 0 || !Number.isInteger(maxKeys) || maxKeys <= 0) {
@@ -124,12 +124,12 @@ export function rateLimit(options: RateLimitOptions): Middleware {
     if (custom !== undefined && typeof custom.increment !== "function") throw senriError("rate_limit_options", "rateLimit(): invalid store");
     const store = custom ?? memoryStore(maxKeys);
     const ip = options.ip ?? getIp;
-    const keyOf = options.key ?? ((c: Context) => ipKey(ip(c)));
+    const keyOf = options.key ?? ((c: Context<any, any>) => ipKey(ip(c)));
     const headers = options.headers ?? true;
     const policy = `"default";q=${limit};w=${Math.max(Math.ceil(windowMs / 1000), 1)}`;
     let warned = false;
 
-    return markPlainSafe<Middleware>(async function rateLimit(c, next) {
+    return markPlainSafe<Middleware<any, any>>(async function rateLimit(c, next) {
         const pending = keyOf(c);
         const key = pending instanceof Promise ? await pending : pending;
         if (key === null) {

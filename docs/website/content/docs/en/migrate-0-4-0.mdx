@@ -1,0 +1,90 @@
+---
+title: "Migrating to 0.4.0"
+description: "What to change when upgrading from 0.3.x to 0.4.0"
+---
+
+In 0.4.0, the types decided by routes and middleware reach `c` (the context) and the typed client. To keep types and runtime values in agreement, a few changes break existing code.
+
+| Change | Runtime behavior | Who is affected |
+|---|---|---|
+| [`params` schemas and `c.params`](#params-schemas-and-cparams) | **Changes** (in middleware and `onError` only) | Routes whose `params` schema converts the values |
+| [`bodyLimit()` throws](#bodylimit-throws) | **Changes** (only with your own `onError`) | Apps that use `bodyLimit()` without `onError` and replace `app.onError` |
+| [The `use` of a mounted app's routes](#the-use-of-a-mounted-apps-routes) | **Changes** (fixed) | Apps mounted with `app.route(prefix, app)` that have route-level `use` |
+| [The type arguments of `Context`](#the-type-arguments-of-context) | Does not change (types only) | Code that writes `Context<V, { body: ... }>` or `Handler<P, V, I>` |
+
+<Callout type="warn" title="Check this first">
+  If an app mounted with `app.route(prefix, app)` has routes with `endpoint({ use })` or `defineRoutes(prefix, { use })`, that middleware **did not run** up to 0.3. From 0.4.0 it runs. Authentication and the like start to apply, so check the routes of mounted apps.
+</Callout>
+
+## `params` schemas and `c.params`
+
+On routes whose `params` schema converts the values (such as `z.coerce.number()`), `c.params` is now typed as the converted value. Up to 0.3, the value was converted but the type stayed `Record<string, string>`.
+
+```ts
+app.get("/notes/:id", { params: z.object({ id: z.coerce.number() }) }, (params, c) => {
+    params.id;   // number (as before)
+    c.params.id; // 0.3: typed string, value 7 → 0.4.0: typed number too
+});
+```
+
+One runtime behavior changed with it.
+
+| `c.params` seen from | 0.3.x | 0.4.0 |
+|---|---|---|
+| The handler | The converted value | The converted value (unchanged) |
+| Middleware, before `next()` | The strings from the path | The strings from the path (unchanged) |
+| Middleware after `next()`, and `onError` | The converted value | **The strings from the path** |
+
+`c.params` in middleware and `onError` is typed `Record<string, string>`, so the value now matches it. If you used the converted value after `next()`, pass it from the handler with `c.set()`.
+
+### Where type errors appear
+
+- Code that treats the value as a string, such as `c.params.id.toUpperCase()`. The value is a number, so in 0.3 it failed only at runtime
+- Passing the `c` of a route that converts to something other than strings to a `(c: Context) => ...` function. Inside that function `c.params` looks like a `Record<string, string>`, so this is a type error. Type the function as `(c: Context<any, any>) => ...`, or pass it only the values it needs. Senri's functions (`setCookie(c)`, `getIp(c)` and so on) accept the `c` of any route
+
+With `{ id: "int" }` / `{ id: "uint" }`, or without a schema, `c.params` is still `Record<string, string>`.
+
+## `bodyLimit()` throws
+
+Without `onError`, `bodyLimit()` now throws an `HttpError` (413) when the body is over the limit, and the same for the 400 of a Content-Length that is not a number. Up to 0.3, it answered right there with the fixed body `"413 Content Too Large"`.
+
+| | 0.3.x | 0.4.0 |
+|---|---|---|
+| The response body | Always `413 Content Too Large` | Made by `app.onError` (the same body with the default `onError`) |
+
+If you have not replaced `app.onError`, the response is the same. If you have, 413 and 400 now go through it too, like the other built-in middleware (429 from `rateLimit()`, 401 from `basicAuth()` and so on).
+
+To keep the old body, pass `onError`.
+
+```ts
+app.use(bodyLimit({ maxSize: 1024 * 1024, onError: () => new Response("413 Content Too Large", { status: 413 }) }));
+```
+
+## The `use` of a mounted app's routes
+
+When another app was mounted with `app.route(prefix, app)`, the middleware on its routes (`endpoint({ use })`, `defineRoutes(prefix, { use })`) was dropped. From 0.4.0 it comes along and runs.
+
+Routers made with `createRouter()` were not affected.
+
+## The type arguments of `Context`
+
+The second type argument of `Context` used to be the type of what `c.valid()` reads. From 0.4.0, it is what the route adds to `c` (`RouteInfo`).
+
+```ts
+// 0.3.x
+type C = Context<Vars, { body: Note }>;
+
+// 0.4.0
+type C = Context<Vars, { valid: { body: Note }; params: Record<string, string>; vars: {} }>;
+```
+
+The third argument of `Handler<P, V, I>` changed the same way. The `c` of a handler is usually typed for you, so you rarely write these.
+
+## New in 0.4.0 (not breaking)
+
+- Middleware can declare the variables it always sets and the statuses it may throw: `Middleware<{}, { vars: { user: User }; errors: 401 }>`. In the routes whose `use` it is in, `c.get("user")` has no `undefined` ([Writing middleware](/en/docs/middleware/writing))
+- `app.get(path, { use }, handler)` and `createRouter(prefix, { use })` add middleware to routes only ([Per-route middleware](/en/docs/middleware/route-middleware))
+- The typed client has the middleware's statuses (401, 429 and so on) and 400 from schemas. Give their body type as `client<Api, { error: E }>()` ([Typed client](/en/docs/typed-api/client))
+- The built-in middleware declare theirs (429 for `rateLimit()`, `jwtPayload` for `jwt()` and so on)
+
+Existing middleware written as `Middleware<{ user: User }>` keeps working. In the routes whose `use` it is in, `c.get("user")` is still `User | undefined`.

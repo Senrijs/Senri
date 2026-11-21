@@ -121,3 +121,25 @@ claim("typed-api/openapi#only-table", "表にない app.get() のルートは入
     const doc = (await quiet(() => openAPI(routes, { info: { title: "t", version: "1" } }))) as { paths: Record<string, unknown> };
     expect(Object.keys(doc.paths)).toEqual(["/a"]);
 });
+
+// ---------- 0.4.0: ミドルウェアの状態コード ----------
+import { HttpError, rateLimit, type Middleware } from "../../src/index.ts";
+claim("typed-api/client#middleware-errors", "use のミドルウェアが投げた状態コードの本文は、サーバーの onError が作ったもの", async () => {
+    const requireUser: Middleware<{}, { vars: { user: { name: string } }; errors: 401 }> = async (c, next) => {
+        if (!c.req.headers.get("x-user")) throw new HttpError(401, "401 Unauthorized");
+        c.set("user", { name: "alice" });
+        return next();
+    };
+    const routes = defineRoutes("/api", { use: [requireUser, rateLimit({ windowMs: 60_000, limit: 1, key: () => "k" })] })({
+        "GET /me": (_, c) => ({ name: c.get("user").name }),
+    });
+    const app = createApp();
+    app.routes(routes);
+    const api = client<typeof routes, { error: string }>("http://localhost", { fetch: (r) => app.fetch(r) });
+    const denied = await api("GET /api/me");
+    expect([denied.status, denied.error]).toEqual([401, "401 Unauthorized"]);
+    const ok = await api("GET /api/me", { headers: { "x-user": "a" } });
+    expect(ok.ok && ok.data).toEqual({ name: "alice" });
+    const limited = await api("GET /api/me", { headers: { "x-user": "a" } });
+    expect([limited.status, limited.error]).toEqual([429, "429 Too Many Requests"]);
+});

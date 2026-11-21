@@ -94,7 +94,7 @@ const SOURCES: readonly LanguageSource[] = ["querystring", "cookie", "header"];
  * app.get("/", (_, c) => (c.get("language") === "ja" ? "こんにちは" : "Hello"));
  * ```
  */
-export function languageDetector(options: LanguageDetectorOptions): Middleware {
+export function languageDetector(options: LanguageDetectorOptions): Middleware<any, { vars: LanguageVariables }> {
     const { supportedLanguages: supported, fallbackLanguage: fallback } = options;
     const order = options.order ?? SOURCES;
     const query = options.lookupQueryString ?? "lang";
@@ -112,7 +112,7 @@ export function languageDetector(options: LanguageDetectorOptions): Middleware {
         cookie !== "";
     if (!valid) throw senriError("language_detector_options", "languageDetector(): invalid options");
 
-    return markPlainSafe<Middleware>(async function languageDetector(c, next) {
+    return markPlainSafe<Middleware<any, any>>(async function languageDetector(c, next) {
         let language: string | null = null;
         let readHeader = false;
         for (const source of order) {

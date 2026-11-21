@@ -18,10 +18,12 @@
 // - サーバーの表(defineRoutes() の戻り値)の型だけを使う。本体の実行時のコードは読まない(このファイルだけで動く)
 // - 呼び方は、表のキーと同じ "GET /users/:id"。Proxy を使わない
 // - 成功でなくても例外にしない(ネットワークのエラーと、本文が壊れていたときだけ例外)
-// - レスポンスの型は成功の型だけ(ハンドラーの戻り値)。onError やミドルウェアの応答は error(unknown)
+// - レスポンスの型は、成功の型(ハンドラーの戻り値)と、ルートが宣言した状態コード(c.json(body, 404)・responses・
+//   use のミドルウェアの errors・スキーマの 400)。onError が作る本文の型は、client<Api, { error: E }>() の E(既定は unknown)
 // - クライアントの型は、JSON にしたあとの形(Date → string など)
 import type { ExtractParams, Simplify } from "./router.ts";
-import type { InferInput } from "./validate.ts";
+import type { InferInput, StandardSchemaV1 } from "./validate.ts";
+import type { MiddlewareErrors } from "./context.ts";
 
 // --- 型 ---
 
@@ -134,18 +136,34 @@ export type SchemaErrors<Sch> = Sch extends { responses: infer M } ? { [C in key
 /** The `status` of a result type. */
 export type StatusOf<B> = B extends { status: infer S } ? S : never;
 
-/** The results of the route `K` for the statuses it declares (other than 2xx). */
-export type ClientErrors<A, K extends keyof A> = TypedErrors<TypedOf<ReturnOf<A[K]>>> | SchemaErrors<SchemasOf<A[K]>>;
+// app.onError を通る状態コード(本文は E)
+// - use のミドルウェアが宣言した errors(Middleware<V, { errors: 401 }>)
+// - スキーマ(params のスキーマ・query・body)のあるルートの 400(ValidationError)
+/** The statuses of the route options `S` whose body comes from `app.onError`: the middleware's `errors`, and 400 with schemas. */
+export type ThrownStatus<S> =
+    | MiddlewareErrors<S extends { use: infer U } ? U : never>
+    | (S extends { query: StandardSchemaV1 } | { body: StandardSchemaV1 } | { params: StandardSchemaV1 } ? 400 : never);
+
+/**
+ * The results of the route `K` of the table `A` for the statuses it declares (other than 2xx). `E` is the body
+ * `app.onError` returns, for statuses declared by middleware and for 400 from validation.
+ */
+export type ClientErrors<A, K extends keyof A, E = unknown> =
+    | TypedErrors<TypedOf<ReturnOf<A[K]>>>
+    | SchemaErrors<SchemasOf<A[K]>>
+    | ErrorBranch<ThrownStatus<SchemasOf<A[K]>>, E>;
 
 /**
  * The result of a call to the route `K` of the table `A`. Check `ok` (or `status`): `data` is typed for 2xx;
  * for statuses the route declares (`c.json(body, 404)`, or `endpoint({ responses })`), `error` is typed by status;
- * for any other status (`onError`, middleware, `notFound`), `error` is `unknown`.
+ * for statuses its middleware declare (`Middleware<V, { errors: 401 }>`) and 400 on routes with schemas, `error` is
+ * `E`, the body `app.onError` returns (`client<Api, { error: E }>()`, default `unknown`);
+ * for any other status (`notFound`, undeclared errors), `error` is `unknown`.
  */
-export type ClientResultOf<A, K extends keyof A> =
+export type ClientResultOf<A, K extends keyof A, E = unknown> =
     | { ok: true; status: SuccessStatus; data: ClientData<A, K>; error: undefined; response: Response }
-    | ClientErrors<A, K>
-    | ClientErrorResult<Exclude<ErrorStatus, StatusOf<ClientErrors<A, K>>>, unknown>;
+    | ClientErrors<A, K, E>
+    | ClientErrorResult<Exclude<ErrorStatus, StatusOf<ClientErrors<A, K, E>>>, unknown>;
 
 /** The path of a route key (`"GET /users/:id"` → `"/users/:id"`). */
 export type PathOf<K> = K extends `${string} ${infer Path}` ? Path : never;
@@ -185,8 +203,19 @@ export type ClientResult<D> =
     | { ok: true; status: number; data: D; error: undefined; response: Response }
     | { ok: false; status: number; data: undefined; error: unknown; response: Response };
 
-/** A typed client for the table `A`: call it with a route key such as `"GET /users/:id"`. */
-export type Client<A> = <K extends keyof A & string>(route: K, ...args: InputArgs<A, K>) => Promise<ClientResultOf<A, K>>;
+// サーバーについて、表の型からは分からないこと(client の 2 つ目の型引数)
+/**
+ * What the client is told about the server beyond the table's type (the second type argument of {@link client}).
+ * - `error`: the body that the server's `app.onError` returns, for statuses declared by middleware and 400 from
+ *   validation. Default `unknown`. With the default `onError`, it is a string (`"401 Unauthorized"`); with
+ *   `problemDetails()` from `@senrijs/senri/problem`, a `ProblemDetails`. It is not checked: it is your statement about the server.
+ */
+export type ServerInfo = { error?: unknown };
+/** The `error` of a {@link ServerInfo}, or `unknown`. */
+export type ErrorBodyOf<O> = O extends { error: infer E } ? E : unknown;
+
+/** A typed client for the table `A`: call it with a route key such as `"GET /users/:id"`. `O` is the {@link ServerInfo}. */
+export type Client<A, O extends ServerInfo = {}> = <K extends keyof A & string>(route: K, ...args: InputArgs<A, K>) => Promise<ClientResultOf<A, K, ErrorBodyOf<O>>>;
 
 /** Options for {@link client}. */
 export type ClientOptions = {
@@ -270,8 +299,12 @@ async function readBody(res: Response, method: string): Promise<unknown> {
  * - The result is `{ ok, status, data, error, response }`. It does not throw for responses that are not 2xx;
  *   it throws only if the request fails (network errors) or a JSON body cannot be parsed.
  * - The body is read by `Content-Type`: JSON is parsed, text is a string, anything else is a `Blob`.
- * - `data` is typed from the handler's return value, after JSON (`Date` becomes `string`). Responses from
- *   `onError`, middleware or `notFound` are not typed: they are in `error` as `unknown`.
+ * - `data` is typed from the handler's return value, after JSON (`Date` becomes `string`).
+ * - `error` is typed by status for statuses the route declares: `c.json(body, 404)`, `endpoint({ responses })`, the
+ *   `errors` of the middleware in its `use` (`Middleware<V, { errors: 401 }>`, including the built-in `rateLimit()`
+ *   and the like), and 400 on routes with schemas. For the last two, the body comes from the server's `app.onError`:
+ *   give its type as `client<Api, { error: E }>()` (default `unknown`). Other responses (`notFound`, undeclared
+ *   errors) are in `error` as `unknown`.
  *
  * @param baseUrl The server's URL, such as `"https://example.com"` or `"https://example.com/api"`.
  *
@@ -280,15 +313,17 @@ async function readBody(res: Response, method: string): Promise<unknown> {
  * import { client } from "@senrijs/senri/client";
  * import type { Api } from "../server/routes.ts";
  *
- * const api = client<Api>("https://example.com", {
+ * // The server uses the default onError, which answers errors with text
+ * const api = client<Api, { error: string }>("https://example.com", {
  *     headers: () => ({ authorization: `Bearer ${getToken()}` }),
  * });
  * const res = await api("POST /users", { body: { name: "a" } });
+ * if (res.status === 401) console.log(res.error); // string
  * if (!res.ok) throw new Error(`failed: ${res.status}`);
  * console.log(res.data.created);
  * ```
  */
-export function client<A>(baseUrl: string, options: ClientOptions = {}): Client<A> {
+export function client<A, O extends ServerInfo = {}>(baseUrl: string, options: ClientOptions = {}): Client<A, O> {
     const base = trimTrailingSlashes(baseUrl);
     const call = async (route: string, input: (CallOptions & { params?: Record<string, unknown>; query?: Record<string, QueryValue>; body?: unknown }) = {}) => {
         const space = route.indexOf(" ");
@@ -320,5 +355,5 @@ export function client<A>(baseUrl: string, options: ClientOptions = {}): Client<
             ? { ok: true, status: response.status, data: read, error: undefined, response }
             : { ok: false, status: response.status, data: undefined, error: read, response };
     };
-    return call as unknown as Client<A>;
+    return call as unknown as Client<A, O>;
 }

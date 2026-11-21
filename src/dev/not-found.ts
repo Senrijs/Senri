@@ -12,7 +12,7 @@ import { serverMessage } from "./server-messages.ts";
 import { suggest } from "./suggest.ts";
 
 // lang: 開発用の文言を出すときだけ呼ぶ(呼んだら、応答が Accept-Language で変わる)
-export function devNotFound(c: Context, routes: Route[], lang: () => Lang): HandlerResult | Promise<HandlerResult> {
+export function devNotFound(c: Context<any, any>, routes: Route[], lang: () => Lang): HandlerResult | Promise<HandlerResult> {
     // ルートと同じく、デコード・正規化したパスで比べる
     // デコードできないパスでミドルウェアが c.notFound() を呼ぶと、c.path は HttpError 400 を投げる
     // パスを出せないので、本番と同じ固定の 404 にする

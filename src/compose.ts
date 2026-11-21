@@ -3,7 +3,7 @@ import { markConversionError, senriError, type ConversionOrigin } from "./errors
 import { PlainResponse } from "./plain.ts";
 
 // 返した値をレスポンスにする。失敗したら、どこが返した値だったかをエラーに覚えさせてから投げ直す
-export function toResponseOf(c: Context, value: HandlerResult, origin: ConversionOrigin): Response {
+export function toResponseOf(c: Context<any, any>, value: HandlerResult, origin: ConversionOrigin): Response {
     try {
         // 純正のミドルウェアが、next() の結果をそのまま返したとき(src/plain.ts)
         if (value instanceof PlainResponse) return value as unknown as Response;
@@ -70,10 +70,10 @@ export type Trace = {
 // name は層の名前(ハンドラーなら undefined)。返した関数は、その層から出たときに呼ぶ(failed: この層で例外が起きた)
 // 使っていないときは observers が undefined のままなので、層ごとのコストは undefined の確かめ 1 回だけ
 export type LayerObserver = (name: string | undefined) => (failed: boolean) => void;
-let observers: WeakMap<Context, LayerObserver> | undefined;
+let observers: WeakMap<Context<any, any>, LayerObserver> | undefined;
 
 // c のリクエストで、これから入る層(呼んだミドルウェアより内側)を observer に知らせる
-export function observeLayers(c: Context, observer: LayerObserver): void {
+export function observeLayers(c: Context<any, any>, observer: LayerObserver): void {
     (observers ??= new WeakMap()).set(c, observer);
 }
 
@@ -81,7 +81,7 @@ export function observeLayers(c: Context, observer: LayerObserver): void {
 // 例外は(ミドルウェアでもハンドラーでも)onError に渡してレスポンスにしてもらう
 export function compose(
     layers: Layer[],
-    c: Context,
+    c: Context<any, any>,
     handle: () => Response | Promise<Response>,
     onError: (err: unknown) => Promise<Response>,
     trace?: Trace,

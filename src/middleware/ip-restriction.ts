@@ -15,7 +15,7 @@ export type IpRestrictionOptions = {
     deny?: readonly string[];
     // クライアントの IP を返す関数。プロキシの後ろでは trustProxy() で作った関数を渡す
     /** Returns the client's IP. Default `getIp`. Behind a proxy, pass a function made with `trustProxy()`. */
-    ip?: (c: Context) => string | null;
+    ip?: (c: Context<any, any>) => string | null;
     // IP が分からないリクエストを通すか。テスト用
     /** Let requests through when the IP is not known, as when tests call `app.fetch` directly. Default `false`: they get 403. */
     allowUnknown?: boolean;
@@ -54,13 +54,13 @@ function parseRanges(list: readonly string[] | undefined): IpRange[] | null {
  * app.use("/internal", ipRestriction({ allow: ["10.0.0.0/8"], ip: trustProxy({ hops: 1 }) }));
  * ```
  */
-export function ipRestriction(options: IpRestrictionOptions): Middleware {
+export function ipRestriction(options: IpRestrictionOptions): Middleware<any, { errors: 403 }> {
     const allow = parseRanges(options.allow);
     const deny = parseRanges(options.deny);
     if (allow === null && deny === null) throw senriError("ip_restriction_options", "ipRestriction(): allow or deny is required");
     const resolve = options.ip ?? getIp;
 
-    return markPlainSafe<Middleware>(async function ipRestriction(c, next) {
+    return markPlainSafe<Middleware<any, any>>(async function ipRestriction(c, next) {
         const text = resolve(c);
         const ip = text === null ? null : parseIp(text);
         if (ip === null) {

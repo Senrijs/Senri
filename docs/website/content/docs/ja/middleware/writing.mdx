@@ -53,33 +53,36 @@ sequenceDiagram
 
 ## 値を渡す
 
-ミドルウェアからハンドラーへ値を渡すには、`c.set()` と `c.get()` を使います。ミドルウェアを `Middleware<{ user: User }>` と書くと、その型が付きます。 {/* verify: set-get */}
+ミドルウェアからハンドラーへ値を渡すには、`c.set()` と `c.get()` を使います。 {/* verify: set-get */}
+
+`Middleware` の 2 つ目の型引数で、そのミドルウェアが「必ず入れる変数」(`vars`)と「投げうる状態コード」(`errors`)を宣言できます。ルートの `use` に入れると、そのルートの `c.get()` から `undefined` が消えます。 {/* verify: declared-vars */}
 
 ```ts twoslash
-import { createApp, type Middleware } from "@senrijs/senri";
+import { createApp, HttpError, type Middleware } from "@senrijs/senri";
 type User = { name: string };
 declare function findUser(token: string | null): Promise<User | undefined>;
 // ---cut---
-const auth: Middleware<{ user: User }> = async (c, next) => {
+// 1 つ目: 読むアプリの型。2 つ目: 必ず入れる変数と、投げうる状態コード
+const requireUser: Middleware<{}, { vars: { user: User }; errors: 401 }> = async (c, next) => {
     const user = await findUser(c.req.headers.get("authorization"));
-    if (!user) {
-        c.status(401);
-        return "ログインしてね";
-    }
+    if (!user) throw new HttpError(401, "401 Unauthorized");
     c.set("user", user);
-    await next();
+    return next();
 };
 
-const app = createApp<{ user: User }>();
-app.use("/me", auth);
-app.get("/me", (_, c) => {
+const app = createApp();
+app.get("/me", { use: [requireUser] }, (_, c) => {
     const user = c.get("user");
     //    ^?
-    return { name: user?.name };
+    return { name: user.name };
 });
 ```
 
-アプリ全体の型は、`createApp<{ user: User }>()` のように決めます。ルートごとに付けたミドルウェアの型は、そのルートの `c.get()` に付きます([ルートごとに付ける](/docs/middleware/route-middleware))。
+- `errors` に書いた状態コードは、[型付きクライアント](/docs/typed-api/client)の型に出ます
+- **`vars` は、宣言した人の約束です。Senri は実行時に確かめません。** `c.set()` を忘れると、型(`User`)と値(`undefined`)が食い違います。宣言したら、`next()` を呼ぶ前に必ず入れてください
+- `app.use()` で付けたミドルウェアは、どのルートの前で動くかを型で追えません。変数の型は `createApp<{ user: User }>()` で決め、`c.get()` には `undefined` が付きます
+
+付け方と、標準のミドルウェアの宣言は、[ルートごとに付ける](/docs/middleware/route-middleware)にまとめています。
 
 ## 標準のミドルウェア
 

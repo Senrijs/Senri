@@ -4,10 +4,10 @@ import { HttpError, senriError } from "../errors.ts";
 import { markPlainSafe } from "../plain.ts";
 
 /** Options for {@link timeout}. */
-export type TimeoutOptions = {
+export type TimeoutOptions<S extends number = number> = {
     // 時間切れのときのステータス。504 は Hono と同じ。過負荷として扱いたいなら 503
     /** The status of the error response. Default `504`. */
-    status?: number;
+    status?: S;
 };
 
 // setTimeout に渡せる最大(これを超えると、すぐに発火してしまう)
@@ -46,13 +46,13 @@ const MAX_MS = 2 ** 31 - 1;
  * });
  * ```
  */
-export function timeout(ms: number, options: TimeoutOptions = {}): Middleware {
+export function timeout<S extends number = 504>(ms: number, options: TimeoutOptions<S> = {}): Middleware<any, { errors: S }> {
     if (typeof ms !== "number" || !(ms > 0) || ms > MAX_MS) throw senriError("timeout_ms", "timeout(): invalid ms");
     const status = options.status ?? 504;
     if (!Number.isInteger(status) || status < 400 || status > 599) throw senriError("timeout_status", "timeout(): invalid status");
     const message = status === 504 ? "504 Gateway Timeout" : `${status} Timeout`;
 
-    return markPlainSafe<Middleware>(async function timeout(_c, next) {
+    return markPlainSafe<Middleware<any, any>>(async function timeout(_c, next) {
         let expired = false;
         let timer: ReturnType<typeof setTimeout> | undefined;
         const limit = new Promise<never>((_, reject) => {

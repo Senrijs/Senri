@@ -11,7 +11,7 @@ const app = createApp();
 app.use("/import", bodyLimit({ maxSize: 50 * 1024 * 1024 }));   // up to 50 MiB on this route
 ```
 
-- Over the limit, the response is 413
+- Over the limit, it throws an `HttpError` with status 413, and the app's `app.onError` makes the body (`413 Content Too Large` with the default one). A Content-Length that is not a number gives 400 the same way
 - It **replaces** the app's default limit (1 MiB). They do not stack, so it can be larger or smaller than the default
 - With Content-Length, the request is refused before reading. Without it (chunked transfer), the body is counted as it is read
 - It also applies to routes that read `c.req.body` as a stream
@@ -28,7 +28,9 @@ const app = createApp();
 app.use("/import", bodyLimit({ maxSize: 1024 * 1024, onError: () => ({ error: "too large" }) }));
 ```
 
-The status is set to 413 before `onError` is called, so a returned string or object is sent with 413. A returned `Response` keeps its own status.
+With `onError`, the 413 is not thrown: its return value is the response. The status is set to 413 before `onError` is called, so a returned string or object is sent with 413. A returned `Response` keeps its own status.
+
+That 413 body does not come from the app's `onError`, so the typed client's types show only 400 for it.
 
 ## Options
 

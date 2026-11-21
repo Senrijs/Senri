@@ -85,8 +85,8 @@ export type OtelOptions = {
 
 // propagation.extract が Context からヘッダーを読むためのもの
 const getter = {
-    get: (c: Context, key: string) => headerOf(c, key) ?? undefined,
-    keys: (c: Context) => [...c.req.headers.keys()],
+    get: (c: Context<any, any>, key: string) => headerOf(c, key) ?? undefined,
+    keys: (c: Context<any, any>) => [...c.req.headers.keys()],
 };
 
 /**
@@ -154,7 +154,7 @@ export function otel(options: OtelOptions): Middleware {
 }
 
 // 層ごとの子 span。層は入れ子(玉ねぎ)なので、いま開いている span を積んでおき、いちばん上を親にする
-function layerSpans(api: OtelApi, tracer: OtelTracer, c: Context, root: OtelContext, handlerName: string) {
+function layerSpans(api: OtelApi, tracer: OtelTracer, c: Context<any, any>, root: OtelContext, handlerName: string) {
     const stack: OtelContext[] = [root];
     return (layer: string | undefined) => {
         const parent = stack[stack.length - 1];

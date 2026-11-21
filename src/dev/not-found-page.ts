@@ -14,7 +14,7 @@ type RouteInfo = { method: string; path: string };
 // (":id" や "*" に何を入れるかは分からないので、それらのあるものはリンクにしない)
 const linkable = (r: RouteInfo) => (r.method === "GET" || r.method === "ALL") && !r.path.includes(":") && !r.path.endsWith("*");
 
-export function notFoundPage(c: Context, routes: RouteInfo[], lang: Lang): Response {
+export function notFoundPage(c: Context<any, any>, routes: RouteInfo[], lang: Lang): Response {
     // devNotFound が先に確かめているので、c.path は読める
     const path = c.path;
     // ルートがあるのに c.notFound() を呼んだときは、提案しない(c.route はミドルウェアより先に決まる)
