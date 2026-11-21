@@ -2,6 +2,7 @@
   "title": "Production",
   "pages": [
     "deploy",
+    "build",
     "serve",
     "graceful-shutdown",
     "websocket",

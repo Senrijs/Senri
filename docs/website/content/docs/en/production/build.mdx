@@ -1,0 +1,117 @@
+---
+title: "Build (senri build)"
+description: "Write deployment files with senri build --target workers | docker | k8s"
+---
+
+```bash
+npm i -D @senrijs/cli          # bun add -d @senrijs/cli
+npx senri build --target docker --target k8s
+```
+
+`senri build` writes the files for each place you deploy to (a `Dockerfile`, Kubernetes manifests, `wrangler.jsonc`) into the project folder. Run it in the project folder. It also works without installing: `npx @senrijs/cli build ...`, `bunx @senrijs/cli build ...` or `deno run -A npm:@senrijs/cli build ...`.
+
+The CLI is a shortcut for writing files you could write yourself. The files it writes are yours to edit. Everything it assumes (the port, health check paths, resource values and so on) is written as comments in those files.
+
+| `--target` | Writes |
+| --- | --- |
+| `workers` | `wrangler.jsonc` (only if there is no wrangler config). Bundles into `dist/workers/` with the project's wrangler to check that it builds |
+| `docker` | `Dockerfile` (multi-stage, distroless, non-root) and `.dockerignore` |
+| `k8s` | `k8s/deployment.yaml` and `k8s/service.yaml` (probes for `/healthz` and `/readyz`, and a grace period that fits the shutdown) |
+
+You can pass more than one `--target`, such as `docker` and `k8s`. `workers` cannot be combined with the others.
+
+## Existing files are not overwritten
+
+If any file it would write already exists, it writes **none of them**, lists those files and exits with code 1. It never leaves a half-written set behind. {/* verify: no-overwrite */}
+
+- `--dry-run`: print what would be written, without writing
+- `--force`: overwrite, and list each overwritten file
+- `.dockerignore` and the wrangler config are used as they are when they already exist (and it says so)
+
+## Assumed values
+
+The defaults follow the defaults of `serve()` and `health()`. {/* verify: defaults */}
+
+| Value | Default | To change it |
+| --- | --- | --- |
+| Port | `3927` (the `serve()` default, set in `PORT`) | `--port` |
+| Liveness path | `/healthz` (the `health()` default) | `--health-path` |
+| Readiness path | `/readyz` (the `health()` default) | `--ready-path` |
+| `shutdownTimeout` | `10000` ms (the `serve()` default) | `--shutdown-timeout` (use the same value you pass to `serve()`) |
+| preStop sleep | 5 seconds | `--pre-stop-sleep` |
+| Image | `<package.json name>:<version>` | `--image` |
+
+The runtime (`--runtime`) and entry (`--entry`) are guessed from the project. It prints what it guessed and what it looked at.
+
+- Runtime: Deno if there is a `deno.json`, Bun if there is a `bun.lock` or `scripts.start` runs `bun`, otherwise Node.js
+- Entry: the file in `scripts.start` (`tasks.start` in `deno.json` for Deno), or `src/index.ts` and similar
+
+## Docker
+
+```bash
+npx senri build --target docker
+docker build -t my-app .
+docker run --rm -p 3927:3927 my-app
+```
+
+On every runtime the build is multi-stage, and the final image is distroless (no shell, no package manager). It does not run as root (uid 65532).
+
+| Runtime | Build | Final image |
+| --- | --- | --- |
+| Bun | Bundles into one file with `bun build --target bun --minify` | `oven/bun:1-distroless`, with only that one file |
+| Node.js | Installs production dependencies only, following the lockfile (npm, pnpm or Bun) | `gcr.io/distroless/nodejs24-debian12:nonroot`, running `node <entry>` |
+| Deno | Caches dependencies first with `deno install --entrypoint` | `denoland/deno:distroless-<version>`, with the same flags as `tasks.start` |
+
+- With Bun, only the bundled file goes into the image. If the app reads files at run time (`serveStatic()` and so on), add `COPY` lines for them
+- Deno images have no major-only tag, so the version of `deno` on this machine is used
+- `yarn.lock` is not supported yet
+- There is no `HEALTHCHECK` (distroless images have no curl or shell). Use your orchestrator's health checks
+- `serve()` handles SIGTERM itself, so no init process is needed. `docker stop` waits only 10 seconds by default; give it longer than `shutdownTimeout`, such as `docker stop -t 20`
+
+## Kubernetes
+
+```bash
+npx senri build --target docker --target k8s --image registry.example.com/my-app:1.0.0
+kubectl apply -f k8s/
+```
+
+The app is expected to use [`health()`](/en/docs/built-in/health). Without it, the probes fail and the Pod never becomes ready (`senri build` tells you when it cannot find `health()` in the source).
+
+Stopping follows [how `serve()` shuts down](/en/docs/production/graceful-shutdown), in this order:
+
+1. The Pod becomes Terminating and starts being removed from the Service (this takes a few seconds to spread)
+2. During the preStop `sleep`, requests that still arrive are answered as usual
+3. On SIGTERM, `serve()` makes `/readyz` return 503, refuses new connections and waits for in-flight requests up to `shutdownTimeout`
+4. It calls `onShutdown` and exits
+
+`terminationGracePeriodSeconds` counts the whole time, preStop included, so it is **preStop + `shutdownTimeout` + 5 seconds** (room for `onShutdown`). By default that is 5 + 10 + 5 = 20 seconds. After it, Kubernetes sends SIGKILL. {/* verify: grace */}
+
+<Callout type="warn" title="The preStop sleep needs Kubernetes 1.30 or later">
+  preStop uses Kubernetes' native `sleep` action. The image has no shell, so running a `sleep` command with `exec` does not work. The native `sleep` action works only on Kubernetes 1.30 or later.
+</Callout>
+
+On clusters older than 1.30, pass `--pre-stop-sleep 0`. preStop is left out, and the grace period becomes `shutdownTimeout` + 5 seconds. In exchange, SIGTERM arrives before the Pod is removed from the Service, so some requests can fail during a rollout (the manifest says so in a comment, too). {/* verify: no-prestop */}
+
+Other assumptions (also written as comments in the manifests):
+
+- `replicas: 2` and the resources (requests: 100m CPU and 128Mi memory, limits: 256Mi memory) are placeholders. Measure your app and change them. There is no CPU limit on purpose (a limit throttles even when the node has idle CPU)
+- The root filesystem is read-only. Only `/tmp` is writable (an emptyDir)
+- The Service is a ClusterIP that forwards port 80 to the container's `http` port. Add an Ingress or a Gateway to expose it outside the cluster
+- If you change `shutdownTimeout`, write the files again with `--shutdown-timeout` (and `--force`), or change `terminationGracePeriodSeconds` yourself
+
+## Cloudflare Workers
+
+```bash
+npx senri build --target workers
+npx wrangler deploy
+```
+
+- If there is a wrangler config (`wrangler.jsonc`, `wrangler.json` or `wrangler.toml`), it is not changed, and its `main` is used as the entry
+- If there is none, it writes `wrangler.jsonc`. `compatibility_date` is the day it was written (UTC)
+- Bundling uses the wrangler installed in the project (`wrangler deploy --dry-run --outdir dist/workers`). Without wrangler, it prints the command to run instead. `dist/workers/` is build output and is replaced every time
+- It tells you when the entry has no `export default`, or uses `@senrijs/senri/serve`
+
+## What it does not do
+
+- Building or pushing the image, `kubectl apply` and `wrangler deploy` are yours to run (`senri build` prints those commands at the end)
+- Monorepos (workspaces) are not handled yet

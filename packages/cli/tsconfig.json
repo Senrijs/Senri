@@ -1,0 +1,9 @@
+{
+    // CLI(JS)を型チェックする(bun run typecheck)。公開はしない(package.json の files にない)
+    "extends": "../../tsconfig.json",
+    "compilerOptions": {
+        "types": ["node"],
+        "checkJs": true
+    },
+    "include": ["bin/*.js", "lib/**/*.js"]
+}

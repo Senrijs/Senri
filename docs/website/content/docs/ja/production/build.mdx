@@ -1,0 +1,117 @@
+---
+title: "ビルド(senri build)"
+description: "senri build --target workers | docker | k8s で、デプロイ先ごとのファイルを書き出す"
+---
+
+```bash
+npm i -D @senrijs/cli          # bun add -d @senrijs/cli
+npx senri build --target docker --target k8s
+```
+
+`senri build` は、デプロイ先ごとのファイル(`Dockerfile`、Kubernetes のマニフェスト、`wrangler.jsonc`)を、プロジェクトのフォルダに書き出します。プロジェクトのフォルダで動かします。インストールせずに、`npx @senrijs/cli build ...`、`bunx @senrijs/cli build ...`、`deno run -A npm:@senrijs/cli build ...` でも動きます。
+
+CLI は、自分で書けるものを書くための入口です。書き出したファイルは、そのまま自分のものとして直してかまいません。何を前提にしたか(ポート、ヘルスチェックのパス、リソースの値など)は、すべて書き出したファイルのコメントに書きます。
+
+| `--target` | 書き出すもの |
+| --- | --- |
+| `workers` | `wrangler.jsonc`(wrangler の設定がないときだけ)。プロジェクトの wrangler で `dist/workers/` にまとめて、ビルドできるかを確かめる |
+| `docker` | `Dockerfile`(多段ビルド・distroless・root 以外)と `.dockerignore` |
+| `k8s` | `k8s/deployment.yaml` と `k8s/service.yaml`(`/healthz`・`/readyz` のプローブと、止め方に合わせた猶予) |
+
+`--target` は、`docker` と `k8s` のように重ねて渡せます。`workers` だけは、ほかと一緒には使えません。
+
+## 既にあるファイルは上書きしない
+
+書き出すファイルが 1 つでも既にあれば、**どれも書かずに**、そのファイルの一覧を出して終了コード 1 で終わります。途中まで書いた状態は残しません。{/* verify: no-overwrite */}
+
+- `--dry-run`: 書かずに、書き出す中身を表示する
+- `--force`: 上書きする。上書きしたファイルを 1 つずつ表示する
+- `.dockerignore` と wrangler の設定は、既にあればそのまま使います(そう表示します)
+
+## 前提にしている値
+
+既定の値は、`serve()` と `health()` の既定に合わせています。{/* verify: defaults */}
+
+| 値 | 既定 | 変えるには |
+| --- | --- | --- |
+| ポート | `3927`(`serve()` の既定。`PORT` に入れる) | `--port` |
+| liveness のパス | `/healthz`(`health()` の既定) | `--health-path` |
+| readiness のパス | `/readyz`(`health()` の既定) | `--ready-path` |
+| `shutdownTimeout` | `10000` ミリ秒(`serve()` の既定) | `--shutdown-timeout`(`serve()` に渡した値と同じにする) |
+| preStop の sleep | 5 秒 | `--pre-stop-sleep` |
+| イメージ | `<package.json の name>:<version>` | `--image` |
+
+ランタイム(`--runtime`)とエントリー(`--entry`)は、プロジェクトから推測します。推測した結果と、何を見てそう決めたかを表示します。
+
+- ランタイム: `deno.json` があれば Deno、`bun.lock` があるか `scripts.start` が `bun` なら Bun、それ以外は Node.js
+- エントリー: `scripts.start`(Deno は `deno.json` の `tasks.start`)のファイル。なければ `src/index.ts` など
+
+## Docker
+
+```bash
+npx senri build --target docker
+docker build -t my-app .
+docker run --rm -p 3927:3927 my-app
+```
+
+どのランタイムも、多段ビルドにして、最後のイメージは distroless(シェルもパッケージマネージャーもない)にします。root では動かしません(uid 65532)。
+
+| ランタイム | ビルド | 最後のイメージ |
+| --- | --- | --- |
+| Bun | `bun build --target bun --minify` で 1 つのファイルにまとめる | `oven/bun:1-distroless`。まとめた 1 つのファイルだけを入れる |
+| Node.js | ロックファイルに合わせて、本番の依存だけを入れる(npm・pnpm・Bun) | `gcr.io/distroless/nodejs24-debian12:nonroot`。`node <エントリー>` で動かす |
+| Deno | `deno install --entrypoint` で、依存を先にキャッシュする | `denoland/deno:distroless-<版>`。`tasks.start` と同じフラグで動かす |
+
+- Bun は、まとめた 1 つのファイルしかイメージに入りません。実行中にファイルを読むアプリ(`serveStatic()` など)は、そのファイルを `COPY` する行を足してください
+- Deno のイメージには major だけのタグがないので、このマシンの `deno` の版を使います
+- `yarn.lock` には、まだ対応していません
+- `HEALTHCHECK` は書きません(distroless には curl もシェルもありません)。オーケストレーターのヘルスチェックを使います
+- `serve()` は SIGTERM を自分で受けて止まるので、init プロセスは要りません。`docker stop` は既定で 10 秒しか待たないので、`docker stop -t 20` のように、`shutdownTimeout` より長く待たせてください
+
+## Kubernetes
+
+```bash
+npx senri build --target docker --target k8s --image registry.example.com/my-app:1.0.0
+kubectl apply -f k8s/
+```
+
+アプリに [`health()`](/docs/built-in/health) が入っている前提です。ないと、プローブが失敗して Pod が ready になりません(`senri build` は、ソースに `health()` が見つからなければ知らせます)。
+
+止めるときは、[`serve()` の止め方](/docs/production/graceful-shutdown)に合わせて、次の順に進みます。
+
+1. Pod が Terminating になり、Service の振り分けから外れ始める(反映には数秒かかる)
+2. preStop の `sleep` の間は、まだ届くリクエストにふつうに答える
+3. SIGTERM を受けて、`serve()` が `/readyz` を 503 にし、新しい接続を断り、処理中のリクエストを `shutdownTimeout` まで待つ
+4. `onShutdown` を呼んで終わる
+
+`terminationGracePeriodSeconds` は preStop も含めた全体の時間なので、**preStop + `shutdownTimeout` + 5 秒**(`onShutdown` のための余裕)にします。既定では 5 + 10 + 5 = 20 秒です。これを過ぎると、Kubernetes は SIGKILL を送ります。{/* verify: grace */}
+
+<Callout type="warn" title="preStop の sleep は Kubernetes 1.30 以降">
+  preStop は、Kubernetes のネイティブの `sleep` を使います。イメージにシェルがないので、`exec` で `sleep` コマンドを動かすことはできません。ネイティブの `sleep` は Kubernetes 1.30 以降でしか動きません。
+</Callout>
+
+1.30 より前のクラスターでは、`--pre-stop-sleep 0` を付けます。preStop を書かず、猶予は `shutdownTimeout` + 5 秒になります。その代わり、Pod が振り分けから外れる前に SIGTERM が届くので、ロールアウトの間に、一部のリクエストが失敗することがあります(マニフェストのコメントにも書きます)。{/* verify: no-prestop */}
+
+ほかに前提にしていること(マニフェストのコメントにも書きます):
+
+- `replicas: 2` と、リソース(requests: CPU 100m・メモリ 128Mi、limits: メモリ 256Mi)は、仮の値です。測ってから決めてください。CPU の limit は、わざと付けていません(ノードの CPU が空いていても、絞られてしまうため)
+- ルートのファイルシステムは読み込み専用にします。`/tmp` だけ書けます(emptyDir)
+- Service は ClusterIP で、ポート 80 をコンテナの `http` に転送します。クラスターの外に出すには、Ingress や Gateway を足します
+- `shutdownTimeout` を変えたら、`--shutdown-timeout` を付けて作り直すか(`--force`)、`terminationGracePeriodSeconds` を自分で直します
+
+## Cloudflare Workers
+
+```bash
+npx senri build --target workers
+npx wrangler deploy
+```
+
+- wrangler の設定(`wrangler.jsonc`・`wrangler.json`・`wrangler.toml`)があれば、書き換えずに、その `main` をエントリーに使います
+- なければ `wrangler.jsonc` を作ります。`compatibility_date` は作った日(UTC)です
+- まとめるのは、プロジェクトに入っている wrangler です(`wrangler deploy --dry-run --outdir dist/workers`)。wrangler がなければ、動かすコマンドを表示します。`dist/workers/` はビルドの出力なので、毎回入れ替わります
+- エントリーに `export default` がないときや、`@senrijs/senri/serve` を使っているときは知らせます
+
+## しないこと
+
+- イメージを作る・push する、`kubectl apply`、`wrangler deploy` は、自分で動かします(`senri build` は、最後にそのコマンドを表示します)
+- モノレポ(workspaces)は、まだ考えていません

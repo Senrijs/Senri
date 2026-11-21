@@ -2,6 +2,7 @@
   "title": "本番",
   "pages": [
     "deploy",
+    "build",
     "serve",
     "graceful-shutdown",
     "websocket",

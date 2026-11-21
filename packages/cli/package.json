@@ -1,0 +1,35 @@
+{
+  "name": "@senrijs/cli",
+  "version": "0.0.0",
+  "description": "The senri command: build a Senri app for Cloudflare Workers, Docker or Kubernetes",
+  "license": "MIT",
+  "author": "ibuki-hum4",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Senrijs/Senri.git",
+    "directory": "packages/cli"
+  },
+  "homepage": "https://github.com/Senrijs/Senri/tree/main/packages/cli#readme",
+  "bugs": {
+    "url": "https://github.com/Senrijs/Senri/issues"
+  },
+  "keywords": [
+    "senri",
+    "cli",
+    "build",
+    "docker",
+    "kubernetes",
+    "cloudflare-workers"
+  ],
+  "type": "module",
+  "bin": {
+    "senri": "bin/senri.js"
+  },
+  "files": [
+    "bin",
+    "lib"
+  ],
+  "engines": {
+    "node": ">=22"
+  }
+}

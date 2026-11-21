@@ -4,6 +4,7 @@ name: Publish
 #   タグと GitHub Release を作り、同じ実行の中で公開する
 #   - @senrijs/senri(タグ vX.Y.Z): JSR と npm
 #   - create-senri(タグ create-senri-vX.Y.Z、packages/create-senri): npm だけ
+#   - @senrijs/cli(タグ cli-vX.Y.Z、packages/cli): npm だけ
 # - 手動実行(workflow_dispatch): 作り済みのタグを公開し直す(公開が途中で失敗したときなど。CONTRIBUTING.md)
 # Release Please が作るタグは GITHUB_TOKEN で push されるので、タグの push で動くワークフローは起動しない。
 # なので公開は、別のワークフローにせず、このファイルの中で続けて行う
@@ -15,14 +16,14 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "公開するタグ(例: v0.2.1、create-senri-v0.1.0)"
+        description: "公開するタグ(例: v0.2.1、create-senri-v0.1.0、cli-v0.1.0)"
         required: true
         type: string
 
 # 既定の権限は読むだけにする。書き込みが要るものは、ジョブごとに付けている
 # (どのジョブも自分の permissions を持っているので、ここを書いても、それぞれのジョブの権限は変わらない)
 # - release-please: contents / pull-requests / issues の write(タグ・Release・リリースの PR・ラベル)
-# - publish / publish-create-senri: contents: read と id-token: write(JSR と npm の OIDC)
+# - publish / publish-create-senri / publish-cli: contents: read と id-token: write(JSR と npm の OIDC)
 # - check-release: pull-requests: read
 permissions:
   contents: read
@@ -47,6 +48,8 @@ jobs:
       # ルート以外のパッケージの出力は「パス--名前」になる
       create_senri_release_created: ${{ steps.release.outputs['packages/create-senri--release_created'] }}
       create_senri_tag_name: ${{ steps.release.outputs['packages/create-senri--tag_name'] }}
+      cli_release_created: ${{ steps.release.outputs['packages/cli--release_created'] }}
+      cli_tag_name: ${{ steps.release.outputs['packages/cli--tag_name'] }}
     steps:
       - uses: googleapis/release-please-action@v4
         id: release
@@ -163,6 +166,53 @@ jobs:
         run: |
           if npm view "create-senri@$VERSION" version >/dev/null 2>&1; then
             echo "npm には create-senri@$VERSION が公開済みなので飛ばします"
+          else
+            npm --version
+            npm publish --provenance --access public
+          fi
+
+  # @senrijs/cli(senri コマンド)。npm にだけ公開する(JSR には出さない。bin は JSR では使えないため)
+  # 最初の 0.1.0 だけは手で公開する(npm の Trusted Publisher は、パッケージが npm にないと設定できないため。CONTRIBUTING.md)
+  publish-cli:
+    needs: release-please
+    if: >-
+      !cancelled() && (
+        (github.event_name == 'push' && needs.release-please.outputs.cli_release_created == 'true') ||
+        (github.event_name == 'workflow_dispatch' && startsWith(inputs.tag, 'cli-v'))
+      )
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || needs.release-please.outputs.cli_tag_name }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ env.TAG }}
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+
+      # タグと packages/cli/package.json のバージョンがそろっているか(cli-v0.1.0 なら 0.1.0)
+      - name: Check versions
+        run: |
+          tag="${TAG#cli-v}"
+          npm_version=$(node -p "require('./packages/cli/package.json').version")
+          if [ "$tag" != "$npm_version" ]; then
+            echo "タグ ($tag) と packages/cli/package.json ($npm_version) のバージョンが違います"
+            exit 1
+          fi
+          echo "VERSION=$tag" >> "$GITHUB_ENV"
+
+      - run: node --test test/node/cli.test.ts
+
+      - name: Publish to npm
+        working-directory: packages/cli
+        run: |
+          if npm view "@senrijs/cli@$VERSION" version >/dev/null 2>&1; then
+            echo "npm には @senrijs/cli@$VERSION が公開済みなので飛ばします"
           else
             npm --version
             npm publish --provenance --access public
