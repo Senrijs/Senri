@@ -20,8 +20,9 @@ Senri は、だれもが気持ちよく参加できる場所でありたいと�
 
 ## 報告
 
-困ったことがあったら、次のどちらかで連絡してください。報告した人のことは秘密にします。
+困ったことがあったら、次のどれかで連絡してください。報告した人のことは秘密にします。
 
+- メールで連絡する: `tyatora.info@gmail.com`
 - [Discord](https://discord.gg/wGYvdc6gwz) で `Maintainer` ロールの人に DM する
 - 脆弱性やセキュリティに関わることは、[非公開の報告](https://github.com/Senrijs/Senri/security/advisories/new)から
 
@@ -51,6 +52,7 @@ Senri wants to be a place where everyone can take part comfortably. In every Sen
 
 If something goes wrong, contact us in one of these ways. Reports are kept confidential.
 
+- Email: `tyatora.info@gmail.com`
 - DM anyone with the `Maintainer` role on [Discord](https://discord.gg/wGYvdc6gwz)
 - For security issues, use [private vulnerability reporting](https://github.com/Senrijs/Senri/security/advisories/new)
 
