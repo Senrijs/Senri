@@ -75,7 +75,7 @@ export type Router<Prefix extends string = string, V extends object = any> = {
 
 // 登録された順番のまま、app.route のときにアプリへ流し込む
 export type GroupEntry =
-    | { kind: "route"; method: string; path: string; handler: Handler }
+    | { kind: "route"; method: string; path: string; handler: Handler; use?: readonly Middleware[] | undefined }
     | { kind: "use"; path: string; mw: Middleware };
 
 const entries = new WeakMap<Router, (prefix: string) => GroupEntry[]>();
