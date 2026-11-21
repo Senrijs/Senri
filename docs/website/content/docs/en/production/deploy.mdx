@@ -47,6 +47,7 @@ Many hosting services set `PORT` for you, and `serve()` reads it.
 - **Bun, Deno and Node.js:** on SIGTERM, the server waits for in-flight requests before stopping ([Graceful shutdown](/en/docs/production/graceful-shutdown))
 - **Cloudflare Workers:** deploy with `wrangler deploy`. `devtools()` only works with `wrangler dev`, but it is still bundled, so remove it ([Cloudflare Workers](/en/docs/runtimes/cloudflare-workers))
 - **Containers such as Docker:** the client does not look like localhost, so the development dashboard cannot be opened. When developing in a container, set `NODE_ENV=development`
+- A `Dockerfile`, Kubernetes manifests and `wrangler.jsonc` can be written with [`senri build`](/en/docs/production/build)
 
 ## Monitoring
 

@@ -64,6 +64,19 @@ jobs:
           node-version: 24
       - run: npm run test:range
 
+  # senri build --target docker が書いた Dockerfile で、Bun・Node.js・Deno のイメージを実際に作って起動する
+  # 読み込み専用・root 以外で /healthz・/readyz に答えるか、SIGTERM で終了コード 0 で止まるか(scripts/smoke-cli.ts)
+  cli-docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      # Deno のイメージの版は、このマシンの deno に合わせる(Deno のイメージには major だけのタグがない)
+      - uses: denoland/setup-deno@v2
+      - run: npm run smoke:cli
+
   # serveStatic のパスの扱いを、綴りが違っても同じファイルを開く Windows / macOS で確かめる(static のテストだけ)
   # static-paths.ts は Bun / Deno / Node を実際に起動する(Windows の Deno は、末尾の . や空白を取り除く)
   static-os:

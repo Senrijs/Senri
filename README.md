@@ -154,6 +154,15 @@ serve(app, {
 
 ランタイムの既定どおりにしたいときは `gracefulShutdown: false` にします。
 
+### デプロイ用のファイルを書き出す(senri build)
+
+`@senrijs/cli` の `senri build` は、`Dockerfile`(distroless・root 以外)、Kubernetes のマニフェスト(`/healthz`・`/readyz` のプローブと、この止め方に合わせた `terminationGracePeriodSeconds`)、`wrangler.jsonc` を書き出します。前提にした値は、書き出したファイルのコメントに書きます。既にあるファイルは、`--force` なしでは上書きしません。
+
+```bash
+npm i -D @senrijs/cli
+npx senri build --target docker --target k8s   # workers / docker / k8s
+```
+
 ### 本文の大きさの上限(maxRequestBodySize)
 
 `serve()` の `maxRequestBodySize`(バイト数)で、サーバー全体の本文の上限を決められます。超えたら 413 です。

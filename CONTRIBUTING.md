@@ -42,19 +42,20 @@ Pull Request はスカッシュでマージするので、**PR のタイトル�
 
 バージョンと CHANGELOG は [Release Please](https://github.com/googleapis/release-please) が決めます。`package.json` / `jsr.json` の `version` と `CHANGELOG.md` は、手で変えないでください。
 
-このリポジトリには、パッケージが2つあります。
+このリポジトリには、パッケージが3つあります。
 
 | パッケージ | 場所 | タグ | 公開先 |
 | --- | --- | --- | --- |
 | `@senrijs/senri` | ルート | `vx.y.z` | JSR と npm |
 | `create-senri` | `packages/create-senri` | `create-senri-vx.y.z` | npm だけ |
+| `@senrijs/cli`(`senri` コマンド) | `packages/cli` | `cli-vx.y.z` | npm だけ |
 
-1. main にマージされるたびに、Release Please がリリースの PR を作る・更新する(`fix:` と `feat:` はパッチ、破壊的変更(`feat!:` など)はマイナーが上がる。1.0 より前のあいだ)。PR はパッケージごとに別々で、両方に変更があると PR が2つできる
+1. main にマージされるたびに、Release Please がリリースの PR を作る・更新する(`fix:` と `feat:` はパッチ、破壊的変更(`feat!:` など)はマイナーが上がる。1.0 より前のあいだ)。PR はパッケージごとに別々で、複数のパッケージに変更があると PR も複数できる
 2. その PR をマージすると、そのパッケージのタグと GitHub Release ができ、同じワークフロー(`.github/workflows/publish.yml`)が公開する
 
 リリースの PR を扱うときの注意です。
 
-- PR が2つあるときは、1つずつマージする。1つ目をマージしたら、その公開の実行(Actions → Publish)が終わるのを待ってから、次をマージする。同時にマージすると、Release Please がどちらのパッケージのリリースかを取り違えることがある
+- PR が複数あるときは、1つずつマージする。1つ目をマージしたら、その公開の実行(Actions → Publish)が終わるのを待ってから、次をマージする。同時にマージすると、Release Please がどちらのパッケージのリリースかを取り違えることがある
 - リリースの PR の本文は、手で編集しない。Release Please は、マージされた PR の本文を読んで、どのパッケージのどのバージョンかを判断する
 - マージしたのにタグができないと、Publish の `check-release` が赤くなる。直し方は「[マージしたのにタグができないとき](#マージしたのにタグができないとき)」
 
@@ -67,7 +68,7 @@ Pull Request はスカッシュでマージするので、**PR のタイトル�
 公開が途中で失敗したときなどは、作り済みのタグを手で公開し直せます。公開済みのもの(JSR・npm それぞれ)は飛ばすので、何度動かしても大丈夫です。
 
 1. GitHub の Actions → Publish → Run workflow を開く
-2. ブランチは main のまま、`tag` に公開するタグ(例: `v0.2.1`、`create-senri-v0.1.0`)を入れて実行する
+2. ブランチは main のまま、`tag` に公開するタグ(例: `v0.2.1`、`create-senri-v0.1.0`、`cli-v0.1.0`)を入れて実行する
 
 GitHub CLI なら `gh workflow run publish.yml -f tag=v0.2.1` です。そのタグの `package.json` / `jsr.json` の `version` がタグと違うときは、公開せずに失敗します。
 
@@ -76,8 +77,8 @@ GitHub CLI なら `gh workflow run publish.yml -f tag=v0.2.1` です。そのタ
 リリースの PR をマージしたのに、Release Please がタグと GitHub Release を作れないことがあります。そのときは Publish の `check-release` が赤くなり、PR のラベルが `autorelease: pending` のまま残ります。このラベルが残っているあいだ、Release Please は新しいリリースの PR も作りません。手で次のように直します(例は #32、`@senrijs/senri` の 0.2.5)。
 
 1. タグと GitHub Release を作る。場所は、その PR のマージコミット。本文(下の例の `notes.md`)は、そのバージョンの CHANGELOG の項目を写したもの
-   - タグ名: `@senrijs/senri` なら `v0.2.5`、`create-senri` なら `create-senri-v0.1.1` の形
-   - Release のタイトル: `@senrijs/senri` なら `v0.2.5`、`create-senri` なら `create-senri: v0.1.1` の形
+   - タグ名: `@senrijs/senri` なら `v0.2.5`、`create-senri` なら `create-senri-v0.1.1`、`@senrijs/cli` なら `cli-v0.1.1` の形
+   - Release のタイトル: `@senrijs/senri` なら `v0.2.5`、`create-senri` なら `create-senri: v0.1.1`、`@senrijs/cli` なら `cli: v0.1.1` の形
 
    ```sh
    sha=$(gh pr view 32 --json mergeCommit -q .mergeCommit.oid)
@@ -97,7 +98,7 @@ GitHub CLI なら `gh workflow run publish.yml -f tag=v0.2.1` です。そのタ
 
 ### 新しいパッケージを npm に初めて出す
 
-npm の Trusted Publisher(GitHub Actions からの公開)は、パッケージが npm にないと設定できません。なので最初のバージョンだけは、手で公開します(`create-senri` の 0.1.0 がこれにあたります)。
+npm の Trusted Publisher(GitHub Actions からの公開)は、パッケージが npm にないと設定できません。なので最初のバージョンだけは、手で公開します(`create-senri` の 0.1.0、`@senrijs/cli` の 0.1.0 がこれにあたります)。
 
 1. Release Please が作ったリリースの PR のブランチを手元に取り、そのパッケージのフォルダで `npm publish --access public` を実行する
 2. リリースの PR をマージする。npm には公開済みなので、ワークフローは npm を飛ばし、タグと Release だけ作る(Trusted Publisher はまだ作らない)

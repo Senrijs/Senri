@@ -47,6 +47,7 @@ NODE_ENV=production PORT=8080 node src/index.ts
 - **Bun・Deno・Node.js:** SIGTERM を受けると、処理中のリクエストを待ってから止まります([止め方](/docs/production/graceful-shutdown))
 - **Cloudflare Workers:** `wrangler deploy` で出します。`devtools()` は `wrangler dev` のときだけ動きますが、バンドルには入るので外します([Cloudflare Workers](/docs/runtimes/cloudflare-workers))
 - **Docker などのコンテナ:** 接続元が localhost に見えないので、開発モードのダッシュボードは開けません。コンテナで開発するときは、`NODE_ENV=development` を付けます
+- `Dockerfile`・Kubernetes のマニフェスト・`wrangler.jsonc` は、[`senri build`](/docs/production/build) で書き出せます
 
 ## 見張る
 
