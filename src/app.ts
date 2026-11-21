@@ -205,7 +205,7 @@ export type App<V extends object = Record<string, unknown>> = {
     /**
      * Mounts a router from {@link createRouter}, or another app under a prefix: `app.route("/api", api)`.
      * What is registered at this point is copied into this app.
-     * A mounted app's `onError` / `notFound` are not used; this app's are.
+     * A mounted app's `onError` / `notFound` are not used; this app's are. The middleware of its routes (`use`) is copied with them.
      */
     route(routerOrPrefix: Router<any, V, any> | string, child?: MountableApp): void;
     /**
@@ -685,7 +685,7 @@ export function createApp<V extends object = Record<string, unknown>>(options: A
     }
 
     // ミドルウェアを先に、ルートはそのあと(どちらも登録順)
-    // ルートのミドルウェア(use)も一緒に渡す(つないだ先で、requireUser などが抜けないように)
+    // ルートのミドルウェア(endpoint() / defineRoutes() の use)も一緒に渡す。落とすと、つないだ先で認証などが動かない
     appEntries.set(app, () => [
         ...middlewares.map((m): GroupEntry => ({ kind: "use", path: m.path ?? "/", mw: m.mw as Middleware })),
         ...routes.map((r): GroupEntry => ({ kind: "route", method: r.method, path: r.path, handler: r.handler, use: r.use?.map((l) => l.mw) })),

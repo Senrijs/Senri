@@ -9,11 +9,10 @@ In 0.4.0, the types decided by routes and middleware reach `c` (the context) and
 |---|---|---|
 | [`params` schemas and `c.params`](#params-schemas-and-cparams) | **Changes** (in middleware and `onError` only) | Routes whose `params` schema converts the values |
 | [`bodyLimit()` throws](#bodylimit-throws) | **Changes** (only with your own `onError`) | Apps that use `bodyLimit()` without `onError` and replace `app.onError` |
-| [The `use` of a mounted app's routes](#the-use-of-a-mounted-apps-routes) | **Changes** (fixed) | Apps mounted with `app.route(prefix, app)` that have route-level `use` |
 | [The type arguments of `Context`](#the-type-arguments-of-context) | Does not change (types only) | Code that writes `Context<V, { body: ... }>` or `Handler<P, V, I>` |
 
-<Callout type="warn" title="Check this first">
-  If an app mounted with `app.route(prefix, app)` has routes with `endpoint({ use })` or `defineRoutes(prefix, { use })`, that middleware **did not run** up to 0.3. From 0.4.0 it runs. Authentication and the like start to apply, so check the routes of mounted apps.
+<Callout type="info" title="Upgrading from 0.3.3 or earlier">
+  In 0.3.1 to 0.3.3, the `use` of the routes of an app mounted with `app.route(prefix, app)` (`endpoint({ use })`, `defineRoutes(prefix, { use })`) did not run ([GHSA-cqhh-3pxg-cq62](https://github.com/Senrijs/Senri/security/advisories/GHSA-cqhh-3pxg-cq62)). It was fixed in 0.3.4, so upgrading from 0.3.4 is not affected. Upgrading from 0.3.3 or earlier, authentication and other middleware on those routes start to run.
 </Callout>
 
 ## `params` schemas and `c.params`
@@ -59,12 +58,6 @@ To keep the old body, pass `onError`.
 ```ts
 app.use(bodyLimit({ maxSize: 1024 * 1024, onError: () => new Response("413 Content Too Large", { status: 413 }) }));
 ```
-
-## The `use` of a mounted app's routes
-
-When another app was mounted with `app.route(prefix, app)`, the middleware on its routes (`endpoint({ use })`, `defineRoutes(prefix, { use })`) was dropped. From 0.4.0 it comes along and runs.
-
-Routers made with `createRouter()` were not affected.
 
 ## The type arguments of `Context`
 

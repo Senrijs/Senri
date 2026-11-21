@@ -37,6 +37,8 @@ admin.get("/stats", () => ({ users: 42 }));
 app.route("/admin", admin);   // GET /admin/stats
 ```
 
+つないだアプリのルートに付けたミドルウェア(`endpoint({ use })`・`defineRoutes(prefix, { use })`)も、一緒につながります。
+
 {/* verify: mount-app */}
 
 ## ルートの表で前置きを付ける

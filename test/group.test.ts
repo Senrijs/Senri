@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { createApp, createRouter, type Context, type Next } from "../src/index.ts";
+import { z } from "zod";
+import { createApp, createRouter, defineRoutes, endpoint, type Context, type Middleware, type Next } from "../src/index.ts";
 
 const req = (path: string, init?: RequestInit) => new Request(`http://localhost${path}`, init);
 
@@ -210,3 +211,90 @@ describe("app.route(prefix, app)", () => {
     });
 });
 
+
+describe("app.route(prefix, app): つないだアプリのルートの use", () => {
+    // x-user があれば通す。なければ 401 を返して止める
+    const requireUser: Middleware<{ user: string }> = async (c, next) => {
+        const user = c.req.headers.get("x-user");
+        if (!user) return c.text("401 Unauthorized", 401);
+        c.set("user", user);
+        await next();
+    };
+    const asUser = { headers: { "x-user": "alice" } };
+
+    test("endpoint({ use }) のミドルウェアが動く。401 を返したらハンドラーは呼ばれない", async () => {
+        let called = 0;
+        const child = createApp<{ user: string }>();
+        child.routes(
+            defineRoutes({
+                "GET /me": endpoint({ use: [requireUser] }, (_, c) => (called++, `me: ${c.get("user")}`)),
+            }),
+        );
+        const app = createApp();
+        app.route("/api", child);
+
+        const denied = await app.fetch(req("/api/me"));
+        expect([denied.status, await denied.text()]).toEqual([401, "401 Unauthorized"]);
+        expect(called).toBe(0);
+        expect(await (await app.fetch(req("/api/me", asUser))).text()).toBe("me: alice");
+        expect(called).toBe(1);
+    });
+
+    test("defineRoutes(prefix, { use }) のミドルウェアが動く。401 を返したらハンドラーは呼ばれない", async () => {
+        let called = 0;
+        const child = createApp<{ user: string }>();
+        child.routes(
+            defineRoutes("/admin", { use: [requireUser] })({
+                "GET /me": (_, c) => (called++, `admin: ${c.get("user")}`),
+                "POST /notes": endpoint({ body: z.object({ text: z.string() }) }, (_, c) => (called++, c.valid("body").text)),
+            }),
+        );
+        const app = createApp();
+        app.route("/api", child);
+
+        expect((await app.fetch(req("/api/admin/me"))).status).toBe(401);
+        const post = { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ text: "hi" }) };
+        expect((await app.fetch(req("/api/admin/notes", post))).status).toBe(401);
+        expect(called).toBe(0);
+        expect(await (await app.fetch(req("/api/admin/me", asUser))).text()).toBe("admin: alice");
+        const ok = await app.fetch(req("/api/admin/notes", { ...post, headers: { ...post.headers, ...asUser.headers } }));
+        expect(await ok.text()).toBe("hi");
+        expect(called).toBe(2);
+    });
+
+    test("順番はそのまま: アプリの app.use() → つないだアプリの app.use() → 表の use → ルートの use → スキーマ → ハンドラー", async () => {
+        const order: string[] = [];
+        const mark = (name: string) => async (_: Context, next: Next) => {
+            order.push(name);
+            await next();
+        };
+        const child = createApp();
+        child.use(mark("child app.use"));
+        child.routes(
+            defineRoutes("", { use: [mark("table")] })({
+                "POST /t": endpoint(
+                    { use: [mark("route")], body: z.object({ a: z.number() }).transform((v) => (order.push("schema"), v)) },
+                    () => (order.push("handler"), "ok"),
+                ),
+            }),
+        );
+        const app = createApp();
+        app.use(mark("app.use"));
+        app.route("/api", child);
+
+        const res = await app.fetch(req("/api/t", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ a: 1 }) }));
+        expect(await res.text()).toBe("ok");
+        expect(order).toEqual(["app.use", "child app.use", "table", "route", "schema", "handler"]);
+    });
+
+    test("2 段につないでも動く", async () => {
+        const inner = createApp<{ user: string }>();
+        inner.routes(defineRoutes({ "GET /me": endpoint({ use: [requireUser] }, (_, c) => `me: ${c.get("user")}`) }));
+        const middle = createApp();
+        middle.route("/v1", inner);
+        const app = createApp();
+        app.route("/api", middle);
+        expect((await app.fetch(req("/api/v1/me"))).status).toBe(401);
+        expect(await (await app.fetch(req("/api/v1/me", asUser))).text()).toBe("me: alice");
+    });
+});

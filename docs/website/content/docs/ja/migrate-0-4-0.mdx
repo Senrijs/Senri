@@ -9,11 +9,10 @@ description: "0.3.x から 0.4.0 に上げるときに、書き換えるとこ�
 |---|---|---|
 | [params のスキーマと `c.params`](#params-のスキーマと-cparams) | **変わる**(ミドルウェアと `onError` だけ) | params のスキーマで値を変換するルートがある人 |
 | [`bodyLimit()` が投げるようになった](#bodylimit-が投げるようになった) | **変わる**(`onError` を替えているときだけ) | `bodyLimit()` を `onError` なしで使い、`app.onError` を替えている人 |
-| [つないだアプリのルートの `use`](#つないだアプリのルートの-use) | **変わる**(直した) | `app.route(prefix, app)` でつないだアプリに、ルートの `use` がある人 |
 | [`Context` の型引数](#context-の型引数) | 変わらない(型だけ) | `Context<V, { body: ... }>` や `Handler<P, V, I>` を自分で書いている人 |
 
-<Callout type="warn" title="まず確かめること">
-  `app.route(prefix, app)` でつないだアプリに `endpoint({ use })` や `defineRoutes(prefix, { use })` のルートがあるなら、0.3 まではそのミドルウェアが**動いていませんでした**。0.4.0 からは動きます。認証などが急に効くようになるので、つないだアプリのルートを確かめてください。
+<Callout type="info" title="0.3.3 以前から上げるとき">
+  0.3.1〜0.3.3 では、`app.route(prefix, app)` でつないだアプリのルートの `use`(`endpoint({ use })`・`defineRoutes(prefix, { use })`)が動いていませんでした([GHSA-cqhh-3pxg-cq62](https://github.com/Senrijs/Senri/security/advisories/GHSA-cqhh-3pxg-cq62))。0.3.4 で直したので、0.3.4 から上げる場合は影響はありません。0.3.3 以前から上げるときは、つないだアプリのルートで、認証などのミドルウェアが動くようになります。
 </Callout>
 
 ## params のスキーマと `c.params`
@@ -59,12 +58,6 @@ app.get("/notes/:id", { params: z.object({ id: z.coerce.number() }) }, (params, 
 ```ts
 app.use(bodyLimit({ maxSize: 1024 * 1024, onError: () => new Response("413 Content Too Large", { status: 413 }) }));
 ```
-
-## つないだアプリのルートの `use`
-
-`app.route(prefix, app)` で別のアプリをつないだとき、そのアプリのルートに付けたミドルウェア(`endpoint({ use })`・`defineRoutes(prefix, { use })`)が落ちていました。0.4.0 からは、一緒につながって動きます。
-
-`createRouter()` で作ったルーターは、もともと影響を受けません。
 
 ## `Context` の型引数
 
