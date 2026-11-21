@@ -36,7 +36,6 @@
       "package-name": "@senrijs/cli",
       "component": "cli",
       "include-component-in-tag": true,
-      "release-as": "0.1.0"
     }
   }
 }
