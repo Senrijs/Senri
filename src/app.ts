@@ -177,7 +177,7 @@ export type App<V extends object = Record<string, unknown>> = {
     /**
      * Mounts a router from {@link createRouter}, or another app under a prefix: `app.route("/api", api)`.
      * What is registered at this point is copied into this app.
-     * A mounted app's `onError` / `notFound` are not used; this app's are.
+     * A mounted app's `onError` / `notFound` are not used; this app's are. The middleware of its routes (`use`) is copied with them.
      */
     route(routerOrPrefix: Router<string, V> | string, child?: MountableApp): void;
     /**
@@ -553,7 +553,7 @@ export function createApp<V extends object = Record<string, unknown>>(options: A
             }
             for (const entry of list) {
                 if (entry.kind === "use") app.use(entry.path, entry.mw);
-                else add(entry.method, entry.path, entry.handler);
+                else add(entry.method, entry.path, entry.handler, undefined, entry.use);
             }
         }),
 
@@ -651,9 +651,10 @@ export function createApp<V extends object = Record<string, unknown>>(options: A
     }
 
     // ミドルウェアを先に、ルートはそのあと(どちらも登録順)
+    // ルートのミドルウェア(endpoint() / defineRoutes() の use)も一緒に渡す。落とすと、つないだ先で認証などが動かない
     appEntries.set(app, () => [
         ...middlewares.map((m): GroupEntry => ({ kind: "use", path: m.path ?? "/", mw: m.mw as Middleware })),
-        ...routes.map((r): GroupEntry => ({ kind: "route", method: r.method, path: r.path, handler: r.handler })),
+        ...routes.map((r): GroupEntry => ({ kind: "route", method: r.method, path: r.path, handler: r.handler, use: r.use?.map((l) => l.mw) })),
     ]);
 
     const core: AppCore = {

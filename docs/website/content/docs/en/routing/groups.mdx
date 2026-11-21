@@ -34,6 +34,8 @@ admin.get("/stats", () => ({ users: 42 }));
 app.route("/admin", admin);   // GET /admin/stats
 ```
 
+Middleware on the mounted app's routes (`endpoint({ use })`, `defineRoutes(prefix, { use })`) comes along too.
+
 ## Prefixes in route tables
 
 Typed route tables (`defineRoutes()`) can have a prefix too ([Route tables](/en/docs/typed-api/define-routes)).
