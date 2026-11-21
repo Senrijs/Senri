@@ -6,6 +6,11 @@
 </p>
 
 <p align="center">
+  <b>No lies. No surprises.</b><br>
+  嘘をつかない。驚かせない。
+</p>
+
+<p align="center">
   Web 標準の <code>Request</code> / <code>Response</code> だけで書かれた、小さな Web フレームワーク。<br>
   Bun・Deno・Node.js・Cloudflare Workers・ブラウザ(Service Worker)で、同じコードが動きます。
 </p>
@@ -920,6 +925,7 @@ node examples/node/index.ts                    # Node.js
 - これからの予定は [ROADMAP.ja.md](./ROADMAP.ja.md) にあります
 - 開発のしかたは [CONTRIBUTING.md](./CONTRIBUTING.md)、変更点は [CHANGELOG.md](./CHANGELOG.md) にあります
 - 0.2.x から 0.3.0 に上げるときに書き換えるところは、[0.3.0 への移行](https://senri.skyia.jp/docs/migrate-0-3-0)([English](https://senri.skyia.jp/en/docs/migrate-0-3-0))にあります
+- 質問やアイデアは [Discussions](https://github.com/Senrijs/Senri/discussions) へどうぞ
 
 ## ライセンス
 
