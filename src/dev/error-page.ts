@@ -31,7 +31,7 @@ function toPageFrame(frame: StackFrame, root: string | null): PageFrame {
     return { ...frame, display };
 }
 
-function requestPath(c: Context): string {
+function requestPath(c: Context<any, any>): string {
     try {
         return c.path;
     } catch {
@@ -40,7 +40,7 @@ function requestPath(c: Context): string {
     }
 }
 
-export async function buildErrorPageData(err: unknown, c: Context, res: Response, lang: Lang): Promise<ErrorPageData> {
+export async function buildErrorPageData(err: unknown, c: Context<any, any>, res: Response, lang: Lang): Promise<ErrorPageData> {
     const root = runtime.cwd();
     const error =
         err instanceof Error ? { name: err.name, message: err.message } : { name: "throw", message: String(err) };
@@ -68,7 +68,7 @@ export async function buildErrorPageData(err: unknown, c: Context, res: Response
             method: c.req.method,
             path: requestPath(c),
             route: c.route ?? null,
-            params: c.params,
+            params: c.params as Record<string, string>,
             userAgent: c.req.headers.get("user-agent"),
         },
         layers: c.timings.map((t) => ({ name: t.name, self: t.self, total: t.total, failed: t.failed })),

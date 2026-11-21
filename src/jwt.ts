@@ -568,7 +568,7 @@ export type JwtOptions = VerifyJwtOptions & {
  * app.get("/api/me", (_, c) => c.get("jwtPayload"));
  * ```
  */
-export function jwt(options: JwtOptions): Middleware {
+export function jwt<T extends JwtPayload = JwtPayload>(options: JwtOptions): Middleware<any, { vars: JwtVariables<T>; errors: 401 }> {
     const algorithms = checkAlgorithms(options?.algorithms);
     // 短すぎる HMAC の秘密鍵は、最初のリクエストを待たずに、作るときに知らせる
     for (const entry of entriesOf(options.keys)) {
@@ -586,7 +586,7 @@ export function jwt(options: JwtOptions): Middleware {
     const missing = quoted === "" ? "Bearer" : `Bearer ${quoted}`;
     const invalid = quoted === "" ? 'Bearer error="invalid_token"' : `Bearer ${quoted}, error="invalid_token"`;
 
-    return markPlainSafe<Middleware>(async function jwt(c, next) {
+    return markPlainSafe<Middleware<any, any>>(async function jwt(c, next) {
         const token = tokenOf(c, options.cookie);
         if (token === null) throw new JwtError("missing", missing);
         let payload: JwtPayload;
@@ -601,7 +601,7 @@ export function jwt(options: JwtOptions): Middleware {
     });
 }
 
-function tokenOf(c: Context, cookie: string | undefined): string | null {
+function tokenOf(c: Context<any, any>, cookie: string | undefined): string | null {
     if (cookie !== undefined) {
         const value = parseCookies(headerOf(c, "cookie"))[cookie];
         return value === undefined || value === "" ? null : value;

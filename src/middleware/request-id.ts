@@ -16,7 +16,7 @@ export type RequestIdOptions = {
     headerName?: string;
     // ID を作る関数。ここで作った値は確かめない(アプリ自身のコードなので)
     /** Generates an ID. Default `crypto.randomUUID()`. The value is not checked, so it must be a valid header value. */
-    generator?: (c: Context) => string;
+    generator?: (c: Context<any, any>) => string;
 };
 
 /**
@@ -56,12 +56,12 @@ const HEADER_NAME = /^[!#$%&'*+.^_`|~0-9A-Za-z-]+$/;
  * // app.use(requestId({ trustIncoming: true }));
  * ```
  */
-export function requestId(options: RequestIdOptions = {}): Middleware {
+export function requestId(options: RequestIdOptions = {}): Middleware<any, { vars: RequestIdVariables }> {
     const headerName = (options.headerName ?? "X-Request-Id").toLowerCase();
     if (!HEADER_NAME.test(headerName)) throw senriError("request_id_header", "requestId(): invalid headerName");
     const generate = options.generator ?? (() => crypto.randomUUID());
 
-    return markPlainSafe<Middleware>(async function requestId(c, next) {
+    return markPlainSafe<Middleware<any, any>>(async function requestId(c, next) {
         const incoming = options.trustIncoming ? headerOf(c, headerName) : null;
         const id = incoming !== null && SAFE_ID.test(incoming) ? incoming : generate(c);
         c.set("requestId", id);

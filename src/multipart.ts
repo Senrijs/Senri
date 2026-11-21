@@ -223,7 +223,7 @@ function extendedValue(value: string | undefined): string | undefined {
  * });
  * ```
  */
-export function multipart(c: Context, limits: MultipartLimits = {}): AsyncIterableIterator<MultipartPart> {
+export function multipart(c: Context<any, any>, limits: MultipartLimits = {}): AsyncIterableIterator<MultipartPart> {
     const max = limitsOf(limits);
     // アプリの既定の上限(createApp({ maxBodySize }))を、multipart() の上限(maxTotalSize など)で置き換える
     releaseBodyCap(c);

@@ -22,7 +22,7 @@ export type UploadLimitOptions = {
     /** Compare the first bytes of PNG, JPEG, GIF, WebP and PDF files with the type they claim. Default `true`. */
     sniff?: boolean;
     /** Your own check for each file; only `true` accepts it. For example, to read the first bytes of other types. */
-    check?: (file: File, c: Context) => boolean | Promise<boolean>;
+    check?: (file: File, c: Context<any, any>) => boolean | Promise<boolean>;
 };
 
 // 種類ごとの、ファイルの先頭のバイト。null はどの値でもよい
@@ -82,7 +82,7 @@ const unsupported = () => new HttpError(415, "415 Unsupported Media Type");
  * });
  * ```
  */
-export function uploadLimit(options: UploadLimitOptions): Middleware {
+export function uploadLimit(options: UploadLimitOptions): Middleware<any, { errors: 400 | 413 | 415 }> {
     const { maxTotalSize, maxFileSize, maxFiles, types, extensions, check } = options;
     const limit = (value: unknown) => typeof value === "number" && Number.isFinite(value) && value >= 0;
     const strings = (value: unknown) => Array.isArray(value) && value.every((item) => typeof item === "string" && item !== "");
@@ -104,7 +104,7 @@ export function uploadLimit(options: UploadLimitOptions): Middleware {
         },
     });
 
-    const inspect = async (c: Context, file: File) => {
+    const inspect = async (c: Context<any, any>, file: File) => {
         if (maxFileSize !== undefined && file.size > maxFileSize) throw tooLarge();
         const type = mediaType(file.type);
         if (accepted && !accepted.some((item) => item === type || (item.endsWith("/*") && type.startsWith(item.slice(0, -1))))) throw unsupported();
@@ -117,7 +117,7 @@ export function uploadLimit(options: UploadLimitOptions): Middleware {
         if (check && (await check(file, c)) !== true) throw unsupported();
     };
 
-    return markPlainSafe<Middleware>(async function uploadLimit(c, next) {
+    return markPlainSafe<Middleware<any, any>>(async function uploadLimit(c, next) {
         if (mediaType(headerOf(c, "content-type") ?? "") !== "multipart/form-data" || hasNoBody(c)) return next();
 
         // 読んでいる途中で上限を超えると、フォームの読み取りは 400 で失敗する。

@@ -1,4 +1,4 @@
-import { Context, type ExecutionContext, type Handler, type HandlerResult, type Middleware } from "./context.ts";
+import { Context, type ExecutionContext, type Handler, type HandlerResult, type Middleware, type MiddlewareVars, type WithVars } from "./context.ts";
 import {
     allowedMethods,
     checkParamNames,
@@ -16,9 +16,18 @@ import {
 import { compose, type Layer } from "./compose.ts";
 import { methodOf } from "./plain.ts";
 import { createMatcher } from "./matcher.ts";
-import { routeHandler, type CheckParamTypes, type RouteSchemas, type StandardSchemaV1, type Validated, type ValidatedParams } from "./validate.ts";
+import {
+    routeHandler,
+    type CheckParamTypes,
+    type RouteInfoOf,
+    type RouteMiddleware,
+    type RouteOptions,
+    type RouteSchemas,
+    type StandardSchemaV1,
+    type ValidatedParams,
+} from "./validate.ts";
 import { groupEntries, joinPath, type GroupEntry, type Router } from "./group.ts";
-import { isEndpoint, type TableShape } from "./routes.ts";
+import { checkUse, isEndpoint, type TableShape } from "./routes.ts";
 import { attachBodyCap, capBody, checkMaxBodySize, declaredLength, tooLargeResponse, type BodyCap } from "./body-cap.ts";
 import {
     defaultNotFound,
@@ -50,25 +59,41 @@ export type Resolved =
 // 扱わないメソッド。ルートがあってもなくても 501 にする(app.all() でも受けない)
 const NOT_IMPLEMENTED = new Set(["CONNECT", "TRACE", "TRACK"]);
 
-// app.get(path, handler) と、スキーマを付けた app.get(path, { params, query, body }, handler)
-/** A route method of an app (`app.get`, `app.post`, ...): `(path, handler)` or `(path, schemas, handler)`. */
+/** The path parameters of a route path, as one object type. */
+export type PathParams<Path extends string> = Simplify<ExtractParams<Path>>;
+
+/** The handler of a route without options. */
+export type PlainHandler<P, V extends object> = Handler<P, V>;
+
+// スキーマやミドルウェアを付けたルートのハンドラー
+// - 第1引数: params のスキーマの出力か、{ id: "int" } なら数にしたもの、なければパスから取ったもの
+// - c: use のミドルウェアが「必ず入れる」と宣言した変数・c.valid()・c.params の型が付く
+/** The handler of a route with options `S` (schemas and `use`), for the path parameters `P` and the app's type `V`. */
+export type OptionsHandler<S extends RouteOptions, P, V extends object, X extends object = {}> = Handler<
+    ValidatedParams<S, P>,
+    WithVars<V, MiddlewareVars<S["use"]>>,
+    RouteInfoOf<S, P, X>
+>;
+
+// app.get(path, handler) と、スキーマやミドルウェアを付けた app.get(path, { use, params, query, body }, handler)
+/** A route method of an app (`app.get`, `app.post`, ...): `(path, handler)` or `(path, options, handler)`. */
 export type RouteMethod<V extends object> = {
-    <Path extends string>(path: Path, handler: Handler<Simplify<ExtractParams<Path>>, V>): void;
-    <Path extends string, S extends RouteSchemas>(
+    <Path extends string>(path: Path, handler: PlainHandler<PathParams<Path>, V>): void;
+    <Path extends string, S extends RouteOptions>(
         path: Path,
-        schemas: S & NoInfer<CheckParamTypes<S, Simplify<ExtractParams<Path>>>>,
-        handler: Handler<ValidatedParams<S, Simplify<ExtractParams<Path>>>, V, Validated<S>>,
+        options: S & NoInfer<CheckParamTypes<S, PathParams<Path>>>,
+        handler: OptionsHandler<S, PathParams<Path>, V>,
     ): void;
 };
 
 /** `app.on`: a route for any method name, or several at once. */
 export type OnMethod<V extends object> = {
-    <Path extends string>(method: string | readonly string[], path: Path, handler: Handler<Simplify<ExtractParams<Path>>, V>): void;
-    <Path extends string, S extends RouteSchemas>(
+    <Path extends string>(method: string | readonly string[], path: Path, handler: PlainHandler<PathParams<Path>, V>): void;
+    <Path extends string, S extends RouteOptions>(
         method: string | readonly string[],
         path: Path,
-        schemas: S & NoInfer<CheckParamTypes<S, Simplify<ExtractParams<Path>>>>,
-        handler: Handler<ValidatedParams<S, Simplify<ExtractParams<Path>>>, V, Validated<S>>,
+        options: S & NoInfer<CheckParamTypes<S, PathParams<Path>>>,
+        handler: OptionsHandler<S, PathParams<Path>, V>,
     ): void;
 };
 
@@ -116,6 +141,9 @@ export type App<V extends object = Record<string, unknown>> = {
     /**
      * Adds a GET route: `app.get(path, handler)`, or `app.get(path, { params, query, body }, handler)` to validate
      * with Standard Schema first. Path parameters (`/users/:id`) are typed from the path.
+     * `use` adds middleware for this route only (after the app's middleware, before validation): `app.get(path, { use: [requireUser] }, handler)`.
+     * Variables it declares it always sets (`Middleware<V, { vars }>`) are typed in `c.get()` without `undefined`. Throws if `use` is not an array of functions.
+     * With a `params` schema, `c.params` in the handler is typed as its output.
      * There are no optional or regular expression parameters: a name containing `?`, `+`, `{`, `}`, `(`, `)`, `[`, `]`, `|`, `:`
      * or a space throws (`:id?`, `:id{[0-9]+}`). Check the value in the handler or with a schema.
      *
@@ -179,7 +207,7 @@ export type App<V extends object = Record<string, unknown>> = {
      * What is registered at this point is copied into this app.
      * A mounted app's `onError` / `notFound` are not used; this app's are. The middleware of its routes (`use`) is copied with them.
      */
-    route(routerOrPrefix: Router<string, V> | string, child?: MountableApp): void;
+    route(routerOrPrefix: Router<any, V, any> | string, child?: MountableApp): void;
     /**
      * The registered middleware, in registration order.
      * `name` is the function's name, or `anonymous#N` (with `anonymous: true`) for unnamed functions.
@@ -238,15 +266,15 @@ export type AppCore = {
     app: App<any>;
     // ルートを決める / かかるミドルウェアを集める / いちばん内側の処理(本番の fetch と同じもの)
     /** Decides how the request is handled (route, 404, 405, ...). `method` defaults to `c.req.method`. */
-    resolve(c: Context, method?: string): Resolved;
+    resolve(c: Context<any, any>, method?: string): Resolved;
     // resolved を渡すと、当たったルートに付けたミドルウェア(endpoint() / defineRoutes() の use)も後ろに足す
     /** The middleware that applies to the request; with `resolved`, followed by the matched route's own middleware. */
-    layers(c: Context, resolved?: Resolved): Layer[];
+    layers(c: Context<any, any>, resolved?: Resolved): Layer[];
     /** The innermost step after all middleware (the same as in production). */
-    inner(c: Context, resolved: Resolved): Response | Promise<Response>;
+    inner(c: Context<any, any>, resolved: Resolved): Response | Promise<Response>;
     // いまの onError を通して、例外をレスポンスにする
     /** Turns an error into a response through the current `onError`. */
-    fail(err: unknown, c: Context): Promise<Response>;
+    fail(err: unknown, c: Context<any, any>): Promise<Response>;
     // 登録されたルート(登録順)
     /** The registered routes, in registration order. */
     routes(): readonly Route[];
@@ -262,7 +290,7 @@ export type AppCore = {
      * If the request has a body and there is a default limit, replaces `c.req` with a Request whose body is counted
      * against it, and returns the per-request limit. The caller answers 413 if `exceeded` is set after the response.
      */
-    capBody(c: Context): BodyCap | undefined;
+    capBody(c: Context<any, any>): BodyCap | undefined;
 };
 
 /** What {@link DevHooks.install} returns. Used by the core; app code does not normally use it. */
@@ -341,14 +369,20 @@ export function createApp<V extends object = Record<string, unknown>>(options: A
         };
     }
 
+    // app.get(path, handler) か app.get(path, { use, params, query, body }, handler) の、ハンドラー・スキーマ・ミドルウェア
+    function parts(path: string, a: Handler | RouteOptions, b?: Handler): [Handler, (RouteSchemas | undefined)?, (RouteMiddleware | undefined)?] {
+        if (typeof a === "function") return [a];
+        const { use, ...schemas } = a;
+        checkUse(use, path);
+        return [routeHandler(path, schemas, b), schemas, use];
+    }
+
     function method(name: string): RouteMethod<V> {
-        return guard((path: string, a: Handler | RouteSchemas, b?: Handler) =>
-            add(name, path, routeHandler(path, a, b), typeof a === "function" ? undefined : a),
-        ) as RouteMethod<V>;
+        return guard((path: string, a: Handler | RouteOptions, b?: Handler) => add(name, path, ...parts(path, a, b))) as unknown as RouteMethod<V>;
     }
 
     // use: このルートだけのミドルウェア(endpoint() / defineRoutes() の use)
-    function add(rawMethod: string, path: string, handler: Handler, schemas?: RouteSchemas, use?: readonly Middleware[]) {
+    function add(rawMethod: string, path: string, handler: Handler, schemas?: RouteSchemas | undefined, use?: RouteMiddleware | undefined) {
         // app.all() の印の "ALL" だけはそのまま。ほかは名前を確かめて大文字にする
         const method = rawMethod === "ALL" ? rawMethod : normalizeMethod(rawMethod);
         devHooks?.checkRoute(method, path, schemas);
@@ -379,7 +413,7 @@ export function createApp<V extends object = Record<string, unknown>>(options: A
     }
 
     // method: Node のアダプターは、Request を作らずに渡す
-    function resolve(c: Context, method: string = c.req.method): Resolved {
+    function resolve(c: Context<any, any>, method: string = c.req.method): Resolved {
         let path: string;
         try {
             path = c.path;
@@ -418,7 +452,7 @@ export function createApp<V extends object = Record<string, unknown>>(options: A
 
     // 本文があれば、c.req を上限つきの Request にする(本文のない GET などでは何もしない。Request も作らない)
     // Bun の requestIP は元の Request で聞くので、Context には元のものを渡したまま、c.req だけ差し替える
-    function capRequest(c: Context): BodyCap | undefined {
+    function capRequest(c: Context<any, any>): BodyCap | undefined {
         if (maxBodySize === Infinity) return undefined;
         const req = c.req;
         // GET と HEAD は本文を持てない。何も見ずに終わる
@@ -443,7 +477,7 @@ export function createApp<V extends object = Record<string, unknown>>(options: A
     const NO_LAYERS: Layer[] = [];
 
     // resolved を渡すと、当たったルートのミドルウェア(route.use)を、アプリのミドルウェアの後ろに足す
-    function applicableMiddlewares(c: Context, resolved?: Resolved): Layer[] {
+    function applicableMiddlewares(c: Context<any, any>, resolved?: Resolved): Layer[] {
         const own = resolved?.kind === "route" ? resolved.route.use : undefined;
         if (middlewares.length === 0) return own ?? NO_LAYERS;
         let segments: readonly string[] | null;
@@ -506,15 +540,15 @@ export function createApp<V extends object = Record<string, unknown>>(options: A
 
         // 任意のメソッド(QUERY や、PROPFIND などの WebDAV)を登録する。配列でまとめて登録もできる
         // 小文字で書いても大文字にする。CONNECT / TRACE / TRACK は扱わない
-        on: guard((methods: string | readonly string[], path: string, a: Handler | RouteSchemas, b?: Handler) => {
+        on: guard((methods: string | readonly string[], path: string, a: Handler | RouteOptions, b?: Handler) => {
             const list = typeof methods === "string" ? [methods] : methods;
             if (list.length === 0) throw senriError("no_method", `Missing method: ${path}`);
-            const handler = routeHandler(path, a, b);
+            const route = parts(path, a, b);
             for (const m of list) {
                 if (m.toUpperCase() === "ALL") throw senriError("on_all", "Use app.all() for every method");
-                add(m, path, handler, typeof a === "function" ? undefined : a);
+                add(m, path, ...route);
             }
-        }) as OnMethod<V>,
+        }) as unknown as OnMethod<V>,
 
         // K はテーブルのキーから推論される。各キーのパスからパラメーターの型が決まる
         // 値は、ハンドラーか、defineRoutes() の表の endpoint()(スキーマ付き)
@@ -527,10 +561,10 @@ export function createApp<V extends object = Record<string, unknown>>(options: A
                     // (開発モードがスキーマのキーを確かめるため)
                     const { use, response, responses, bodyType, openapi, ...schemas } = value.schemas;
                     // スキーマがなければ、確かめる処理で包まない(use だけのルート)
-                    let handler = Object.keys(schemas).length === 0 ? (value.handler as Handler) : routeHandler(path, schemas, value.handler as Handler);
+                    let handler = Object.keys(schemas).length === 0 ? (value.handler as unknown as Handler) : routeHandler(path, schemas, value.handler as unknown as Handler);
                     // 開発モードでは、ハンドラーの戻り値を response のスキーマで確かめる(本番では確かめない)
                     if (response && devHooks?.watchResponse) handler = devHooks.watchResponse(`${method.toUpperCase()} ${path}`, response, handler);
-                    add(method.toUpperCase(), path, handler, schemas, use as readonly Middleware[] | undefined);
+                    add(method.toUpperCase(), path, handler, schemas, use);
                 }
                 else if (typeof value === "function") add(method.toUpperCase(), path, value as Handler);
                 else throw senriError("route_value", `Invalid route: "${key}"`);
@@ -541,7 +575,7 @@ export function createApp<V extends object = Record<string, unknown>>(options: A
         // app.route(prefix, app) なら、別のアプリをプレフィックス付きでつなげる
         // (つなぐ側のアプリでは、プレフィックスのパラメーターに型は付かない。型が必要なら createRouter を使う)
         // つないだアプリの onError / notFound は使わず、こちらのものを使う
-        route: guard((routerOrPrefix: Router<string, V> | string, child?: MountableApp) => {
+        route: guard((routerOrPrefix: Router<any, V, any> | string, child?: MountableApp) => {
             // 先に全部読んでおく(ルーターの作りがおかしいときに、途中まで登録された状態にしない)
             let list: GroupEntry[];
             if (typeof routerOrPrefix === "string") {

@@ -27,6 +27,7 @@ app.post(
 
 - `params`・`query`・`body` を渡せます
 - `params` が通ると、ハンドラーの 1 つ目の引数が、変換したあとの値になります(上の `id` は `number`) {/* verify: params-converted */}
+- ハンドラーの中の `c.params` も、変換したあとの値です。型も同じです(`c.params.id` は `number`)。ミドルウェアと `onError` から見た `c.params` は、ハンドラーの前もあとも、パスの文字列のままです {/* verify: c-params-converted */}
 - `query` と `body` の値は、`c.valid("query")`・`c.valid("body")` で読みます
 - 表のルートでは、`endpoint({ body }, handler)` と書きます([ルートの表](/docs/typed-api/define-routes))
 

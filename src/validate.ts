@@ -2,11 +2,11 @@
 // Zod・Valibot・ArkType など、Standard Schema に対応したライブラリのスキーマをそのまま使える(Senri はどれにも依存しない)
 //
 // app.post("/users/:id", { params, query, body }, handler) のように、ルートにスキーマを渡す
-// - params: パスパラメーター。通ればハンドラーの第1引数(と c.params)が変換後の値になる
+// - params: パスパラメーター。通ればハンドラーの第1引数(と、ハンドラーが動いている間の c.params)が変換後の値になる
 // - query: c.query() の結果。通れば c.valid("query") で読める
 // - body: c.body() の結果(Content-Type に合わせて読んだもの)。通れば c.valid("body") で読める
 // どれかが通らなければ、ハンドラーは呼ばずに 400 にする(ValidationError)
-import { setValidated, type Context, type Handler } from "./context.ts";
+import { setValidated, type Context, type Handler, type Middleware, type MiddlewareProvides } from "./context.ts";
 import { HttpError, senriError } from "./errors.ts";
 
 // Standard Schema の仕様の型(仕様は、ライブラリ側が依存せずに済むよう、型を写して使うことを勧めている)
@@ -69,7 +69,8 @@ export type ParamTypes = { readonly [name: string]: ParamType };
  */
 export type RouteSchemas = {
     /**
-     * Validates the path parameters. The output replaces the handler's first argument and `c.params`.
+     * Validates the path parameters. The output replaces the handler's first argument, and `c.params` while the
+     * handler runs (both are typed as the output). Middleware and `onError` see the strings from the path.
      * Instead of a schema, `{ id: "int" }` or `{ id: "uint" }` reads the parameter as an integer ({@link ParamType})
      * in the handler's first argument only (`c.params` keeps the strings, as its type says);
      * if it is not one, the handler is not called and the response is 404 (the `app.notFound` handler).
@@ -79,6 +80,19 @@ export type RouteSchemas = {
     query?: StandardSchemaV1;
     /** Validates `c.body()`. The output is available as `c.valid("body")`. */
     body?: StandardSchemaV1;
+};
+
+/** Middleware that runs only for the routes it is given to: `app.get(path, { use }, handler)`, `endpoint({ use })` or `defineRoutes(prefix, { use })`. */
+export type RouteMiddleware = readonly Middleware<any, any>[];
+
+// app.get(path, { use, params, query, body }, handler) の 2 つ目の引数
+/** The second argument of `app.get(path, options, handler)`: {@link RouteSchemas} and middleware for this route. */
+export type RouteOptions = RouteSchemas & {
+    /**
+     * Middleware for this route only. It runs after the app's middleware, before validation. Variables it declares
+     * it always sets (`Middleware<V, { vars }>`) are typed in `c.get()` without `undefined`.
+     */
+    use?: RouteMiddleware;
 };
 
 // c.valid() で読めるもの(スキーマを渡したものだけ)
@@ -99,6 +113,19 @@ export type ValidatedParams<S extends RouteSchemas, Fallback> = S extends { para
     : S extends { params: ParamTypes }
       ? { [K in keyof Fallback]: K extends keyof S["params"] ? number : Fallback[K] }
       : Fallback;
+
+// c.params の型。params のスキーマがあれば変換後の値。なければ(と "int" のときは)今までどおり Record<string, string>
+// (パスから取った型に絞らない。app.route(prefix, app) でつないだアプリでは、前置きのパラメーターも入るため)
+/** The type of `c.params` in the handler: the `params` schema's output, or `Record<string, string>` without one (and with `{ id: "int" }`). */
+export type ContextParams<S extends RouteSchemas> = S extends { params: StandardSchemaV1 } ? InferOutput<S["params"]> : Record<string, string>;
+
+// ルートが Context に足すもの(src/context.ts の RouteInfo)
+/** What a route with the options `S` adds to the context: validated values, the type of `c.params`, and variables its middleware always set. */
+export type RouteInfoOf<S extends RouteSchemas & { use?: RouteMiddleware }, Fallback, X extends object = {}> = {
+    valid: Validated<S>;
+    params: ContextParams<S>;
+    vars: X & MiddlewareProvides<S["use"]>;
+};
 
 // { id: "int" } の名前がパスにないときに、型エラーにする(スキーマのときは何もしない)
 /** Rejects names in {@link ParamTypes} that are not parameters of the path (`P`). Schemas are not checked. */
@@ -143,13 +170,13 @@ async function run(schema: StandardSchemaV1, target: ValidationTarget, value: un
 // 整数として読めなかったパスの値。開発モードの 404 が「:id に整数でない値 "abc" が来ました」と出すのに使う
 /** A path parameter that could not be read as its {@link ParamType}. Used by `@senrijs/senri/dev`. */
 export type ParamMiss = { name: string; value: string; type: ParamType };
-export const paramMisses = new WeakMap<Context, ParamMiss>();
+export const paramMisses = new WeakMap<Context<any, any>, ParamMiss>();
 
 // "-0" は弾く(-0 と 0 は別の値ではないが、"-0" と書く理由がない)
 const INT = /^(?:0|-?[1-9][0-9]*)$/;
 
 // { id: "int" } の通りに読む。読めなければ c.notFound()(app.notFound のハンドラーに回る)
-function readParams(types: ParamTypes, params: Record<string, string>, c: Context): Record<string, unknown> {
+function readParams(types: ParamTypes, params: Record<string, string>, c: Context<any, any>): Record<string, unknown> {
     const out: Record<string, unknown> = { ...params };
     for (const name in types) {
         const type = types[name]!;
@@ -179,7 +206,7 @@ export function withValidation(schemas: RouteSchemas, handler: Handler): Handler
             }
         }
     }
-    return async (params, c: Context) => {
+    return async (params, c: Context<any, any>) => {
         let validParams = params;
         // { id: "int" } で数にするのは、ハンドラーの 1 つ目の引数だけ。c.params は文字列のまま残す
         // (c.params の型は Record<string, string> なので、値を数にすると型と食い違う)
@@ -187,11 +214,18 @@ export function withValidation(schemas: RouteSchemas, handler: Handler): Handler
             validParams = readParams(types, params, c) as Record<string, string>;
         } else if (p) {
             validParams = (await run(p as StandardSchemaV1, "params", params)) as Record<string, string>;
-            c.params = validParams;
         }
         if (schemas.query) setValidated(c, "query", await run(schemas.query, "query", c.query()));
         if (schemas.body) setValidated(c, "body", await run(schemas.body, "body", await c.body()));
-        return handler(validParams, c);
+        // スキーマで変換した c.params は、ハンドラーが動いている間だけ。終わったら(投げても)文字列に戻す
+        // (ミドルウェアと onError の c.params の型は Record<string, string> なので、変換後の値を見せると型と食い違う)
+        if (types || !p) return handler(validParams, c);
+        c.params = validParams;
+        try {
+            return await handler(validParams, c);
+        } finally {
+            c.params = params;
+        }
     };
 }
 

@@ -370,3 +370,60 @@ claim("errors/on-error#throw-inside", "onError の中で投げると、固定の
         expect([r.status, await r.text()]).toEqual([403, "D"]);
     });
 }
+
+// ---------- 0.4.0: ミドルウェアの宣言と、ルートの use ----------
+import { createRouter, type Middleware } from "../../src/index.ts";
+{
+    const requireUser: Middleware<{}, { vars: { user: { name: string } }; errors: 401 }> = async (c, next) => {
+        const name = c.req.headers.get("x-user");
+        if (!name) throw new HttpError(401, "401 Unauthorized");
+        c.set("user", { name });
+        return next();
+    };
+    const asUser = { headers: { "x-user": "alice" } };
+
+    claim("middleware/writing#declared-vars", "宣言したミドルウェアを use に入れたルートで、c.get() で読める", async () => {
+        const app = createApp();
+        app.get("/me", { use: [requireUser] }, (_, c) => ({ name: c.get("user").name }));
+        expect(await (await req(app, "GET", "/me", asUser)).json()).toEqual({ name: "alice" });
+        expect((await req(app, "GET", "/me")).status).toBe(401);
+    });
+    claim("middleware/route-middleware#app-get-and-router", "app.get の use と createRouter の use は、そのルートでだけ動く", async () => {
+        const app = createApp();
+        app.get("/me", { use: [requireUser] }, (_, c) => c.get("user"));
+        const admin = createRouter("/admin", { use: [requireUser] });
+        admin.get("/whoami", (_, c) => c.get("user").name);
+        app.route(admin);
+        app.get("/open", () => "open");
+        expect((await req(app, "GET", "/me")).status).toBe(401);
+        expect(await (await req(app, "GET", "/admin/whoami", asUser)).text()).toBe("alice");
+        expect((await req(app, "GET", "/admin/whoami")).status).toBe(401);
+        expect(await (await req(app, "GET", "/open")).text()).toBe("open");
+    });
+    claim("middleware/route-middleware#mounted-app", "app.route(prefix, app) でつないでも、ルートの use は動く", async () => {
+        const child = createApp();
+        child.routes(defineRoutes({ "GET /me": endpoint({ use: [requireUser] }, (_, c) => c.get("user").name) }));
+        const app = createApp();
+        app.route("/api", child);
+        expect((await req(app, "GET", "/api/me")).status).toBe(401);
+        expect(await (await req(app, "GET", "/api/me", asUser)).text()).toBe("alice");
+    });
+    claim("validation#c-params-converted", "ハンドラーの c.params は変換後の値。ミドルウェアと onError ではパスの文字列", async () => {
+        const seen: unknown[] = [];
+        const app = createApp();
+        app.use(async (c, next) => {
+            seen.push(c.params.id);
+            await next();
+            seen.push(c.params.id);
+        });
+        app.onError((_, c) => typeof c.params.id);
+        app.get("/notes/:id", { params: z.object({ id: z.coerce.number() }) }, (_, c) => {
+            seen.push(c.params.id);
+            if (c.params.id === 0) throw new Error("zero");
+            return "ok";
+        });
+        await req(app, "GET", "/notes/7");
+        expect(seen).toEqual(["7", 7, "7"]);
+        expect(await (await quiet(() => req(app, "GET", "/notes/0"))).text()).toBe("string");
+    });
+}

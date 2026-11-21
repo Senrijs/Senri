@@ -21,7 +21,7 @@ export function createDashboard(source: DashboardSource, lang: (req: Request) =>
     // SSE(/_senri/api/events)。記録が増えるたびに、開いているダッシュボードへ知らせる
     const events = (req: Request) => eventStream(log, req);
     // リクエストごとの id。エラーページの「/_senri で詳しく見る」から、そのリクエストを開くのに使う
-    const ids = new WeakMap<Context, string>();
+    const ids = new WeakMap<Context<any, any>, string>();
     let nextId = 1;
 
     const dashboard = {
@@ -41,19 +41,19 @@ export function createDashboard(source: DashboardSource, lang: (req: Request) =>
 
         // リクエストの最初に呼ぶ。id を振る(/_senri へのリクエストには呼ばないので、記録されない)
         // info: app.fetch の2つ目の引数。localhost からのリクエストなら、エラーページなどにリンクを出す
-        begin(c: Context, info: unknown): string {
+        begin(c: Context<any, any>, info: unknown): string {
             const id = String(nextId++);
             ids.set(c, id);
             if (canOpenDashboard(c.req, info)) setDashboardLink(c, `/_senri#requests/${id}`);
             return id;
         },
 
-        idOf(c: Context): string | undefined {
+        idOf(c: Context<any, any>): string | undefined {
             return ids.get(c);
         },
 
         // レスポンスを返す直前に呼ぶ。記録に失敗しても、リクエストには影響させない
-        async record(c: Context, res: Response, time: number, layerNames: { name: string; order: number | null }[]) {
+        async record(c: Context<any, any>, res: Response, time: number, layerNames: { name: string; order: number | null }[]) {
             const id = ids.get(c);
             if (id === undefined) return;
             try {

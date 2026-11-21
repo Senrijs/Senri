@@ -51,33 +51,36 @@ In development mode, you can see which middleware each request went through, in 
 
 ## Pass values
 
-To pass values from middleware to the handler, use `c.set()` and `c.get()`. Write the middleware as `Middleware<{ user: User }>` to type them.
+To pass values from middleware to the handler, use `c.set()` and `c.get()`.
+
+The second type argument of `Middleware` declares the variables the middleware always sets (`vars`) and the statuses it may throw (`errors`). Put it in a route's `use`, and `c.get()` in that route has no `undefined`.
 
 ```ts twoslash
-import { createApp, type Middleware } from "@senrijs/senri";
+import { createApp, HttpError, type Middleware } from "@senrijs/senri";
 type User = { name: string };
 declare function findUser(token: string | null): Promise<User | undefined>;
 // ---cut---
-const auth: Middleware<{ user: User }> = async (c, next) => {
+// First: the app type it reads. Second: the variables it always sets and the statuses it may throw
+const requireUser: Middleware<{}, { vars: { user: User }; errors: 401 }> = async (c, next) => {
     const user = await findUser(c.req.headers.get("authorization"));
-    if (!user) {
-        c.status(401);
-        return "please log in";
-    }
+    if (!user) throw new HttpError(401, "401 Unauthorized");
     c.set("user", user);
-    await next();
+    return next();
 };
 
-const app = createApp<{ user: User }>();
-app.use("/me", auth);
-app.get("/me", (_, c) => {
+const app = createApp();
+app.get("/me", { use: [requireUser] }, (_, c) => {
     const user = c.get("user");
     //    ^?
-    return { name: user?.name };
+    return { name: user.name };
 });
 ```
 
-Set the app's types as in `createApp<{ user: User }>()`. The types of middleware added per route apply to `c.get()` in that route ([Per-route middleware](/en/docs/middleware/route-middleware)).
+- The statuses in `errors` show up in the types of the [typed client](/en/docs/typed-api/client)
+- **`vars` is a promise made by whoever declares it. Senri does not check it at runtime.** If the middleware forgets `c.set()`, the type (`User`) and the value (`undefined`) disagree. Once declared, always set it before calling `next()`
+- For middleware added with `app.use()`, the types cannot follow which routes it runs before. Type its variables with `createApp<{ user: User }>()`; `c.get()` then includes `undefined`
+
+How to add middleware to routes, and what the built-in middleware declares, is in [Per-route middleware](/en/docs/middleware/route-middleware).
 
 ## Built-in middleware
 

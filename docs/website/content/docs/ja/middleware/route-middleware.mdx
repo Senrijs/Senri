@@ -6,8 +6,8 @@ description: "パスで付ける、表の全部に付ける、1 つのルート�
 ```ts twoslash
 import { createApp, defineRoutes, endpoint, type Middleware } from "@senrijs/senri";
 type User = { id: string; admin: boolean };
-declare const auth: Middleware<{ user: User }>;
-declare const requireAdmin: Middleware;
+declare const auth: Middleware<{}, { vars: { user: User }; errors: 401 }>;
+declare const requireAdmin: Middleware<{ user: User }, { errors: 403 }>;
 declare function deleteUser(id: string): Promise<void>;
 // ---cut---
 // 表の全部のルートに付ける
@@ -32,9 +32,28 @@ app.routes(adminRoutes);
 | `app.use(mw)` | 全部のリクエスト |
 | `app.use("/admin", mw)` | `/admin` とその下 |
 | `defineRoutes(prefix, { use: [mw] })` | その表のルート |
+| `createRouter(prefix, { use: [mw] })` | そのルーターのルート(中につないだルーターのものも) |
 | `endpoint({ use: [mw] }, handler)` | そのルートだけ |
+| `app.get(path, { use: [mw] }, handler)` | そのルートだけ |
 
-表とルートの `use` は、そのルートに当たったリクエストでだけ動きます。前置きのない表に付けるときは、`defineRoutes("", { use })` と書きます。 {/* verify: only-matched */}
+表・ルーター・ルートの `use` は、そのルートに当たったリクエストでだけ動きます。前置きのない表に付けるときは、`defineRoutes("", { use })` と書きます。 {/* verify: only-matched */}
+
+```ts twoslash
+import { createApp, createRouter, type Middleware } from "@senrijs/senri";
+type User = { id: string };
+declare const requireUser: Middleware<{}, { vars: { user: User }; errors: 401 }>;
+// ---cut---
+const app = createApp();
+app.get("/me", { use: [requireUser] }, (_, c) => c.get("user"));
+
+const admin = createRouter("/admin", { use: [requireUser] });
+admin.get("/whoami", (_, c) => c.get("user").id);
+app.route(admin);
+```
+
+{/* verify: app-get-and-router */}
+
+`app.route(prefix, app)` で別のアプリをつないだときも、そのアプリのルートの `use` は一緒につながります。 {/* verify: mounted-app */}
 
 ## 動く順番
 
@@ -48,7 +67,34 @@ app.routes(adminRoutes);
 
 ## 型
 
-`Middleware<{ user: User }>` と書いたミドルウェアを `use` に入れると、そのルートの `c.get("user")` に型が付きます。
+ミドルウェアの型の書き方で、`use` に入れたルートの `c.get()` の型が変わります。
+
+| ミドルウェアの型 | そのルートの `c.get("user")` |
+| --- | --- |
+| `Middleware<{}, { vars: { user: User } }>`(必ず入れる) | `User` |
+| `Middleware<{ user: User }>`(読むだけ) | `User \| undefined` |
+
+`vars` は、宣言した人の約束です。Senri は実行時に確かめないので、`c.set()` を忘れると型と値が食い違います。
+
+`errors` に書いた状態コードは、[型付きクライアント](/docs/typed-api/client)の型に出ます。
+
+### 標準のミドルウェアの宣言
+
+| ミドルウェア | 入れる変数(`vars`) | 投げうる状態コード(`errors`) |
+| --- | --- | --- |
+| `basicAuth()`・`bearerAuth()` | — | 401 |
+| `jwt<T>()` | `jwtPayload: T` | 401 |
+| `rateLimit()` | — | 429 |
+| `bodyLimit()` | — | 400・413(`onError` を渡したときは 400 だけ) |
+| `uploadLimit()` | — | 400・413・415 |
+| `csrf()`・`ipRestriction()` | — | 403 |
+| `timeout()` | — | 504(`status` を書いたら、その値) |
+| `requestId()` | `requestId: string` | — |
+| `languageDetector()` | `language: string` | — |
+
+`jwt<T>()` の `T` も、実行時には確かめません。署名と時刻(`exp` など)は確かめますが、中身の形は `T` のとおりとは限りません。
+
+`rateLimit()` の `key` に渡る `c` には、`rateLimit<{ user: User }>({ ... })` のように型を付けられます。
 
 ## 上限を上げる
 

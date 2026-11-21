@@ -44,7 +44,7 @@ export type DashboardRecord = {
     error: ErrorPageData | null;
 };
 
-function requestPath(c: Context): { path: string; query: string } {
+function requestPath(c: Context<any, any>): { path: string; query: string } {
     let query = "";
     try {
         // ?token=... のような機密値は伏せる
@@ -63,7 +63,7 @@ function requestPath(c: Context): { path: string; query: string } {
 export async function buildRecord(input: {
     id: string;
     time: number;
-    c: Context;
+    c: Context<any, any>;
     res: Response;
     // このリクエストで通るはずだった層の名前(外側から。最後がいちばん内側)
     layerNames: { name: string; order: number | null }[];
@@ -92,7 +92,7 @@ export async function buildRecord(input: {
         method: c.req.method,
         ...requestPath(c),
         route: c.route ?? null,
-        params: c.params,
+        params: c.params as Record<string, string>,
         status: res.status,
         durationMs: c.timings[0]?.total ?? 0,
         layers,

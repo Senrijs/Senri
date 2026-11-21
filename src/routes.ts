@@ -11,10 +11,13 @@
 //
 // ミドルウェアの順番: アプリの app.use() → 表の use → ルートの use → スキーマの確認 → ハンドラー
 // (ルートの use は、リクエストがそのルートに当たったときだけ、アプリのミドルウェアの後ろに足す。src/app.ts)
-import type { Context, Handler, HandlerResult, Middleware } from "./context.ts";
+import type { Context, Handler, HandlerResult, MiddlewareProvides, MiddlewareVars, VarsRoute, WithVars } from "./context.ts";
 import { senriError } from "./errors.ts";
 import type { ExtractParams, Simplify } from "./router.ts";
-import type { RouteSchemas, StandardSchemaV1, Validated, ValidatedParams } from "./validate.ts";
+import type { RouteInfoOf, RouteMiddleware, RouteSchemas, StandardSchemaV1, ValidatedParams } from "./validate.ts";
+
+export type { MiddlewareVars, UnionToIntersection } from "./context.ts";
+export type { RouteMiddleware } from "./validate.ts";
 
 // 前置きとパスをつなぐ。前置きが "" か "/" ならパスのまま。パスが "/" なら前置きのまま
 /** A route path under a prefix: `JoinPath<"/users", "/:id">` is `"/users/:id"`; `"/"` under a prefix is the prefix itself. */
@@ -22,9 +25,6 @@ export type JoinPath<P extends string, Path extends string> = P extends "" | "/"
 
 /** The path parameters of a route key (`"GET /users/:id"`) under a prefix. */
 export type RouteParams<P extends string, K> = K extends `${string} ${infer Path}` ? Simplify<ExtractParams<JoinPath<P, Path>>> : never;
-
-/** Middleware that runs only for the routes it is given to: `endpoint({ use })` or `defineRoutes(prefix, { use })`. */
-export type RouteMiddleware = readonly Middleware<any>[];
 
 // OpenAPI の operation に、そのまま入れる項目(@senrijs/senri/openapi が読む)
 /** OpenAPI fields for a route, copied into its operation by `openAPI()` from `@senrijs/senri/openapi`. */
@@ -67,33 +67,33 @@ export type TableOptions = {
     use?: RouteMiddleware;
 };
 
-/** Turns a union into an intersection (`A | B` → `A & B`). */
-export type UnionToIntersection<U> = (U extends unknown ? (x: U) => void : never) extends (x: infer I) => void ? I : never;
-
-// use に並べたミドルウェアが c.set() する変数の型を合わせる(Middleware<{ user: User }> なら { user: User })
-// 型を決めていないミドルウェア(Middleware<any>。logger() など)は、何も足さない
-/** The variables set by a list of middleware: `Middleware<{ user: User }>` adds `{ user: User }`. */
-export type MiddlewareVars<U> = U extends readonly (infer M)[]
-    ? [M] extends [never]
-        ? {}
-        : UnionToIntersection<M extends Middleware<infer X> ? (0 extends 1 & X ? {} : X) : {}>
-    : {};
+// endpoint() のハンドラーの c の型
+// - アプリの型に、use のミドルウェアが読む変数を「あるかもしれない」ものとして足す
+// - use のミドルウェア(と、表の use。X)が「必ず入れる」と宣言した変数は、undefined なしで足す
+/**
+ * The context of an endpoint's handler, for the path parameters `P`, the options `S`, the app's type `V` and the
+ * variables `X` that the table's middleware always set.
+ */
+export type EndpointContext<P, S extends EndpointOptions, V extends object, X extends object = {}> = Context<
+    WithVars<V, MiddlewareVars<S["use"]>>,
+    RouteInfoOf<S, P, X>
+>;
 
 /**
  * A route with Standard Schema validation or its own middleware, made by {@link endpoint} and used as a value in
  * {@link defineRoutes}. `P` is the path parameters (from the route key), `S` the options, `R` the handler's return
- * type and `V` the app's type.
+ * type, `V` the app's type and `X` the variables that the table's middleware always set.
  */
-export interface Endpoint<P = Record<string, string>, S extends EndpointOptions = EndpointOptions, R = unknown, V extends object = any> {
+export interface Endpoint<P = Record<string, string>, S extends EndpointOptions = EndpointOptions, R = unknown, V extends object = any, X extends object = {}> {
     /** The options given to {@link endpoint}. */
     readonly schemas: S;
     // メソッドの形にして、引数の型の比べをゆるくする(スキーマの型が違う endpoint を、同じ表の型に置けるように)
     /** The handler given to {@link endpoint}. */
-    handler(params: ValidatedParams<S, P>, c: Context<V & MiddlewareVars<S["use"]>, Validated<S>>): R;
-    // 型のためだけ(実行時にはない)。置かれた場所のパラメーターの型を、ここから推論する
+    handler(params: ValidatedParams<S, P>, c: EndpointContext<P, S, V, X>): R;
+    // 型のためだけ(実行時にはない)。置かれた場所のパラメーターの型と、表の use が入れる変数を、ここから推論する
     // これもメソッドの形(表の外で作った endpoint も置けるように)
     /** Type information only; not present at runtime. */
-    "~types"?(params: P, app: V): void;
+    "~types"?(params: P, app: V, vars: X): void;
 }
 
 // endpoint() が作ったもの(app.routes() が、ハンドラーと見分けるため)
@@ -110,7 +110,7 @@ function makeEndpoint(schemas: EndpointOptions, handler: Function): Endpoint<any
 }
 
 // ミドルウェアの並びを確かめる(関数でないものは、登録した時点でエラーにする)
-function checkUse(use: RouteMiddleware | undefined, where: string): void {
+export function checkUse(use: RouteMiddleware | undefined, where: string): void {
     if (use === undefined) return;
     if (!Array.isArray(use) || use.some((mw) => typeof mw !== "function")) {
         throw senriError("no_middleware", `Invalid middleware: ${where} (use takes an array of middleware)`);
@@ -122,8 +122,10 @@ function checkUse(use: RouteMiddleware | undefined, where: string): void {
  * A route with Standard Schema validation or its own middleware, for use as a value in {@link defineRoutes}.
  * The schemas and handler are the same as in `app.post(path, { params, query, body }, handler)`, and `use` adds
  * middleware for this route only (after the app's and the table's middleware, before validation).
- * The path parameters are typed from the route key the endpoint is placed under, and variables set by the
- * middleware in `use` (typed as `Middleware<{ user: User }>`) are typed in `c.get()`.
+ * The path parameters are typed from the route key the endpoint is placed under. Variables that the middleware in
+ * `use` (and in the table's `use`) declare they always set (`Middleware<V, { vars: { user: User } }>`) are typed in
+ * `c.get()` without `undefined`; variables they only read (`Middleware<{ user: User }>`) are typed with `undefined`.
+ * With a `params` schema, `c.params` is typed as its output, the same as the first argument.
  *
  * Throws if the handler is missing or `use` is not an array of functions.
  *
@@ -142,25 +144,50 @@ export function endpoint<
     const S extends EndpointOptions = {},
     R extends HandlerResult | Promise<HandlerResult> = HandlerResult,
     V extends object = any,
->(schemas: S, handler: (params: ValidatedParams<S, P>, c: Context<V & MiddlewareVars<S["use"]>, Validated<S>>) => R): Endpoint<P, S, R, V> {
+    X extends object = {},
+>(schemas: S, handler: (params: ValidatedParams<S, P>, c: EndpointContext<P, S, V, X>) => R): Endpoint<P, S, R, V, X> {
     if (typeof handler !== "function") throw senriError("no_handler", "Missing handler: endpoint()");
     checkUse(schemas.use, "endpoint()");
-    return makeEndpoint(schemas, handler) as Endpoint<P, S, R, V>;
+    return makeEndpoint(schemas, handler) as unknown as Endpoint<P, S, R, V, X>;
 }
 
 // 表の値として書けるもの。キーの書き方が違えば、値の型の代わりに直し方を出す
 // app.routes() も、defineRoutes() の表を受けるときに使う
-/** What a table of routes may contain: handlers or {@link endpoint}s, keyed by `"METHOD /path"` under the prefix `P`. */
-export type TableShape<P extends string, T, V extends object> = {
+// X は表の use のミドルウェアが「必ず入れる」と宣言した変数(c.get() に undefined が付かない)
+/**
+ * What a table of routes may contain: handlers or {@link endpoint}s, keyed by `"METHOD /path"` under the prefix `P`.
+ * `V` is the app's type and `X` the variables that the table's middleware always set.
+ */
+export type TableShape<P extends string, T, V extends object, X extends object = {}> = {
     [K in keyof T]: K extends `${string} ${string}`
-        ? Handler<RouteParams<P, K>, V> | Endpoint<RouteParams<P, K>, any, any, V>
+        ? Handler<RouteParams<P, K>, V, VarsRoute<X>> | Endpoint<RouteParams<P, K>, any, any, V, X>
         : 'The route is not written correctly. Put a space between the method and the path, as in "GET /hello"';
 };
 
+// endpoint の use の前に、表の use を足す(実行時の buildTable と同じ順番)
+/** An endpoint's options with the table's middleware `U` put before its own `use`, as at runtime. */
+export type WithTableUse<S, U extends RouteMiddleware> = Omit<S, "use"> & {
+    use: readonly [...U, ...(S extends { use: infer W extends RouteMiddleware } ? W : [])];
+};
+
 // 表に use を付けたときは、ハンドラーだけの値も endpoint() で包んだものになる(実行時と型を合わせる)
-/** The type of a table made with `defineRoutes(prefix, { use })`: with middleware, handler-only routes become {@link Endpoint}s. */
+// endpoint の値も、表の use を自分の use の前に足した形にする(型付きクライアントが、表のミドルウェアの状態コードも読めるように)
+/**
+ * The type of a table made with `defineRoutes(prefix, { use })`: with middleware, handler-only routes become
+ * {@link Endpoint}s, and endpoints get the table's middleware before their own `use`, as at runtime.
+ */
 export type RoutesWithUse<O, T> = O extends { use: infer U extends RouteMiddleware }
-    ? U extends readonly [] ? T : { [K in keyof T]: T[K] extends (...args: any) => infer R ? Endpoint<any, { use: U }, R, any> : T[K] }
+    ? U extends readonly []
+        ? T
+        : {
+              [K in keyof T]: T[K] extends Endpoint<infer P, infer S, infer R, infer V, infer X>
+                  ? WithTableUse<S, U> extends infer W extends EndpointOptions
+                      ? Endpoint<P, W, R, V, X>
+                      : never
+                  : T[K] extends (...args: any) => infer R
+                    ? Endpoint<any, { use: U }, R, any>
+                    : T[K];
+          }
     : T;
 
 /**
@@ -212,8 +239,9 @@ function buildTable(prefix: string, use: RouteMiddleware, table: object): Routes
  * With a prefix, call it twice: `defineRoutes("/orgs/:orgId")({ ... })`. The prefix is added to every key
  * (`"GET /"` becomes `"GET /orgs/:orgId"`), and its parameters are typed in the handlers.
  * `defineRoutes(prefix, { use })` adds middleware to every route in the table (`""` for no prefix).
- * Variables set by that middleware (typed as `Middleware<{ user: User }>`) are typed in `c.get()`; to type the
- * app's own variables too, give the app's type: `defineRoutes<"/admin", Vars>("/admin")({ ... })`.
+ * Variables that middleware declares it always sets (`Middleware<V, { vars: { user: User } }>`) are typed in
+ * `c.get()` without `undefined`; to type the app's own variables too, give the app's type:
+ * `defineRoutes<"/admin", Vars>("/admin")({ ... })`.
  *
  * Throws if a key is not `"METHOD /path"`, if a value is not a handler or an endpoint, if `use` is not an array of
  * functions, or if the prefix does not start with `/` or ends with `/`. Other checks (path syntax, duplicates)
@@ -244,7 +272,9 @@ export function defineRoutes<const T extends object>(table: T & NoInfer<TableSha
 export function defineRoutes<P extends string, V extends object = Record<string, unknown>, const O extends TableOptions = {}>(
     prefix: P,
     options?: O & TableOptions,
-): <const T extends object>(table: T & NoInfer<TableShape<P, T, V & MiddlewareVars<O["use"]>>>) => Routes<P, RoutesWithUse<O, T>>;
+): <const T extends object>(
+    table: T & NoInfer<TableShape<P, T, WithVars<V, MiddlewareVars<O["use"]>>, MiddlewareProvides<O["use"]>>>,
+) => Routes<P, RoutesWithUse<O, T>>;
 export function defineRoutes(arg: string | object, options?: TableOptions): unknown {
     if (typeof arg !== "string") return buildTable("", [], arg);
     const prefix = checkPrefix(arg);

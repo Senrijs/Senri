@@ -133,7 +133,7 @@ function isLocalRequest(req: Request, info: unknown, scope: Scope): boolean {
 }
 
 // パスが /_senri か /_senri/... なら、"_senri" より後ろのセグメント。そうでなければ null
-function underDashboard(c: Context): readonly string[] | null {
+function underDashboard(c: Context<any, any>): readonly string[] | null {
     try {
         return c.segments[0] === "_senri" ? c.segments.slice(1) : null;
     } catch {
@@ -142,7 +142,7 @@ function underDashboard(c: Context): readonly string[] | null {
 }
 
 // 層ごとの時間を c.timings に記録する(src/compose.ts の Trace)
-function measure(c: Context, origin: number, layers: Layer[], innerName: string): Trace {
+function measure(c: Context<any, any>, origin: number, layers: Layer[], innerName: string): Trace {
     const starts: number[] = [];
     const inner: number[] = [];
     return {
@@ -171,7 +171,7 @@ function measure(c: Context, origin: number, layers: Layer[], innerName: string)
 // 開発モードの既定の onError。本番の固定の文言の代わりに、詳しい文言を返す
 // (ブラウザから開いた 5xx は、withErrorPage がエラーページにする)
 const devOnError =
-    (langOf: (c: Context) => Lang): ErrorHandler =>
+    (langOf: (c: Context<any, any>) => Lang): ErrorHandler =>
     (err, c) => {
         if (err instanceof ValidationError) return c.text(describeValidation(err, langOf(c)));
         if (err instanceof HttpError) {
@@ -202,13 +202,13 @@ function install(core: AppCore, scope: Scope, nodeEnv: string | undefined, fixed
     const terminal = fixed ?? terminalLang();
     const langOfRequest = (req: Request) => fixed ?? requestLang(req);
     // Accept-Language で文言を変えたリクエスト(レスポンスに Vary を付ける)
-    const localized = new WeakSet<Context>();
-    const langOf = (c: Context): Lang => {
+    const localized = new WeakSet<Context<any, any>>();
+    const langOf = (c: Context<any, any>): Lang => {
         if (!fixed) localized.add(c);
         return langOfRequest(c.req);
     };
     // 本番と同じに振る舞うリクエスト(localhost でないもの)
-    const quiet = new WeakSet<Context>();
+    const quiet = new WeakSet<Context<any, any>>();
     // localhost でないので開発用の出力をしなかったことを、1回だけ知らせる(Node / Bun / Deno のとき。Workers とブラウザはいつもなので出さない)
     let warned = scope !== "local";
     const warnOnce = (req: Request) => {
@@ -314,7 +314,7 @@ function install(core: AppCore, scope: Scope, nodeEnv: string | undefined, fixed
     }
 
     // 本番の fetch と同じ流れ(計測・記録・エラーページ・Server-Timing なし。onError / notFound も本番の既定になる)
-    function quietFetch(c: Context): Promise<Response> {
+    function quietFetch(c: Context<any, any>): Promise<Response> {
         quiet.add(c);
         const cap = core.capBody(c);
         const resolved = core.resolve(c);

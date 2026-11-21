@@ -21,6 +21,7 @@ app.route(posts);
 - `createRouter(prefix)` で作ったものに、`app` と同じようにルートを足します
 - 前置きのパラメーター(`:id`)にも、中のハンドラーで型が付きます
 - `app.route(router)` で、アプリにつなぎます
+- `createRouter(prefix, { use: [mw] })` で、そのルーターの全部のルートにミドルウェアを付けられます([ルートごとに付ける](/docs/middleware/route-middleware))
 
 ## 別のアプリをつなぐ
 

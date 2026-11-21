@@ -59,7 +59,42 @@ await api("POST /users", { body: { name: "a" } });   // 本文はスキーマの
 
 - 2xx(`c.json(body, 201)` など)は、成功の `data` に入ります
 - status を書かない `c.json(body)` は、200 として扱います。`c.status()` で決めた status は、型には残りません
-- `onError`・ミドルウェア・`notFound` の応答は型に入らず、`error` は `unknown` です
+- 下の「ミドルウェアの状態コード」に当たらない `onError`・`notFound` の応答は型に入らず、`error` は `unknown` です
+
+## ミドルウェアの状態コード
+
+ルートの `use` に入れたミドルウェアが宣言した状態コード(`Middleware<V, { errors: 401 }>`。[標準のミドルウェア](/docs/middleware/route-middleware)にも付いています)と、スキーマのあるルートの 400 も、status ごとに分かれます。
+
+これらの本文は、サーバーの `app.onError` が作ります。表の型からは分からないので、クライアントの 2 つ目の型引数で渡します(省くと `unknown`)。
+
+```ts twoslash title="client.ts"
+// @filename: routes.ts
+import { defineRoutes, HttpError, rateLimit, type Middleware } from "@senrijs/senri";
+type User = { name: string };
+declare const requireUser: Middleware<{}, { vars: { user: User }; errors: 401 }>;
+export const routes = defineRoutes("/api", { use: [requireUser, rateLimit({ windowMs: 60_000, limit: 100 })] })({
+    "GET /me": (_, c) => ({ name: c.get("user").name }),
+});
+export type Api = typeof routes;
+// @filename: client.ts
+// ---cut---
+import { client } from "@senrijs/senri/client";
+import type { Api } from "./routes.ts";
+
+// サーバーは既定の onError(エラーをテキストで返す)
+const api = client<Api, { error: string }>("https://example.com");
+
+const res = await api("GET /api/me");
+if (res.status === 401 || res.status === 429) {
+    res.error;
+    //  ^?
+}
+```
+
+{/* verify: middleware-errors */}
+
+- 既定の `onError` なら `{ error: string }`、[`problemDetails()`](/docs/api/problem) なら `{ error: ProblemDetails }` です
+- この型は、サーバーについての、あなたの宣言です。クライアントは確かめません
 
 ## サーバーを立てずに呼ぶ
 

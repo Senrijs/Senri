@@ -19,6 +19,7 @@ app.route(posts);
 - Add routes to what `createRouter(prefix)` returns, the same way as to `app`
 - Parameters in the prefix (`:id`) are typed in the handlers too
 - Mount it on the app with `app.route(router)`
+- `createRouter(prefix, { use: [mw] })` adds middleware to every route of the router ([Per-route middleware](/en/docs/middleware/route-middleware))
 
 ## Mount another app
 

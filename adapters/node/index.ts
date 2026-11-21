@@ -362,11 +362,11 @@ function writePlain(res: ServerResponse, plain: PlainResponse) {
 }
 
 // ハンドラーの戻り値を、Response を見る人がいないときの形にする
-function answerOf(c: Context, value: HandlerResult): Response | PlainResponse {
+function answerOf(c: Context<any, any>, value: HandlerResult): Response | PlainResponse {
     return plainOf(c, value) ?? c.toResponse(value);
 }
 
-async function respondLazily(core: AppCore, c: Context, resolved: Resolved, method: string): Promise<Response | PlainResponse> {
+async function respondLazily(core: AppCore, c: Context<any, any>, resolved: Resolved, method: string): Promise<Response | PlainResponse> {
     const fail = (err: unknown) => core.fail(err, c);
     const layers = core.layers(c, resolved);
     // ハンドラーを直接呼ぶ。HEAD の本文を捨てる処理と QUERY の確認は core.inner に任せる(c.req を読む)
@@ -374,7 +374,7 @@ async function respondLazily(core: AppCore, c: Context, resolved: Resolved, meth
     // Response を作らずに答えられるもの: ルートのハンドラーと、既定の 404(app.notFound() で差し替えていないとき)
     // 既定の 404 は c.text("404 Not Found", 404) と同じ形にする(c.header() で設定したものも付く)
     const direct = route
-        ? () => route.handler(c.params, c)
+        ? () => route.handler(c.params as Record<string, string>, c)
         : resolved.kind === "notFound" && method !== "HEAD" && core.defaultNotFound()
           ? () => (c.status(404), "404 Not Found")
           : null;

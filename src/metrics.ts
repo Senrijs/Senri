@@ -46,7 +46,7 @@ let buckets: readonly number[] = DEFAULT_BUCKETS;
 const series = new Map<string, Series>();
 const active = new Map<string, number>();
 
-const methodLabel = (c: Context) => {
+const methodLabel = (c: Context<any, any>) => {
     const method = methodOf(c);
     return METHODS.has(method) ? method : "_OTHER";
 };
@@ -138,7 +138,7 @@ const escape = (value: string) => value.replace(/\\/g, "\\\\").replace(/"/g, '\\
  * app.get("/metrics", metricsHandler());
  * ```
  */
-export function metricsHandler(): (params: any, c: Context) => Response {
+export function metricsHandler(): (params: any, c: Context<any, any>) => Response {
     return () => {
         const lines = [
             "# HELP http_server_request_duration_seconds Duration of HTTP server requests.",

@@ -91,7 +91,7 @@ const encoder = new TextEncoder();
 // Bun.serve の既定(idleTimeout 10 秒)では、静かな接続が早いと 8.8 秒で切られる(Bun 1.4.3 で計測)。余裕を持たせる
 const DEFAULT_HEARTBEAT = 5000;
 
-function start(c: Context, run: (api: StreamingApi) => void | Promise<void>, onError: ((err: unknown, api: StreamingApi) => void | Promise<void>) | undefined, stopped: () => void): { response: Response; api: StreamingApi; ping: (text: string) => void } {
+function start(c: Context<any, any>, run: (api: StreamingApi) => void | Promise<void>, onError: ((err: unknown, api: StreamingApi) => void | Promise<void>) | undefined, stopped: () => void): { response: Response; api: StreamingApi; ping: (text: string) => void } {
     let controller!: ReadableStreamDefaultController<Uint8Array>;
     let aborted = false;
     let closed = false;
@@ -272,7 +272,7 @@ function setDefault(res: Response, name: string, value: string): void {
  * });
  * ```
  */
-export function stream(c: Context, run: (stream: StreamingApi) => void | Promise<void>, options: StreamOptions = {}): Response {
+export function stream(c: Context<any, any>, run: (stream: StreamingApi) => void | Promise<void>, options: StreamOptions = {}): Response {
     const { response } = start(c, run, options.onError, () => {});
     setDefault(response, "content-type", "application/octet-stream");
     return response;
@@ -302,7 +302,7 @@ export function stream(c: Context, run: (stream: StreamingApi) => void | Promise
  * );
  * ```
  */
-export function streamText(c: Context, run: (stream: StreamingApi) => void | Promise<void>, options: StreamOptions = {}): Response {
+export function streamText(c: Context<any, any>, run: (stream: StreamingApi) => void | Promise<void>, options: StreamOptions = {}): Response {
     const { response } = start(c, run, options.onError, () => {});
     setDefault(response, "content-type", "text/plain; charset=utf-8");
     setDefault(response, "x-content-type-options", "nosniff");
@@ -352,7 +352,7 @@ function sseText(message: SSEMessage): string {
  * );
  * ```
  */
-export function streamSSE(c: Context, run: (stream: SSEStreamingApi) => void | Promise<void>, options: SSEOptions = {}): Response {
+export function streamSSE(c: Context<any, any>, run: (stream: SSEStreamingApi) => void | Promise<void>, options: SSEOptions = {}): Response {
     const { heartbeat = DEFAULT_HEARTBEAT, onError } = options;
     if (heartbeat !== false && !(typeof heartbeat === "number" && heartbeat > 0 && Number.isFinite(heartbeat))) {
         throw senriError("sse_heartbeat", "streamSSE(): invalid heartbeat");

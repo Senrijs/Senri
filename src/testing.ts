@@ -20,7 +20,7 @@
 // - request: 型のないリクエスト(表にないルートや、壊れたリクエストを送るテスト向け)
 // どちらも、接続元を 127.0.0.1 として渡す(getIp()・ipRestriction()・開発モードの localhost 判定が、本物のサーバーと同じに動く)
 // Workers のアプリ向けに env と ctx を渡せる(そのときは接続元は渡さない。Workers と同じく、接続元は分からない)
-import { client, type Client } from "./client.ts";
+import { client, type Client, type ServerInfo } from "./client.ts";
 
 /** An app to test: anything with `fetch(req, info?, ctx?)`, such as an app from `createApp()`. */
 export type TestApp = {
@@ -94,7 +94,8 @@ function appFetch(app: TestApp, options: TestOptions): (req: Request) => Promise
 
 /**
  * The typed client from `@senrijs/senri/client`, calling `app.fetch` directly (no server).
- * Pass the type of a table from `defineRoutes()`: `testClient<typeof routes>(app)`.
+ * Pass the type of a table from `defineRoutes()`: `testClient<typeof routes>(app)`, and the body of `app.onError`
+ * as the second type argument, as with `client()`: `testClient<typeof routes, { error: string }>(app)`.
  * The client address is `127.0.0.1` (change it with `ip`); give `env` and `ctx` for a Cloudflare Workers app;
  * `cookies: true` keeps cookies between calls (for login flows).
  *
@@ -108,8 +109,8 @@ function appFetch(app: TestApp, options: TestOptions): (req: Request) => Promise
  * expect(me.ok && me.data.name).toBe("a");
  * ```
  */
-export function testClient<A>(app: TestApp, options: TestOptions = {}): Client<A> {
-    return client<A>(options.baseUrl ?? "http://localhost", {
+export function testClient<A, O extends ServerInfo = {}>(app: TestApp, options: TestOptions = {}): Client<A, O> {
+    return client<A, O>(options.baseUrl ?? "http://localhost", {
         ...(options.headers === undefined ? {} : { headers: options.headers }),
         fetch: appFetch(app, options),
     });

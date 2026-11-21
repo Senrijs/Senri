@@ -73,7 +73,7 @@ export type NotFoundHandler<V extends object = any> = (c: Context<V>) => Handler
 // onError を通して、例外をレスポンスに変える
 // HttpError なら status と headers を先に c に入れておくので、onError が文字列を返すだけでも正しい status になる
 // c.notFound() は onError ではなく notFound ハンドラーに回す。ハンドラーが普通のエラーを投げたら、それを onError に渡す
-export async function handleError(err: unknown, c: Context, onError: ErrorHandler, notFound: NotFoundHandler): Promise<Response> {
+export async function handleError(err: unknown, c: Context<any, any>, onError: ErrorHandler, notFound: NotFoundHandler): Promise<Response> {
     if (errorCode(err) === "not_found") {
         try {
             return await notFoundResponse(c, notFound);
@@ -119,12 +119,12 @@ export function errorCode(err: unknown): string | undefined {
 export const defaultOnError: ErrorHandler = (err, c) =>
     c.text(err instanceof HttpError ? err.message : "500 Internal Server Error");
 
-export const defaultNotFound = (c: Context): Response => c.text("404 Not Found", 404);
+export const defaultNotFound = (c: Context<any, any>): Response => c.text("404 Not Found", 404);
 
 // notFound ハンドラーを呼んで、404 のレスポンスにする
 // ハンドラーの中の c.notFound() は、もう一度ハンドラーを呼ばずに既定の 404 にする(無限ループにしない)
 // ルートがないリクエストも毎回ここを通るので、async にしない(async にすると、わずかに遅くなる)
-export function notFoundResponse(c: Context, notFound: NotFoundHandler): Promise<Response> | Response {
+export function notFoundResponse(c: Context<any, any>, notFound: NotFoundHandler): Promise<Response> | Response {
     const fallback = (err: unknown) => {
         if (errorCode(err) !== "not_found") throw err;
         return defaultNotFound(c);
@@ -143,7 +143,7 @@ export function methodNotAllowed(methods: string): HttpError {
 
 // QUERY(RFC 10008)は、検索の条件をボディに入れて送るメソッド。ボディと、その形式(Content-Type)が必須
 // ハンドラーを呼ぶ前に確かめる。どちらも問題なければ null
-export async function checkQueryRequest(c: Context): Promise<HttpError | null> {
+export async function checkQueryRequest(c: Context<any, any>): Promise<HttpError | null> {
     if (await isEmptyBody(c)) return senriError("query_no_body", new HttpError(400, "400 Bad Request"));
     if (!c.req.headers.get("content-type")) {
         return senriError("query_no_type", new HttpError(415, "415 Unsupported Media Type"));
@@ -154,7 +154,7 @@ export async function checkQueryRequest(c: Context): Promise<HttpError | null> {
 // ボディが空か。Content-Length があればそれで決める
 // ないとき(Deno はボディがなくても空のストリームを渡す。チャンク転送のこともある)は、
 // 複製(clone)のほうを中身のあるチャンクが来るまで読んで確かめる。元の c.req はそのまま読める
-async function isEmptyBody(c: Context): Promise<boolean> {
+async function isEmptyBody(c: Context<any, any>): Promise<boolean> {
     const req = c.req;
     if (req.body === null) return true;
     const length = req.headers.get("content-length");

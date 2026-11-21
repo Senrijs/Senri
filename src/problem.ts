@@ -164,7 +164,7 @@ function withoutMembers(extensions: Record<string, unknown> | undefined): Record
  * app.get("/legacy", (_, c) => problem(c, { status: 410, detail: "Use /v2 instead." }));
  * ```
  */
-export function problem(c: Context, details: ProblemDetails = {}): Response {
+export function problem(c: Context<any, any>, details: ProblemDetails = {}): Response {
     const status = details.status ?? statusOf(c);
     const body: ProblemDetails = { type: details.type ?? "about:blank" };
     // about:blank のときの title は status の名前(RFC 9457 4.2.1)。ほかの type で title がなければ付けない
@@ -180,7 +180,7 @@ export function problem(c: Context, details: ProblemDetails = {}): Response {
 }
 
 // c.status() で決めた status(Context は値を外に見せないので、空のレスポンスから読む)
-function statusOf(c: Context): number {
+function statusOf(c: Context<any, any>): number {
     return c.text("").status;
 }
 
