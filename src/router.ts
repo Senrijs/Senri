@@ -210,13 +210,17 @@ export function checkParamNames(path: string, segments: readonly string[]) {
 // メソッド名に使える文字(RFC 9110 の token)
 const METHOD = /^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$/;
 
+// 扱わないメソッド。登録はエラーにし、リクエストはルートがあってもなくても 501 にする(app.all() でも受けない)
+// app.ts の resolve() と、下の normalizeMethod() で同じものを使う
+export const NOT_IMPLEMENTED = new Set(["CONNECT", "TRACE", "TRACK"]);
+
 // 登録するメソッド名を確かめて、大文字にする("propfind" → "PROPFIND")
 // - CONNECT はプロキシ用、TRACE / TRACK はリクエストをそのまま返すので Cookie を盗む攻撃(XST)に使われる。どれも扱わない
 // - "ALL" は app.all() の印として使っているので、app.on() からは登録させない
 export function normalizeMethod(method: string): string {
     if (!METHOD.test(method)) throw senriError("method_invalid", `Invalid method: ${JSON.stringify(method)}`);
     const upper = method.toUpperCase();
-    if (upper === "CONNECT" || upper === "TRACE" || upper === "TRACK") {
+    if (NOT_IMPLEMENTED.has(upper)) {
         throw senriError("method_unsupported", `${upper} is not supported`);
     }
     return upper;

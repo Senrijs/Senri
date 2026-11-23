@@ -12,6 +12,7 @@ import {
     type RouteTable,
     type Route,
     type Simplify,
+    NOT_IMPLEMENTED,
 } from "./router.ts";
 import { compose, type Layer } from "./compose.ts";
 import { methodOf } from "./plain.ts";
@@ -55,9 +56,6 @@ export type Resolved =
     | { kind: "notFound" }
     | { kind: "notImplemented" }
     | { kind: "badRequest"; error: unknown };
-
-// 扱わないメソッド。ルートがあってもなくても 501 にする(app.all() でも受けない)
-const NOT_IMPLEMENTED = new Set(["CONNECT", "TRACE", "TRACK"]);
 
 /** The path parameters of a route path, as one object type. */
 export type PathParams<Path extends string> = Simplify<ExtractParams<Path>>;
