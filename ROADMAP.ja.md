@@ -144,5 +144,7 @@ Senri がこれから向かう先です。バージョンは目標であって�
 
 ## その先
 
-- プロキシ、SSG、Cron(Workers の `scheduled` など)
+- [ ] プロキシ: リクエストを別のサーバーに中継するヘルパー ([#173](https://github.com/Senrijs/Senri/issues/173))
+- [ ] SSG: ルートを静的な HTML に書き出す ([#174](https://github.com/Senrijs/Senri/issues/174))
+- [ ] Cron: 決まった時刻に処理を動かす(Workers の `scheduled` など) ([#175](https://github.com/Senrijs/Senri/issues/175))
 - **Ippo** — Senri の上に乗る、React(のちに Vue)対応のメタフレームワーク
