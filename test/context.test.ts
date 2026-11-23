@@ -143,6 +143,60 @@ describe("マージのルール", () => {
 
         expect(res).toBe(original);
     });
+
+    // c.json() / c.text() / c.html() の Response は、ヘッダーを作り直さずにそのまま足す(docs/design/size-0.4.md の E2)
+    test("c.json() の Response には、作り直さずに c.header() のヘッダーを足す", async () => {
+        const app = createApp();
+        let made: Response | undefined;
+        app.use((c, next) => {
+            c.header("x-a", "1");
+            c.header("set-cookie", "a=1");
+            return next();
+        });
+        app.get("/x", (_, c) => {
+            made = c.json({ ok: true }, 201);
+            // 作ったあとの c.header() も付く。Content-Type はレスポンスのものが勝つ
+            c.header("x-b", "2");
+            c.header("content-type", "text/plain");
+            return made;
+        });
+
+        const res = await app.fetch(req("/x"));
+
+        expect(res).toBe(made!);
+        expect(res.status).toBe(201);
+        expect(res.headers.get("x-a")).toBe("1");
+        expect(res.headers.get("x-b")).toBe("2");
+        expect(res.headers.get("content-type")).toBe("application/json");
+        expect(res.headers.getSetCookie()).toEqual(["a=1"]);
+        expect(await res.json()).toEqual({ ok: true });
+    });
+
+    test("c.text() と c.html() も同じ。作ったあとに別の Response を返せば、そちらを作り直す", async () => {
+        const app = createApp();
+        app.use((c, next) => {
+            c.header("x-a", "1");
+            return next();
+        });
+        app.get("/text", (_, c) => c.text("t"));
+        app.get("/html", (_, c) => c.html("<p>h</p>"));
+        app.get("/other", (_, c) => {
+            c.text("unused");
+            return new Response("other");
+        });
+
+        for (const [path, type, body] of [
+            ["/text", "text/plain; charset=utf-8", "t"],
+            ["/html", "text/html; charset=utf-8", "<p>h</p>"],
+            // new Response(文字列) の Content-Type はランタイムで違う(Bun は付けない)ので見ない
+            ["/other", undefined, "other"],
+        ] as const) {
+            const res = await app.fetch(req(path));
+            expect(res.headers.get("x-a")).toBe("1");
+            if (type) expect(res.headers.get("content-type")).toBe(type);
+            expect(await res.text()).toBe(body);
+        }
+    });
 });
 
 describe("ハンドラーの戻り値", () => {
