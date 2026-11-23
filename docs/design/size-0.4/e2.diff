@@ -1,0 +1,74 @@
+diff --git a/src/context.ts b/src/context.ts
+index 0b9e1b9..be1d16e 100644
+--- a/src/context.ts
++++ b/src/context.ts
+@@ -304,6 +304,8 @@ export class Context<V extends object = any, out R extends RouteInfo = NoRoute>
+      */
+     params: R["params"] = {} as R["params"];
+     #timings: Timing[] | undefined;
++    // json() / text() / html() で最後に作った Response。ヘッダーはこの Response だけのものなので、finalize() で作り直さずに直接足す
++    #made: Response | undefined;
+ 
+     // app.fetch に渡された元のリクエストと2つ目の引数(@senrijs/senri/ip の getIp で使う)
+     // Bun の requestIP は元のリクエストでしか答えないので、c.req が差し替えられても元のほうで聞く
+@@ -562,8 +564,7 @@ export class Context<V extends object = any, out R extends RouteInfo = NoRoute>
+      * responses apart by status. Without `status`, the type assumes 200 (a status set with `c.status()` is not typed).
+      */
+     json<T, S extends number = 200>(data: T, status?: S): TypedResponse<T, S, "json"> {
+-        const init = initOf(status ?? this.#status, this.#headers?.get("content-type"), JSON_HEADERS);
+-        return new Response(JSON.stringify(data), init) as TypedResponse<T, S, "json">;
++        return this.#make(JSON.stringify(data), status, JSON_HEADERS) as TypedResponse<T, S, "json">;
+     }
+ 
+     /**
+@@ -571,12 +572,10 @@ export class Context<V extends object = any, out R extends RouteInfo = NoRoute>
+      * Like {@link Context.json}, the return type keeps `status` ({@link TypedResponse}).
+      */
+     text<S extends number = 200>(body: string, status?: S): TypedResponse<string, S, "text"> {
+-        const s = status ?? this.#status;
+         // Deno では、c.header() がなく 200 なら init なしで作る。Deno が text/plain;charset=UTF-8 を付け、
+         // ヘッダーの表を作らない近道で書き出せる(VM で 1 割以上速い。docs/design/perf-0.3.md の 6.4)
+         // ほかのランタイムでは明示する。Bun は、明示しないと Headers に Content-Type を入れない(Node / Deno は入れる)
+-        const init = DENO && s === 200 && !this.#headers ? undefined : initOf(s, this.#headers?.get("content-type"), TEXT_HEADERS);
+-        return new Response(body, init) as TypedResponse<string, S, "text">;
++        return this.#make(body, status, TEXT_HEADERS, DENO) as TypedResponse<string, S, "text">;
+     }
+ 
+     /**
+@@ -593,8 +592,14 @@ export class Context<V extends object = any, out R extends RouteInfo = NoRoute>
+      * ```
+      */
+     html(body: string, status?: number): Response {
+-        const init = initOf(status ?? this.#status, this.#headers?.get("content-type"), HTML_HEADERS);
+-        return new Response(body, init);
++        return this.#make(body, status, HTML_HEADERS);
++    }
++
++    #make(body: string, status: number | undefined, headers: Headers, bare?: boolean): Response {
++        const s = status ?? this.#status;
++        // Response は渡したヘッダーを写して持つので、共有の Headers を渡しても、res.headers はこの Response だけのもの
++        const init = bare && s === 200 && !this.#headers ? undefined : initOf(s, this.#headers?.get("content-type"), headers);
++        return (this.#made = new Response(body, init));
+     }
+ 
+     // Response.redirect() は絶対 URL しか受けないので使わない(/login のような相対パスも通す)
+@@ -686,7 +691,9 @@ export class Context<V extends object = any, out R extends RouteInfo = NoRoute>
+         if (!hasHeaders) return res;
+ 
+         // fetch() や Response.redirect() の Response はヘッダーを変更できないので、新しく作る
+-        const headers = new Headers(res.headers);
++        // json() / text() / html() で作ったものは、ヘッダーを誰とも共有していないので、そのまま足す
++        const mine = res === this.#made;
++        const headers = mine ? res.headers : new Headers(res.headers);
+         own.forEach((value, key) => {
+             if (key === "set-cookie") return;
+             if ((key === "content-type" || key === "location") && headers.has(key)) return;
+@@ -695,7 +702,7 @@ export class Context<V extends object = any, out R extends RouteInfo = NoRoute>
+         for (const cookie of own.getSetCookie()) {
+             headers.append("set-cookie", cookie);
+         }
+-        return new Response(res.body, { status: res.status, statusText: res.statusText, headers });
++        return mine ? res : new Response(res.body, { status: res.status, statusText: res.statusText, headers });
+     }
+ 
+     /** Converts a {@link HandlerResult} to a `Response`. Used by the app; throws for functions, `undefined` and `null`. */

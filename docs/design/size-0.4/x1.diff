@@ -1,0 +1,18 @@
+diff --git a/src/app.ts b/src/app.ts
+index d02fc33..1f19c23 100644
+--- a/src/app.ts
++++ b/src/app.ts
+@@ -315,12 +315,7 @@ export type DevInstalled = {
+ };
+ 
+ // 0.1 の createApp({ dev: true }) は使えなくなった。どう書き換えるかを案内する
+-const DEV_TRUE = `createApp({ dev: true }) is no longer supported. Use devtools() from "@senrijs/senri/dev".
+-
+-  import { createApp } from "@senrijs/senri";
+-  import { devtools } from "@senrijs/senri/dev";
+-
+-  const app = createApp({ dev: devtools() });`;
++const DEV_TRUE = `createApp({ dev: true }) is no longer supported. Use createApp({ dev: devtools() }) with devtools from "@senrijs/senri/dev"`;
+ 
+ // V はアプリの型。c.set / c.get で使う変数の型(createApp<{ user: User }>())か、
+ // Workers の env も含めた形(createApp<{ Bindings: Env; Variables: { user: User } }>())で指定する(src/context.ts)

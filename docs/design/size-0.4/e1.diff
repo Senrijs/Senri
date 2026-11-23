@@ -1,0 +1,55 @@
+diff --git a/src/router.ts b/src/router.ts
+index 7291a4a..9de7656 100644
+--- a/src/router.ts
++++ b/src/router.ts
+@@ -80,24 +80,34 @@ export function middlewarePath(path: string): string {
+ //   (ふつうは "%2E%2E" も含めて URL の仕様で解決済みなので、ここは念のための防御)
+ export function splitPath(pathname: string): string[] {
+     const segments: string[] = [];
+-    for (const raw of pathname.split("/")) {
+-        if (raw === "") continue;
+-
+-        // "%" がなければデコードしても同じなので、しない(ほとんどのリクエストはこちら)
+-        // デコードしなければ "/" は含まれない(split で分けたので)
+-        let segment = raw;
+-        if (raw.includes("%")) {
+-            try {
+-                segment = decodeURIComponent(raw);
+-            } catch {
+-                throw new HttpError(400, "400 Bad Request");
++    const n = pathname.length;
++    let start = 0;
++    // このセグメントに "%" があったか(なければデコードしない。ほとんどのリクエストはこちら)
++    let encoded = false;
++    // split("/") で配列を作らず、1 文字ずつ見て区切りと "%" を同時に探す(docs/design/perf-0.3.md の 6.6)
++    for (let i = 0; i <= n; i++) {
++        const ch = pathname.charCodeAt(i);
++        if (ch === 37) {
++            encoded = true;
++        } else if (ch === 47 || i === n) {
++            if (i > start) {
++                let segment = pathname.slice(start, i);
++                if (encoded) {
++                    try {
++                        segment = decodeURIComponent(segment);
++                    } catch {
++                        throw new HttpError(400, "400 Bad Request");
++                    }
++                    if (segment.includes("/")) throw new HttpError(400, "400 Bad Request");
++                }
++                if (segment === "." || segment === "..") {
++                    throw new HttpError(400, "400 Bad Request");
++                }
++                segments.push(segment);
+             }
+-            if (segment.includes("/")) throw new HttpError(400, "400 Bad Request");
+-        }
+-        if (segment === "." || segment === "..") {
+-            throw new HttpError(400, "400 Bad Request");
++            start = i + 1;
++            encoded = false;
+         }
+-        segments.push(segment);
+     }
+     return segments;
+ }
