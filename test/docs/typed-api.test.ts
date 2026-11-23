@@ -143,3 +143,34 @@ claim("typed-api/client#middleware-errors", "use のミドルウェアが投げ�
     const limited = await api("GET /api/me", { headers: { "x-user": "a" } });
     expect([limited.status, limited.error]).toEqual([429, "429 Too Many Requests"]);
 });
+
+// ---------- 結果を返す共通の関数(#144) ----------
+import type { Context } from "../../src/index.ts";
+claim("typed-api/client#shared-send", "失敗ごとに分けて c.json(body, status) を返すと、状態コードごとに本文が届く", async () => {
+    type StoreResult<T> = { ok: true; value: T } | { ok: false; code: "not_found" } | { ok: false; code: "conflict"; id: string };
+    const users: Record<string, StoreResult<{ id: string; name: string }>> = {
+        "1": { ok: true, value: { id: "1", name: "alice" } },
+        "2": { ok: false, code: "conflict", id: "1" },
+    };
+    function send<T>(c: Context, r: StoreResult<T>) {
+        if (r.ok) return c.json(r.value);
+        switch (r.code) {
+            case "not_found":
+                return c.json({ error: r.code }, 404);
+            case "conflict":
+                return c.json({ error: r.code, id: r.id }, 409);
+        }
+    }
+    const routes = defineRoutes({
+        "GET /users/:id": async ({ id }, c) => send(c, users[id] ?? { ok: false, code: "not_found" }),
+    });
+    const app = createApp();
+    app.routes(routes);
+    const api = client<typeof routes>("http://localhost", { fetch: (r) => app.fetch(r) });
+    const ok = await api("GET /users/:id", { params: { id: "1" } });
+    expect([ok.status, ok.data]).toEqual([200, { id: "1", name: "alice" }]);
+    const missing = await api("GET /users/:id", { params: { id: "9" } });
+    expect([missing.status, missing.error]).toEqual([404, { error: "not_found" }]);
+    const conflict = await api("GET /users/:id", { params: { id: "2" } });
+    expect([conflict.status, conflict.error]).toEqual([409, { error: "conflict", id: "1" }]);
+});

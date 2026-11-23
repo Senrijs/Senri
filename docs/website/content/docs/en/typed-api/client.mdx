@@ -61,6 +61,145 @@ When a handler returns `c.json(body, status)` or `c.text(body, status)` with a s
 - `c.json(body)` without a status counts as 200. A status set with `c.status()` is not kept in the type
 - Responses from `onError` and `notFound` that are not covered by "Middleware statuses" below are not in the type: their `error` is `unknown`
 
+## A shared function that sends results
+
+When one function passes the success and failure results of a store (or the like) to `c.json()`, write the statuses as numbers. If you pass a `number` looked up from a table, the status type widens to `number`. Then the failure bodies are mixed into the type of the successful `data`, and the `error` for 404 and other statuses is `unknown`.
+
+### Branch per failure
+
+Branch on the kind of failure, and return `c.json(body, status)` in each branch.
+
+```ts twoslash title="routes.ts"
+// @filename: store.ts
+export type User = { id: string; name: string };
+export type StoreResult<T> =
+    | { ok: true; value: T }
+    | { ok: false; code: "not_found" }
+    | { ok: false; code: "conflict"; id: string };
+export declare const store: { getUser(id: string): Promise<StoreResult<User>> };
+// @filename: routes.ts
+// ---cut---
+import { defineRoutes, type Context } from "@senrijs/senri";
+import { store, type StoreResult } from "./store.ts";
+
+function send<T>(c: Context, r: StoreResult<T>) {
+    if (r.ok) return c.json(r.value);
+    switch (r.code) {
+        case "not_found":
+            return c.json({ error: r.code }, 404);
+        case "conflict":
+            return c.json({ error: r.code, id: r.id }, 409);
+    }
+}
+
+export const routes = defineRoutes({
+    "GET /users/:id": async ({ id }, c) => send(c, await store.getUser(id)),
+});
+```
+
+The return type of `send` is the union of the responses of its branches. On the client, `error` is typed per status.
+
+```ts twoslash title="client.ts"
+// @filename: store.ts
+export type User = { id: string; name: string };
+export type StoreResult<T> =
+    | { ok: true; value: T }
+    | { ok: false; code: "not_found" }
+    | { ok: false; code: "conflict"; id: string };
+export declare const store: { getUser(id: string): Promise<StoreResult<User>> };
+// @filename: routes.ts
+import { defineRoutes, type Context } from "@senrijs/senri";
+import { store, type StoreResult } from "./store.ts";
+function send<T>(c: Context, r: StoreResult<T>) {
+    if (r.ok) return c.json(r.value);
+    switch (r.code) {
+        case "not_found":
+            return c.json({ error: r.code }, 404);
+        case "conflict":
+            return c.json({ error: r.code, id: r.id }, 409);
+    }
+}
+export const routes = defineRoutes({
+    "GET /users/:id": async ({ id }, c) => send(c, await store.getUser(id)),
+});
+export type Api = typeof routes;
+// @filename: client.ts
+// ---cut---
+import { client } from "@senrijs/senri/client";
+import type { Api } from "./routes.ts";
+
+const api = client<Api>("https://example.com");
+
+const res = await api("GET /users/:id", { params: { id: "1" } });
+if (res.ok) {
+    res.data;
+    //  ^?
+} else if (res.status === 404) {
+    res.error;
+    //  ^?
+} else if (res.status === 409) {
+    res.error;
+    //  ^?
+}
+```
+
+### Add as const to the status table
+
+If the body has the same shape for every failure, add `as const` to the status table, and it fits in one line.
+
+```ts twoslash title="routes.ts"
+// @filename: store.ts
+export type StoreResult<T> =
+    | { ok: true; value: T }
+    | { ok: false; code: "not_found" }
+    | { ok: false; code: "conflict"; id: string };
+// @filename: routes.ts
+// ---cut---
+import type { Context } from "@senrijs/senri";
+import type { StoreResult } from "./store.ts";
+
+const STATUS = { not_found: 404, conflict: 409 } as const;
+
+function send<T>(c: Context, r: StoreResult<T>) {
+    if (r.ok) return c.json(r.value);
+    return c.json({ error: r.code }, STATUS[r.code]);
+}
+```
+
+- The status type is kept, as `404 | 409`
+- But the type no longer says which body comes with which status. On the client, the `error` for 404 and the `error` for 409 are both `{ error: "not_found" | "conflict" }`. To keep that in the type too, branch per failure as above
+
+### Write the return type
+
+You can also write the responses as a union of `TypedResponse`s, one per status. The type check then confirms that the function body matches it: a body sent with the wrong status is a type error.
+
+```ts twoslash title="routes.ts"
+// @filename: store.ts
+export type User = { id: string; name: string };
+export type StoreResult<T> =
+    | { ok: true; value: T }
+    | { ok: false; code: "not_found" }
+    | { ok: false; code: "conflict"; id: string };
+// @filename: routes.ts
+// ---cut---
+import type { Context, TypedResponse } from "@senrijs/senri";
+import type { StoreResult, User } from "./store.ts";
+
+type UserResponse =
+    | TypedResponse<User, 200>
+    | TypedResponse<{ error: "not_found" }, 404>
+    | TypedResponse<{ error: "conflict"; id: string }, 409>;
+
+function send(c: Context, r: StoreResult<User>): UserResponse {
+    if (r.ok) return c.json(r.value);
+    if (r.code === "not_found") return c.json({ error: r.code }, 404);
+    return c.json({ error: r.code, id: r.id }, 409);
+}
+```
+
+- `c.json(body)` without a status is typed 200, even when the return type is written. Returning it where a 404 response is expected is a type error
+- It takes more typing, but the declaration alone shows the responses the client sees
+
 ## Middleware statuses
 
 Statuses declared by the middleware in a route's `use` (`Middleware<V, { errors: 401 }>`; the [built-in middleware](/en/docs/middleware/route-middleware) declare theirs), and 400 on routes with schemas, are also split by status.
@@ -110,6 +249,71 @@ const api = client<typeof routes>("http://localhost", { fetch: (req) => app.fetc
 ```
 
 In tests, [`testClient()`](/en/docs/typed-api/testing), which also handles cookies, is handier.
+
+## Tips for reading server types from the web app
+
+With the typed client, the web app's type check follows the types of the server code from the route table (route table → handlers → stores → types generated by Prisma and the like). This comes with reading server types from the web app. The following keeps what the web side reads small.
+
+### Use import type for imports that are only types
+
+```ts twoslash title="web/api.ts"
+// @filename: server/routes.ts
+import { defineRoutes } from "@senrijs/senri";
+export const routes = defineRoutes({ "GET /ping": () => "pong" });
+export type Api = typeof routes;
+// @filename: web/api.ts
+// ---cut---
+import { client } from "@senrijs/senri/client";
+import type { Api } from "../server/routes.ts";   // Types only: the server code does not go into the bundle
+
+export const api = client<Api>("/");
+```
+
+- In the web app, read the route table's type with `import type`. Importing it as a value puts the server code into the web bundle
+- In the files of the route table, too, use `import type` for what is only used as a type (such as types generated by Prisma). `import type` is removed from the runtime code. With `verbatimModuleSyntax`, a plain `import` stays even when it is only used as a type
+
+### Put small functions the web app also uses in files without heavy dependencies
+
+Do not put functions the web app also calls, such as formatting for display or input checks, in the same file as a store or a database client. When the web app imports that file, it also reads that file's imports (into the bundle and into the type check).
+
+```ts twoslash title="shared/format.ts"
+// @filename: shared/format.ts
+// ---cut---
+// Imports nothing. Read from both the server and the web app
+export const displayName = (u: { name: string; nickname?: string }) => u.nickname ?? u.name;
+```
+
+```ts twoslash title="server/store.ts"
+// @filename: server/db.ts
+export declare const db: { user: { find(id: string): Promise<{ id: string; name: string } | null> } };
+// @filename: shared/format.ts
+export const displayName = (u: { name: string; nickname?: string }) => u.nickname ?? u.name;
+// @filename: server/store.ts
+// ---cut---
+import { db } from "./db.ts";   // Heavy dependencies are read only in server files
+import { displayName } from "../shared/format.ts";
+
+export async function getUser(id: string) {
+    const u = await db.user.find(id);
+    return u && { id: u.id, name: displayName(u) };
+}
+```
+
+### When the web type check is slow or fails
+
+The web type check reads, and type-checks, every server file it can reach from the route table.
+
+When it fails:
+
+- If the packages the server imports are not installed, or Prisma's types are not generated (`prisma generate`), the web type check reports `Cannot find module`. When CI type-checks only the web app, install the server's dependencies and generate the types first
+- Global types such as `Bun` and `process` come from `types` in the web app's tsconfig. If server files use them, the web side reports errors. Add them to the web app's `types` too
+- Type errors in the server code also show up in the web type check. Type-check the server first
+
+When it is slow:
+
+- `tsc --extendedDiagnostics` shows the number of files read and the time taken
+- `tsc --explainFiles` shows which files were read, and why. If server files or heavy packages are listed, look at the two tips above again
+- The client computes the type of `data` as the handler's return value after JSON. When the return value is a large type generated by an ORM, this gets heavy. Write the type of what a store function returns yourself, and there is less to compute
 
 ## Options
 
