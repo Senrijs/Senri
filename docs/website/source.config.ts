@@ -64,7 +64,7 @@ export default defineConfig({
                     twoslashOptions: { compilerOptions: senriCompilerOptions },
                 }),
             ],
-            langs: ["ts", "tsx", "js", "json", "bash", "sh", "toml", "jsonc"],
+            langs: ["ts", "tsx", "js", "json", "bash", "sh", "toml", "jsonc", "dockerfile"],
         },
     },
 });

@@ -68,6 +68,24 @@ On every runtime the build is multi-stage, and the final image is distroless (no
 - There is no `HEALTHCHECK` (distroless images have no curl or shell). Use your orchestrator's health checks
 - `serve()` handles SIGTERM itself, so no init process is needed. `docker stop` waits only 10 seconds by default; give it longer than `shutdownTimeout`, such as `docker stop -t 20`
 
+<Callout type="warn" title="Deno: new versions may not install for 24 hours">
+  By default, Deno does not install a version published less than 24 hours ago (the minimum dependency age, a defense against supply-chain attacks). So right after a new version is published, `deno install` in the Dockerfile fails with `Could not find version ... that matches` if no older version satisfies the range (such as `^0.4.0`).
+</Callout>
+
+To get past it, do one of these:
+
+- **Wait**: once the version is 24 hours old, the build works as it is
+- **Use `deno.lock`**: with a `deno.lock`, `senri build` uses `deno install --frozen`. The versions in the lockfile are used as they are, so builds do not stop looking for new versions. Creating `deno.lock` or upgrading a version still stops on your machine's `deno` under the same rule
+- **Change the setting**: pass `--min-dep-age` to `deno install` in the Dockerfile, or set `"minimumDependencyAge": 0` in `deno.json`. This weakens the protection against installing a bad version right after it is published. If you turn it off, do it only for that build, and pin the versions with `deno.lock`
+
+To turn it off for that build only, change the `RUN` line in the Dockerfile like this (`src/main.ts` is the entry):
+
+```dockerfile
+RUN deno install --min-dep-age=0 --entrypoint src/main.ts
+```
+
+The value is minutes (`120` for two hours), an ISO-8601 duration (`P2D` for two days) or a date and time (`2026-11-20`). `0` turns it off. In Deno 2.9 the flag is marked unstable (`deno install --help`).
+
 ## Kubernetes
 
 ```bash
