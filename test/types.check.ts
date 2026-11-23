@@ -17,6 +17,7 @@ import {
     type RedirectStatus,
     type StandardSchemaV1,
     type RouteTable,
+    type TypedResponse,
 } from "../src/index.ts";
 
 const app = createApp();
@@ -559,6 +560,28 @@ async function statusTypes() {
 }
 void statusTypes;
 
+// status を省いた c.json() / c.text() は、戻り値の型を書いても 200 のまま(実行時も 200。#144)
+{
+    // @ts-expect-error 型は 404 なのに実行時は 200、にはならない
+    const j = (c: Context): TypedResponse<{ a: number }, 404> => c.json({ a: 1 });
+    // @ts-expect-error text も同じ
+    const t = (c: Context): TypedResponse<string, 404, "text"> => c.text("x");
+    // 200 のときと、status を書いたときは通る
+    const j200 = (c: Context): TypedResponse<{ a: number }, 200> => c.json({ a: 1 });
+    const j404 = (c: Context): TypedResponse<{ a: number }, 404> => c.json({ a: 1 }, 404);
+    const t404 = (c: Context): TypedResponse<string, 404, "text"> => c.text("x", 404);
+    // 結果ごとの応答の型を書いた共通の関数: 本文と status の組が違えば型エラー
+    // (戻り値の型が和のときは、本文の文字列が string に広がるので as const を付ける)
+    type Res = TypedResponse<{ id: string }, 200> | TypedResponse<{ error: "not_found" }, 404>;
+    const send = (c: Context, found: boolean): Res => (found ? c.json({ id: "1" }, 200) : c.json({ error: "not_found" as const }, 404));
+    // @ts-expect-error 404 の本文を 200 で返している
+    const wrong = (c: Context, found: boolean): Res => (found ? c.json({ id: "1" }, 200) : c.json({ error: "not_found" as const }, 200));
+    // status を number で渡すと、number のまま(今までどおり)
+    const n = (c: Context, s: number) => c.json({ a: 1 }, s);
+    same<ReturnType<typeof n>, TypedResponse<{ a: number }, number>>(true);
+    void [j, t, j200, j404, t404, send, wrong];
+}
+
 // c.json() / c.text() の戻り値は Response としても使える
 app.get("/s/as-response", (_, c) => {
     const res: Response = c.json({ a: 1 }, 404);
@@ -757,6 +780,13 @@ same<MiddlewareErrors<[typeof requireUser, typeof readsUser]>, 401 | 403>(true);
     same<MiddlewareErrors<[typeof t504]>, 504>(true);
     const t503 = timeout(1000, { status: 503 });
     same<MiddlewareErrors<[typeof t503]>, 503>(true);
+    // status を省いたら 504。代入先の型から別の status にはならない(#144)
+    // @ts-expect-error 実行時は 504
+    const t503wrong: Middleware<any, { errors: 503 }> = timeout(1000);
+    // @ts-expect-error {} でも 504
+    const t503wrong2: Middleware<any, { errors: 503 }> = timeout(1000, {});
+    const t504b: Middleware<any, { errors: 504 }> = timeout(1000, {});
+    void [t503wrong, t503wrong2, t504b];
     const j = jwt<{ sub: string }>({ keys: "x".repeat(32), algorithms: ["HS256"] });
     same<MiddlewareProvides<[typeof j]>, { jwtPayload: { sub: string } }>(true);
     same<MiddlewareProvides<[ReturnType<typeof requestId>]>, { requestId: string }>(true);
