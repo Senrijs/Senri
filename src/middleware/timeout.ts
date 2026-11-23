@@ -13,6 +13,7 @@ export type TimeoutOptions<S extends number = number> = {
 // setTimeout に渡せる最大(これを超えると、すぐに発火してしまう)
 const MAX_MS = 2 ** 31 - 1;
 
+// status を省いたときの形を先に書く。1 つだけだと、代入先の型から S が決まり、実行時は 504 なのに型は 503、のようになる(#144)
 /**
  * Middleware that responds with an error when the rest of the chain does not finish within `ms` milliseconds.
  * It throws an `HttpError`, so `app.onError` can change the response. Register it first, to include other middleware.
@@ -46,6 +47,41 @@ const MAX_MS = 2 ** 31 - 1;
  * });
  * ```
  */
+export function timeout(ms: number, options?: { status?: undefined }): Middleware<any, { errors: 504 }>;
+/**
+ * Middleware that responds with an error when the rest of the chain does not finish within `ms` milliseconds.
+ * It throws an `HttpError`, so `app.onError` can change the response. Register it first, to include other middleware.
+ *
+ * **It does not stop the work.** After the response is sent:
+ * - Asynchronous work keeps running. An error thrown later still reaches `app.onError`
+ * - `c.req.signal` is not aborted: it only reports that the client disconnected. To stop calls to other services,
+ *   pass them a signal with its own limit, as in the example
+ *
+ * It also cannot help when:
+ * - The handler blocks synchronously, such as a long loop: the timer cannot fire until it returns
+ * - The body is a stream: only the time until `next()` returns counts, not the time spent sending the body
+ *
+ * Throws when `ms` is not a positive number of milliseconds, or `status` is not between 400 and 599.
+ *
+ * @param ms The time limit in milliseconds.
+ * @param options `status`: the status of the error response. Default `504`.
+ *
+ * @example
+ * ```ts
+ * import { createApp, timeout } from "@senrijs/senri";
+ *
+ * const app = createApp();
+ * app.use(timeout(5000));
+ *
+ * app.get("/report", async (_, c) => {
+ *     // Stops when the client disconnects, or after 4 seconds
+ *     const signal = AbortSignal.any([c.req.signal, AbortSignal.timeout(4000)]);
+ *     const res = await fetch("https://example.com/report", { signal });
+ *     return res.text();
+ * });
+ * ```
+ */
+export function timeout<S extends number = 504>(ms: number, options?: TimeoutOptions<S>): Middleware<any, { errors: S }>;
 export function timeout<S extends number = 504>(ms: number, options: TimeoutOptions<S> = {}): Middleware<any, { errors: S }> {
     if (typeof ms !== "number" || !(ms > 0) || ms > MAX_MS) throw senriError("timeout_ms", "timeout(): invalid ms");
     const status = options.status ?? 504;

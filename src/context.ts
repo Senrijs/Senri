@@ -556,11 +556,20 @@ export class Context<V extends object = any, out R extends RouteInfo = NoRoute> 
     // 共有の #headers を書き換えないので、json() のあとに text() しても Content-Type が混ざらない
     // 戻り値の型に、本文の型と status を残す(型付きクライアントが status ごとに型を分けるため。実行時は Response のまま)
     // status を省いたときは 200 として型を付ける(c.status() で決めた status は、型には残らない)
+    // 省いたときの形を先に書く。1 つだけだと、戻り値の型を書いた関数の中で S がそこから決まってしまい、
+    // 実行時は 200 なのに型は 404、のようになる(#144)
     /**
      * A JSON response (`application/json`, unless `Content-Type` was set with {@link Context.header}).
      * The return type keeps the body type and `status` ({@link TypedResponse}), so a typed client can tell
      * responses apart by status. Without `status`, the type assumes 200 (a status set with `c.status()` is not typed).
      */
+    json<T>(data: T): TypedResponse<T, 200, "json">;
+    /**
+     * A JSON response (`application/json`, unless `Content-Type` was set with {@link Context.header}).
+     * The return type keeps the body type and `status` ({@link TypedResponse}), so a typed client can tell
+     * responses apart by status. Without `status`, the type assumes 200 (a status set with `c.status()` is not typed).
+     */
+    json<T, S extends number = 200>(data: T, status?: S): TypedResponse<T, S, "json">;
     json<T, S extends number = 200>(data: T, status?: S): TypedResponse<T, S, "json"> {
         const init = initOf(status ?? this.#status, this.#headers?.get("content-type"), JSON_HEADERS);
         return new Response(JSON.stringify(data), init) as TypedResponse<T, S, "json">;
@@ -570,6 +579,12 @@ export class Context<V extends object = any, out R extends RouteInfo = NoRoute> 
      * A text response (`text/plain; charset=utf-8`, unless `Content-Type` was set with {@link Context.header}).
      * Like {@link Context.json}, the return type keeps `status` ({@link TypedResponse}).
      */
+    text(body: string): TypedResponse<string, 200, "text">;
+    /**
+     * A text response (`text/plain; charset=utf-8`, unless `Content-Type` was set with {@link Context.header}).
+     * Like {@link Context.json}, the return type keeps `status` ({@link TypedResponse}).
+     */
+    text<S extends number = 200>(body: string, status?: S): TypedResponse<string, S, "text">;
     text<S extends number = 200>(body: string, status?: S): TypedResponse<string, S, "text"> {
         const s = status ?? this.#status;
         // Deno では、c.header() がなく 200 なら init なしで作る。Deno が text/plain;charset=UTF-8 を付け、
