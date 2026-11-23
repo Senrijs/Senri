@@ -1,9 +1,8 @@
-import { pathnameOf, requestPathname, splitPath } from "./router.ts";
+import { requestPathname, splitPath } from "./router.ts";
 import { isConnectionInfo } from "./connection.ts";
 import type { Timing } from "./compose.ts";
 import { parseJson, readBody } from "./body.ts";
 import { HttpError, senriError } from "./errors.ts";
-import { PlainResponse, setLazySourceOf, type LazyRequest } from "./plain.ts";
 
 // そのままレスポンスのボディにできるもの(JSON にはしない)
 // TypedArray は SharedArrayBuffer のもの以外(Response のボディにできないので)
@@ -254,12 +253,8 @@ export function setValidated(c: Context<any, any>, target: string, value: unknow
 // Context のメソッドにしないのは、使わないアプリのバンドルに入れないため
 export let connectionOf: (c: Context<any, any>) => { req: Request; info: unknown };
 
-// c.req を最初に読んだときに本物の Request を作る Context(Node のアダプターだけが使う)
-export let lazyContext: (source: LazyRequest, info: unknown) => Context;
-
-// ハンドラーの戻り値を、Response を作らずに書くための中身にする(Node のアダプターだけが使う)
-// 文字列と、素のオブジェクト・配列だけ。それ以外と、Response なら投げる status は null(今までどおり Response にする)
-export let plainOf: (c: Context<any, any>, value: unknown) => PlainResponse | null;
+// status と c.header() のヘッダーを読む。pathname を渡すと、それを覚えさせる(Node のアダプターだけが使う。src/lazy-context.ts)
+export let nodeState: (c: Context<any, any>, pathname?: string) => [number, Headers | undefined];
 
 /**
  * The per-request context passed to handlers and middleware as `c`.
@@ -313,27 +308,10 @@ export class Context<V extends object = any, out R extends RouteInfo = NoRoute> 
 
     static {
         connectionOf = (c) => ({ req: c.#original, info: c.#info });
-        lazyContext = (source, info) => {
-            const c = new LazyContext(source, info);
-            // Request を作らなくても、ルーティングできるようにしておく
-            c.#pathname = pathnameOf(source.url);
-            return c;
-        };
-        plainOf = (c, value) => {
-            const status = c.#status;
-            if (status < 200 || status > 599 || status === 204 || status === 205 || status === 304) return null;
-            let body: string;
-            let type: string;
-            if (typeof value === "string") {
-                body = value;
-                type = "text/plain; charset=utf-8";
-            } else if (Array.isArray(value) || (typeof value === "object" && value !== null && Object.getPrototypeOf(value) === Object.prototype)) {
-                body = JSON.stringify(value);
-                type = "application/json";
-            } else {
-                return null;
-            }
-            return new PlainResponse(status, c.#headers?.get("content-type") ?? type, body, c.#headers);
+        // Node のアダプターだけが使う(src/lazy-context.ts)。Context の中に置くと、使わないアプリにも入るので外に出す
+        nodeState = (c, pathname) => {
+            if (pathname !== undefined) c.#pathname = pathname;
+            return [c.#status, c.#headers];
         };
     }
 
@@ -740,28 +718,3 @@ export class Context<V extends object = any, out R extends RouteInfo = NoRoute> 
     }
 }
 
-// Node のアダプターから来たリクエストの Context。c.req を読まないハンドラーでは、Request を作らない
-// 渡すのは常に本物の Request。c.req.signal、new Request(c.req)、fetch(c.req)、c.req.clone() はそのまま動く
-class LazyContext extends Context {
-    #source: LazyRequest;
-    #req: Request | undefined;
-
-    static {
-        setLazySourceOf((c) => (#req in c && c.#req === undefined ? c.#source : null));
-    }
-
-    constructor(source: LazyRequest, info: unknown) {
-        super(undefined as never, info);
-        this.#source = source;
-    }
-
-    // @ts-expect-error 親ではプロパティ。ここだけ、最初に読んだときに作る
-    override get req(): Request {
-        return (this.#req ??= this.#source.create());
-    }
-
-    override set req(value: Request) {
-        // 親のコンストラクターの代入は、#req を初期化する前にここへ来るので、受け流す
-        if (#req in this) this.#req = value;
-    }
-}
