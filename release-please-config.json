@@ -35,7 +35,7 @@
     "packages/cli": {
       "package-name": "@senrijs/cli",
       "component": "cli",
-      "include-component-in-tag": true,
+      "include-component-in-tag": true
     }
   }
 }
