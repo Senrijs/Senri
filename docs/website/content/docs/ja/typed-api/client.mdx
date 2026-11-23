@@ -61,6 +61,145 @@ await api("POST /users", { body: { name: "a" } });   // 本文はスキーマの
 - status を書かない `c.json(body)` は、200 として扱います。`c.status()` で決めた status は、型には残りません
 - 下の「ミドルウェアの状態コード」に当たらない `onError`・`notFound` の応答は型に入らず、`error` は `unknown` です
 
+## 結果を返す共通の関数
+
+ストアなどが返す成功・失敗の結果を、1 つの関数でまとめて `c.json()` に渡すときは、状態コードを数字で書きます。表から引いた `number` を渡すと、状態コードの型が `number` に広がります。そうすると、失敗の本文も成功の `data` の型に混ざり、404 などの `error` は `unknown` になります。
+
+### 失敗ごとに分ける
+
+失敗の種類ごとに分けて、それぞれ `c.json(body, status)` を返します。
+
+```ts twoslash title="routes.ts"
+// @filename: store.ts
+export type User = { id: string; name: string };
+export type StoreResult<T> =
+    | { ok: true; value: T }
+    | { ok: false; code: "not_found" }
+    | { ok: false; code: "conflict"; id: string };
+export declare const store: { getUser(id: string): Promise<StoreResult<User>> };
+// @filename: routes.ts
+// ---cut---
+import { defineRoutes, type Context } from "@senrijs/senri";
+import { store, type StoreResult } from "./store.ts";
+
+function send<T>(c: Context, r: StoreResult<T>) {
+    if (r.ok) return c.json(r.value);
+    switch (r.code) {
+        case "not_found":
+            return c.json({ error: r.code }, 404);
+        case "conflict":
+            return c.json({ error: r.code, id: r.id }, 409);
+    }
+}
+
+export const routes = defineRoutes({
+    "GET /users/:id": async ({ id }, c) => send(c, await store.getUser(id)),
+});
+```
+
+`send` の戻り値の型は、分かれごとの応答の和です。クライアントでは、状態コードごとに `error` の型が付きます。 {/* verify: shared-send */}
+
+```ts twoslash title="client.ts"
+// @filename: store.ts
+export type User = { id: string; name: string };
+export type StoreResult<T> =
+    | { ok: true; value: T }
+    | { ok: false; code: "not_found" }
+    | { ok: false; code: "conflict"; id: string };
+export declare const store: { getUser(id: string): Promise<StoreResult<User>> };
+// @filename: routes.ts
+import { defineRoutes, type Context } from "@senrijs/senri";
+import { store, type StoreResult } from "./store.ts";
+function send<T>(c: Context, r: StoreResult<T>) {
+    if (r.ok) return c.json(r.value);
+    switch (r.code) {
+        case "not_found":
+            return c.json({ error: r.code }, 404);
+        case "conflict":
+            return c.json({ error: r.code, id: r.id }, 409);
+    }
+}
+export const routes = defineRoutes({
+    "GET /users/:id": async ({ id }, c) => send(c, await store.getUser(id)),
+});
+export type Api = typeof routes;
+// @filename: client.ts
+// ---cut---
+import { client } from "@senrijs/senri/client";
+import type { Api } from "./routes.ts";
+
+const api = client<Api>("https://example.com");
+
+const res = await api("GET /users/:id", { params: { id: "1" } });
+if (res.ok) {
+    res.data;
+    //  ^?
+} else if (res.status === 404) {
+    res.error;
+    //  ^?
+} else if (res.status === 409) {
+    res.error;
+    //  ^?
+}
+```
+
+### 状態コードの表に as const を付ける
+
+本文の形がどの失敗でも同じなら、状態コードの表に `as const` を付けると、1 行で書けます。
+
+```ts twoslash title="routes.ts"
+// @filename: store.ts
+export type StoreResult<T> =
+    | { ok: true; value: T }
+    | { ok: false; code: "not_found" }
+    | { ok: false; code: "conflict"; id: string };
+// @filename: routes.ts
+// ---cut---
+import type { Context } from "@senrijs/senri";
+import type { StoreResult } from "./store.ts";
+
+const STATUS = { not_found: 404, conflict: 409 } as const;
+
+function send<T>(c: Context, r: StoreResult<T>) {
+    if (r.ok) return c.json(r.value);
+    return c.json({ error: r.code }, STATUS[r.code]);
+}
+```
+
+- 状態コードの型は、`404 | 409` として残ります
+- ただし、どの本文がどの状態コードで返るかの対応はなくなります。クライアントでは、404 の `error` も 409 の `error` も `{ error: "not_found" | "conflict" }` です。対応も型に残したいときは、上の「失敗ごとに分ける」にします
+
+### 戻り値の型を書く
+
+返す応答を、状態コードごとに `TypedResponse` の和で書いておくこともできます。関数の中身がその型に合っているかを、型チェックで確かめられます。状態コードと本文の組が違えば、型エラーになります。
+
+```ts twoslash title="routes.ts"
+// @filename: store.ts
+export type User = { id: string; name: string };
+export type StoreResult<T> =
+    | { ok: true; value: T }
+    | { ok: false; code: "not_found" }
+    | { ok: false; code: "conflict"; id: string };
+// @filename: routes.ts
+// ---cut---
+import type { Context, TypedResponse } from "@senrijs/senri";
+import type { StoreResult, User } from "./store.ts";
+
+type UserResponse =
+    | TypedResponse<User, 200>
+    | TypedResponse<{ error: "not_found" }, 404>
+    | TypedResponse<{ error: "conflict"; id: string }, 409>;
+
+function send(c: Context, r: StoreResult<User>): UserResponse {
+    if (r.ok) return c.json(r.value);
+    if (r.code === "not_found") return c.json({ error: r.code }, 404);
+    return c.json({ error: r.code, id: r.id }, 409);
+}
+```
+
+- 状態コードを省いた `c.json(body)` は、戻り値の型を書いていても 200 の型です。404 の応答として返そうとすると、型エラーになります
+- 手間は増えますが、クライアントに見せる応答の型が、関数の宣言だけで分かります
+
 ## ミドルウェアの状態コード
 
 ルートの `use` に入れたミドルウェアが宣言した状態コード(`Middleware<V, { errors: 401 }>`。[標準のミドルウェア](/docs/middleware/route-middleware)にも付いています)と、スキーマのあるルートの 400 も、status ごとに分かれます。
@@ -112,6 +251,71 @@ const api = client<typeof routes>("http://localhost", { fetch: (req) => app.fetc
 ```
 
 テストでは、Cookie なども扱える [`testClient()`](/docs/typed-api/testing) が便利です。
+
+## server の型を web で読むときのコツ
+
+型付きクライアントを使うと、web 側の型チェックは、ルートの表から server のコードの型をたどります(ルートの表 → ハンドラー → ストア → Prisma などが作った型)。これは、server の型を web で読む作りそのものの性質です。次のようにすると、web 側で読むものを減らせます。
+
+### 型だけで済む import は import type にする
+
+```ts twoslash title="web/api.ts"
+// @filename: server/routes.ts
+import { defineRoutes } from "@senrijs/senri";
+export const routes = defineRoutes({ "GET /ping": () => "pong" });
+export type Api = typeof routes;
+// @filename: web/api.ts
+// ---cut---
+import { client } from "@senrijs/senri/client";
+import type { Api } from "../server/routes.ts";   // 型だけ。server のコードはバンドルに入らない
+
+export const api = client<Api>("/");
+```
+
+- web からは、ルートの表の型を `import type` で読みます。値として import すると、server のコードが web のバンドルに入ります
+- ルートの表を置くファイルでも、型にしか使わないもの(Prisma が作った型など)は `import type` にします。`import type` は、実行時のコードから消えます。`verbatimModuleSyntax` を使っていると、ふつうの `import` は型にしか使っていなくても残ります
+
+### web からも使う小さな関数は、重い依存のないファイルに分ける
+
+表示の整形や入力の確かめなど、web からも呼ぶ関数を、ストアや DB のクライアントと同じファイルに置かないようにします。web がそのファイルを import すると、そのファイルの import も一緒に読みます(バンドルにも、型チェックにも入ります)。
+
+```ts twoslash title="shared/format.ts"
+// @filename: shared/format.ts
+// ---cut---
+// 何も import しない。server からも web からも読む
+export const displayName = (u: { name: string; nickname?: string }) => u.nickname ?? u.name;
+```
+
+```ts twoslash title="server/store.ts"
+// @filename: server/db.ts
+export declare const db: { user: { find(id: string): Promise<{ id: string; name: string } | null> } };
+// @filename: shared/format.ts
+export const displayName = (u: { name: string; nickname?: string }) => u.nickname ?? u.name;
+// @filename: server/store.ts
+// ---cut---
+import { db } from "./db.ts";   // 重い依存は server のファイルだけで読む
+import { displayName } from "../shared/format.ts";
+
+export async function getUser(id: string) {
+    const u = await db.user.find(id);
+    return u && { id: u.id, name: displayName(u) };
+}
+```
+
+### web 側の型チェックが遅い・失敗するとき
+
+web の型チェックは、ルートの表からたどれる server のファイルを、全部読んで型チェックします。
+
+失敗するとき:
+
+- server が import するパッケージを入れていない、Prisma の型を作っていない(`prisma generate`)と、web の型チェックで `Cannot find module` になります。CI で web だけを型チェックするときも、server の依存を入れて、型を作ってからにします
+- `Bun`・`process` などのグローバルの型は、web の tsconfig の `types` で決まります。server のファイルがそれらを使っていると、web 側でエラーになります。web の `types` にも足します
+- server のコードの型エラーも、web の型チェックで出ます。先に server を型チェックします
+
+遅いとき:
+
+- `tsc --extendedDiagnostics` で、読んだファイルの数と、かかった時間を見ます
+- `tsc --explainFiles` で、どのファイルが、なぜ読まれたかが分かります。server のファイルや重いパッケージが並んでいたら、上の 2 つを見直します
+- クライアントは `data` の型を、ハンドラーの戻り値を JSON にした形として計算します。戻り値に ORM が作った大きな型がそのまま出ていると、この計算が重くなります。ストアの関数で、返す形の型を自分で書くと、計算するものが小さくなります
 
 ## オプション
 
