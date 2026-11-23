@@ -1,0 +1,39 @@
+diff --git a/src/app.ts b/src/app.ts
+index d02fc33..6f6289d 100644
+--- a/src/app.ts
++++ b/src/app.ts
+@@ -12,6 +12,7 @@ import {
+     type RouteTable,
+     type Route,
+     type Simplify,
++    NOT_IMPLEMENTED,
+ } from "./router.ts";
+ import { compose, type Layer } from "./compose.ts";
+ import { methodOf } from "./plain.ts";
+@@ -57,7 +58,6 @@ export type Resolved =
+     | { kind: "badRequest"; error: unknown };
+ 
+ // 扱わないメソッド。ルートがあってもなくても 501 にする(app.all() でも受けない)
+-const NOT_IMPLEMENTED = new Set(["CONNECT", "TRACE", "TRACK"]);
+ 
+ /** The path parameters of a route path, as one object type. */
+ export type PathParams<Path extends string> = Simplify<ExtractParams<Path>>;
+diff --git a/src/router.ts b/src/router.ts
+index 7291a4a..97177e3 100644
+--- a/src/router.ts
++++ b/src/router.ts
+@@ -211,12 +211,13 @@ export function checkParamNames(path: string, segments: readonly string[]) {
+ const METHOD = /^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$/;
+ 
+ // 登録するメソッド名を確かめて、大文字にする("propfind" → "PROPFIND")
++export const NOT_IMPLEMENTED = new Set(["CONNECT", "TRACE", "TRACK"]);
+ // - CONNECT はプロキシ用、TRACE / TRACK はリクエストをそのまま返すので Cookie を盗む攻撃(XST)に使われる。どれも扱わない
+ // - "ALL" は app.all() の印として使っているので、app.on() からは登録させない
+ export function normalizeMethod(method: string): string {
+     if (!METHOD.test(method)) throw senriError("method_invalid", `Invalid method: ${JSON.stringify(method)}`);
+     const upper = method.toUpperCase();
+-    if (upper === "CONNECT" || upper === "TRACE" || upper === "TRACK") {
++    if (NOT_IMPLEMENTED.has(upper)) {
+         throw senriError("method_unsupported", `${upper} is not supported`);
+     }
+     return upper;
