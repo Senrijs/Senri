@@ -97,9 +97,50 @@ Senri がこれから向かう先です。バージョンは目標であって�
 - [x] API の整理: 意図せず公開されているもの(`parseCookies`・`serializeCookie`・`deletionCookie`・`resolvePort`・`DEFAULT_PORT`・`PortSource`・`isLocalUrl`)を隠し、公開の型が非公開の型を参照しないようにする
 - [x] `serveStatic` のシンボリックリンクへの対策(ファイルを開いたあとで、root の中かを確かめ直す)
 
-## 0.4.0 — どこにでもデプロイ
+## 0.3.1〜0.3.4 — 公開後の修正
 
-- [ ] `senri build --target workers | docker | k8s`
+細かい内容は [CHANGELOG](./CHANGELOG.md) にあります。
+
+- [x] `c.bodyJson()`・`c.bodyBytes()`(本文を JSON / バイト列として読む)
+- [x] スキーマなしでパスの値を整数として読む(`"int"` / `"uint"`)
+- [x] 速度の改善(Node.js のミドルウェア、Deno の文字列)と、サイズの上限を 8KB に
+- [x] `app.route()` でつないだアプリのルートのミドルウェアが消える問題の修正
+
+## 0.4.0 — どこにでもデプロイ(2026-11-21 公開済み)
+
+- [x] `senri build --target workers | docker | k8s`(`@senrijs/cli`)
+- [x] ミドルウェアが宣言した変数の型を、ルートの Context と型付きクライアントに届ける
+
+## 0.4.x — 0.4.0 の後片付け
+
+- [ ] 本体を削れるところを調べて、サイズの余裕を戻す ([#146](https://github.com/Senrijs/Senri/issues/146))
+- [ ] 結果を `c.json` に渡す共通関数で、状態コードの型が広がる件 ([#144](https://github.com/Senrijs/Senri/issues/144))
+- [ ] ドキュメント: web から server の型を読むときのコツ ([#145](https://github.com/Senrijs/Senri/issues/145))
+
+→ [マイルストーン](https://github.com/Senrijs/Senri/milestone/3)
+
+## 0.5.0 — 倒れても戻る
+
+- [ ] ルート単位のセルフヒール(エラーが続いたルートだけ一時的に切り離し、自動で戻す) ([#148](https://github.com/Senrijs/Senri/issues/148))
+- [ ] `app.use()` からアプリの型を育てる ([#160](https://github.com/Senrijs/Senri/issues/160))
+
+→ [マイルストーン](https://github.com/Senrijs/Senri/milestone/4)
+
+## 0.6.0 — 壊して、調べる
+
+- [ ] カオスモード: わざと壊して本番に備える ([#149](https://github.com/Senrijs/Senri/issues/149))
+- [ ] タイムトラベル・デバッグ: 倒れたリクエストを後から再現する ([#150](https://github.com/Senrijs/Senri/issues/150))
+
+→ [マイルストーン](https://github.com/Senrijs/Senri/milestone/5)
+
+## 1.0.0 — 型を固める
+
+1.0 のあとに型を変えると壊れる変更になるので、その前に型を仕上げます。
+
+- [ ] `use` の並び順を型でチェックする ([#161](https://github.com/Senrijs/Senri/issues/161))
+- [ ] 404 と 413 を型付きクライアントの型に自動で入れる ([#162](https://github.com/Senrijs/Senri/issues/162))
+
+→ [マイルストーン](https://github.com/Senrijs/Senri/milestone/6)
 
 ## その先
 
