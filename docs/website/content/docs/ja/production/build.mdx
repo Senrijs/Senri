@@ -68,6 +68,24 @@ docker run --rm -p 3927:3927 my-app
 - `HEALTHCHECK` は書きません(distroless には curl もシェルもありません)。オーケストレーターのヘルスチェックを使います
 - `serve()` は SIGTERM を自分で受けて止まるので、init プロセスは要りません。`docker stop` は既定で 10 秒しか待たないので、`docker stop -t 20` のように、`shutdownTimeout` より長く待たせてください
 
+<Callout type="warn" title="Deno: 公開から 24 時間は、新しい版を入れられないことがある">
+  Deno は、公開から 24 時間たっていない版を既定では入れません(minimum dependency age。サプライチェーン攻撃への対策です)。そのため、新しい版が出た直後は、範囲(`^0.4.0` など)を満たす版がほかになければ、Dockerfile の `deno install` が `Could not find version ... that matches` で失敗します。
+</Callout>
+
+対策は、次のどれかです。
+
+- **待つ**: 公開から 24 時間たてば、そのまま通ります
+- **`deno.lock` を使う**: `deno.lock` があれば、`senri build` は `deno install --frozen` にします。ロックファイルに書いてある版をそのまま使うので、ビルドのたびに新しい版を探して止まることはありません。ただし、`deno.lock` を作るときや版を上げるときは、手元の `deno` も同じ決まりで止まります
+- **設定を変える**: Dockerfile の `deno install` に `--min-dep-age` を付けるか、`deno.json` に `"minimumDependencyAge": 0` を書きます。これは、公開されたばかりの悪い版をそのまま入れてしまうのを防ぐ仕組みを弱めることになります。切るなら、そのビルドの間だけにして、版は `deno.lock` で固めてください
+
+そのビルドの間だけ切るなら、Dockerfile の `RUN` の行をこう直します(`src/main.ts` はエントリー):
+
+```dockerfile
+RUN deno install --min-dep-age=0 --entrypoint src/main.ts
+```
+
+値は分(`120` で 2 時間)、ISO-8601 の期間(`P2D` で 2 日)、日時(`2026-11-20`)のどれかで、`0` で切れます。Deno 2.9 では、このフラグは unstable の扱いです(`deno install --help`)。
+
 ## Kubernetes
 
 ```bash

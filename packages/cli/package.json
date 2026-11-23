@@ -1,6 +1,6 @@
 {
   "name": "@senrijs/cli",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "The senri command: build a Senri app for Cloudflare Workers, Docker or Kubernetes",
   "license": "MIT",
   "author": "ibuki-hum4",
