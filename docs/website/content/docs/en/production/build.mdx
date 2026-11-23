@@ -76,7 +76,15 @@ To get past it, do one of these:
 
 - **Wait**: once the version is 24 hours old, the build works as it is
 - **Use `deno.lock`**: with a `deno.lock`, `senri build` uses `deno install --frozen`. The versions in the lockfile are used as they are, so builds do not stop looking for new versions. Creating `deno.lock` or upgrading a version still stops on your machine's `deno` under the same rule
-- **Change the setting**: set `"minimumDependencyAge": 0` in `deno.json`, or pass `--minimum-dependency-age` to `deno install`. This weakens the protection against installing a bad version right after it is published. If you turn it off, do it only for that build, and pin the versions with `deno.lock`
+- **Change the setting**: pass `--min-dep-age` to `deno install` in the Dockerfile, or set `"minimumDependencyAge": 0` in `deno.json`. This weakens the protection against installing a bad version right after it is published. If you turn it off, do it only for that build, and pin the versions with `deno.lock`
+
+To turn it off for that build only, change the `RUN` line in the Dockerfile like this (`src/main.ts` is the entry):
+
+```dockerfile
+RUN deno install --min-dep-age=0 --entrypoint src/main.ts
+```
+
+The value is minutes (`120` for two hours), an ISO-8601 duration (`P2D` for two days) or a date and time (`2026-11-20`). `0` turns it off. In Deno 2.9 the flag is marked unstable (`deno install --help`).
 
 ## Kubernetes
 
