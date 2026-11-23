@@ -144,5 +144,7 @@ Changing types after 1.0 would be a breaking change, so the types get finished f
 
 ## Later
 
-- Proxy, SSG, cron (e.g. Workers `scheduled`)
+- [ ] Proxy: a helper that forwards requests to another server ([#173](https://github.com/Senrijs/Senri/issues/173))
+- [ ] SSG: write routes out as static HTML ([#174](https://github.com/Senrijs/Senri/issues/174))
+- [ ] Cron: run work on a schedule (e.g. Workers `scheduled`) ([#175](https://github.com/Senrijs/Senri/issues/175))
 - **Ippo** — a React (and later Vue) meta-framework built on Senri
