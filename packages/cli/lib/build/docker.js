@@ -150,6 +150,8 @@ export function docker(project, options) {
             lockfile
                 ? "Dependencies: --frozen with deno.lock (the build fails if it is out of date)."
                 : "Dependencies: no deno.lock found, so versions may differ between builds.",
+            "New versions: Deno does not install a version published less than 24 hours ago, so `deno install` can fail",
+            "  right after a release. Wait, use deno.lock, or set minimumDependencyAge (this weakens supply-chain protection).",
             `Base images: denoland/deno:${version} and denoland/deno:distroless-${version}.`,
         );
         body = [

@@ -66,6 +66,13 @@ async function smoke(name: string, work: string): Promise<boolean> {
         .replace('app.get("/", ', 'app.use(health());\napp.get("/", ');
     if (!source.includes("app.use(health())")) throw new Error(`${entry} に health() を足せませんでした`);
     writeFileSync(path, source);
+    // Deno は、公開から 24 時間たっていない版を既定では入れない(minimum dependency age)。
+    // このテストは公開したばかりの @senrijs/senri を確かめるためのものなので、ここで作ったアプリでだけ切る
+    // (senri build が書く Dockerfile と、create-senri のテンプレートには入れない。利用者のサプライチェーン対策が弱まるため)
+    if (name === "deno") {
+        const config = join(project, "deno.json");
+        writeFileSync(config, JSON.stringify({ ...JSON.parse(readFileSync(config, "utf8")), minimumDependencyAge: 0 }, null, 2) + "\n");
+    }
 
     console.log(run(process.execPath, [SENRI, "build", "--target", "docker", "--target", "k8s"], project).split("\n").slice(0, 4).join("\n"));
     const started = Date.now();
