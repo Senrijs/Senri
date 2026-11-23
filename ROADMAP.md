@@ -97,9 +97,50 @@ See the [CHANGELOG](./CHANGELOG.md) for details.
 - [x] API cleanup: hide unintentionally public exports (`parseCookies`, `serializeCookie`, `deletionCookie`, `resolvePort`, `DEFAULT_PORT`, `PortSource`, `isLocalUrl`), and stop public types from referring to private ones
 - [x] `serveStatic` symlink hardening (re-check that the opened file is inside the root)
 
-## 0.4.0 — Deploy anywhere
+## 0.3.1–0.3.4 — Post-release fixes
 
-- [ ] `senri build --target workers | docker | k8s`
+See the [CHANGELOG](./CHANGELOG.md) for details.
+
+- [x] `c.bodyJson()` and `c.bodyBytes()` (read the body as JSON or bytes)
+- [x] Read path parameters as integers without a schema (`"int"` / `"uint"`)
+- [x] Faster Node.js middleware and Deno plain text, and an 8 KB size target
+- [x] Fix route middleware being dropped from apps mounted with `app.route()`
+
+## 0.4.0 — Deploy anywhere (released 2026-11-21)
+
+- [x] `senri build --target workers | docker | k8s` (`@senrijs/cli`)
+- [x] Type the route Context and the typed client from the variables middleware declares
+
+## 0.4.x — Cleanup after 0.4.0
+
+- [ ] Find what can be trimmed from the core to win back size headroom ([#146](https://github.com/Senrijs/Senri/issues/146))
+- [ ] Status-code types widen when results go through a shared helper into `c.json` ([#144](https://github.com/Senrijs/Senri/issues/144))
+- [ ] Docs: tips for reading the server's types from the web app ([#145](https://github.com/Senrijs/Senri/issues/145))
+
+→ [Milestone](https://github.com/Senrijs/Senri/milestone/3)
+
+## 0.5.0 — Recover from failures
+
+- [ ] Per-route self-healing (take only a failing route offline for a while and bring it back automatically) ([#148](https://github.com/Senrijs/Senri/issues/148))
+- [ ] Grow the app's types from `app.use()` ([#160](https://github.com/Senrijs/Senri/issues/160))
+
+→ [Milestone](https://github.com/Senrijs/Senri/milestone/4)
+
+## 0.6.0 — Break it, then trace it
+
+- [ ] Chaos mode: break things on purpose to get ready for production ([#149](https://github.com/Senrijs/Senri/issues/149))
+- [ ] Time-travel debugging: replay a failed request later ([#150](https://github.com/Senrijs/Senri/issues/150))
+
+→ [Milestone](https://github.com/Senrijs/Senri/milestone/5)
+
+## 1.0.0 — Lock in the types
+
+Changing types after 1.0 would be a breaking change, so the types get finished first.
+
+- [ ] Check the order of `use` in the types ([#161](https://github.com/Senrijs/Senri/issues/161))
+- [ ] Add 404 and 413 to the typed client's types automatically ([#162](https://github.com/Senrijs/Senri/issues/162))
+
+→ [Milestone](https://github.com/Senrijs/Senri/milestone/6)
 
 ## Later
 
