@@ -17,6 +17,6 @@
     "hono": "4.13.18",
     "memoirist": "0.4.0",
     "mitata": "1.0.34",
-    "senri-0.2.9": "npm:@senrijs/senri@0.3.1"
+    "senri-0.2.9": "npm:@senrijs/senri@0.2.9"
   }
 }

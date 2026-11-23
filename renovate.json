@@ -21,6 +21,12 @@
       "semanticCommitType": "chore"
     },
     {
+      "description": "senri-0.2.9 is an npm alias pinned to @senrijs/senri 0.2.9 to compare against the version before the Node shortcuts (#44, #46, #47). Never update it.",
+      "matchFileNames": ["bench/package.json"],
+      "matchDepNames": ["senri-0.2.9"],
+      "enabled": false
+    },
+    {
       "matchUpdateTypes": ["major"],
       "dependencyDashboardApproval": true
     }
