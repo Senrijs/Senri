@@ -64,7 +64,8 @@ describe("0.1 の createApp({ dev: true })", () => {
             message = (err as Error).message;
         }
         expect(message).toContain("is no longer supported");
-        expect(message).toContain('import { devtools } from "@senrijs/senri/dev";');
+        // 本体を小さくするため、案内は 1 行(コードの例は付けない。docs/design/size-0.4.md の X1)
+        expect(message).toContain('"@senrijs/senri/dev"');
         expect(message).toContain("createApp({ dev: devtools() })");
     });
 });
