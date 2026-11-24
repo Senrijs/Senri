@@ -8,6 +8,7 @@ import { getMDXComponents } from "@/components/mdx";
 import { Plus } from "@/components/top/plus";
 import { Reveal } from "@/components/top/reveal";
 import type { Lang } from "@/lib/i18n";
+import { withOgVersion } from "@/lib/shared";
 import { blogSource } from "@/lib/source";
 
 const text = {
@@ -23,7 +24,7 @@ const formatDate = (lang: Lang, date: Date) =>
     date.toLocaleDateString(lang === "ja" ? "ja-JP" : "en-US", { year: "numeric", month: "long", day: "numeric", timeZone: "UTC" });
 
 export function blogIndexMetadata(lang: Lang): Metadata {
-    const image = `/og/${lang}/blog/image.png`;
+    const image = withOgVersion(`/og/${lang}/blog/image.png`);
     return {
         title: text[lang].title,
         description: text[lang].description,

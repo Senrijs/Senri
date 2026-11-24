@@ -8,7 +8,7 @@ import type { ReactNode } from "react";
 import { getMDXComponents } from "@/components/mdx";
 import type { Lang } from "@/lib/i18n";
 import { baseOptions } from "@/lib/layout.shared";
-import { getPageImageUrl, getPageMarkdownUrl, gitConfig } from "@/lib/shared";
+import { getPageImageUrl, getPageMarkdownUrl, gitConfig, withOgVersion } from "@/lib/shared";
 import { source } from "@/lib/source";
 
 export function DocsShell({ lang, children }: { lang: Lang; children: ReactNode }) {
@@ -51,7 +51,7 @@ export function docsParams(lang: Lang) {
 export function docsMetadata(lang: Lang, slug?: string[]): Metadata {
     const page = source.getPage(slug, lang);
     if (!page) notFound();
-    const image = getPageImageUrl(page).url;
+    const image = withOgVersion(getPageImageUrl(page).url);
     return {
         title: page.data.title,
         description: page.data.description,

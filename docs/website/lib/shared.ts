@@ -25,6 +25,14 @@ export function getPageMarkdownUrl(page: { slugs: string[]; locale?: string }) {
     return { segments, url: `/llms.mdx/${page.locale}/docs/${segments.join("/")}` };
 }
 
+// og:image と twitter:image に付ける版(?v=...)。値は next.config.mjs の ogVersion で決める
+// Discord などは同じ URL の画像を覚えていて、中身を新しくしても古いまま出すので、ビルドごとに URL を変える
+// 画像そのものの URL は変えない(静的なファイルの配信はクエリを見ないので、?v= が付いても同じ画像が返る)
+export function withOgVersion(url: string) {
+    const version = process.env.OG_VERSION;
+    return version ? `${url}?v=${version}` : url;
+}
+
 export function getPageImageUrl(page: { slugs: string[]; locale?: string }) {
     const segments = [...page.slugs, "image.png"];
     return { segments, url: `/og/${page.locale}/docs/${segments.join("/")}` };
