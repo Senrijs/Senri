@@ -73,6 +73,7 @@ const EN = {
     chaos_production: "chaos() never runs in production. With NODE_ENV=production and enabled: true, the app stops at startup. Remove chaos() or set enabled: false",
     chaos_env_unreadable: "chaos() cannot read NODE_ENV, so it cannot check that this is not production, and stops. Run with --allow-env=NODE_ENV",
     chaos_throw: "chaos() threw this exception on purpose, to show what a bug in a handler looks like. Your code did not throw it",
+    self_heal_options: 'The options of selfHeal() are not valid. window, cooldown and slow are positive durations (milliseconds, or a string such as "2s"), minRequests an integer of 1 or more, and threshold a number greater than 0, up to 1',
 };
 
 const JA: Record<keyof typeof EN, string> = {
@@ -145,6 +146,7 @@ const JA: Record<keyof typeof EN, string> = {
     chaos_production: "chaos() は本番では動きません。NODE_ENV=production で enabled: true のときは、起動時に止めます。chaos() を外すか、enabled: false にしてください",
     chaos_env_unreadable: "chaos() が NODE_ENV を読めないので、本番でないことを確かめられず、止めました。--allow-env=NODE_ENV を付けてください",
     chaos_throw: "この例外は、ハンドラーのバグがどう見えるかを試すために chaos() がわざと投げたものです。あなたのコードが投げたものではありません",
+    self_heal_options: 'selfHeal() の設定が正しくありません。window・cooldown・slow は正の時間(ミリ秒か "2s" のような文字列)、minRequests は 1 以上の整数、threshold は 0 より大きく 1 以下の数で指定してください',
 };
 
 export const EXPLANATIONS: Record<Lang, Record<string, string>> = { en: EN, ja: JA };

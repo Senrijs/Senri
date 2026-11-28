@@ -68,6 +68,9 @@ const en = {
     "routes.lead": "The middleware a request to each route passes through on its way to the handler, in order (the left is the outermost).",
     "routes.leadMaybe": "applies depending on the path (on what a parameter such as `:page` receives).",
     "routes.maybe": "depends on the path",
+    "routes.healClosed": "selfHeal(): running",
+    "routes.healOpen": "selfHeal(): paused (answering 503)",
+    "routes.healHalfOpen": "selfHeal(): letting one request through to see if it recovered",
 
     "mw.label": "Middleware",
     "mw.title": "// Middleware ({count})",
@@ -169,6 +172,9 @@ const ja: Record<MessageKey, string> = {
     "routes.lead": "各ルートに来たリクエストが、どのミドルウェアをどの順に通ってハンドラーに着くかです(左が外側)。",
     "routes.leadMaybe": "はパスによってかかるもの(`:page` のようなパラメーターに何が来るか次第)です。",
     "routes.maybe": "パスによる",
+    "routes.healClosed": "selfHeal(): 動いている",
+    "routes.healOpen": "selfHeal(): 止めている(503 を返している)",
+    "routes.healHalfOpen": "selfHeal(): 直ったか、1 件だけ通して様子を見ている",
 
     "mw.label": "ミドルウェア",
     "mw.title": "// ミドルウェア({count})",

@@ -2,6 +2,7 @@
 // 利用者のミドルウェアは通さず、記録もしない(app.ts が先にここへ回す)
 import type { Lang } from "../../lang.ts";
 import { splitPattern } from "../../router.ts";
+import { healSnapshots, type HealState } from "../../self-heal-state.ts";
 import { errorFallback } from "../fallback.ts";
 import type { DashboardPageData, MiddlewareRow, RequestSummary, RouteRow } from "../page-data.ts";
 import { PAGE_HTML } from "../page.generated.ts";
@@ -34,8 +35,19 @@ export function summarize(r: DashboardRecord): RequestSummary {
     };
 }
 
+// selfHeal() の状態の、悪いほう(app.all() のルートは、メソッドごとに数えている)
+const WORSE: Record<HealState, number> = { closed: 0, "half-open": 1, open: 2 };
+
+function healOf(method: string, path: string, heal: ReturnType<typeof healSnapshots>): HealState | null {
+    if (method !== "ALL") return heal.get(`${method} ${path}`)?.state ?? null;
+    let state: HealState | null = null;
+    for (const h of heal.values()) if (h.route === path && (state === null || WORSE[h.state] > WORSE[state])) state = h.state;
+    return state;
+}
+
 function routeRows(d: Dashboard): RouteRow[] {
     const middlewares = d.source.middlewares();
+    const heal = healSnapshots();
     return d.source.routes().map((r) => {
         const segments = splitPattern(r.path);
         return {
@@ -49,6 +61,7 @@ function routeRows(d: Dashboard): RouteRow[] {
                 // ルートに付けたもの(endpoint() / defineRoutes() の use)は、このルートでは必ず動く
                 ...(r.use ?? []).map((name) => ({ name, applies: "yes" as const })),
             ],
+            heal: healOf(r.method, r.path, heal),
         };
     });
 }

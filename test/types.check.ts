@@ -831,3 +831,31 @@ same<MiddlewareErrors<[typeof requireUser, typeof readsUser]>, 401 | 403>(true);
     const thrown = bodyLimit({ maxSize: 1 });
     same<MiddlewareErrors<[typeof thrown]>, 400 | 413>(true);
 }
+
+// --- selfHeal() は errors: 503 を宣言する。chaos() は宣言しない(#148・#149) ---
+
+import { selfHeal } from "../src/self-heal.ts";
+import { chaos } from "../src/chaos.ts";
+import type { ClientErrors, StatusOf } from "../src/client.ts";
+
+{
+    same<MiddlewareErrors<[ReturnType<typeof selfHeal>]>, 503>(true);
+    same<MiddlewareErrors<[ReturnType<typeof chaos>]>, never>(true);
+
+    // ルートの use で付けると、型付きクライアントで 503 の error に、onError の本文の型が付く
+    type Problem = { title: string };
+    const t = defineRoutes({
+        "GET /search": endpoint({ use: [selfHeal({ slow: "2s" })] }, () => ({ hits: 1 })),
+        "GET /chaos": endpoint({ use: [chaos({ enabled: false })] }, () => "x"),
+    });
+    same<StatusOf<ClientErrors<typeof t, "GET /search", Problem>>, 503>(true);
+    same<Extract<ClientErrors<typeof t, "GET /search", Problem>, { status: 503 }>["error"], Problem>(true);
+    // chaos() の 500・503 は開発中だけのものなので、型に入れない
+    same<StatusOf<ClientErrors<typeof t, "GET /chaos", Problem>>, never>(true);
+
+    // 時間は数か、単位付きの文字列
+    selfHeal({ window: 30_000, cooldown: "10s", slow: "500ms" });
+    selfHeal({ window: "1m" });
+    // @ts-expect-error 単位のない文字列は書けない
+    selfHeal({ slow: "2" });
+}

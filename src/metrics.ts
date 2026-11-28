@@ -20,6 +20,7 @@
 import type { Context, Middleware } from "./context.ts";
 import { senriError } from "./errors.ts";
 import { markPlainSafe, methodOf } from "./plain.ts";
+import { extraMetrics } from "./metrics-extra.ts";
 
 /** Options for {@link metrics}. */
 export type MetricsOptions = {
@@ -127,6 +128,10 @@ const escape = (value: string) => value.replace(/\\/g, "\\\\").replace(/"/g, '\\
  * (`text/plain; version=0.0.4`). Anyone who can reach it sees your routes and traffic, so protect it, for example with
  * `ipRestriction()` or `basicAuth()`.
  *
+ * When the app uses `selfHeal()` (`@senrijs/senri/self-heal`), it also answers with `senri_self_heal_state` (0 running,
+ * 1 paused, 2 letting one request through), `senri_self_heal_transitions_total` (labeled `to`: `open`, `half_open` or
+ * `closed`) and `senri_self_heal_rejected_total`, labeled `method` and `route`. They work without `metrics()`.
+ *
  * @example
  * ```ts
  * import { basicAuth, createApp } from "@senrijs/senri";
@@ -158,6 +163,8 @@ export function metricsHandler(): (params: any, c: Context<any, any>) => Respons
         lines.push("# HELP http_server_active_requests Number of HTTP server requests in progress.");
         lines.push("# TYPE http_server_active_requests gauge");
         for (const [method, count] of active) lines.push(`http_server_active_requests{method="${escape(method)}"} ${count}`);
+        // selfHeal() などが登録した行(使っていなければ、何も足さない)
+        for (const more of extraMetrics) lines.push(...more(escape));
         return new Response(`${lines.join("\n")}\n`, { headers: { "content-type": "text/plain; version=0.0.4; charset=utf-8" } });
     };
 }

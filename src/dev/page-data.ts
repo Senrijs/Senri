@@ -1,6 +1,7 @@
 // サーバーがページに埋め込むデータの形。サーバー(src/dev)と画面(ui/)の両方がこの型を使う
 import type { ConversionOrigin } from "../errors.ts";
 import type { Lang } from "../lang.ts";
+import type { HealState } from "../self-heal-state.ts";
 import type { CodeFrame } from "./source.ts";
 import type { EditorGuess } from "./editor.ts";
 import type { Hint } from "./hints.ts";
@@ -82,6 +83,8 @@ export type RouteRow = {
     method: string;
     path: string;
     middlewares: { name: string; applies: "yes" | "no" | "maybe" }[];
+    // selfHeal() が見ているときの状態(まだリクエストが来ていない・selfHeal() がないときは null)
+    heal: HealState | null;
 };
 
 // ミドルウェアのタブ。order は登録順(= 玉ねぎの外側から内側の順 = 実行順)
