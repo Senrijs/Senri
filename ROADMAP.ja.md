@@ -121,15 +121,16 @@ Senri がこれから向かう先です。バージョンは目標であって�
 
 ## 0.5.0 — 倒れても戻る
 
-- [ ] ルート単位のセルフヒール(エラーが続いたルートだけ一時的に切り離し、自動で戻す) ([#148](https://github.com/Senrijs/Senri/issues/148))
+- [ ] ルート単位のセルフヒール(失敗が続いたルートだけ一時的に切り離し、自動で戻す) ([#148](https://github.com/Senrijs/Senri/issues/148))
+- [ ] カオスモード: わざと壊して本番に備える(遅延・エラー・例外) ([#149](https://github.com/Senrijs/Senri/issues/149))
 - [ ] `app.use()` からアプリの型を育てる ([#160](https://github.com/Senrijs/Senri/issues/160))
 
 → [マイルストーン](https://github.com/Senrijs/Senri/milestone/4)
 
 ## 0.6.0 — 壊して、調べる
 
-- [ ] カオスモード: わざと壊して本番に備える ([#149](https://github.com/Senrijs/Senri/issues/149))
-- [ ] タイムトラベル・デバッグ: 倒れたリクエストを後から再現する ([#150](https://github.com/Senrijs/Senri/issues/150))
+- [ ] カオスモード: fetch を遅く・失敗させる ([#186](https://github.com/Senrijs/Senri/issues/186))
+- [ ] 記録と再送: 倒れたリクエストをあとから見て、送り直す ([#150](https://github.com/Senrijs/Senri/issues/150))
 
 → [マイルストーン](https://github.com/Senrijs/Senri/milestone/5)
 
@@ -139,6 +140,7 @@ Senri がこれから向かう先です。バージョンは目標であって�
 
 - [ ] `use` の並び順を型でチェックする ([#161](https://github.com/Senrijs/Senri/issues/161))
 - [ ] 404 と 413 を型付きクライアントの型に自動で入れる ([#162](https://github.com/Senrijs/Senri/issues/162))
+- [ ] `c.status()` のあとの `c.json()` で、型と実行時の状態コードがずれる件 ([#179](https://github.com/Senrijs/Senri/issues/179))
 
 → [マイルストーン](https://github.com/Senrijs/Senri/milestone/6)
 

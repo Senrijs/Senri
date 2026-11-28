@@ -122,14 +122,15 @@ See the [CHANGELOG](./CHANGELOG.md) for details.
 ## 0.5.0 — Recover from failures
 
 - [ ] Per-route self-healing (take only a failing route offline for a while and bring it back automatically) ([#148](https://github.com/Senrijs/Senri/issues/148))
+- [ ] Chaos mode: break things on purpose to get ready for production (latency, errors, exceptions) ([#149](https://github.com/Senrijs/Senri/issues/149))
 - [ ] Grow the app's types from `app.use()` ([#160](https://github.com/Senrijs/Senri/issues/160))
 
 → [Milestone](https://github.com/Senrijs/Senri/milestone/4)
 
 ## 0.6.0 — Break it, then trace it
 
-- [ ] Chaos mode: break things on purpose to get ready for production ([#149](https://github.com/Senrijs/Senri/issues/149))
-- [ ] Time-travel debugging: replay a failed request later ([#150](https://github.com/Senrijs/Senri/issues/150))
+- [ ] Chaos mode: make `fetch` slow or fail ([#186](https://github.com/Senrijs/Senri/issues/186))
+- [ ] Record & replay: look at a failed request later and send it again ([#150](https://github.com/Senrijs/Senri/issues/150))
 
 → [Milestone](https://github.com/Senrijs/Senri/milestone/5)
 
@@ -139,6 +140,7 @@ Changing types after 1.0 would be a breaking change, so the types get finished f
 
 - [ ] Check the order of `use` in the types ([#161](https://github.com/Senrijs/Senri/issues/161))
 - [ ] Add 404 and 413 to the typed client's types automatically ([#162](https://github.com/Senrijs/Senri/issues/162))
+- [ ] The status in the types and at runtime differ for `c.json()` after `c.status()` ([#179](https://github.com/Senrijs/Senri/issues/179))
 
 → [Milestone](https://github.com/Senrijs/Senri/milestone/6)
 
