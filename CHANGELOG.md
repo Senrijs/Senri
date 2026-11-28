@@ -18,7 +18,6 @@ from Conventional Commits. Entries for 0.2.0 and earlier were written by hand (i
 
 ### Bug Fixes
 
-* ROADMAP ([76b430f](https://github.com/Senrijs/Senri/commit/76b430fdd17edcb3522a80102e5a1a1d3ac99347))
 * **types:** reject route middleware that types app variables differently ([#193](https://github.com/Senrijs/Senri/issues/193)) ([d7cecfe](https://github.com/Senrijs/Senri/commit/d7cecfe94910ac757e6ebdcfc4cb9c1b69d586cd))
 
 ## [0.4.2](https://github.com/Senrijs/Senri/compare/v0.4.1...v0.4.2) (2026-11-23)
