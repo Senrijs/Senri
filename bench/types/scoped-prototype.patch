@@ -1,0 +1,211 @@
+diff --git a/src/app.ts b/src/app.ts
+index 8180a08..d57934b 100644
+--- a/src/app.ts
++++ b/src/app.ts
+@@ -1,4 +1,4 @@
+-import { Context, type ExecutionContext, type Handler, type HandlerResult, type Middleware, type MiddlewareVars, type WithVars } from "./context.ts";
++import { Context, type UnionToIntersection, type ExecutionContext, type Handler, type HandlerResult, type Middleware, type MiddlewareProvides, type MiddlewareVars, type Next, type VarsRoute, type WithVars } from "./context.ts";
+ import {
+     allowedMethods,
+     checkParamNames,
+@@ -75,26 +75,96 @@ export type OptionsHandler<S extends RouteOptions, P, V extends object, X extend
+ 
+ // app.get(path, handler) と、スキーマやミドルウェアを付けた app.get(path, { use, params, query, body }, handler)
+ /** A route method of an app (`app.get`, `app.post`, ...): `(path, handler)` or `(path, options, handler)`. */
+-export type RouteMethod<V extends object> = {
+-    <Path extends string>(path: Path, handler: PlainHandler<PathParams<Path>, V>): void;
++export type RouteMethod<V extends object, X extends object = {}, Sc extends readonly AppScope[] = []> = {
++    <Path extends string>(path: Path, handler: Handler<PathParams<Path>, V, VarsRoute<VarsAt<X, Sc, Path>>>): void;
+     <Path extends string, S extends RouteOptions>(
+         path: Path,
+         options: S & NoInfer<CheckParamTypes<S, PathParams<Path>>>,
+-        handler: OptionsHandler<S, PathParams<Path>, V>,
++        handler: OptionsHandler<S, PathParams<Path>, V, VarsAt<X, Sc, Path>>,
+     ): void;
+ };
+ 
+ /** `app.on`: a route for any method name, or several at once. */
+-export type OnMethod<V extends object> = {
+-    <Path extends string>(method: string | readonly string[], path: Path, handler: PlainHandler<PathParams<Path>, V>): void;
++export type OnMethod<V extends object, X extends object = {}, Sc extends readonly AppScope[] = []> = {
++    <Path extends string>(method: string | readonly string[], path: Path, handler: Handler<PathParams<Path>, V, VarsRoute<VarsAt<X, Sc, Path>>>): void;
+     <Path extends string, S extends RouteOptions>(
+         method: string | readonly string[],
+         path: Path,
+         options: S & NoInfer<CheckParamTypes<S, PathParams<Path>>>,
+-        handler: OptionsHandler<S, PathParams<Path>, V>,
++        handler: OptionsHandler<S, PathParams<Path>, V, VarsAt<X, Sc, Path>>,
+     ): void;
+ };
+ 
++// --- パスを絞った app.use() の範囲(型だけ) ---
++// 実行時の判定(startsWithSegments)と同じ規則で、「このルートに当たるリクエストなら、必ずこの use も動く」と言えるときだけ足す
++// 言えないとき(パスがリテラルでない、ユニオン、ワイルドカードが先に来る など)は足さない。足さないのは控えめなだけで、嘘にはならない
++/** A path-scoped `app.use(path, mw)`: its prefix segments and the variables it always sets. */
++export type AppScope = readonly [prefix: readonly string[], vars: object, pattern: string | false];
++
++type IsUnion<T, U = T> = T extends unknown ? ([U] extends [T] ? false : true) : never;
++// "/a/:b" のような、穴(${string})のない 1 つのリテラルだけ
++type IsLiteralPath<P extends string> = string extends P ? false : true extends IsUnion<P> ? false : {} extends Record<P, 1> ? false : true;
++// splitPattern と同じ: "/" で分けて、空のセグメント(先頭・末尾・連続の "/")は捨てる
++type SplitPath<P extends string> = P extends `${infer H}/${infer R}` ? (H extends "" ? SplitPath<R> : [H, ...SplitPath<R>]) : P extends "" ? [] : [P];
++// middlewarePath と同じ: 最後の "*" を取る
++/** The prefix segments of `app.use(path, mw)`, or `never` when the path is not a single literal. */
++export type UsePrefix<P extends string> = IsLiteralPath<P> extends true ? (SplitPath<P> extends [...infer H extends string[], "*"] ? H : SplitPath<P>) : never;
++// startsWithSegments と同じ: use の ":x" はどのセグメントにも当たる。それ以外は同じ文字のときだけ
++// ルートの "*" は 0 個のセグメントにも当たるので、その先は言えない。ルートの ":x" は何にでも当たるので、use の静的なセグメントには言えない
++type Covers<U extends readonly string[], R extends readonly string[]> = U extends readonly [infer u extends string, ...infer ur extends string[]]
++    ? R extends readonly [infer r extends string, ...infer rr extends string[]]
++        ? r extends "*"
++            ? false
++            : u extends `:${string}`
++              ? Covers<ur, rr>
++              : r extends `:${string}`
++                ? false
++                : [u] extends [r]
++                  ? [r] extends [u]
++                      ? Covers<ur, rr>
++                      : false
++                  : false
++        : false
++    : true;
++type ScopedVars<Sc extends readonly AppScope[], R extends readonly string[]> = Sc extends readonly [infer H extends AppScope, ...infer T extends AppScope[]]
++    ? ([H[0]] extends [never] ? {} : [Covers<H[0], R>] extends [true] ? H[1] : {}) & ScopedVars<T, R>
++    : {};
++// 近道: use のパスが静的なセグメントだけ("/admin/audit")なら、use のときに文字列のパターンを 1 回だけ作り、
++// ルートごとには [Path] extends [パターン] を 1 回比べるだけにする
++// - "/admin" か "/admin/" で始まる文字列は、どう分けても最初のセグメントが "admin" なので、実行時の判定と食い違わない
++// - [ ] で包むので、ユニオンのパスはすべてが当たるときだけ、`/users/${string}` のようなパスも、言えるときだけ当たる
++// - ルートの ":x" や "*" は "admin" と同じ文字にならないので、当たらない(控えめ)
++type JoinStatic<U extends readonly string[]> = U extends readonly [infer u extends string, ...infer ur extends string[]]
++    ? u extends `:${string}` ? false : ur extends readonly [] ? u : JoinStatic<ur> extends infer j extends string ? `${u}/${j}` : false
++    : false;
++// "/admin/audit" なら "/admin/audit" | `/admin/audit/${string}`、"/" なら string(どのルートにも当たる)。:x を含むなら false(Covers で比べる)
++/** The path pattern of a scope with only static segments, or `false`. */
++export type ScopePattern<U extends readonly string[]> = U extends readonly []
++    ? string
++    : JoinStatic<U> extends infer j extends string
++      ? `/${j}` | `/${j}/${string}`
++      : false;
++type ScopeHit<H extends AppScope, Path extends string> = H[2] extends string
++    ? [Path] extends [H[2]] ? H[1] : never
++    : IsLiteralPath<Path> extends true ? ([Covers<H[0], SplitPath<Path>>] extends [true] ? H[1] : never) : never;
++/** The variables always set for a route at `Path`: the app-wide ones `X`, and the path-scoped ones in `Sc` that cover it. */
++export type VarsAt<X extends object, Sc extends readonly AppScope[], Path extends string> = Sc extends readonly []
++    ? X
++    : X & UnionToIntersection<{ [K in keyof Sc]: ScopeHit<Sc[K], Path> }[number]>;
++
++// app.use() に渡すミドルウェア。その場で書いたものの c には、それより前の use が必ず入れる変数 X が付く
++/** Middleware passed to `app.use()`. Inline middleware sees the variables `X` that earlier `use` calls always set. */
++// パスを絞った use を 1 つ足す。パスがリテラルでない・何も宣言していないときは足さない
++type AddScope<Sc extends readonly AppScope[], P extends string, Y> = [UsePrefix<P>] extends [never]
++    ? Sc
++    : {} extends Y
++      ? Sc
++      : [...Sc, [UsePrefix<P>, Y & object, ScopePattern<UsePrefix<P>>]];
++// use(path, mw) の、その場で書いたミドルウェアの c: そのパスの下で必ず動く、先の use の変数
++type VarsAtPrefix<X extends object, Sc extends readonly AppScope[], P extends string> = [UsePrefix<P>] extends [never] ? X : X & ScopedVars<Sc, UsePrefix<P>>;
++
++export type AppMiddleware<V extends object, X extends object> = (c: Context<V, VarsRoute<X>>, next: Next) => HandlerResult | void | Promise<HandlerResult | void>;
++
+ // app.route(prefix, app) でつなげるように、アプリに登録されたものを横に置いておく
+ const appEntries = new WeakMap<object, () => GroupEntry[]>();
+ 
+@@ -116,7 +186,7 @@ export type MountableApp = {
+  * `V` is the app's type: either the variables used with `c.set` / `c.get` (`{ user: User }`),
+  * or `{ Bindings: Env; Variables: { user: User } }` to also type `c.env` on Cloudflare Workers.
+  */
+-export type App<V extends object = Record<string, unknown>> = {
++export type App<V extends object = Record<string, unknown>, X extends object = {}, Sc extends readonly AppScope[] = []> = {
+     /**
+      * Adds middleware. Middleware runs in registration order.
+      * With a path (`app.use("/admin", mw)`), it runs only for that path and below, compared by segment
+@@ -124,7 +194,10 @@ export type App<V extends object = Record<string, unknown>> = {
+      * `app.use("/admin/*", mw)` means the same as `app.use("/admin", mw)`, so it also runs for `/admin` itself.
+      * Throws if the middleware is missing, or if the path has a `*` anywhere other than as the whole last segment.
+      */
+-    use(pathOrMw: string | Middleware<V>, mw?: Middleware<V>): void;
++    use(mw: AppMiddleware<V, X> & { readonly "~middleware"?: undefined }): App<V, X, Sc>;
++    use<M extends Middleware<any, any>>(mw: M): App<V, X & MiddlewareProvides<[M]>, Sc>;
++    use<P extends string>(path: P, mw: AppMiddleware<V, VarsAtPrefix<X, Sc, P>> & { readonly "~middleware"?: undefined }): App<V, X, Sc>;
++    use<P extends string, M extends Middleware<any, any>>(path: P, mw: M): App<V, X, AddScope<Sc, P, MiddlewareProvides<[M]>>>;
+     /**
+      * Replaces the error handler. It receives anything thrown by middleware or handlers, except `c.notFound()`.
+      * Before it is called, the status is set from an {@link HttpError} (status and headers) or to 500.
+@@ -163,35 +236,35 @@ export type App<V extends object = Record<string, unknown>> = {
+      * app.get("/docs/*", ({ "*": page }) => `page: ${page}`);
+      * ```
+      */
+-    get: RouteMethod<V>;
++    get: RouteMethod<V, X, Sc>;
+     /** Adds a POST route. Same arguments as {@link App.get}. */
+-    post: RouteMethod<V>;
++    post: RouteMethod<V, X, Sc>;
+     /** Adds a PUT route. Same arguments as {@link App.get}. */
+-    put: RouteMethod<V>;
++    put: RouteMethod<V, X, Sc>;
+     /** Adds a PATCH route. Same arguments as {@link App.get}. */
+-    patch: RouteMethod<V>;
++    patch: RouteMethod<V, X, Sc>;
+     /** Adds a DELETE route. Same arguments as {@link App.get}. */
+-    delete: RouteMethod<V>;
++    delete: RouteMethod<V, X, Sc>;
+     /**
+      * Adds a HEAD route. Without one, HEAD requests use the GET route.
+      * For HEAD requests, the body of the route's response is dropped.
+      */
+-    head: RouteMethod<V>;
++    head: RouteMethod<V, X, Sc>;
+     /**
+      * Adds an OPTIONS route. Without one (and without a matching `all` route),
+      * OPTIONS requests to a known path get 204 with an `Allow` header.
+      */
+-    options: RouteMethod<V>;
++    options: RouteMethod<V, X, Sc>;
+     /**
+      * Adds a route for every method. A route registered for the request's method takes precedence.
+      * CONNECT, TRACE and TRACK are always answered with 501.
+      */
+-    all: RouteMethod<V>;
++    all: RouteMethod<V, X, Sc>;
+     /**
+      * Adds a route for any method name, or several at once: `app.on(["PUT", "PATCH"], path, handler)`.
+      * Names are upper-cased. Throws for `"ALL"` (use {@link App.all}), CONNECT, TRACE, TRACK and invalid names.
+      */
+-    on: OnMethod<V>;
++    on: OnMethod<V, X, Sc>;
+     // 0.3.0 で、2 つあった型の書き方を 1 つにした(RouteTable も defineRoutes() の表と同じ形)
+     // キーの書き方は型で確かめる。その場で書いたハンドラーには、このアプリの型(c.get() など)が付く
+     /**
+@@ -199,7 +272,7 @@ export type App<V extends object = Record<string, unknown>> = {
+      * made with {@link defineRoutes} (including routes with schemas or middleware made with {@link endpoint}).
+      * Path parameters are typed from each key. The same checks as {@link App.get} apply to each route.
+      */
+-    routes<const T extends object>(table: T & NoInfer<RouteTable<T, V>>): void;
++    routes<const T extends object>(table: T & NoInfer<TableShape<"", T, V, X>>): void;
+     /**
+      * Mounts a router from {@link createRouter}, or another app under a prefix: `app.route("/api", api)`.
+      * What is registered at this point is copied into this app.
+@@ -352,10 +425,10 @@ export function createApp<V extends object = Record<string, unknown>>(options: A
+     let notFound: NotFoundHandler<V> = defaultNotFound;
+ 
+     // 登録時のエラーに、開発モードでは日本語の説明を付ける
+-    function guard<A extends unknown[]>(fn: (...args: A) => void): (...args: A) => void {
++    function guard<A extends unknown[], T>(fn: (...args: A) => T): (...args: A) => T {
+         return (...args) => {
+             try {
+-                fn(...args);
++                return fn(...args);
+             } catch (err) {
+                 throw devHooks ? devHooks.explain(err) : err;
+             }
+@@ -508,7 +581,8 @@ export function createApp<V extends object = Record<string, unknown>>(options: A
+                 prefix: path === null ? null : splitPattern(path),
+                 mw: fn,
+             });
+-        }),
++            return app;
++        }) as App<V>["use"],
+ 
+         onError(handler: ErrorHandler<V>) {
+             onError = handler;
