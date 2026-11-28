@@ -937,3 +937,84 @@ const setsUserName: Middleware<{}, { vars: { user: string } }> = async (c, next)
     b.get("/rl", { use: [rateLimit<{ user: TUser }>({ windowMs: 1, limit: 1, key: (c) => c.get("user")?.id ?? "" })] }, () => "x");
     endpoint({ use: [requireUser, readsUser] }, (_, c) => c.get("user").name);
 }
+
+// --- app.use() からアプリの型を育てる(#160) ---
+
+import type { App } from "../src/index.ts";
+{
+    const reqId: Middleware<{}, { vars: { rid: string } }> = async (c, next) => {
+        c.set("rid", "x");
+        return next();
+    };
+    // つなげた分だけ、undefined なしになる
+    const a = createApp().use(requireUser).use(reqId).use(readsUser);
+    a.get("/me", (_, c) => {
+        { const got = c.get("user"); same<typeof got, TUser>(true); }
+        { const got = c.get("rid"); same<typeof got, string>(true); }
+        return c.get("user").name;
+    });
+    a.get("/x/:id", { params: { id: "int" } }, ({ id }, c) => `${id} ${c.get("user").name}`);
+    a.on(["PUT"], "/on", (_, c) => c.get("user").name);
+    a.routes({ "GET /t": (_, c) => c.get("user").name });
+    // その場で書いたミドルウェアの c にも付く(登録した順に動くので)
+    a.use(async (c, next) => {
+        { const got = c.get("user"); same<typeof got, TUser>(true); }
+        return next();
+    });
+    // onError と notFound には付かない(requireUser が投げたあとにも呼ばれる)
+    a.onError((_, c) => {
+        { const got = c.get("user"); same<typeof got, unknown>(true); }
+        return "x";
+    });
+    // (c: Context) を受ける関数に渡せる。App<V> の変数にも入る
+    const helper = (c: Context) => c.req.url;
+    a.get("/h", (_, c) => helper(c));
+    const plainTyped: App = a;
+    void plainTyped;
+
+    // パスを付けた use は型を育てない
+    const s = createApp().use("/admin", requireUser);
+    // @ts-expect-error アプリの型にも、ルートの use にもない
+    s.get("/admin/x", (_, c) => c.get("user"));
+
+    // つなぐ前の変数のまま登録したルートには付かない(実行時は動くが、型は undefined のまま)
+    const base = createApp<{ user: TUser }>();
+    base.use(requireUser);
+    base.get("/b", (_, c) => {
+        { const got = c.get("user"); same<typeof got, TUser | undefined>(true); }
+        return "b";
+    });
+
+    // { Bindings, Variables } の形でも、Variables に足す
+    const w = createApp<{ Bindings: { KV: string }; Variables: { other: number } }>().use(requireUser);
+    w.get("/w", (_, c) => `${c.env.KV} ${c.get("user").name}`);
+
+    // 0.4.x ではアプリの型が同じ変数を持つときしか付けられなかった。いまはルートの use と同じく付けられる
+    createApp().use(requireUser).use(requestId()).use(logger());
+    createApp<{ other: number }>().use(requireUser);
+}
+
+// app.use() でも、アプリの型と違う型で変数を読む・入れるミドルウェアは付けられない
+{
+    const a = createApp<{ user: string }>();
+    // @ts-expect-error
+    a.use(readsUser);
+    // @ts-expect-error
+    a.use(requireUser);
+    // @ts-expect-error パスを付けても
+    a.use("/admin", requireUser);
+    a.use(setsUserName);
+    // 前の use が入れた変数とも比べる
+    // @ts-expect-error requireUser は TUser を入れた
+    createApp().use(requireUser).use(setsUserName);
+    // ルートの use も、アプリの use が入れた変数と比べる
+    // @ts-expect-error
+    createApp().use(requireUser).get("/r", { use: [setsUserName] }, () => "x");
+    // jwt<T>() の T は、アプリの JwtVariables<T> と同じにする
+    const j = createApp<JwtVariables<{ sub: string; role: "admin" }>>();
+    // @ts-expect-error jwt() だけでは JwtPayload(sub がないこともある)
+    j.use("/api", jwt({ keys: "x".repeat(32), algorithms: ["HS256"] }));
+    j.use("/api", jwt<{ sub: string; role: "admin" }>({ keys: "x".repeat(32), algorithms: ["HS256"] }));
+    // 既定の JwtVariables なら、jwt() のままでよい
+    createApp<JwtVariables>().use("/api", jwt({ keys: "x".repeat(32), algorithms: ["HS256"] }));
+}

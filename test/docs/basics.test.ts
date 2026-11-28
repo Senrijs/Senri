@@ -388,6 +388,12 @@ import { createRouter, type Middleware } from "../../src/index.ts";
         expect(await (await req(app, "GET", "/me", asUser)).json()).toEqual({ name: "alice" });
         expect((await req(app, "GET", "/me")).status).toBe(401);
     });
+    claim("middleware/writing#app-use-vars", "createApp().use(mw) とつなげると、つないだアプリのルートで c.get() で読める", async () => {
+        const app = createApp().use(requireUser);
+        app.get("/me", (_, c) => ({ name: c.get("user").name }));
+        expect(await (await req(app, "GET", "/me", asUser)).json()).toEqual({ name: "alice" });
+        expect((await req(app, "GET", "/me")).status).toBe(401);
+    });
     claim("middleware/route-middleware#app-get-and-router", "app.get の use と createRouter の use は、そのルートでだけ動く", async () => {
         const app = createApp();
         app.get("/me", { use: [requireUser] }, (_, c) => c.get("user"));

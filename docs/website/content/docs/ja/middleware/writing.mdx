@@ -80,7 +80,26 @@ app.get("/me", { use: [requireUser] }, (_, c) => {
 
 - `errors` に書いた状態コードは、[型付きクライアント](/docs/typed-api/client)の型に出ます
 - **`vars` は、宣言した人の約束です。Senri は実行時に確かめません。** `c.set()` を忘れると、型(`User`)と値(`undefined`)が食い違います。宣言したら、`next()` を呼ぶ前に必ず入れてください
-- `app.use()` で付けたミドルウェアは、どのルートの前で動くかを型で追えません。変数の型は `createApp<{ user: User }>()` で決め、`c.get()` には `undefined` が付きます
+
+全部のルートに付けるときは、`app.use()` の戻り値を使います。`app.use()` はアプリを返すので、つなげて書けます。つないだアプリに登録したルートでは、宣言した変数の `c.get()` から `undefined` が消えます。 {/* verify: app-use-vars */}
+
+```ts twoslash
+import { createApp, type Middleware } from "@senrijs/senri";
+type User = { name: string };
+declare const requireUser: Middleware<{}, { vars: { user: User }; errors: 401 }>;
+// ---cut---
+const app = createApp().use(requireUser);
+app.get("/me", (_, c) => {
+    const user = c.get("user");
+    //    ^?
+    return { name: user.name };
+});
+```
+
+- `app.use()` は、それより前に登録したルートでも動きます。ただ、型が付くのは、戻り値(つないだあとのアプリ)に登録したルートだけです。`const app = createApp().use(requireUser)` のように、作るときにつなげてください
+- パスを付けた `app.use("/admin", mw)` は、型を変えません。パスの下のルートで型を付けたいときは、[`createRouter("/admin", { use })`](/docs/middleware/route-middleware) を使います
+- その場で書いたミドルウェア(`app.use(async (c, next) => ...)`)の `c` にも、それより前の `use` が入れる変数が付きます
+- `app.onError()` と `app.notFound()` の `c` には付きません。`requireUser` が投げたあとにも呼ばれるためです
 
 付け方と、標準のミドルウェアの宣言は、[ルートごとに付ける](/docs/middleware/route-middleware)にまとめています。
 

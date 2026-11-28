@@ -238,3 +238,24 @@ describe("型付きクライアント: ミドルウェアが宣言した状態�
         expect(ok.ok && ok.data.name).toBe("bob");
     });
 });
+
+describe("app.use() がアプリを返す(#160)", () => {
+    test("つなげて書ける。つないだあとのルートで、宣言した変数が読める", async () => {
+        const base = createApp();
+        const app = base.use(requireUser);
+        expect(app as object).toBe(base);
+        app.get("/me", (_, c) => c.get("user").name);
+        expect(await (await get(app, "/me", asUser)).text()).toBe("alice");
+        expect((await get(app, "/me")).status).toBe(401);
+        // パスを付けても同じアプリを返す
+        expect(app.use("/admin", async (_, next) => next()) as object).toBe(base);
+    });
+
+    test("use より前に登録したルートにも効く(型は付かないが、値は入る)", async () => {
+        const app = createApp<{ user: User }>();
+        app.get("/before", (_, c) => c.get("user")?.name ?? "none");
+        app.use(requireUser);
+        expect(await (await get(app, "/before", asUser)).text()).toBe("alice");
+        expect((await get(app, "/before")).status).toBe(401);
+    });
+});
