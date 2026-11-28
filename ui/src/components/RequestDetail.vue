@@ -56,7 +56,9 @@ const note = computed(() => describeRequest(props.record, lang));
                     <span />
                 </div>
                 <div v-for="(b, i) in bars" :key="i" :class="['row', b.state]">
-                    <span class="name" :style="{ paddingLeft: `${b.indent * 14}px` }">{{ b.name }}</span>
+                    <span class="name" :style="{ paddingLeft: `${b.indent * 14}px` }"
+                        >{{ b.name }}<span v-if="b.tag" class="tag">⚡{{ b.tag }}</span></span
+                    >
                     <span class="track">
                         <span class="bar" :style="{ left: `${b.left}%`, width: `${b.width}%` }">
                             <span class="self" :style="{ width: `${b.selfWidth}%` }" />
@@ -66,6 +68,10 @@ const note = computed(() => describeRequest(props.record, lang));
                 </div>
             </div>
             <p v-if="note" class="note">{{ note }}</p>
+            <!-- 純正のミドルウェアがわざとしたこと(chaos() など) -->
+            <ul v-if="record.notes.length > 0" class="notes">
+                <li v-for="(n, i) in record.notes" :key="i"><span class="tag">⚡{{ n.tag }}</span> {{ n.text }}</li>
+            </ul>
         </div>
 
         <!-- ヘッダー(機密のものは伏せてある) -->
@@ -277,5 +283,23 @@ h1 {
     margin: 0;
     font-size: 14px;
     color: var(--muted);
+}
+.tag {
+    margin-left: 6px;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--warn-text);
+}
+.notes {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font-size: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.notes .tag {
+    margin-left: 0;
 }
 </style>

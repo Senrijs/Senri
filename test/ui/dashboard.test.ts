@@ -49,6 +49,7 @@ const record = (layers: RecordLayer[], status = 200, durationMs = 10): Dashboard
     requestHeaders: [],
     responseHeaders: [],
     error: null,
+    notes: [],
 });
 
 describe("一覧の絞り込み", () => {

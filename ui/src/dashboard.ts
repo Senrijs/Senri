@@ -79,6 +79,8 @@ export type TimelineBar = {
     selfWidth: number;
     state: LayerState;
     label: string;
+    // 純正のミドルウェアがわざと何かしたときの印("カオス" など)。なければ null
+    tag: string | null;
 };
 
 const clamp = (n: number) => Math.min(Math.max(n, 0), 100);
@@ -106,6 +108,7 @@ export function timeline(r: DashboardRecord, lang: Lang): TimelineBar[] {
             selfWidth: l.total > 0 ? clamp((l.self / l.total) * 100) : 100,
             state: l.state,
             label,
+            tag: r.notes.find((n) => n.layer === l.name)?.tag ?? null,
         };
     });
 }

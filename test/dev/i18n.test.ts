@@ -11,6 +11,7 @@ import { senriError } from "../../src/errors.ts";
 import { isLang, requestLang, terminalLang } from "../../src/lang.ts";
 import { serve } from "../../adapters/serve/index.ts";
 import { SERVE_MESSAGES } from "../../adapters/serve/messages.ts";
+import { CHAOS_MESSAGES } from "../../src/chaos-messages.ts";
 
 const html = { accept: "text/html" };
 const req = (path: string, headers: Record<string, string> = {}) => new Request(`http://localhost${path}`, { headers });
@@ -75,6 +76,7 @@ describe("辞書", () => {
         ["サーバー", SERVER_MESSAGES],
         ["エラーの説明", EXPLANATIONS],
         ["serve()", SERVE_MESSAGES],
+        ["chaos()", CHAOS_MESSAGES],
     ] as [string, Record<"en" | "ja", Record<string, string>>][])("%s: キーが両方の言語にある", (_, dictionary) => {
         expect(Object.keys(dictionary.ja).sort()).toEqual(Object.keys(dictionary.en).sort());
     });
@@ -83,6 +85,7 @@ describe("辞書", () => {
         ["画面", PAGE_MESSAGES],
         ["サーバー", SERVER_MESSAGES],
         ["serve()", SERVE_MESSAGES],
+        ["chaos()", CHAOS_MESSAGES],
     ] as [string, Record<"en" | "ja", Record<string, string>>][])("%s: 差し込む値が両方の言語で同じ。英語に日本語が混ざらない", (_, dictionary) => {
         for (const [key, text] of Object.entries(dictionary.en)) {
             expect([key, placeholders(dictionary.ja[key]!)]).toEqual([key, placeholders(text)]);
@@ -122,6 +125,7 @@ describe("辞書", () => {
             "src/dev/explain.ts",
             "src/dev/page.generated.ts",
             "adapters/serve/messages.ts",
+            "src/chaos-messages.ts",
             "adapters/node/messages.ts",
             "ui/src/sample.ts",
         ];

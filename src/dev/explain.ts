@@ -69,6 +69,10 @@ const EN = {
     auth_realm: "realm can only contain printable ASCII characters",
     compress_encoding: "The encoding of compress() can only be gzip or deflate",
     compress_threshold: "The threshold of compress() must be a number of 0 or more",
+    chaos_options: "The options of chaos() are not valid. Rates are numbers from 0 to 1, latency.ms is milliseconds or [min, max], errors.status is from 400 to 599 (or an array of them), and seed is an integer",
+    chaos_production: "chaos() never runs in production. With NODE_ENV=production and enabled: true, the app stops at startup. Remove chaos() or set enabled: false",
+    chaos_env_unreadable: "chaos() cannot read NODE_ENV, so it cannot check that this is not production, and stops. Run with --allow-env=NODE_ENV",
+    chaos_throw: "chaos() threw this exception on purpose, to show what a bug in a handler looks like. Your code did not throw it",
 };
 
 const JA: Record<keyof typeof EN, string> = {
@@ -137,6 +141,10 @@ const JA: Record<keyof typeof EN, string> = {
     auth_realm: "realm に使えるのは、ASCII の印字できる文字だけです",
     compress_encoding: "compress() の encoding に使えるのは gzip と deflate だけです",
     compress_threshold: "compress() の threshold は 0 以上の数で指定してください",
+    chaos_options: "chaos() の設定が正しくありません。割合は 0 から 1 の数、latency.ms はミリ秒か [最小, 最大]、errors.status は 400〜599(かその配列)、seed は整数で指定してください",
+    chaos_production: "chaos() は本番では動きません。NODE_ENV=production で enabled: true のときは、起動時に止めます。chaos() を外すか、enabled: false にしてください",
+    chaos_env_unreadable: "chaos() が NODE_ENV を読めないので、本番でないことを確かめられず、止めました。--allow-env=NODE_ENV を付けてください",
+    chaos_throw: "この例外は、ハンドラーのバグがどう見えるかを試すために chaos() がわざと投げたものです。あなたのコードが投げたものではありません",
 };
 
 export const EXPLANATIONS: Record<Lang, Record<string, string>> = { en: EN, ja: JA };
