@@ -13,7 +13,7 @@ If you leave out the folder name or `--template`, it asks for them (no questions
 It creates a small app that runs right away: `createApp({ dev: devtools() })` and `serve(app)` (`export default app` on Cloudflare Workers).
 When it is done, it prints the commands to start the app on that runtime.
 
-The new project depends on `@senrijs/senri` `^0.4.0` (`jsr:@senrijs/senri@^0.4.0` on Deno).
+The new project depends on `@senrijs/senri` `^0.5.0` (`jsr:@senrijs/senri@^0.5.0` on Deno).
 
 ## Templates
 
