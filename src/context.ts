@@ -267,6 +267,10 @@ export type CheckUseVars<U, V, X extends object = {}> = [U] extends [never]
             : unknown
       : unknown;
 
+// app.use(mw) の 1 つのミドルウェアについて、CheckUseVars と同じことを確かめる
+/** Like {@link CheckUseVars} for one middleware `M` given to `app.use()`: `unknown`, or a type whose missing property names the variables. */
+export type CheckMiddlewareVars<M, V, X extends object = {}> = CheckUseVars<[M], V, X> extends { use: infer P } ? P : unknown;
+
 // use に並べたミドルウェアが投げうる状態コード
 /** The statuses a list of middleware declare they may respond with (`Middleware<V, { errors: ... }>`). */
 export type MiddlewareErrors<U> = U extends readonly (infer M)[] ? (M extends unknown ? (DeclOf<M> extends { errors: infer E extends number } ? E : never) : never) : never;

@@ -351,7 +351,7 @@ describe("形のおかしいトークン", () => {
 describe("jwt() ミドルウェア", () => {
     function makeApp(options: Partial<Parameters<typeof jwt>[0]> = {}) {
         const app = createApp<JwtVariables<{ sub: string }>>();
-        app.use("/api", jwt({ keys: SECRET, algorithms: ["HS256"], ...options }));
+        app.use("/api", jwt<{ sub: string }>({ keys: SECRET, algorithms: ["HS256"], ...options }));
         app.get("/api/me", (_, c) => ({ sub: c.get("jwtPayload")?.sub }));
         app.get("/public", () => "public");
         return app;

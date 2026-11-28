@@ -530,9 +530,13 @@ function checkClaims(payload: JwtPayload, options: VerifyJwtOptions): void {
  * @example
  * ```ts
  * import { createApp } from "@senrijs/senri";
- * import type { JwtVariables } from "@senrijs/senri/jwt";
+ * import { jwt, type JwtVariables } from "@senrijs/senri/jwt";
  *
- * const app = createApp<JwtVariables<{ sub: string; role: "admin" | "user" }>>();
+ * declare const secret: string;
+ * type Payload = { sub: string; role: "admin" | "user" };
+ * const app = createApp<JwtVariables<Payload>>();
+ * // Pass the same type to jwt(). With jwt() alone (JwtPayload), the types disagree and app.use() is a type error
+ * app.use("/api", jwt<Payload>({ keys: secret, algorithms: ["HS256"] }));
  * ```
  */
 export type JwtVariables<T extends JwtPayload = JwtPayload> = {

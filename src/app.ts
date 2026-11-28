@@ -1,4 +1,4 @@
-import { Context, type ExecutionContext, type Handler, type HandlerResult, type CheckUseVars, type Middleware, type MiddlewareVars, type WithVars } from "./context.ts";
+import { Context, type CheckMiddlewareVars, type CheckUseVars, type ExecutionContext, type Handler, type HandlerResult, type Middleware, type MiddlewareProvides, type MiddlewareVars, type Next, type VarsRoute, type WithVars } from "./context.ts";
 import {
     allowedMethods,
     checkParamNames,
@@ -75,25 +75,29 @@ export type OptionsHandler<S extends RouteOptions, P, V extends object, X extend
 
 // app.get(path, handler) と、スキーマやミドルウェアを付けた app.get(path, { use, params, query, body }, handler)
 /** A route method of an app (`app.get`, `app.post`, ...): `(path, handler)` or `(path, options, handler)`. */
-export type RouteMethod<V extends object> = {
-    <Path extends string>(path: Path, handler: PlainHandler<PathParams<Path>, V>): void;
+export type RouteMethod<V extends object, X extends object = {}> = {
+    <Path extends string>(path: Path, handler: Handler<PathParams<Path>, V, VarsRoute<X>>): void;
     <Path extends string, S extends RouteOptions>(
         path: Path,
-        options: S & NoInfer<CheckParamTypes<S, PathParams<Path>>> & NoInfer<CheckUseVars<S["use"], V>>,
-        handler: OptionsHandler<S, PathParams<Path>, V>,
+        options: S & NoInfer<CheckParamTypes<S, PathParams<Path>>> & NoInfer<CheckUseVars<S["use"], V, X>>,
+        handler: OptionsHandler<S, PathParams<Path>, V, X>,
     ): void;
 };
 
 /** `app.on`: a route for any method name, or several at once. */
-export type OnMethod<V extends object> = {
-    <Path extends string>(method: string | readonly string[], path: Path, handler: PlainHandler<PathParams<Path>, V>): void;
+export type OnMethod<V extends object, X extends object = {}> = {
+    <Path extends string>(method: string | readonly string[], path: Path, handler: Handler<PathParams<Path>, V, VarsRoute<X>>): void;
     <Path extends string, S extends RouteOptions>(
         method: string | readonly string[],
         path: Path,
-        options: S & NoInfer<CheckParamTypes<S, PathParams<Path>>> & NoInfer<CheckUseVars<S["use"], V>>,
-        handler: OptionsHandler<S, PathParams<Path>, V>,
+        options: S & NoInfer<CheckParamTypes<S, PathParams<Path>>> & NoInfer<CheckUseVars<S["use"], V, X>>,
+        handler: OptionsHandler<S, PathParams<Path>, V, X>,
     ): void;
 };
+
+// app.use() に渡すミドルウェア。その場で書いたものの c には、それより前の use が必ず入れる変数 X が付く
+/** Middleware passed to `app.use()`. Inline middleware sees the variables `X` that earlier `use` calls always set. */
+export type AppMiddleware<V extends object, X extends object> = (c: Context<V, VarsRoute<X>>, next: Next) => HandlerResult | void | Promise<HandlerResult | void>;
 
 // app.route(prefix, app) でつなげるように、アプリに登録されたものを横に置いておく
 const appEntries = new WeakMap<object, () => GroupEntry[]>();
@@ -116,15 +120,27 @@ export type MountableApp = {
  * `V` is the app's type: either the variables used with `c.set` / `c.get` (`{ user: User }`),
  * or `{ Bindings: Env; Variables: { user: User } }` to also type `c.env` on Cloudflare Workers.
  */
-export type App<V extends object = Record<string, unknown>> = {
+export type App<V extends object = Record<string, unknown>, X extends object = {}> = {
     /**
      * Adds middleware. Middleware runs in registration order.
      * With a path (`app.use("/admin", mw)`), it runs only for that path and below, compared by segment
      * (`/admin` does not match `/administrator`; `:param` segments match any segment).
      * `app.use("/admin/*", mw)` means the same as `app.use("/admin", mw)`, so it also runs for `/admin` itself.
      * Throws if the middleware is missing, or if the path has a `*` anywhere other than as the whole last segment.
+     *
+     * Returns the app. Without a path, the variables the middleware declares it always sets (`Middleware<V, { vars }>`)
+     * are typed without `undefined` in routes added through the returned app: `const app = createApp().use(requireUser)`.
+     * The middleware also runs for routes added before, but those keep `undefined` in their types.
+     * Inline middleware sees the variables that earlier `use` calls set. With a path, nothing is added to the types;
+     * use `createRouter(prefix, { use })` for that. Middleware that types a variable of the app differently is a type error.
      */
-    use(pathOrMw: string | Middleware<V>, mw?: Middleware<V>): void;
+    use(mw: AppMiddleware<V, X> & { readonly "~middleware"?: undefined }): App<V, X>;
+    /** Adds middleware that declares what it sets. See the first form. */
+    use<M extends Middleware<any, any>>(mw: M & NoInfer<CheckMiddlewareVars<M, V, X>>): App<V, X & MiddlewareProvides<[M]>>;
+    /** Adds middleware for a path and below. See the first form. */
+    use(path: string, mw: AppMiddleware<V, X> & { readonly "~middleware"?: undefined }): App<V, X>;
+    /** Adds middleware for a path and below. See the first form. */
+    use<M extends Middleware<any, any>>(path: string, mw: M & NoInfer<CheckMiddlewareVars<M, V, X>>): App<V, X>;
     /**
      * Replaces the error handler. It receives anything thrown by middleware or handlers, except `c.notFound()`.
      * Before it is called, the status is set from an {@link HttpError} (status and headers) or to 500.
@@ -163,35 +179,35 @@ export type App<V extends object = Record<string, unknown>> = {
      * app.get("/docs/*", ({ "*": page }) => `page: ${page}`);
      * ```
      */
-    get: RouteMethod<V>;
+    get: RouteMethod<V, X>;
     /** Adds a POST route. Same arguments as {@link App.get}. */
-    post: RouteMethod<V>;
+    post: RouteMethod<V, X>;
     /** Adds a PUT route. Same arguments as {@link App.get}. */
-    put: RouteMethod<V>;
+    put: RouteMethod<V, X>;
     /** Adds a PATCH route. Same arguments as {@link App.get}. */
-    patch: RouteMethod<V>;
+    patch: RouteMethod<V, X>;
     /** Adds a DELETE route. Same arguments as {@link App.get}. */
-    delete: RouteMethod<V>;
+    delete: RouteMethod<V, X>;
     /**
      * Adds a HEAD route. Without one, HEAD requests use the GET route.
      * For HEAD requests, the body of the route's response is dropped.
      */
-    head: RouteMethod<V>;
+    head: RouteMethod<V, X>;
     /**
      * Adds an OPTIONS route. Without one (and without a matching `all` route),
      * OPTIONS requests to a known path get 204 with an `Allow` header.
      */
-    options: RouteMethod<V>;
+    options: RouteMethod<V, X>;
     /**
      * Adds a route for every method. A route registered for the request's method takes precedence.
      * CONNECT, TRACE and TRACK are always answered with 501.
      */
-    all: RouteMethod<V>;
+    all: RouteMethod<V, X>;
     /**
      * Adds a route for any method name, or several at once: `app.on(["PUT", "PATCH"], path, handler)`.
      * Names are upper-cased. Throws for `"ALL"` (use {@link App.all}), CONNECT, TRACE, TRACK and invalid names.
      */
-    on: OnMethod<V>;
+    on: OnMethod<V, X>;
     // 0.3.0 で、2 つあった型の書き方を 1 つにした(RouteTable も defineRoutes() の表と同じ形)
     // キーの書き方は型で確かめる。その場で書いたハンドラーには、このアプリの型(c.get() など)が付く
     /**
@@ -199,7 +215,7 @@ export type App<V extends object = Record<string, unknown>> = {
      * made with {@link defineRoutes} (including routes with schemas or middleware made with {@link endpoint}).
      * Path parameters are typed from each key. The same checks as {@link App.get} apply to each route.
      */
-    routes<const T extends object>(table: T & NoInfer<RouteTable<T, V>>): void;
+    routes<const T extends object>(table: T & NoInfer<TableShape<"", T, V, X>>): void;
     /**
      * Mounts a router from {@link createRouter}, or another app under a prefix: `app.route("/api", api)`.
      * What is registered at this point is copied into this app.
@@ -352,10 +368,10 @@ export function createApp<V extends object = Record<string, unknown>>(options: A
     let notFound: NotFoundHandler<V> = defaultNotFound;
 
     // 登録時のエラーに、開発モードでは日本語の説明を付ける
-    function guard<A extends unknown[]>(fn: (...args: A) => void): (...args: A) => void {
+    function guard<A extends unknown[], T>(fn: (...args: A) => T): (...args: A) => T {
         return (...args) => {
             try {
-                fn(...args);
+                return fn(...args);
             } catch (err) {
                 throw devHooks ? devHooks.explain(err) : err;
             }
@@ -508,7 +524,8 @@ export function createApp<V extends object = Record<string, unknown>>(options: A
                 prefix: path === null ? null : splitPattern(path),
                 mw: fn,
             });
-        }),
+            return app;
+        }) as App<V>["use"],
 
         onError(handler: ErrorHandler<V>) {
             onError = handler;
