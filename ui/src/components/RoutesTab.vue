@@ -19,6 +19,9 @@ const rows = computed(() => {
         .sort((a, b) => a.path.localeCompare(b.path) || a.method.localeCompare(b.method));
 });
 // パラメーターもワイルドカードもない GET(と all)はブラウザで開ける
+// selfHeal() の状態の印
+const HEAL_MARK = { closed: "🟢", open: "🔴", "half-open": "🟡" } as const;
+const HEAL_TEXT = { closed: "routes.healClosed", open: "routes.healOpen", "half-open": "routes.healHalfOpen" } as const;
 const linkable = (r: RouteRow) => (r.method === "GET" || r.method === "ALL") && !r.path.includes(":") && !r.path.endsWith("*");
 </script>
 
@@ -37,7 +40,12 @@ const linkable = (r: RouteRow) => (r.method === "GET" || r.method === "ALL") && 
         </p>
         <ul class="mono list">
             <li v-for="r in rows" :key="`${r.method} ${r.path}`">
-                <span class="method" :style="{ color: methodColor(r.method) }">{{ r.method }}</span>
+                <span class="method" :style="{ color: methodColor(r.method) }"
+                    ><span v-if="r.heal" class="heal" role="img" :title="t(HEAL_TEXT[r.heal])" :aria-label="t(HEAL_TEXT[r.heal])">{{
+                        HEAL_MARK[r.heal]
+                    }}</span
+                    >{{ r.method }}</span
+                >
                 <a v-if="linkable(r)" :href="r.path" class="path">{{ r.path }}</a>
                 <span v-else class="path">{{ r.path }}</span>
                 <span class="chain">
@@ -100,7 +108,7 @@ const linkable = (r: RouteRow) => (r.method === "GET" || r.method === "ALL") && 
 }
 .list li {
     display: grid;
-    grid-template-columns: 72px minmax(160px, 320px) 1fr;
+    grid-template-columns: 88px minmax(160px, 320px) 1fr;
     gap: 16px;
     align-items: baseline;
     padding: 9px 0;
@@ -108,6 +116,11 @@ const linkable = (r: RouteRow) => (r.method === "GET" || r.method === "ALL") && 
 }
 .method {
     font-weight: 700;
+    white-space: nowrap;
+}
+.heal {
+    margin-right: 6px;
+    font-size: 11px;
 }
 .path {
     overflow-wrap: anywhere;

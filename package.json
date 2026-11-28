@@ -91,6 +91,10 @@
       "types": "./dist/src/chaos.d.ts",
       "import": "./dist/src/chaos.js"
     },
+    "./self-heal": {
+      "types": "./dist/src/self-heal.d.ts",
+      "import": "./dist/src/self-heal.js"
+    },
     "./node": {
       "types": "./dist/adapters/node/index.d.ts",
       "import": "./dist/adapters/node/index.js"

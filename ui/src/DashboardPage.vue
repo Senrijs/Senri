@@ -2,7 +2,7 @@
 // 開発ダッシュボード(/_senri)。タブ: リクエスト / ルート / ミドルウェア
 // 一覧は SSE(/_senri/api/events)で増えていく。詳細は行を選んだときに取りに行く
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
-import type { DashboardPageData, RequestSummary } from "../../src/dev/page-data.ts";
+import type { DashboardPageData, RequestSummary, RouteRow } from "../../src/dev/page-data.ts";
 import type { DashboardRecord } from "../../src/dev/dashboard/record.ts";
 import BrandLogo from "./components/BrandLogo.vue";
 import RequestDetail from "./components/RequestDetail.vue";
@@ -51,6 +51,18 @@ async function reload() {
     if (res.ok) requests.value = (await res.json()) as RequestSummary[];
 }
 
+// ルートのタブ。selfHeal() の状態はリクエストが来たときに変わるので、ルートのタブを見ているあいだは、届くたびに取り直す
+const routes = ref<RouteRow[]>(props.data.routes);
+const routeRequests = latestOnly();
+async function reloadRoutes() {
+    const isLatest = routeRequests.start();
+    const res = await fetch("/_senri/api/routes");
+    if (res.ok && isLatest()) routes.value = (await res.json()) as RouteRow[];
+}
+watch(tab, (name) => {
+    if (name === "routes") void reloadRoutes();
+});
+
 let source: EventSource | null = null;
 function connect() {
     source = new EventSource("/_senri/api/events");
@@ -63,6 +75,7 @@ function connect() {
     source.addEventListener("request", (e) => {
         const item = JSON.parse((e as MessageEvent<string>).data) as RequestSummary;
         requests.value = applyEvent(requests.value, { type: "request", item } satisfies DashboardEvent, props.data.max);
+        if (tab.value === "routes") void reloadRoutes();
         // まだ何も選んでいなければ、届いたものを開く
         if (selectedId.value === null) selectedId.value = item.id;
     });
@@ -121,7 +134,7 @@ onUnmounted(() => {
                 <nav :aria-label="t('dash.menu')">
                     <a href="#requests" :aria-current="tab === 'requests' ? 'page' : undefined">{{ t("dash.requests") }}</a>
                     <a href="#routes" :aria-current="tab === 'routes' ? 'page' : undefined"
-                        >{{ t("dash.routes") }} <span class="count">{{ data.routes.length }}</span></a
+                        >{{ t("dash.routes") }} <span class="count">{{ routes.length }}</span></a
                     >
                     <a href="#middleware" :aria-current="tab === 'middleware' ? 'page' : undefined"
                         >{{ t("dash.middleware") }} <span class="count">{{ data.middlewares.length }}</span></a
@@ -192,7 +205,7 @@ onUnmounted(() => {
         </p>
     </main>
 
-    <main v-else-if="tab === 'routes'" class="dash-main"><RoutesTab :routes="data.routes" :middlewares="data.middlewares" /></main>
+    <main v-else-if="tab === 'routes'" class="dash-main"><RoutesTab :routes="routes" :middlewares="data.middlewares" /></main>
     <main v-else class="dash-main"><MiddlewareTab :initial="data.middlewares" /></main>
 </template>
 

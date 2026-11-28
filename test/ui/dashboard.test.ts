@@ -156,6 +156,7 @@ describe("ルートのタブ", () => {
                 { name: "auth", applies: "maybe" },
                 { name: "cache", applies: "no" },
             ],
+            heal: null,
         });
 
         expect(chain).toEqual([
