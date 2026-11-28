@@ -472,9 +472,11 @@ describe("Node アダプター", () => {
         assert.equal((await reader.read()).done, true);
     });
 
-    test("チャンクがいつ届いても、欠けず、順番も変わらない", async () => {
+    // 85 回順に送るので、重いマシンでは既定の 5 秒を超える。時間切れになったら送るのをやめる(裏で送り続けると、あとのテストが遅くなる)
+    test("チャンクがいつ届いても、欠けず、順番も変わらない", { timeout: 30_000 }, async (t) => {
         for (let ticks = 0; ticks <= 16; ticks++) {
             for (let n = 0; n < 5; n++) {
+                t.signal.throwIfAborted();
                 assert.equal(await (await fetch(`${base}/late/${ticks}`)).text(), "abc", `ticks=${ticks}`);
             }
         }

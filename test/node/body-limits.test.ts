@@ -63,7 +63,8 @@ describe("本文の既定の上限(Node)", () => {
         ["近道", app],
         ["app.fetch を通す道", { fetch: app.fetch }],
     ] as const) {
-        test(label, async () => {
+        // 合わせて 20 MiB ほど送るので、重いマシンでは既定の 5 秒を超える
+        test(label, { timeout: 30_000 }, async () => {
             const { url, close } = await listen(target as never);
             const post = (path: string, body: BodyInit) => fetch(`${url}${path}`, { method: "POST", body, duplex: "half" } as RequestInit);
             try {
