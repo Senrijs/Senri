@@ -236,6 +236,37 @@ export type MiddlewareProvides<U> = U extends readonly (infer M)[]
         : UnionToIntersection<M extends unknown ? (DeclOf<M> extends { vars: infer X extends object } ? X : {}) : never>
     : {};
 
+// use に並べたミドルウェアの変数の型が、アプリの型(と、ほかのミドルウェアの宣言)と食い違っていないか
+// - ミドルウェアの c の変数(読むものと、宣言して入れるもの)を、同じ名前のアプリの変数と比べる。両方向に代入できなければ食い違い
+//   (読む側だけ広くても、その c で c.set() すれば、アプリの型にない値を入れられるため)
+// - 名前を決めていない変数(既定の Record<string, unknown> や any)とは比べない
+// 食い違うと、ミドルウェアの中の c.get() の型か、ハンドラーの c.get() の型のどちらかが嘘になる
+// (jwt() のように Middleware<any, { vars }> のものは、c からは読めないので、宣言の vars も足す)
+type VarsOfMiddleware<M> = NotAny<M extends (c: Context<infer W, any>, next: any) => any ? AppVars<W> : {}> &
+    (DeclOf<M> extends { vars: infer X extends object } ? X : {});
+type NotAny<T> = 0 extends 1 & T ? {} : T;
+type AppVars<V> = 0 extends 1 & V ? {} : VariablesOf<V>;
+type KnownKeys<T> = keyof { [K in keyof T as string extends K ? never : number extends K ? never : symbol extends K ? never : K]: 0 };
+type Mismatched<M, Env> = {
+    [K in KnownKeys<VarsOfMiddleware<M>> & KnownKeys<Env>]: [VarsOfMiddleware<M>[K]] extends [Env[K]] ? ([Env[K]] extends [VarsOfMiddleware<M>[K]] ? never : K) : K;
+}[KnownKeys<VarsOfMiddleware<M>> & KnownKeys<Env>];
+/**
+ * Rejects a `use` list `U` whose middleware types a variable differently from the app's type `V` (with the variables `X`
+ * already set, and those the other middleware in `U` declare). Variables the app does not name are not compared.
+ * Gives `unknown` when the list is fine, or a type whose missing property names the variables.
+ */
+export type CheckUseVars<U, V, X extends object = {}> = [U] extends [never]
+    ? unknown
+    : U extends readonly (infer M)[]
+      ? [M] extends [never]
+          ? unknown
+          : [M extends unknown ? Mismatched<M, AppVars<V> & X & MiddlewareProvides<U>> : never] extends [infer Bad]
+            ? [Bad] extends [never]
+                ? unknown
+                : { use: { [K in `A middleware in use types the variable "${Bad & string}" differently from the app (or from another middleware)`]: true } }
+            : unknown
+      : unknown;
+
 // use に並べたミドルウェアが投げうる状態コード
 /** The statuses a list of middleware declare they may respond with (`Middleware<V, { errors: ... }>`). */
 export type MiddlewareErrors<U> = U extends readonly (infer M)[] ? (M extends unknown ? (DeclOf<M> extends { errors: infer E extends number } ? E : never) : never) : never;

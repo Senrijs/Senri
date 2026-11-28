@@ -38,6 +38,7 @@ export {
     Context,
     type BindingsOf,
     type BodyValue,
+    type CheckUseVars,
     type ExecutionContext,
     type Handler,
     type HandlerResult,
