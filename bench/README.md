@@ -2,6 +2,8 @@
 
 Senri・Hono・Elysia を同じ条件で比べます。依存はこのディレクトリの中だけで、バージョンは `package.json` で固定しています。
 
+型チェックの時間(ルートが多いアプリ)は [`types/`](types/README.md) で測ります。
+
 ```sh
 cd bench
 bun install
