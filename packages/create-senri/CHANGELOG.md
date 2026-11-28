@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.3](https://github.com/Senrijs/Senri/compare/create-senri-v0.1.2...create-senri-v0.1.3) (2026-11-28)
+
+
+### Bug Fixes
+
+* **create-senri:** use @senrijs/senri ^0.5.0 for new projects ([#196](https://github.com/Senrijs/Senri/issues/196)) ([5758a25](https://github.com/Senrijs/Senri/commit/5758a255f83a1cda320f00aba184d232cfe84f0d))
+
 ## [0.1.2](https://github.com/Senrijs/Senri/compare/create-senri-v0.1.1...create-senri-v0.1.2) (2026-11-23)
 
 
