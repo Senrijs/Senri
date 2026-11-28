@@ -200,6 +200,31 @@ function send(c: Context, r: StoreResult<User>): UserResponse {
 - 状態コードを省いた `c.json(body)` は、戻り値の型を書いていても 200 の型です。404 の応答として返そうとすると、型エラーになります
 - 手間は増えますが、クライアントに見せる応答の型が、関数の宣言だけで分かります
 
+戻り値の型が和のときは、本文に文字列をじかに書くと、その型は `string` に広がって、和のどれにも合わなくなります。文字列には `as const` を付けます。
+
+```ts twoslash title="routes.ts"
+// @filename: store.ts
+export type User = { id: string; name: string };
+// @filename: routes.ts
+import type { Context, TypedResponse } from "@senrijs/senri";
+import type { User } from "./store.ts";
+type UserResponse =
+    | TypedResponse<User, 200>
+    | TypedResponse<{ error: "not_found" }, 404>
+    | TypedResponse<{ error: "conflict"; id: string }, 409>;
+// ---cut---
+// @errors: 2322
+function notFound(c: Context): UserResponse {
+    return c.json({ error: "not_found" as const }, 404);
+}
+
+function typo(c: Context): UserResponse {
+    return c.json({ error: "notfound" as const }, 404);   // 書き間違いは型エラー
+}
+```
+
+`as const` は、値の型を書いたとおりの文字列に狭めるだけです。`as User` のようなキャストとは違い、値そのものも型チェックされるので、間違った値は型エラーになります。
+
 ## ミドルウェアの状態コード
 
 ルートの `use` に入れたミドルウェアが宣言した状態コード(`Middleware<V, { errors: 401 }>`。[標準のミドルウェア](/docs/middleware/route-middleware)にも付いています)と、スキーマのあるルートの 400 も、status ごとに分かれます。

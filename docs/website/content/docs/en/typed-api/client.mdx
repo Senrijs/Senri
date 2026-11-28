@@ -200,6 +200,31 @@ function send(c: Context, r: StoreResult<User>): UserResponse {
 - `c.json(body)` without a status is typed 200, even when the return type is written. Returning it where a 404 response is expected is a type error
 - It takes more typing, but the declaration alone shows the responses the client sees
 
+When the return type is a union, a string written directly in the body widens to `string`, and then matches none of the union's members. Add `as const` to the string.
+
+```ts twoslash title="routes.ts"
+// @filename: store.ts
+export type User = { id: string; name: string };
+// @filename: routes.ts
+import type { Context, TypedResponse } from "@senrijs/senri";
+import type { User } from "./store.ts";
+type UserResponse =
+    | TypedResponse<User, 200>
+    | TypedResponse<{ error: "not_found" }, 404>
+    | TypedResponse<{ error: "conflict"; id: string }, 409>;
+// ---cut---
+// @errors: 2322
+function notFound(c: Context): UserResponse {
+    return c.json({ error: "not_found" as const }, 404);
+}
+
+function typo(c: Context): UserResponse {
+    return c.json({ error: "notfound" as const }, 404);   // A typo is a type error
+}
+```
+
+`as const` only narrows the value's type to the string as written. Unlike a cast such as `as User`, the value itself is still type-checked, so a wrong value is a type error.
+
 ## Middleware statuses
 
 Statuses declared by the middleware in a route's `use` (`Middleware<V, { errors: 401 }>`; the [built-in middleware](/en/docs/middleware/route-middleware) declare theirs), and 400 on routes with schemas, are also split by status.
