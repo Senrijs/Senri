@@ -80,6 +80,13 @@ describe("パッケージ", () => {
         assert.deepEqual([typeof metrics, typeof metricsHandler], ["function", "function"]);
     });
 
+    test('"@senrijs/senri/chaos" でカオスモードが使える', async () => {
+        assert.match(import.meta.resolve("@senrijs/senri/chaos"), /\/dist\/src\/chaos\.js$/);
+        const { chaos } = await import("@senrijs/senri/chaos");
+
+        assert.equal(typeof chaos, "function");
+    });
+
     test('"@senrijs/senri/node" で Node アダプターが使える', async () => {
         assert.match(import.meta.resolve("@senrijs/senri/node"), /\/dist\/adapters\/node\/index\.js$/);
         const { serve } = await import("@senrijs/senri/node");

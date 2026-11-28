@@ -20,6 +20,7 @@ const record = (id: string, path = "/hello"): DashboardRecord => ({
     requestHeaders: [],
     responseHeaders: [],
     error: null,
+    notes: [],
 });
 
 // ストリームを読み進めて、条件に合うテキストが届くまで待つ(届かなければタイムアウトで失敗)

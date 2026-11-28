@@ -1,6 +1,7 @@
 // ダッシュボードに出す、リクエスト1件分の記録を作る
 import type { Context } from "../../context.ts";
 import type { Lang } from "../../lang.ts";
+import { notesOf } from "../../notes.ts";
 import { buildErrorPageData } from "../error-page.ts";
 import type { ErrorPageData } from "../page-data.ts";
 import { maskHeaders, maskQuery } from "./mask.ts";
@@ -42,6 +43,8 @@ export type DashboardRecord = {
     responseHeaders: [string, string][];
     // 5xx のときだけ、エラーページと同じ中身
     error: ErrorPageData | null;
+    // 純正のミドルウェアがわざとしたこと(chaos() の遅延やエラーなど)。layer はタイムラインの行の名前
+    notes: { layer: string; tag: string; text: string }[];
 };
 
 function requestPath(c: Context<any, any>): { path: string; query: string } {
@@ -99,5 +102,6 @@ export async function buildRecord(input: {
         requestHeaders: maskHeaders(c.req.headers),
         responseHeaders: maskHeaders(res.headers),
         error,
+        notes: notesOf(c).map((n) => ({ layer: n.layer, tag: n.tag[lang], text: n.text[lang] })),
     };
 }
