@@ -100,11 +100,17 @@ describe("client()", () => {
     });
 
     test("\"/\" が長く続いて最後が別の文字のベース URL でも、すぐ終わる(時間が長さの 2 乗にならない)", () => {
-        // 以前の /\/+$/ は、始まる位置ごとに読み直すので、10 万文字で数秒かかった
+        // 以前の /\/+$/ は、始まる位置ごとに読み直すので、10 万文字で数秒かかった(毎回)
+        // 1 回目は JIT が効く前なので、全部が "/" だと数十 ms かかる。重いマシンでは一瞬止まることもあるので、
+        // 何回か呼んで、いちばん速い回で比べる(2 乗になれば、どの回も遅い)
         for (const base of ["http://x" + "/".repeat(100_000) + "a", "/".repeat(100_000) + "a", "/".repeat(100_000)]) {
-            const started = performance.now();
-            client<Api>(base);
-            expect(performance.now() - started).toBeLessThan(100);
+            let fastest = Infinity;
+            for (let i = 0; i < 5; i++) {
+                const started = performance.now();
+                client<Api>(base);
+                fastest = Math.min(fastest, performance.now() - started);
+            }
+            expect(fastest).toBeLessThan(100);
         }
     });
 

@@ -3,7 +3,7 @@ import { after, describe, test } from "node:test";
 import assert from "node:assert/strict";
 import { createApp, ipRestriction, secureHeaders } from "../../src/index.ts";
 import { trustProxy } from "../../src/ip.ts";
-import { bothPaths, closeServers, counting, listen, raw, request } from "./http.ts";
+import { bothPaths, closeServers, COMPARE_TIMEOUT, compareBothPaths, counting, listen, raw, rawCases, request } from "./http.ts";
 
 after(closeServers);
 
@@ -30,7 +30,7 @@ describe("ipRestriction() と Node", () => {
         assert.match(await raw(await listen(appWith({ deny: ["127.0.0.1"] })), request("GET", "/")), /^HTTP\/1\.1 403/);
     });
 
-    test("2つの道の応答が同じ", async () => {
+    test("2つの道の応答が同じ", { timeout: COMPARE_TIMEOUT }, async (t) => {
         const ip = trustProxy({ hops: 1 });
         const list: [Parameters<typeof ipRestriction>[0], Record<string, string>][] = [
             [{ allow: ["127.0.0.0/8"] }, {}],
@@ -42,11 +42,10 @@ describe("ipRestriction() と Node", () => {
             [{ allow: ["0.0.0.0/0"], ip }, { "X-Forwarded-For": "evil" }],
         ];
         for (const [options, headers] of list) {
-            const { lazy, viaFetch } = await bothPaths(appWith(options));
-            for (const method of ["GET", "HEAD", "POST"]) {
-                const text = request(method, "/", headers);
-                assert.equal(await raw(lazy, text), await raw(viaFetch, text), `${method} ${JSON.stringify(headers)}`);
-            }
+            const cases = ["GET", "HEAD", "POST"].map(
+                (method) => [`${JSON.stringify(options)} ${method} ${JSON.stringify(headers)}`, request(method, "/", headers)] as const,
+            );
+            await compareBothPaths(await bothPaths(appWith(options)), rawCases(cases), t.signal);
         }
     });
 });
