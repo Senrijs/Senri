@@ -11,7 +11,7 @@
 //
 // ミドルウェアの順番: アプリの app.use() → 表の use → ルートの use → スキーマの確認 → ハンドラー
 // (ルートの use は、リクエストがそのルートに当たったときだけ、アプリのミドルウェアの後ろに足す。src/app.ts)
-import type { Context, Handler, HandlerResult, MiddlewareProvides, MiddlewareVars, VarsRoute, WithVars } from "./context.ts";
+import type { CheckUseVars, Context, Handler, HandlerResult, MiddlewareProvides, MiddlewareVars, VarsRoute, WithVars } from "./context.ts";
 import { senriError } from "./errors.ts";
 import type { ExtractParams, Simplify } from "./router.ts";
 import type { RouteInfoOf, RouteMiddleware, RouteSchemas, StandardSchemaV1, ValidatedParams } from "./validate.ts";
@@ -145,7 +145,10 @@ export function endpoint<
     R extends HandlerResult | Promise<HandlerResult> = HandlerResult,
     V extends object = any,
     X extends object = {},
->(schemas: S, handler: (params: ValidatedParams<S, P>, c: EndpointContext<P, S, V, X>) => R): Endpoint<P, S, R, V, X> {
+>(
+    schemas: S & NoInfer<CheckUseVars<S["use"], V, X>>,
+    handler: (params: ValidatedParams<S, P>, c: EndpointContext<P, S, V, X>) => R,
+): Endpoint<P, S, R, V, X> {
     if (typeof handler !== "function") throw senriError("no_handler", "Missing handler: endpoint()");
     checkUse(schemas.use, "endpoint()");
     return makeEndpoint(schemas, handler) as unknown as Endpoint<P, S, R, V, X>;
@@ -271,7 +274,7 @@ export function defineRoutes<const T extends object>(table: T & NoInfer<TableSha
  */
 export function defineRoutes<P extends string, V extends object = Record<string, unknown>, const O extends TableOptions = {}>(
     prefix: P,
-    options?: O & TableOptions,
+    options?: O & TableOptions & NoInfer<CheckUseVars<O["use"], V>>,
 ): <const T extends object>(
     table: T & NoInfer<TableShape<P, T, WithVars<V, MiddlewareVars<O["use"]>>, MiddlewareProvides<O["use"]>>>,
 ) => Routes<P, RoutesWithUse<O, T>>;

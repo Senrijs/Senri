@@ -1,4 +1,4 @@
-import { Context, type ExecutionContext, type Handler, type HandlerResult, type Middleware, type MiddlewareVars, type WithVars } from "./context.ts";
+import { Context, type ExecutionContext, type Handler, type HandlerResult, type CheckUseVars, type Middleware, type MiddlewareVars, type WithVars } from "./context.ts";
 import {
     allowedMethods,
     checkParamNames,
@@ -79,7 +79,7 @@ export type RouteMethod<V extends object> = {
     <Path extends string>(path: Path, handler: PlainHandler<PathParams<Path>, V>): void;
     <Path extends string, S extends RouteOptions>(
         path: Path,
-        options: S & NoInfer<CheckParamTypes<S, PathParams<Path>>>,
+        options: S & NoInfer<CheckParamTypes<S, PathParams<Path>>> & NoInfer<CheckUseVars<S["use"], V>>,
         handler: OptionsHandler<S, PathParams<Path>, V>,
     ): void;
 };
@@ -90,7 +90,7 @@ export type OnMethod<V extends object> = {
     <Path extends string, S extends RouteOptions>(
         method: string | readonly string[],
         path: Path,
-        options: S & NoInfer<CheckParamTypes<S, PathParams<Path>>>,
+        options: S & NoInfer<CheckParamTypes<S, PathParams<Path>>> & NoInfer<CheckUseVars<S["use"], V>>,
         handler: OptionsHandler<S, PathParams<Path>, V>,
     ): void;
 };

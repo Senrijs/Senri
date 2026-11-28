@@ -1,6 +1,6 @@
 // ルートのグループ化。プレフィックスは createRouter のときに決める
 // (あとから app.route("/users/:id", router) のように付ける形だと、中のハンドラーで id の型が分からないため)
-import type { Handler, Middleware, MiddlewareProvides, MiddlewareVars, VarsRoute, WithVars } from "./context.ts";
+import type { CheckUseVars, Handler, Middleware, MiddlewareProvides, MiddlewareVars, VarsRoute, WithVars } from "./context.ts";
 import { normalizeMethod, splitPattern, type ExtractParams, type Simplify } from "./router.ts";
 import { routeHandler, type CheckParamTypes, type RouteInfoOf, type RouteMiddleware, type RouteOptions, type ValidatedParams } from "./validate.ts";
 import { checkUse, type TableOptions } from "./routes.ts";
@@ -17,7 +17,7 @@ export type RouterMethod<Prefix extends string, V extends object, X extends obje
     <Path extends string>(path: Path, handler: Handler<RouterParams<Prefix, Path>, V, VarsRoute<X>>): void;
     <Path extends string, S extends RouteOptions>(
         path: Path,
-        options: S & NoInfer<CheckParamTypes<S, RouterParams<Prefix, Path>>>,
+        options: S & NoInfer<CheckParamTypes<S, RouterParams<Prefix, Path>>> & NoInfer<CheckUseVars<S["use"], V, X>>,
         handler: Handler<
             ValidatedParams<S, RouterParams<Prefix, Path>>,
             WithVars<V, MiddlewareVars<S["use"]>>,
@@ -69,7 +69,7 @@ export type Router<Prefix extends string = string, V extends object = any, X ext
     on<Path extends string, S extends RouteOptions>(
         method: string | readonly string[],
         path: Path,
-        options: S & NoInfer<CheckParamTypes<S, RouterParams<Prefix, Path>>>,
+        options: S & NoInfer<CheckParamTypes<S, RouterParams<Prefix, Path>>> & NoInfer<CheckUseVars<S["use"], V, X>>,
         handler: Handler<
             ValidatedParams<S, RouterParams<Prefix, Path>>,
             WithVars<V, MiddlewareVars<S["use"]>>,
@@ -134,7 +134,7 @@ export function groupEntries(router: Router<any, any, any>): GroupEntry[] {
 // options.use は、このルーターの全部のルートに付けるミドルウェア(defineRoutes(prefix, { use }) と同じく、ルートのミドルウェアとして動く)
 export function createRouter<Prefix extends string, V extends object = Record<string, unknown>, const O extends TableOptions = {}>(
     prefix: Prefix,
-    options?: O & TableOptions,
+    options?: O & TableOptions & NoInfer<CheckUseVars<O["use"], V>>,
 ): Router<Prefix, WithVars<V, MiddlewareVars<O["use"]>>, MiddlewareProvides<O["use"]>> {
     checkUse(options?.use, `createRouter("${prefix}")`);
     const own = options?.use ?? [];

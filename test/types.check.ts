@@ -859,3 +859,81 @@ import type { ClientErrors, StatusOf } from "../src/client.ts";
     // @ts-expect-error 単位のない文字列は書けない
     selfHeal({ slow: "2" });
 }
+
+// --- ルートの use: アプリの型と違う型で変数を読む・入れるミドルウェアは付けられない ---
+// 下の @ts-expect-error の行は、どれも 0.4.x では型エラーにならず、ミドルウェアの中かハンドラーの c.get() の型が嘘になっていた
+
+import type { JwtVariables } from "../src/jwt.ts";
+
+// 同じ名前を string で入れるミドルウェア
+const setsUserName: Middleware<{}, { vars: { user: string } }> = async (c, next) => {
+    c.set("user", "a");
+    return next();
+};
+{
+    // アプリでは user は string。TUser で読む・入れるミドルウェアは食い違う
+    const a = createApp<{ user: string }>();
+    // @ts-expect-error 読むだけのもの: 中の c.get("user") が TUser | undefined になるが、値は string
+    a.get("/reads", { use: [readsUser] }, () => "x");
+    // @ts-expect-error 入れるもの: ハンドラーの c.get("user") が TUser になるが、アプリのほかの場所では string
+    a.get("/sets", { use: [requireUser] }, () => "x");
+    // @ts-expect-error app.on も同じ
+    a.on(["PUT"], "/on", { use: [requireUser] }, () => "x");
+    // 同じ型なら付けられる
+    a.get("/ok", { use: [setsUserName] }, (_, c) => c.get("user").toUpperCase());
+
+    // { Bindings, Variables } の形でも Variables と比べる
+    const w = createApp<{ Bindings: { KV: string }; Variables: { user: string } }>();
+    // @ts-expect-error
+    w.get("/w", { use: [requireUser] }, () => "x");
+
+    // 同じ use の中で食い違うものどうしも
+    const d = createApp();
+    // @ts-expect-error setsUserName は string を入れ、readsUser は TUser として読む
+    d.get("/both", { use: [setsUserName, readsUser] }, () => "x");
+
+    // jwt() の payload の型
+    const j = createApp<JwtVariables<{ sub: string; role: "admin" }>>();
+    // @ts-expect-error アプリでは role は "admin"
+    j.get("/j", { use: [jwt<{ sub: string; role: "user" }>({ keys: "x".repeat(32), algorithms: ["HS256"] })] }, () => "x");
+    j.get("/j2", { use: [jwt<{ sub: string; role: "admin" }>({ keys: "x".repeat(32), algorithms: ["HS256"] })] }, (_, c) => c.get("jwtPayload").role);
+}
+
+// createRouter・router.get・defineRoutes・endpoint も同じ
+{
+    // createRouter(prefix, { use }) と defineRoutes(prefix, { use }) は、use の中どうしで比べる
+    // (createRouter<"/r", V>(...) のように型引数を書くと、use の型が推論されないので比べられない。use の vars も付かない)
+    // @ts-expect-error
+    createRouter("/r", { use: [setsUserName, readsUser] });
+    const r = createRouter<"/r2", { user: string }>("/r2");
+    // @ts-expect-error
+    r.get("/x", { use: [readsUser] }, () => "x");
+    r.get("/y", { use: [setsUserName] }, (_, c) => c.get("user").toUpperCase());
+    // ルーターの use が入れる変数とも比べる
+    const r3 = createRouter("/r3", { use: [requireUser] });
+    // @ts-expect-error requireUser は TUser を入れる
+    r3.get("/x", { use: [setsUserName] }, () => "x");
+
+    // @ts-expect-error
+    defineRoutes("/t", { use: [setsUserName, readsUser] });
+    defineRoutes("/t2", { use: [setsUserName] });
+
+    // @ts-expect-error endpoint は、use の中どうしで比べる
+    endpoint({ use: [setsUserName, readsUser] }, () => "x");
+}
+
+// これまでどおり付けられるもの
+{
+    // 既定のアプリの型(変数の名前を決めていない)なら、比べない
+    const a = createApp();
+    a.get("/a", { use: [requireUser, readsUser, logger(), requestId()] }, (_, c) => c.get("user").name + c.get("requestId"));
+    // アプリの型と同じ
+    const b = createApp<{ user: TUser }>();
+    b.get("/b", { use: [requireUser, readsUser] }, (_, c) => c.get("user").name);
+    // アプリの型にない名前
+    const o = createApp<{ other: number }>();
+    o.get("/o", { use: [requireUser] }, (_, c) => c.get("user").name);
+    // rateLimit<V>() の key の c
+    b.get("/rl", { use: [rateLimit<{ user: TUser }>({ windowMs: 1, limit: 1, key: (c) => c.get("user")?.id ?? "" })] }, () => "x");
+    endpoint({ use: [requireUser, readsUser] }, (_, c) => c.get("user").name);
+}

@@ -74,6 +74,8 @@ How the middleware is typed decides the type of `c.get()` in the routes whose `u
 
 `vars` is a promise made by whoever declares it. Senri does not check it at runtime, so if the middleware forgets `c.set()`, the type and the value disagree.
 
+Middleware that reads or sets a variable of the app's type (such as `createApp<{ user: string }>()`) with a different type is a type error in `use`. Middleware in the same `use` list are compared with each other too. Otherwise the type of `c.get()` would be wrong either inside the middleware or in the handler.
+
 The statuses in `errors` show up in the types of the [typed client](/en/docs/typed-api/client).
 
 ### What the built-in middleware declares
